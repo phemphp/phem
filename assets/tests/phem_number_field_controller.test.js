@@ -54,6 +54,42 @@ function pointer(el, type, init = {}) {
   el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init }))
 }
 
+// A pointer lock that the browser gives at once. Returns the cleanup.
+function fakePointerLock() {
+  let locked = null
+  Object.defineProperty(document, "pointerLockElement", { configurable: true, get: () => locked })
+  document.body.requestPointerLock = () => {
+    locked = document.body
+    return Promise.resolve()
+  }
+  document.exitPointerLock = vi.fn(() => (locked = null))
+
+  return () => {
+    delete document.pointerLockElement
+    delete document.body.requestPointerLock
+    delete document.exitPointerLock
+  }
+}
+
+const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+function touchLike(pointerType) {
+  return (el, type, init = {}) => {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init })
+    Object.defineProperty(event, "pointerType", { value: pointerType })
+    el.dispatchEvent(event)
+
+    return event
+  }
+}
+
+function beforeInput(data) {
+  const event = new InputEvent("beforeinput", { data, inputType: "insertText", bubbles: true, cancelable: true })
+  input().dispatchEvent(event)
+
+  return event.defaultPrevented
+}
+
 function type(text) {
   input().value = text
   input().dispatchEvent(new Event("input", { bubbles: true }))
@@ -81,7 +117,7 @@ describe("phem-number-field", () => {
 
     expect(input().value).toBe("1,234.5")
     expect(raw().value).toBe("1234.5")
-    expect(input().getAttribute("inputmode")).toBe("decimal")
+    expect(input().getAttribute("inputmode")).toBe("numeric")
     expect(input().getAttribute("aria-roledescription")).toBe("Number field")
     expect(input().getAttribute("autocomplete")).toBe("off")
     expect(input().required).toBe(true)
@@ -94,7 +130,7 @@ describe("phem-number-field", () => {
     expect(input().hasAttribute("data-required")).toBe(true)
   })
 
-  it("steps with the arrow keys, Alt, Shift, PageUp, Home and End", async () => {
+  it("steps with the arrow keys, Alt, Shift, Home and End", async () => {
     await mount(field('data-phem-number-field-value-value="5" data-phem-number-field-locale-value="en-US" data-phem-number-field-min-value="0" data-phem-number-field-max-value="50"'))
     const events = record()
     input().focus()
@@ -105,8 +141,10 @@ describe("phem-number-field", () => {
     expect(input().value).toBe("5.9")
     press("ArrowUp", { shiftKey: true })
     expect(input().value).toBe("15.9")
-    press("PageDown")
-    expect(state()).toBe("5.9")
+    // PageUp and PageDown are keys of the browser, as in Base UI.
+    expect(press("PageDown").defaultPrevented).toBe(false)
+    expect(press("PageUp").defaultPrevented).toBe(false)
+    expect(state()).toBe("15.9")
     press("End")
     expect(input().value).toBe("50")
     expect(document.getElementById("inc").disabled).toBe(true)
@@ -286,8 +324,8 @@ describe("phem-number-field", () => {
     const area = document.getElementById("area")
     let locked = null
     Object.defineProperty(document, "pointerLockElement", { configurable: true, get: () => locked })
-    area.requestPointerLock = () => {
-      locked = area
+    document.body.requestPointerLock = () => {
+      locked = document.body
       return Promise.resolve()
     }
     document.exitPointerLock = () => (locked = null)
@@ -309,6 +347,7 @@ describe("phem-number-field", () => {
     expect(locked).toBe(null)
     expect(cursor.hidden).toBe(true)
     delete document.pointerLockElement
+    delete document.body.requestPointerLock
   })
 
   it("ignores the user when disabled or read-only", async () => {
@@ -408,8 +447,8 @@ describe("phem-number-field: the hold and the scrub of Base UI", () => {
     area.getBoundingClientRect = () => ({ left: 100, top: 0, right: 140, bottom: 20, width: 40, height: 20 })
     let locked = null
     Object.defineProperty(document, "pointerLockElement", { configurable: true, get: () => locked })
-    area.requestPointerLock = () => {
-      locked = area
+    document.body.requestPointerLock = () => {
+      locked = document.body
       return Promise.resolve()
     }
     document.exitPointerLock = () => (locked = null)
@@ -426,5 +465,535 @@ describe("phem-number-field: the hold and the scrub of Base UI", () => {
 
     pointer(document, "pointerup")
     delete document.pointerLockElement
+    delete document.body.requestPointerLock
+  })
+
+  it("steps from zero when the field has no value", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US"'))
+    input().focus()
+
+    press("ArrowUp")
+    expect(state()).toBe("0")
+  })
+
+  it("steps down from zero, in the limits, when the field has no value", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-max-value="-4"'))
+    input().focus()
+
+    press("ArrowDown")
+    expect(state()).toBe("-4")
+  })
+
+  it("does not format the text on Enter, only on blur", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US"'))
+    input().focus()
+
+    type("1234")
+    press("Enter")
+    expect(input().value).toBe("1234")
+    expect(state()).toBe("1234")
+
+    input().blur()
+    expect(input().value).toBe("1,234")
+  })
+
+  it("allows one sign and one decimal separator, except when they replace a selection", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US"'))
+    input().focus()
+    const before = (data) => {
+      const event = new InputEvent("beforeinput", { data, inputType: "insertText", bubbles: true, cancelable: true })
+      input().dispatchEvent(event)
+
+      return event.defaultPrevented
+    }
+
+    type("-1.5")
+    input().setSelectionRange(4, 4)
+    expect(before("-")).toBe(true)
+    expect(before("+")).toBe(true)
+    expect(before(".")).toBe(true)
+    expect(before("7")).toBe(false)
+
+    // The selection has the sign or the separator: the new character replaces it.
+    input().setSelectionRange(0, 1)
+    expect(before("+")).toBe(false)
+    input().setSelectionRange(2, 3)
+    expect(before(".")).toBe(false)
+    input().setSelectionRange(0, 4)
+    expect(before("-")).toBe(false)
+  })
+
+  it("allows one percent sign with the percent style", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-format-value=\'{"style":"percent"}\''))
+    input().focus()
+    const before = (data) => {
+      const event = new InputEvent("beforeinput", { data, inputType: "insertText", bubbles: true, cancelable: true })
+      input().dispatchEvent(event)
+
+      return event.defaultPrevented
+    }
+
+    type("50%")
+    input().setSelectionRange(3, 3)
+    expect(before("%")).toBe(true)
+  })
+
+  it("accepts and normalizes the digits of other scripts", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US"'))
+    input().focus()
+    const before = (data) => {
+      const event = new InputEvent("beforeinput", { data, inputType: "insertText", bubbles: true, cancelable: true })
+      input().dispatchEvent(event)
+
+      return event.defaultPrevented
+    }
+
+    for (const digit of ["٥", "۵", "５", "五"]) expect(before(digit)).toBe(false)
+
+    type("٤٢")
+    expect(state()).toBe("42")
+    type("۱۲")
+    expect(state()).toBe("12")
+    type("３７")
+    expect(state()).toBe("37")
+    type("一二")
+    expect(state()).toBe("12")
+  })
+
+  it("uses the text or the decimal keyboard on iOS", async () => {
+    Object.defineProperty(navigator, "userAgent", { configurable: true, get: () => "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" })
+    Object.defineProperty(navigator, "platform", { configurable: true, get: () => "iPhone" })
+
+    try {
+      await mount(field('data-phem-number-field-value-value="5" data-phem-number-field-locale-value="en-US"'))
+      expect(input().getAttribute("inputmode")).toBe("text")
+
+      document.body.innerHTML = ""
+      await mount(field('data-phem-number-field-value-value="5" data-phem-number-field-locale-value="en-US" data-phem-number-field-min-value="0"'))
+      expect(input().getAttribute("inputmode")).toBe("decimal")
+    } finally {
+      delete navigator.userAgent
+      delete navigator.platform
+    }
+  })
+
+  it("locks the pointer on the body during a scrub", async () => {
+    await mount(field())
+    const area = document.getElementById("area")
+    const onBody = vi.fn(() => Promise.resolve())
+    const onArea = vi.fn(() => Promise.resolve())
+    document.body.requestPointerLock = onBody
+    area.requestPointerLock = onArea
+
+    try {
+      pointer(area, "pointerdown", { clientX: 100, clientY: 10 })
+      pointer(document, "pointerup")
+
+      expect(onArea).not.toHaveBeenCalled()
+      expect(onBody).toHaveBeenCalledTimes(1)
+    } finally {
+      delete document.body.requestPointerLock
+    }
+  })
+
+  it("does not lock the pointer on WebKit", async () => {
+    vi.stubGlobal("CSS", { supports: (rule) => rule === "-webkit-backdrop-filter:none" })
+    const onBody = vi.fn(() => Promise.resolve())
+    document.body.requestPointerLock = onBody
+
+    try {
+      await mount(field())
+      const area = document.getElementById("area")
+      area.requestPointerLock = onBody
+
+      pointer(area, "pointerdown", { clientX: 100, clientY: 10 })
+      pointer(document, "pointerup")
+
+      expect(onBody).not.toHaveBeenCalled()
+    } finally {
+      delete document.body.requestPointerLock
+    }
+  })
+
+  it("exits the pointer lock 20 ms after the release on Firefox", async () => {
+    Object.defineProperty(navigator, "userAgent", { configurable: true, get: () => "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0" })
+    let locked = null
+    Object.defineProperty(document, "pointerLockElement", { configurable: true, get: () => locked })
+    document.body.requestPointerLock = () => {
+      locked = document.body
+      return Promise.resolve()
+    }
+    const exit = vi.fn(() => (locked = null))
+    document.exitPointerLock = exit
+
+    try {
+      await mount(field())
+      vi.useFakeTimers()
+      const area = document.getElementById("area")
+
+      pointer(area, "pointerdown", { clientX: 100, clientY: 10 })
+      expect(locked).toBe(document.body)
+      pointer(document, "pointerup")
+      expect(exit).not.toHaveBeenCalled()
+      expect(area.hasAttribute("data-scrubbing")).toBe(false)
+
+      vi.advanceTimersByTime(20)
+      expect(exit).toHaveBeenCalledTimes(1)
+      expect(locked).toBe(null)
+    } finally {
+      delete navigator.userAgent
+      delete document.pointerLockElement
+      delete document.body.requestPointerLock
+      delete document.exitPointerLock
+    }
+  })
+
+  it("sends a click to the target of a scrub press with no movement", async () => {
+    const unlock = fakePointerLock()
+
+    try {
+      await mount(field())
+      const label = document.querySelector("#area label")
+      const clicks = vi.fn()
+      label.addEventListener("click", clicks)
+
+      pointer(label, "pointerdown", { clientX: 100, clientY: 10 })
+      pointer(document, "pointerup", { clientX: 100, clientY: 10 })
+      await nextTask()
+      expect(clicks).toHaveBeenCalledTimes(1)
+
+      // A movement gives no click.
+      pointer(label, "pointerdown", { clientX: 100, clientY: 10 })
+      pointer(document, "pointermove", { clientX: 120, clientY: 10, movementX: 20 })
+      pointer(document, "pointerup", { clientX: 120, clientY: 10 })
+      await nextTask()
+      expect(clicks).toHaveBeenCalledTimes(1)
+
+      // A cancel gives no click.
+      pointer(label, "pointerdown", { clientX: 100, clientY: 10 })
+      pointer(document, "pointercancel", { clientX: 100, clientY: 10 })
+      await nextTask()
+      expect(clicks).toHaveBeenCalledTimes(1)
+    } finally {
+      unlock()
+    }
+  })
+
+  it("sends no second click when the native click of the scrub press comes", async () => {
+    const unlock = fakePointerLock()
+
+    try {
+      await mount(field())
+      const label = document.querySelector("#area label")
+      const clicks = vi.fn()
+      label.addEventListener("click", clicks)
+
+      pointer(label, "pointerdown", { clientX: 100, clientY: 10 })
+      pointer(document, "pointerup", { clientX: 100, clientY: 10 })
+      pointer(label, "click")
+      await nextTask()
+      expect(clicks).toHaveBeenCalledTimes(1)
+    } finally {
+      unlock()
+    }
+  })
+
+  it("sends no click when the pointer was not locked: the browser sends it", async () => {
+    await mount(field())
+    const label = document.querySelector("#area label")
+    const clicks = vi.fn()
+    label.addEventListener("click", clicks)
+
+    const event = new MouseEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, clientX: 100, clientY: 10 })
+    Object.defineProperty(event, "pointerType", { value: "touch" })
+    label.dispatchEvent(event)
+    pointer(document, "pointerup", { clientX: 100, clientY: 10 })
+    await nextTask()
+    expect(clicks).not.toHaveBeenCalled()
+  })
+
+  it("waits 50 ms before the repeat of a touch press", async () => {
+    await mount(field())
+    vi.useFakeTimers()
+    const inc = document.getElementById("inc")
+    const touch = (el, type, init = {}) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init })
+      Object.defineProperty(event, "pointerType", { value: "touch" })
+      el.dispatchEvent(event)
+    }
+
+    touch(inc, "pointerdown")
+    expect(input().value).toBe("5")
+    vi.advanceTimersByTime(50)
+    expect(input().value).toBe("6")
+    touch(window, "pointerup")
+    pointer(inc, "click")
+    expect(input().value).toBe("6")
+  })
+
+  it("steps one time on the click of a short touch press", async () => {
+    await mount(field())
+    vi.useFakeTimers()
+    const inc = document.getElementById("inc")
+    const touch = (el, type, init = {}) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init })
+      Object.defineProperty(event, "pointerType", { value: "touch" })
+      el.dispatchEvent(event)
+    }
+
+    touch(inc, "pointerdown")
+    vi.advanceTimersByTime(20)
+    touch(window, "pointerup")
+    pointer(inc, "click")
+    vi.advanceTimersByTime(1000)
+    expect(input().value).toBe("6")
+  })
+
+  it("cancels the repeat of a touch press after three moves", async () => {
+    await mount(field())
+    vi.useFakeTimers()
+    const inc = document.getElementById("inc")
+    const touch = (el, type, init = {}) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init })
+      Object.defineProperty(event, "pointerType", { value: "touch" })
+      el.dispatchEvent(event)
+    }
+
+    touch(inc, "pointerdown")
+    touch(inc, "pointermove", { clientX: 1 })
+    touch(inc, "pointermove", { clientX: 2 })
+    touch(inc, "pointermove", { clientX: 3 })
+    vi.advanceTimersByTime(1000)
+    expect(input().value).toBe("5")
+  })
+})
+
+describe("phem-number-field: the characters, the parse and the press", () => {
+  it("refuses a minus sign when the value cannot be negative", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-min-value="0"'))
+    input().focus()
+    expect(beforeInput("-")).toBe(true)
+    expect(beforeInput("−")).toBe(true)
+
+    document.body.innerHTML = ""
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-min-value="0" data-phem-number-field-allow-out-of-range-value'))
+    input().focus()
+    expect(beforeInput("-")).toBe(false)
+
+    document.body.innerHTML = ""
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-min-value="-5"'))
+    input().focus()
+    expect(beforeInput("-")).toBe(false)
+  })
+
+  it("allows one currency sign with the currency style", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-format-value=\'{"style":"currency","currency":"USD"}\''))
+    input().focus()
+    expect(beforeInput("$")).toBe(false)
+
+    type("$5")
+    input().setSelectionRange(2, 2)
+    expect(beforeInput("$")).toBe(true)
+    expect(state()).toBe("5")
+
+    // The selection has the currency sign: the new one replaces it.
+    input().setSelectionRange(0, 1)
+    expect(beforeInput("$")).toBe(false)
+  })
+
+  it("allows one percent or permille sign with the percent style", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-format-value=\'{"style":"percent"}\''))
+    input().focus()
+    expect(beforeInput("‰")).toBe(false)
+
+    type("5‰")
+    input().setSelectionRange(2, 2)
+    expect(beforeInput("‰")).toBe(true)
+    expect(beforeInput("%")).toBe(true)
+
+    document.body.innerHTML = ""
+    await mount(field())
+    input().focus()
+    expect(beforeInput("%")).toBe(true)
+    expect(beforeInput("‰")).toBe(true)
+  })
+
+  it("counts the decimal separators of other scripts as the decimal separator", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US"'))
+    input().focus()
+
+    type("1.5")
+    input().setSelectionRange(3, 3)
+    expect(beforeInput("٫")).toBe(true)
+    expect(beforeInput("．")).toBe(true)
+  })
+
+  it("parses the separators of other scripts in the format of the locale", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US"'))
+
+    type("٣٫٥")
+    expect(state()).toBe("3.5")
+    type("１，２３４")
+    expect(state()).toBe("1234")
+    type("١٬٢٣٤")
+    expect(state()).toBe("1234")
+    type("１２．５")
+    expect(state()).toBe("12.5")
+
+    document.body.innerHTML = ""
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="de-DE"'))
+
+    type("1٫5")
+    expect(state()).toBe("1.5")
+    type("1，5")
+    expect(state()).toBe("1.5")
+    type("1.234")
+    expect(state()).toBe("1234")
+    type("1٬234,5")
+    expect(state()).toBe("1234.5")
+  })
+
+  it("accepts the format characters of a right-to-left text", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="ar-EG"'))
+    input().focus()
+
+    expect(beforeInput("\u200f٥")).toBe(false)
+    type("\u200f-٥")
+    expect(state()).toBe("-5")
+  })
+
+  it("steps from no value to the min value when the min value is more than 0", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-min-value="5" data-phem-number-field-max-value="10"'))
+    input().focus()
+
+    press("ArrowUp")
+    expect(state()).toBe("5")
+  })
+
+  it("scrubs from no value to 0", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US"'))
+    const area = document.getElementById("area")
+
+    pointer(area, "pointerdown", { clientX: 100, clientY: 10 })
+    pointer(document, "pointermove", { clientX: 110, clientY: 10 })
+    pointer(document, "pointerup", { clientX: 110, clientY: 10 })
+    expect(state()).toBe("0")
+  })
+
+  it("puts the value in the limits and commits on Enter, with the typed text", async () => {
+    await mount(field('data-phem-number-field-value-value="5" data-phem-number-field-locale-value="en-US" data-phem-number-field-max-value="100"'))
+    const events = record()
+    input().focus()
+
+    type("500")
+    press("Enter")
+    expect(input().value).toBe("500")
+    expect(raw().value).toBe("100")
+    expect(events).toEqual([
+      ["change", 500, "input-change"],
+      ["change", 100, "keyboard"],
+      ["commit", 100, "keyboard"],
+    ])
+
+    input().blur()
+    expect(input().value).toBe("100")
+    expect(events).toHaveLength(3)
+  })
+
+  it("keeps the default action of a touch press, for the scroll of the page", async () => {
+    await mount(field())
+    vi.useFakeTimers()
+    const touch = touchLike("touch")
+
+    const down = touch(document.getElementById("inc"), "pointerdown")
+    expect(down.defaultPrevented).toBe(false)
+    touch(window, "pointerup")
+  })
+
+  it("cancels the repeat of a touch press after a movement of more than 8 px", async () => {
+    await mount(field())
+    vi.useFakeTimers()
+    const inc = document.getElementById("inc")
+    const touch = touchLike("touch")
+
+    touch(inc, "pointerdown", { clientX: 0, clientY: 0 })
+    touch(inc, "pointermove", { clientX: 20, clientY: 0 })
+    vi.advanceTimersByTime(1000)
+    expect(input().value).toBe("5")
+  })
+
+  it("waits 50 ms before the repeat of a pen press, and keeps the focus where it is", async () => {
+    await mount(field())
+    vi.useFakeTimers()
+    const inc = document.getElementById("inc")
+    const pen = touchLike("pen")
+
+    pen(inc, "pointerdown")
+    expect(input().value).toBe("5")
+    expect(document.activeElement).not.toBe(input())
+    vi.advanceTimersByTime(50)
+    expect(input().value).toBe("6")
+    pen(window, "pointerup")
+  })
+
+  it("exits the pointer lock when the field goes during a scrub", async () => {
+    const unlock = fakePointerLock()
+
+    try {
+      await mount(field())
+      pointer(document.getElementById("area"), "pointerdown", { clientX: 100, clientY: 10 })
+      expect(document.pointerLockElement).toBe(document.body)
+
+      document.getElementById("field").remove()
+      await nextTask()
+      expect(document.pointerLockElement).toBe(null)
+    } finally {
+      unlock()
+    }
+  })
+
+  it("exits the pointer lock when the field goes during the wait of Firefox", async () => {
+    Object.defineProperty(navigator, "userAgent", { configurable: true, get: () => "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0" })
+    const unlock = fakePointerLock()
+
+    try {
+      await mount(field())
+      vi.useFakeTimers()
+      const label = document.querySelector("#area label")
+      const clicks = vi.fn()
+      label.addEventListener("click", clicks)
+
+      pointer(label, "pointerdown", { clientX: 100, clientY: 10 })
+      pointer(document, "pointerup", { clientX: 100, clientY: 10 })
+      expect(document.pointerLockElement).toBe(document.body)
+
+      document.getElementById("field").remove()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(document.pointerLockElement).toBe(null)
+
+      vi.advanceTimersByTime(20)
+      expect(document.exitPointerLock).toHaveBeenCalledTimes(1)
+      expect(clicks).not.toHaveBeenCalled()
+    } finally {
+      delete navigator.userAgent
+      unlock()
+    }
+  })
+
+  it("uses the text keyboard on iPadOS, and keeps the inputmode of the markup", async () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, get: () => "MacIntel" })
+    Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, get: () => 5 })
+
+    try {
+      await mount(field())
+      expect(input().getAttribute("inputmode")).toBe("text")
+    } finally {
+      delete navigator.platform
+      delete navigator.maxTouchPoints
+    }
+
+    document.body.innerHTML = ""
+    await mount(field().replace('<input id="amount"', '<input id="amount" inputmode="tel"'))
+    expect(input().getAttribute("inputmode")).toBe("tel")
   })
 })

@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemOtpFieldController from "../dist/phem_otp_field_controller.js"
-import { mount, nextDone, respond, settle } from "./support.js"
+import { mount, nextDone, respond, settle, stubElementReflection } from "./support.js"
 
 let application
 
@@ -303,4 +303,231 @@ describe("phem-otp-field: the keys of Base UI", () => {
     expect(document.activeElement).toBe(el("slot-1"))
     expect([el("slot-1").selectionStart, el("slot-1").selectionEnd]).toEqual([0, 1])
   })
+
+  it("commits the text of an IME composition one time, at its end", async () => {
+    await mount(otp())
+    const changes = vi.fn()
+    el("otp").addEventListener("phem-otp-field:change", (e) => changes(e.detail))
+    const [first] = slots()
+    first.focus()
+
+    first.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }))
+    first.value = "1"
+    first.dispatchEvent(new InputEvent("input", { bubbles: true, data: "1", inputType: "insertCompositionText", isComposing: true }))
+    first.value = "12"
+    first.dispatchEvent(new InputEvent("input", { bubbles: true, data: "12", inputType: "insertCompositionText", isComposing: true }))
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("")
+    expect(changes).not.toHaveBeenCalled()
+
+    // The keys of the composition are for the IME.
+    expect(press("Backspace").defaultPrevented).toBe(false)
+
+    first.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "12" }))
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("12")
+    expect(changes).toHaveBeenCalledTimes(1)
+    expect(changes).toHaveBeenCalledWith({ value: "12", reason: "input-change" })
+  })
+
+  it("completes on a paste of the same value", async () => {
+    await mount(otp("data-phem-otp-field-auto-submit-value", "1234"))
+    const complete = vi.fn()
+    const submit = vi.fn((e) => e.preventDefault())
+    el("otp").addEventListener("phem-otp-field:complete", (e) => complete(e.detail))
+    el("form").addEventListener("submit", submit)
+    el("slot-0").focus()
+
+    paste("1234")
+    expect(complete).toHaveBeenCalledWith({ value: "1234" })
+    expect(submit).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not complete again when the user changes a character of a complete code", async () => {
+    await mount(otp("", "1234"))
+    const complete = vi.fn()
+    el("otp").addEventListener("phem-otp-field:complete", (e) => complete(e.detail))
+    el("slot-1").focus()
+
+    type("9")
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("1934")
+    expect(complete).not.toHaveBeenCalled()
+  })
+
+  it("puts the two characters of one slot in two slots", async () => {
+    await mount(otp("", "1"))
+    const first = el("slot-0")
+    first.focus()
+
+    // The caret is after the character: the browser gives the slot "12".
+    first.value = "12"
+    first.dispatchEvent(new InputEvent("input", { bubbles: true, data: "2", inputType: "insertText" }))
+
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("12")
+    expect(values()).toBe("1|2||")
+  })
+
+  it("gives the root the group role and the label of the first slot", async () => {
+    await mount(`<label id="label" for="slot-0">Verification code</label>${otp()}`)
+
+    expect(el("otp").getAttribute("role")).toBe("group")
+    expect(el("otp").getAttribute("aria-labelledby")).toBe("label")
+  })
+
+  it("uses an element reference for a label with no id", async () => {
+    const unstub = stubElementReflection()
+
+    try {
+      await mount(`<label for="slot-0">Verification code</label>${otp()}`)
+      const label = document.querySelector("label")
+
+      expect(el("otp").getAttribute("aria-labelledby")).toBe("")
+      expect(el("otp").ariaLabelledByElements).toEqual([label])
+    } finally {
+      unstub()
+    }
+  })
+
+  it("keeps the aria-label of the root", async () => {
+    await mount(`<label id="label" for="slot-0">Verification code</label>${otp('aria-label="Code"')}`)
+
+    expect(el("otp").getAttribute("aria-label")).toBe("Code")
+    expect(el("otp").hasAttribute("aria-labelledby")).toBe(false)
+  })
+
+  it("sets the text type, autocorrect, enterkeyhint and maxlength of the slots", async () => {
+    await mount(otp())
+    const all = slots()
+
+    expect(all.map((s) => s.getAttribute("type"))).toEqual(["text", "text", "text", "text"])
+    expect(all.map((s) => s.getAttribute("autocorrect"))).toEqual(["off", "off", "off", "off"])
+    expect(all.map((s) => s.getAttribute("enterkeyhint"))).toEqual(["next", "next", "next", "done"])
+    expect(all.map((s) => s.getAttribute("maxlength"))).toEqual(["4", null, null, null])
+  })
+
+  it("keeps the password type of the slots with mask", async () => {
+    await mount(otp("data-phem-otp-field-mask-value"))
+
+    expect(slots().map((s) => s.getAttribute("type"))).toEqual(["password", "password", "password", "password"])
+  })
 })
+
+describe("phem-otp-field: the composition, the attributes and the complete event", () => {
+  const value = () => el("otp").getAttribute("data-phem-otp-field-value-value")
+  const compose = (slot, texts) => {
+    slot.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }))
+    for (const text of texts) {
+      slot.value = text
+      slot.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertCompositionText", isComposing: true }))
+    }
+  }
+
+  it("does not read the last input event of a composition that WebKit sends after its end", async () => {
+    await mount(otp())
+    const changes = vi.fn()
+    el("otp").addEventListener("phem-otp-field:change", (e) => changes(e.detail))
+    const first = el("slot-0")
+    first.focus()
+
+    compose(first, ["1", "12"])
+    first.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "12" }))
+    first.value = "12"
+    first.dispatchEvent(new InputEvent("input", { bubbles: true, data: "12", inputType: "insertFromComposition" }))
+
+    expect(value()).toBe("12")
+    expect(changes).toHaveBeenCalledTimes(1)
+    expect(document.activeElement).toBe(el("slot-2"))
+  })
+
+  it("reads each input event of a composition on Android", async () => {
+    Object.defineProperty(navigator, "userAgent", { configurable: true, get: () => "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36" })
+
+    try {
+      await mount(otp())
+      el("slot-0").focus()
+
+      compose(el("slot-0"), ["1"])
+      expect(value()).toBe("1")
+    } finally {
+      delete navigator.userAgent
+    }
+  })
+
+  it("gives the old value again at the end of a composition in a read-only field", async () => {
+    await mount(otp("data-phem-otp-field-read-only-value", "1"))
+    const first = el("slot-0")
+    first.focus()
+
+    compose(first, ["9"])
+    first.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "9" }))
+
+    expect(value()).toBe("1")
+    expect(first.value).toBe("1")
+  })
+
+  it("ends the composition when the focus goes out of the slot", async () => {
+    await mount(`${otp()}<input id="other">`)
+    const first = el("slot-0")
+    first.focus()
+
+    compose(first, ["1"])
+    el("other").focus()
+    first.focus()
+    type("5")
+
+    expect(value()).toBe("5")
+  })
+
+  it("replaces the type of the markup, and follows a change of mask", async () => {
+    await mount(otp().replace('<input id="slot-0"', '<input id="slot-0" type="tel"'))
+    expect(el("slot-0").getAttribute("type")).toBe("text")
+
+    el("otp").setAttribute("data-phem-otp-field-mask-value", "")
+    await settle()
+    expect(el("slot-0").getAttribute("type")).toBe("password")
+
+    el("otp").setAttribute("data-phem-otp-field-mask-value", "false")
+    await settle()
+    expect(el("slot-0").getAttribute("type")).toBe("text")
+  })
+
+  it("removes the maxlength of the markup from the slots after the first one", async () => {
+    await mount(otp().replace('<input id="slot-1"', '<input id="slot-1" maxlength="1"'))
+
+    expect(el("slot-0").getAttribute("maxlength")).toBe("4")
+    expect(el("slot-1").hasAttribute("maxlength")).toBe(false)
+  })
+
+  it("keeps the role and the aria-labelledby of the markup", async () => {
+    await mount(`<label id="label" for="slot-0">Code</label><span id="other">Other</span>${otp('role="region" aria-labelledby="other"')}`)
+
+    expect(el("otp").getAttribute("role")).toBe("region")
+    expect(el("otp").getAttribute("aria-labelledby")).toBe("other")
+  })
+
+  it("completes again when the user types the missing character of a code", async () => {
+    await mount(otp("", "1234"))
+    const complete = vi.fn()
+    el("otp").addEventListener("phem-otp-field:complete", (e) => complete(e.detail))
+    el("slot-3").focus()
+
+    press("Backspace")
+    expect(value()).toBe("123")
+    expect(complete).not.toHaveBeenCalled()
+
+    el("slot-3").focus()
+    type("9")
+    expect(complete).toHaveBeenCalledTimes(1)
+    expect(complete).toHaveBeenCalledWith({ value: "1239" })
+  })
+
+  it("does not complete on a key that keeps the code complete", async () => {
+    await mount(otp("", "1234"))
+    const complete = vi.fn()
+    el("otp").addEventListener("phem-otp-field:complete", (e) => complete(e.detail))
+    el("slot-0").focus()
+
+    press("ArrowRight")
+    press("End")
+    expect(complete).not.toHaveBeenCalled()
+  })
+})
+

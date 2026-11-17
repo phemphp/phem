@@ -1744,7 +1744,9 @@ Style the legend of a disabled fieldset with `fieldset:disabled > legend`.
 
 The `value` value is the state: the raw number (for example `1234.5`), or an empty string for no value. Set it to give a value on load. A handler can set it in a new render. The value stays after the morph of an event. The `input` part shows the value in the format of the locale. The `hiddenInput` part gets the raw value for the form. With no `hiddenInput`, give the `name` to the `input`: the form then gets the formatted text.
 
-The user types a number in the format of the locale. The controller reads the group and decimal separators of the locale, so `1.234,5` is `1234.5` in `de-DE`. The value changes while the user types. On blur and on Enter, the input shows the formatted value, and a value out of the limits goes to the nearest limit. A text that is not a number gives the last value again. A character that no number has does not go in the input.
+The user types a number in the format of the locale. The controller reads the group and decimal separators of the locale, so `1.234,5` is `1234.5` in `de-DE`. The value changes while the user types. On blur, the input shows the formatted value, and a value out of the limits goes to the nearest limit. Enter does not format the text: it puts the value of the hidden input in the limits, so a form submit gets a valid value, and it ends the change (`phem-number-field:commit` with the reason `keyboard`). A text that is not a number gives the last value again.
+
+A character that no number of the format has does not go in the input. The input takes one sign, one decimal separator, one currency sign and one percent (or permille) sign, unless the new character replaces the selected one. A minus sign goes in only when the value can be negative (no `min`, a negative `min`, or `allowOutOfRange`). The digits of other scripts (Arabic-Indic, Persian, fullwidth and Han) are the same as `0`-`9`: `٤٢` is `42`. The Arabic decimal separator (`٫`) is the decimal separator of the locale, and the Arabic group separator (`٬`) is its group separator. The fullwidth `．` and `，` are `.` and `,`: `1，5` is `1.5` in `de-DE`.
 
 | Value | Default | Description |
 | --- | --- | --- |
@@ -1752,7 +1754,7 @@ The user types a number in the format of the locale. The controller reads the gr
 | `min`, `max` | none | The limits. A step always stays in the limits. |
 | `step` | `1` | The step of the arrow keys, the buttons, the wheel and the scrub area. |
 | `smallStep` | `0.1` | The step with Alt. |
-| `largeStep` | `10` | The step with Shift, and of PageUp and PageDown. |
+| `largeStep` | `10` | The step with Shift. |
 | `allowOutOfRange` | `false` | A typed value out of the limits stays on blur. |
 | `snapOnStep` | `false` | A step goes to a multiple of the step, from `min` (or 0). |
 | `allowWheelScrub` | `false` | The mouse wheel changes the value while the input has the focus. |
@@ -1765,19 +1767,19 @@ The user types a number in the format of the locale. The controller reads the gr
 | Key (on the input) | Action |
 | --- | --- |
 | ArrowUp, ArrowDown | Add or remove one step. With Alt, the small step. With Shift, the large step. |
-| PageUp, PageDown | Add or remove the large step. |
 | Home, End | Go to `min` or to `max`. |
-| Enter | Show the formatted value. |
 
-A press on a button changes the value one time. When the user holds the button, the value changes again after 400 ms, and then each 60 ms. The changes stop at the limit, and while the pointer is out of the button: they start again when the pointer comes back. The focus stays in the input. Alt and Shift give the small and the large steps. A button gets `disabled` at its limit.
+The first step from no value goes to 0, in the limits (`min` when `min` is more than 0, `max` when `max` is less than 0). This is one step, also for a wheel step or a scrub of many steps. PageUp and PageDown are keys of the browser, as in Base UI: use Shift with an arrow key for the large step.
 
-A press in the `scrubArea` part locks the pointer (the Pointer Lock API). The movement changes the value as in Base UI: after a movement of `pixelSensitivity` pixels (2 by default), the value changes by one step for each pixel of the last movement. While the pointer is locked, the `scrubAreaCursor` part shows with its center at the position of the pointer, as a virtual cursor, and goes to the opposite edge at an edge of the viewport. With `data-phem-number-field-teleport-distance-value="40"`, the edges are those of the scrub area plus 20 px on each side, so the cursor stays near the label. With no pointer lock, the native pointer stays. The scrub area gets `role="presentation"`, and `phem.css` gives it `touch-action: none` and `user-select: none`: a touch scrubs and does not scroll the page.
+A press on a button changes the value one time. When the user holds the button, the value changes again after 400 ms, and then each 60 ms. The changes stop at the limit, and while the pointer is out of the button: they start again when the pointer comes back. The focus stays in the input. Alt and Shift give the small and the large steps. A touch or a pen press waits 50 ms. A movement (3 moves, or 8 px) before then is a scroll: the press does nothing, and the click does one step. A button gets `disabled` at its limit.
 
-All the parts get `data-disabled`, `data-readonly`, `data-required`, and `data-scrubbing` while the user scrubs. The `group` part gets `role="group"`. The input gets `inputmode="decimal"`, `aria-roledescription="Number field"`, `autocomplete="off"` and `spellcheck="false"`, as Base UI does, unless the markup gives them. The buttons get `type="button"`, `tabindex="-1"`, `aria-label` ("Increase" or "Decrease") and `aria-controls`. The controller links a button to an input with no `id` with an element reference.
+A press in the `scrubArea` part locks the pointer on the body (the Pointer Lock API), except on WebKit (Safari), as in Base UI. The movement changes the value as in Base UI: after a movement of `pixelSensitivity` pixels (2 by default), the value changes by one step for each pixel of the last movement. While the pointer is locked, the `scrubAreaCursor` part shows with its center at the position of the pointer, as a virtual cursor, and goes to the opposite edge at an edge of the viewport. With `data-phem-number-field-teleport-distance-value="40"`, the edges are those of the scrub area plus 20 px on each side, so the cursor stays near the label. With no pointer lock, the native pointer stays. A press with no movement is a click: a click on the label focuses the input. While the pointer is locked, the browser sends this click to the body, so the controller sends it to the target. With no lock (a touch, WebKit), the browser sends it. The scrub area gets `role="presentation"`, and `phem.css` gives it `touch-action: none` and `user-select: none`: a touch scrubs and does not scroll the page.
+
+All the parts get `data-disabled`, `data-readonly`, `data-required`, and `data-scrubbing` while the user scrubs. The `group` part gets `role="group"`. The input gets `inputmode="numeric"` (on iOS `decimal` when `min` is 0 or more, else `text`: the numeric keyboard of iOS has no minus and no decimal key), `aria-roledescription="Number field"`, `autocomplete="off"` and `spellcheck="false"`, as Base UI does, unless the markup gives them. The buttons get `type="button"`, `tabindex="-1"`, `aria-label` ("Increase" or "Decrease") and `aria-controls`. The controller links a button to an input with no `id` with an element reference.
 
 A change of the value dispatches `phem-number-field:change` (`detail`: `value`, `reason`) and sends `input` on the inputs. The end of a change (a blur, a key, the release of a button or of the scrub area, a wheel step) dispatches `phem-number-field:commit` and sends `change` on the inputs. The controller sets the value of the hidden input before it sends the events, so a bound hidden input sends its value. The `reason` is `input-change`, `input-clear`, `input-blur`, `keyboard`, `increment-press`, `decrement-press`, `wheel` or `scrub`.
 
-After PageUp and an event, the browser shows:
+After Shift+ArrowUp and an event, the browser shows:
 
 ```html
 <div id="field" data-controller="phem-number-field" data-phem-number-field-value-value="20" data-phem-number-field-min-value="0" data-phem-number-field-max-value="5000" data-phem-number-field-locale-value="de-DE" data-phem-number-field-allow-wheel-scrub-value="">
@@ -1787,7 +1789,7 @@ After PageUp and an event, the browser shows:
     </span>
     <div id="group" data-phem-number-field-target="group" role="group">
         <button id="dec" data-phem-number-field-target="decrement" type="button" tabindex="-1" aria-label="Decrease" aria-controls="amount">−</button>
-        <input id="amount" data-phem-number-field-target="input" value="20" inputmode="decimal" aria-roledescription="Number field" autocomplete="off" autocorrect="off" spellcheck="false">
+        <input id="amount" data-phem-number-field-target="input" aria-roledescription="Number field" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="numeric" value="20">
         <button id="inc" data-phem-number-field-target="increment" type="button" tabindex="-1" aria-label="Increase" aria-controls="amount">+</button>
     </div>
     <input id="raw" type="hidden" name="amount" data-phem-number-field-target="hiddenInput" value="20">
@@ -1799,7 +1801,7 @@ After PageUp and an event, the browser shows:
 `phem-otp-field` shows a code with one input for each character (a slot):
 
 ```html
-<label for="otp-1">Verification code</label>
+<label id="otp-label" for="otp-1">Verification code</label>
 <div data-controller="phem-otp-field" data-phem-otp-field-auto-submit-value="true">
     <input id="otp-1" data-phem-otp-field-target="input" />
     <input data-phem-otp-field-target="input" />
@@ -1820,14 +1822,14 @@ The `input` parts are the slots. The `hiddenInput` part gets the full value, so 
 | `data-phem-otp-field-length-value` | the number of `input` parts | The number of slots |
 | `data-phem-otp-field-validation-type-value` | `numeric` | The characters: `numeric` (digits), `alpha` (the letters A to Z), `alphanumeric`, or `none` (all the characters except spaces) |
 | `data-phem-otp-field-input-mode-value` | `numeric` for `numeric`, else `text` | The `inputmode` of the slots: the keyboard of a phone |
-| `data-phem-otp-field-mask-value` | `false` | The slots are `type="password"` |
+| `data-phem-otp-field-mask-value` | `false` | The slots are `type="password"`. Else they are `type="text"`: the controller replaces a `type` of the markup. A change of the value changes the type |
 | `data-phem-otp-field-auto-submit-value` | `false` | Submits the form (`requestSubmit()`) when all the slots have a value |
 | `data-phem-otp-field-autocomplete-value` | `one-time-code` | The `autocomplete` of the first slot. The others get `off` |
 | `data-phem-otp-field-disabled-value` | `false` | Disables the slots and the hidden input |
 | `data-phem-otp-field-read-only-value` | `false` | The user cannot change the value |
 | `data-phem-otp-field-required-value` | `false` | The slots are `required` |
 
-A character that the user types goes in its slot, and the focus goes to the next slot. A paste fills the slots from the slot with the focus, without the spaces. The browser can fill the code from a message (`autocomplete="one-time-code"`): all the characters go in the slots. A character that the validation type refuses does not go in the slot. The value has no gaps: a click on a slot after the first empty slot focuses the first empty slot.
+A character that the user types goes in its slot, and the focus goes to the next slot. When a slot has two characters (its character and a new one), the two characters go in the slots from it on, in the order of the text of the slot, as in Base UI: with the caret before the `3` of `123456`, a `9` gives `129356`. During an IME composition, the slot keeps the text of the IME, and the keys are for the IME. The end of the composition puts the text in the slots one time. A paste fills the slots from the slot with the focus, without the spaces. The browser can fill the code from a message (`autocomplete="one-time-code"`): all the characters go in the slots. A character that the validation type refuses does not go in the slot. The value has no gaps: a click on a slot after the first empty slot focuses the first empty slot.
 
 | Key | Action |
 |---|---|
@@ -1839,27 +1841,27 @@ A character that the user types goes in its slot, and the focus goes to the next
 
 A press of the mouse on a slot selects its character, so the next character replaces it.
 
-The slots have one tab stop: the slot with the focus, or else the first empty slot (the last slot when the code is complete). So Tab and Shift+Tab go out of the field from each slot. Each slot gets `inputmode`, a `pattern` of one character (`[0-9]` for `numeric`), and `spellcheck="false"`. The first slot uses the label of the field. A slot after the first one with no `aria-label` gets `aria-label="Character 2 of 6"`. An attribute that the markup gives stays.
+The slots have one tab stop: the slot with the focus, or else the first empty slot (the last slot when the code is complete). So Tab and Shift+Tab go out of the field from each slot. Each slot gets `inputmode`, a `pattern` of one character (`[0-9]` for `numeric`), `spellcheck="false"`, `autocorrect="off"` and `enterkeyhint` (`done` on the last slot, else `next`). The first slot gets `maxlength` (the number of slots), so the browser can fill all the code. The root gets `role="group"` and `aria-labelledby` to the label of the first slot, unless it has an `aria-label`. The first slot uses the label of the field. A slot after the first one with no `aria-label` gets `aria-label="Character 2 of 6"`. An attribute that the markup gives stays.
 
 The events:
 
 | Event | Detail |
 |---|---|
 | `phem-otp-field:change` | `value`, and `reason`: `input-change`, `input-clear`, `input-paste` or `keyboard` |
-| `phem-otp-field:complete` | `value`, when all the slots have a value |
+| `phem-otp-field:complete` | `value`, when a typed character fills the last empty slot, or at each paste after which all the slots have a value (also the same code again, or one character in a complete code), as in Base UI. A typed character in a complete code does not send it |
 | `phem-otp-field:invalid` | `value`: the text with a character that the validation type refuses |
 
 After the user types `123`, the browser shows:
 
 ```html
-<div id="otp" data-controller="phem-otp-field" data-phem-otp-field-auto-submit-value="true" data-focused="" data-phem-otp-field-value-value="123" data-filled="">
-    <input data-phem-key="1" id="otp-1" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" pattern="[0-9]" data-focused="" data-filled="">
-    <input data-phem-key="2" id="otp-2" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 2 of 6" data-focused="" data-filled="">
-    <input data-phem-key="3" id="otp-3" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 3 of 6" data-focused="" data-filled="">
+<div id="otp" data-controller="phem-otp-field" data-phem-otp-field-auto-submit-value="true" role="group" aria-labelledby="otp-label" data-focused="" data-phem-otp-field-value-value="123" data-filled="">
+    <input data-phem-key="1" id="otp-1" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" type="text" autocorrect="off" enterkeyhint="next" maxlength="6" pattern="[0-9]" data-focused="" data-filled="">
+    <input data-phem-key="2" id="otp-2" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" type="text" autocorrect="off" enterkeyhint="next" pattern="[0-9]" aria-label="Character 2 of 6" data-focused="" data-filled="">
+    <input data-phem-key="3" id="otp-3" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" type="text" autocorrect="off" enterkeyhint="next" pattern="[0-9]" aria-label="Character 3 of 6" data-focused="" data-filled="">
     <span id="dash" data-phem-otp-field-target="separator" role="separator" data-orientation="horizontal">-</span>
-    <input data-phem-key="4" id="otp-4" data-phem-otp-field-target="input" tabindex="0" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 4 of 6" data-focused="">
-    <input data-phem-key="5" id="otp-5" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 5 of 6" data-focused="">
-    <input data-phem-key="6" id="otp-6" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 6 of 6" data-focused="">
+    <input data-phem-key="4" id="otp-4" data-phem-otp-field-target="input" tabindex="0" inputmode="numeric" autocomplete="off" spellcheck="false" type="text" autocorrect="off" enterkeyhint="next" pattern="[0-9]" aria-label="Character 4 of 6" data-focused="">
+    <input data-phem-key="5" id="otp-5" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" type="text" autocorrect="off" enterkeyhint="next" pattern="[0-9]" aria-label="Character 5 of 6" data-focused="">
+    <input data-phem-key="6" id="otp-6" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" type="text" autocorrect="off" enterkeyhint="done" pattern="[0-9]" aria-label="Character 6 of 6" data-focused="">
     <input id="code" type="hidden" name="code" data-phem-otp-field-target="hiddenInput" value="123" data-phem-touched="">
 </div>
 ```

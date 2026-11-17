@@ -31,7 +31,7 @@ final class OtpFieldPage
         return (
             <Document title="OTP field">
                 <form id="form" onSubmit={{ verify }}>
-                    <label for="otp-1">Verification code</label>
+                    <label id="otp-label" for="otp-1">Verification code</label>
                     <div id="otp" data-controller="phem-otp-field" data-phem-otp-field-auto-submit-value="true">
                         {% for i in 1..3 %}<input key={{ i }} id={{ 'otp-' ~ i }} data-phem-otp-field-target="input" />{% endfor %}
                         <span id="dash" data-phem-otp-field-target="separator">-</span>

@@ -1,5 +1,5 @@
 // The number helpers that `phem-number-field` and `phem-slider` share: the format of a value with
-// `Intl.NumberFormat`, the steps, and the events of a native input.
+// `Intl.NumberFormat`, the digits of other scripts, the steps, and the events of a native input.
 
 // The formats, by their locale and their options: a new `Intl.NumberFormat` is slow.
 const formats = new Map()
@@ -37,6 +37,27 @@ export function nextStep(value, step, origin, direction) {
 
   return clean((at + direction) * step + origin)
 }
+
+// The digits of the numeral systems that a number field accepts: ASCII, Arabic-Indic, Persian,
+// fullwidth and Han.
+const DIGIT = /[0-9٠-٩۰-۹０-９零〇一二三四五六七八九]/
+// Han numerals in the order of the digits, with the two forms of zero first.
+const HAN = "零〇一二三四五六七八九"
+
+export function isDigit(char) {
+  return DIGIT.test(char)
+}
+
+// The text with ASCII digits. Arabic-Indic (U+0660), Persian (U+06F0) and fullwidth (U+FF10)
+// digits start at a multiple of 16, so the code modulo 16 is the digit.
+export function toAsciiDigits(text) {
+  return text
+    .replace(/[٠-٩۰-۹０-９]/g, (c) => String(c.charCodeAt(0) % 16))
+    .replace(/[零〇一二三四五六七八九]/g, (c) => String(Math.max(HAN.indexOf(c) - 1, 0)))
+}
+
+export const MINUS_SIGNS = ["-", "−", "－", "‒", "–", "—", "﹣"]
+export const PLUS_SIGNS = ["+", "＋", "﹢"]
 
 // Sends the events of a change of the value of a native input (for example `input` and
 // `change`). They bubble, so a phem event and a bound field see the value.

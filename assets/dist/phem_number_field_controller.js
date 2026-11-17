@@ -1,14 +1,16 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
 import { link } from "./phem_aria.js"
-import { clamp, clean, flag, nextStep, numberFormat, sendEvents } from "./phem_number.js"
+import { MINUS_SIGNS, PLUS_SIGNS, clamp, clean, flag, isDigit, nextStep, numberFormat, sendEvents, toAsciiDigits } from "./phem_number.js"
+import { isGecko, isIOS, isWebKit } from "./phem_platform.js"
 
 // The `phem-number-field` controller: a text input for a number, with increment and decrement
 // buttons, the keyboard, the mouse wheel, a scrub area and the format of the locale. The value
 // stays after the morph of an event.
 //
 //     <div data-controller="phem-number-field" data-phem-number-field-value-value="100"
-//          data-phem-number-field-min-value="0" data-phem-number-field-format-value='{"style":"currency","currency":"EUR"}'>
+//          data-phem-number-field-min-value="0"
+//          data-phem-number-field-format-value='{"style":"currency","currency":"EUR"}'>
 //         <span data-phem-number-field-target="scrubArea">
 //             <label for="amount">Amount</label>
 //             <span data-phem-number-field-target="scrubAreaCursor" hidden>↔</span>
@@ -30,34 +32,45 @@ import { clamp, clean, flag, nextStep, numberFormat, sendEvents } from "./phem_n
 //
 // The user types a number in the format of the locale: the controller reads the group and the
 // decimal separators of the locale. The value changes while the user types, and the input shows
-// the formatted value on blur and on Enter. On blur, a value out of the `min` and `max` values
-// goes to the nearest limit, unless the `allowOutOfRange` value is set. The steps (the keyboard,
-// the buttons, the wheel and the scrub area) always stay in the limits.
+// the formatted value on blur. Enter keeps the text: it puts the value in the limits for the form
+// and ends the change. On blur, a value out of the `min` and `max` values goes to the
+// nearest limit, unless the `allowOutOfRange` value is set. The steps (the keyboard, the buttons,
+// the wheel and the scrub area) always stay in the limits. A character that no number of the
+// format has does not go in the input. The input takes one sign, one decimal separator, one
+// currency sign and one percent sign, unless the new character replaces the selected one. A minus
+// sign goes in only when the value can be negative. The digits of other scripts (Arabic-Indic,
+// Persian, fullwidth and Han) are the same as the ASCII digits. The Arabic decimal separator (٫)
+// is the decimal separator, and the Arabic group separator (٬) is the group separator.
 //
 // The keys of the input: ArrowUp and ArrowDown add or remove the `step` value (1 by default), with
-// Alt the `smallStep` value (0.1) and with Shift the `largeStep` value (10). PageUp and PageDown
-// use the `largeStep` value. Home and End go to the `min` and to the `max` values. A press on the
-// `increment` or `decrement` button changes the value one time; hold it and the value changes
-// again after 400 ms, then each 60 ms. The changes stop at the limit, and while the pointer is out
-// of the button: they start again when it comes back. The focus stays in the input. With the `snapOnStep` value,
-// a step goes to a multiple of the step. With the `allowWheelScrub` value, the mouse wheel
-// changes the value while the input has the focus.
+// Alt the `smallStep` value (0.1) and with Shift the `largeStep` value (10). Home and End go to the
+// `min` and to the `max` values. The first step from no value goes to 0, in the limits (`min` when
+// `min` is more than 0, `max` when `max` is less than 0). A press on
+// the `increment` or `decrement` button changes the value one time; hold it and the value changes
+// again after 400 ms, then each 60 ms. A touch or a pen press waits 50 ms: a movement before then
+// is a scroll, and the click does one step. The changes stop at the limit, and while the pointer
+// is out of the button: they start again when it comes back. The focus stays in the input. With
+// the `snapOnStep` value, a step goes to a multiple of the step. With the `allowWheelScrub` value,
+// the mouse wheel changes the value while the input has the focus.
 //
-// A press in the `scrubArea` target locks the pointer (the Pointer Lock API), and a movement in
-// the `direction` value (`horizontal` by default, or `vertical`) changes the value, as in Base
-// UI: after a movement of `pixelSensitivity` pixels (2 by default), the value changes by one step
-// for each pixel of the last movement. While the pointer is locked, the `scrubAreaCursor` target
-// shows with its center at the place of the pointer, as a virtual cursor. At an edge of the
-// viewport, the cursor goes to the opposite edge. With the `teleportDistance` value (px), the
-// edges are those of the scrub area, plus half of the distance on each side. With no pointer
-// lock, the native pointer stays. The scrub area gets `role="presentation"`, and the styles of
-// phem.css stop the scroll of a touch and the selection of text in it.
+// A press in the `scrubArea` target locks the pointer (the Pointer Lock API) on the body, except
+// on WebKit (Safari), and a movement in the `direction` value (`horizontal` by default, or
+// `vertical`) changes the value, as in Base UI: after a movement of `pixelSensitivity` pixels (2
+// by default), the value changes by one step for each pixel of the last movement. While the
+// pointer is locked, the `scrubAreaCursor` target shows with its center at the place of the
+// pointer, as a virtual cursor. At an edge of the viewport, the cursor goes to the opposite edge.
+// With the `teleportDistance` value (px), the edges are those of the scrub area, plus half of the
+// distance on each side. With no pointer lock, the native pointer stays. A press with no movement
+// is a click on its target: a click on the label focuses the input. While the pointer is locked,
+// the browser sends this click to the body, so the controller sends it to the target. The scrub area gets
+// `role="presentation"`, and the styles of phem.css stop the scroll of a touch and the selection
+// of text in it.
 //
 // The `disabled`, `readOnly` and `required` values set the attributes of the inputs. All the
 // parts get `data-disabled`, `data-readonly`, `data-required` and `data-scrubbing` (while the user
-// scrubs). The `group` target gets `role="group"`. The input gets `inputmode="decimal"`,
-// `aria-roledescription="Number field"`, `autocomplete="off"` and `spellcheck="false"`, unless
-// the markup gives them. The buttons get `tabindex="-1"`, `aria-label` ("Increase" or
+// scrubs). The `group` target gets `role="group"`. The input gets `inputmode` (`numeric`; on iOS
+// `decimal` with `min >= 0`, else `text`), `aria-roledescription="Number field"`,
+// `autocomplete="off"`, `autocorrect="off"` and `spellcheck="false"`, unless the markup gives them. The buttons get `tabindex="-1"`, `aria-label` ("Increase" or
 // "Decrease"), a link to the input (`aria-controls`), and `disabled` at the limit.
 //
 // A change of the value dispatches `phem-number-field:change` ({ value, reason }), and sends
@@ -106,6 +119,7 @@ export default class PhemNumberFieldController extends Controller {
     this.element.addEventListener("pointerdown", this.onPointerdown, options)
     this.element.addEventListener("mousedown", this.onMousedown, options)
     this.element.addEventListener("click", this.onClick, options)
+    this.element.addEventListener("click", this.onClickCapture, { ...options, capture: true })
     this.element.addEventListener("wheel", this.onWheel, { ...options, passive: false })
 
     this.#render({ text: true })
@@ -115,9 +129,15 @@ export default class PhemNumberFieldController extends Controller {
     this.state.disconnect()
     this.listening.abort()
     this.#stopRepeat()
-    this.scrub?.abort()
+
     // A morph that removes the field during a scrub: the pointer does not stay locked.
-    if (this.scrubAreaTargets.includes(document.pointerLockElement)) document.exitPointerLock?.()
+    const scrubbing = this.scrubbing
+    this.scrub?.abort()
+    clearTimeout(this.clickTimer)
+    clearTimeout(this.exitTimer)
+    if (scrubbing || this.exitTimer) this.#exitLock()
+
+    this.exitTimer = undefined
     this.scrubbing = false
     this.rendered = false
   }
@@ -155,26 +175,28 @@ export default class PhemNumberFieldController extends Controller {
     this.#send(...this.hiddenInputTargets, "input")
   }
 
-  // A character that no number of the locale has does not go in the input.
+  // A character that no number of the format has does not go in the input, and the input takes
+  // one sign, one decimal separator, one currency sign and one percent sign.
   onBeforeInput = (event) => {
-    if (!this.#isInput(event.target) || !event.data || !event.inputType?.startsWith("insert")) return
+    const input = event.target
+    if (!this.#isInput(input) || !event.data || !event.inputType?.startsWith("insert")) return
 
     const allowed = this.#characters
-    if (![...event.data].every((c) => /[0-9\s]/.test(c) || allowed.has(c))) event.preventDefault()
+    const known = [...event.data].every((c) => isDigit(c) || /[\s\p{Cf}]/u.test(c) || allowed.has(c))
+    if (!known || !this.#once(input, event.data)) event.preventDefault()
   }
 
   onKeydown = (event) => {
     if (!this.#isInput(event.target) || event.defaultPrevented || event.ctrlKey || event.metaKey) return
 
-    // The browser sends `change` on Enter.
-    if (event.key === "Enter") {
-      this.#commitText("input-blur")
+    if (event.key === "Enter" && !event.isComposing) {
+      this.#commitEnter()
+
       return
     }
 
     let next
     if (event.key === "ArrowUp" || event.key === "ArrowDown") next = [event.key === "ArrowUp" ? 1 : -1, this.#amount(event)]
-    else if (event.key === "PageUp" || event.key === "PageDown") next = [event.key === "PageUp" ? 1 : -1, this.largeStepValue]
     else if (event.key === "Home" && this.hasMinValue) next = this.minValue
     else if (event.key === "End" && this.hasMaxValue) next = this.maxValue
     else return
@@ -198,10 +220,13 @@ export default class PhemNumberFieldController extends Controller {
 
     const button = this.#buttonOf(event.target)
     if (button) {
-      event.preventDefault()
+      // A touch press can be the start of a scroll: the browser keeps it.
+      const touch = isTouchLike(event.pointerType)
+      if (!touch) event.preventDefault()
       if (this.#locked || button.disabled) return
 
-      this.pressed = true
+      // A touch press waits for its click, unless the hold starts.
+      this.pressed = !touch
       this.#focusInput(event)
       this.#hold(button, event)
 
@@ -210,6 +235,11 @@ export default class PhemNumberFieldController extends Controller {
 
     const area = this.scrubAreaTargets.find((el) => el.contains(event.target))
     if (area && !this.#locked) this.#startScrub(area, event)
+  }
+
+  // A click in the scrub area that the browser sends: the controller sends no click.
+  onClickCapture = (event) => {
+    if (this.scrubAreaTargets.some((el) => el.contains(event.target))) this.nativeClick = true
   }
 
   // The button does not take the focus from the input.
@@ -240,7 +270,8 @@ export default class PhemNumberFieldController extends Controller {
   }
 
   // The first step, then the steps while the user holds the button. The steps stop at the limit,
-  // and while the pointer is out of the button.
+  // and while the pointer is out of the button. A touch or a pen press waits `TOUCH_DELAY` ms: a
+  // movement before then is a scroll, and the click does one step.
   #hold(button, event) {
     const reason = this.#reason(button)
     const direction = this.#direction(button)
@@ -249,8 +280,9 @@ export default class PhemNumberFieldController extends Controller {
 
     this.repeat = new AbortController()
     const signal = this.repeat.signal
-    const timers = { timeout: 0, interval: 0 }
+    const timers = { delay: 0, timeout: 0, interval: 0 }
     const stop = () => {
+      clearTimeout(timers.delay)
       clearTimeout(timers.timeout)
       clearInterval(timers.interval)
     }
@@ -265,14 +297,33 @@ export default class PhemNumberFieldController extends Controller {
       }, 400)
     }
     signal.addEventListener("abort", stop)
-    start()
+
+    if (isTouchLike(event.pointerType)) {
+      const from = { x: event.clientX, y: event.clientY }
+      let moves = 0
+
+      button.addEventListener("pointermove", (move) => {
+        moves += 1
+        if (Math.hypot(move.clientX - from.x, move.clientY - from.y) > SCROLL_DISTANCE) stop()
+      }, { signal })
+
+      // The hold starts: the click after it does nothing.
+      timers.delay = setTimeout(() => {
+        if (moves >= MAX_TOUCH_MOVES) return
+
+        this.pressed = true
+        start()
+      }, TOUCH_DELAY)
+    } else {
+      button.addEventListener("mouseenter", start, { signal })
+      start()
+    }
 
     const release = () => {
       this.#stopRepeat()
       this.#commit(reason)
     }
     button.addEventListener("mouseleave", stop, { signal })
-    button.addEventListener("mouseenter", start, { signal })
     window.addEventListener("pointerup", release, { signal })
     window.addEventListener("pointercancel", release, { signal })
     window.addEventListener("blur", release, { signal })
@@ -286,7 +337,7 @@ export default class PhemNumberFieldController extends Controller {
   // The scrub: the pointer lock, the movement and the virtual cursor.
   #startScrub(area, event) {
     // A press of the mouse does not select text, and gives the focus to the input.
-    if (event.pointerType !== "touch" && event.pointerType !== "pen") {
+    if (!isTouchLike(event.pointerType)) {
       event.preventDefault()
       this.#focusInput(event)
     }
@@ -296,11 +347,19 @@ export default class PhemNumberFieldController extends Controller {
     this.cursor = { x: event.clientX, y: event.clientY }
     const last = { x: event.clientX, y: event.clientY }
     const vertical = this.directionValue === "vertical"
+    const target = event.target
     let delta = 0
+    let moved = false
 
+    // The click of the press with no movement.
+    this.nativeClick = false
+    clearTimeout(this.clickTimer)
+    clearTimeout(this.exitTimer)
+    this.exitTimer = undefined
+
+    // No pointer lock on WebKit, as in Base UI.
     try {
-      const locking = event.pointerType === "touch" ? null : area.requestPointerLock?.()
-      locking?.catch?.(() => {})
+      if (event.pointerType !== "touch" && !isWebKit()) document.body.requestPointerLock?.()?.catch?.(() => {})
     } catch {
       // No pointer lock: the native pointer stays.
     }
@@ -309,7 +368,7 @@ export default class PhemNumberFieldController extends Controller {
     const options = { signal: this.scrub.signal }
 
     document.addEventListener("pointermove", (move) => {
-      const locked = document.pointerLockElement === area
+      const locked = document.pointerLockElement === document.body
       const dx = locked ? move.movementX : move.clientX - last.x
       const dy = locked ? move.movementY : move.clientY - last.y
       last.x = move.clientX
@@ -318,19 +377,39 @@ export default class PhemNumberFieldController extends Controller {
 
       // After a movement of `pixelSensitivity` pixels, the value changes by one step for each
       // pixel of this movement, as in Base UI.
-      const moved = vertical ? -dy : dx
-      delta += moved
+      const pixels = vertical ? -dy : dx
+      delta += pixels
       if (Math.abs(delta) < this.pixelSensitivityValue) return
 
       delta = 0
-      if (moved !== 0) this.#step(moved, this.#amount(move), "scrub")
+      moved = true
+      if (pixels !== 0) this.#step(pixels, this.#amount(move), "scrub")
     }, options)
 
-    const end = () => {
+    const end = (up) => {
       this.scrub.abort()
       this.scrub = null
       this.scrubbing = false
-      if (document.pointerLockElement === area) document.exitPointerLock?.()
+      const locked = document.pointerLockElement === document.body
+
+      // Firefox does not end the lock of a soft click at once.
+      if (isGecko()) {
+        this.exitTimer = setTimeout(() => {
+          this.exitTimer = undefined
+          this.#exitLock()
+        }, 20)
+      } else {
+        this.#exitLock()
+      }
+
+      // A press with no movement is a click. The browser sends the click of a locked pointer to
+      // the body: the controller sends it to the target, unless the native click comes. With no
+      // lock (a touch, WebKit), the browser sends the click to the target.
+      if (!moved && locked && up.type === "pointerup") {
+        this.clickTimer = setTimeout(() => {
+          if (!this.nativeClick && target.isConnected) target.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))
+        }, 0)
+      }
 
       this.#render()
       this.#commit("scrub")
@@ -353,14 +432,20 @@ export default class PhemNumberFieldController extends Controller {
     this.#renderCursor()
   }
 
-  // Adds `steps` steps of `amount` to the value (a negative number removes them), in the limits.
-  // The first step from no value goes to the `min` value. Returns whether the value changed.
-  #step(steps, amount, reason) {
-    const origin = this.hasMinValue ? this.minValue : 0
-    let value = this.number ?? origin
-    if (this.number === null && steps > 0 && this.hasMinValue) steps -= 1
+  #exitLock() {
+    if (document.pointerLockElement === document.body) document.exitPointerLock?.()
+  }
 
+  // Adds `steps` steps of `amount` to the value (a negative number removes them), in the limits.
+  // Returns whether the value changed.
+  #step(steps, amount, reason) {
+    // The first step from no value goes to 0, in the limits.
+    if (this.number === null) return this.#set(this.#limit(0), reason)
+
+    const origin = this.hasMinValue ? this.minValue : 0
     const direction = Math.sign(steps)
+
+    let value = this.number
     for (let i = 0; i < Math.abs(steps); i++) {
       value = this.snapOnStepValue ? nextStep(value, amount, origin, direction) : clean(value + direction * amount)
     }
@@ -399,22 +484,42 @@ export default class PhemNumberFieldController extends Controller {
     this.dispatch("commit", { detail: { value: this.number, reason } })
   }
 
-  // The text of the input on blur and on Enter: the formatted value, in the limits. A text that is
+  // The text of the input on blur: the formatted value, in the limits. A text that is
   // not a number gives the last value again.
   #commitText(reason) {
     const input = this.inputTargets[0]
     if (!input || this.#locked) return
 
-    const text = input.value
-    const empty = text.trim() === ""
-    let value = empty ? null : (this.#parse(text) ?? this.number)
-    if (value !== null && !this.allowOutOfRangeValue) value = this.#limit(value)
-
+    const value = this.#typed(input.value)
     const limited = value !== this.number
     if (limited) this.#set(value, reason)
     else this.#render({ text: true })
 
-    this.#commit(empty ? "input-clear" : reason, { native: !limited })
+    this.#commit(input.value.trim() === "" ? "input-clear" : reason, { native: !limited })
+  }
+
+  // Enter keeps the text, so a form submit gets the value in the limits, and ends the change. The
+  // browser sends `change` on the input on blur.
+  #commitEnter() {
+    const input = this.inputTargets[0]
+    if (!input || this.#locked) return
+
+    const value = this.#typed(input.value)
+    if (value !== this.number) {
+      this.#change(value, "keyboard")
+      this.#send(...this.hiddenInputTargets, "input")
+    }
+
+    this.#commit("keyboard", { native: true })
+  }
+
+  // The value of a typed text, in the limits. A text that is not a number gives the last value.
+  #typed(text) {
+    if (text.trim() === "") return null
+
+    const value = this.#parse(text) ?? this.number
+
+    return value === null || this.allowOutOfRangeValue ? value : this.#limit(value)
   }
 
   #limit(value) {
@@ -436,8 +541,16 @@ export default class PhemNumberFieldController extends Controller {
 
   // The number of a text in the format of the locale, or undefined when the text is not a number.
   #parse(text) {
-    const { group, decimal } = this.#separators
-    let s = text.replace(/[−‒–—﹣－]/g, "-").replace(/\s/g, "")
+    const { group, decimal } = this.#details
+    let s = toAsciiDigits(text)
+      .replace(/[\p{Cf}\s]/gu, "")
+      .replace(MINUS, "-")
+      .replace(PLUS, "+")
+      .replace(PERCENT, "")
+      .replace(/．/g, ".")
+      .replace(/，/g, ",")
+      .replace(/٫/g, decimal)
+      .replace(/٬/g, /\s/.test(group) ? "" : group)
     if (group && !/\s/.test(group)) s = s.split(group).join("")
     if (decimal !== ".") s = s.split(decimal).join(".")
     s = s.replace(/[^0-9.+-]/g, "")
@@ -457,21 +570,64 @@ export default class PhemNumberFieldController extends Controller {
     return numberFormat(this.localeValue, options).format(this.number)
   }
 
-  // The group and the decimal separators of the locale.
-  get #separators() {
-    const parts = numberFormat(this.localeValue, { useGrouping: true }).formatToParts(11111.1)
+  // The separators of the locale, the currency sign of the format and the characters that a
+  // formatted number can have, other than the digits. They change only with the locale and the
+  // format.
+  get #details() {
+    const key = `${this.localeValue}|${JSON.stringify(this.formatValue)}`
+    if (this.details?.key === key) return this.details
 
-    return { group: parts.find((p) => p.type === "group")?.value ?? "", decimal: parts.find((p) => p.type === "decimal")?.value ?? "." }
-  }
+    const separators = numberFormat(this.localeValue, { useGrouping: true }).formatToParts(11111.1)
+    const parts = numberFormat(this.localeValue, this.formatValue).formatToParts(11111.1)
+    const group = separators.find((p) => p.type === "group")?.value ?? ""
+    const decimal = separators.find((p) => p.type === "decimal")?.value ?? "."
+    const currency = parts.find((p) => p.type === "currency")?.value ?? ""
+    const decimals = [decimal, "٫", decimal === "," ? "，" : "．"]
 
-  // The characters that a formatted number can have, other than the digits.
-  get #characters() {
-    const characters = new Set(["-", "+", ".", ",", "−", "%"])
-    for (const part of numberFormat(this.localeValue, this.formatValue).formatToParts(-11111.1)) {
-      if (part.type !== "integer" && part.type !== "fraction") for (const c of part.value) characters.add(c)
+    const others = new Set([".", ",", "．", "，", "٫", "٬", decimal, ...PLUS_SIGNS])
+    for (const part of parts) {
+      if (NUMBER_PARTS.has(part.type)) continue
+
+      if (/\s/.test(part.value)) others.add(" ")
+      for (const c of part.value) others.add(c)
     }
 
-    return characters
+    const format = this.formatValue
+    const percent = format.style === "percent" || format.unit === "percent"
+    if (percent) for (const c of PERCENT_SIGNS) others.add(c)
+    if (percent || format.unit === "permille") for (const c of PERMILLE_SIGNS) others.add(c)
+
+    this.details = { key, group, decimal, decimals, currency, others }
+
+    return this.details
+  }
+
+  // The characters that a formatted number can have, other than the digits. A minus sign goes in
+  // only when the value can be negative.
+  get #characters() {
+    const { others } = this.#details
+    if (this.hasMinValue && this.minValue >= 0 && !this.allowOutOfRangeValue) return others
+
+    return new Set([...others, ...MINUS_SIGNS])
+  }
+
+  // Whether the input keeps one sign, one decimal separator, one currency sign and one percent
+  // sign after the insert of `data`. A character of the selection goes: the new one replaces it.
+  #once(input, data) {
+    const text = input.value
+    const start = input.selectionStart ?? text.length
+    const end = input.selectionEnd ?? start
+    const next = text.slice(0, start) + data + text.slice(end)
+    const { decimals, currency } = this.#details
+    const count = (s, symbol) => (symbol ? s.split(symbol).length - 1 : 0)
+    const kinds = [
+      (s) => s.match(SIGN)?.length ?? 0,
+      (s) => [...s].filter((c) => decimals.includes(c)).length,
+      (s) => count(s, currency),
+      (s) => s.match(PERCENT)?.length ?? 0,
+    ]
+
+    return kinds.every((kind) => kind(data) === 0 || kind(next) <= 1)
   }
 
   // The step of a key, a press or a movement: Alt gives the small step, Shift the large step.
@@ -496,7 +652,7 @@ export default class PhemNumberFieldController extends Controller {
 
   #focusInput(event) {
     const input = this.inputTargets[0]
-    if (input && event.pointerType !== "touch" && document.activeElement !== input) input.focus({ preventScroll: true })
+    if (input && !isTouchLike(event.pointerType) && document.activeElement !== input) input.focus({ preventScroll: true })
   }
 
   #isInput(el) {
@@ -525,6 +681,7 @@ export default class PhemNumberFieldController extends Controller {
 
     for (const input of this.inputTargets) {
       for (const [name, value] of Object.entries(INPUT_DEFAULTS)) if (!input.hasAttribute(name)) input.setAttribute(name, value)
+      if (!input.hasAttribute("inputmode")) input.setAttribute("inputmode", this.#inputMode)
 
       flag(input, "disabled", this.disabledValue, this.added)
       flag(input, "readonly", this.readOnlyValue, this.added)
@@ -561,6 +718,13 @@ export default class PhemNumberFieldController extends Controller {
     button.toggleAttribute("data-disabled", disabled)
   }
 
+  // The keyboard of the input. The numeric keyboard of iOS has no minus and no decimal key.
+  get #inputMode() {
+    if (!isIOS()) return "numeric"
+
+    return this.hasMinValue && this.minValue >= 0 ? "decimal" : "text"
+  }
+
   #cursorBounds() {
     const distance = this.teleportDistanceValue
     if (distance >= 0 && this.scrubArea) {
@@ -578,7 +742,7 @@ export default class PhemNumberFieldController extends Controller {
   // The virtual cursor shows while the pointer is locked, with its center at the place of the
   // pointer. Its size stays the same when the user zooms the page.
   #renderCursor() {
-    const locked = this.scrubbing && this.scrubAreaTargets.includes(document.pointerLockElement)
+    const locked = this.scrubbing && document.pointerLockElement === document.body
 
     for (const el of this.scrubAreaCursorTargets) {
       el.hidden = !locked
@@ -603,7 +767,7 @@ export default class PhemNumberFieldController extends Controller {
 }
 
 // The attributes of the input, unless the markup gives them.
-const INPUT_DEFAULTS = { inputmode: "decimal", "aria-roledescription": "Number field", autocomplete: "off", autocorrect: "off", spellcheck: "false" }
+const INPUT_DEFAULTS = { "aria-roledescription": "Number field", autocomplete: "off", autocorrect: "off", spellcheck: "false" }
 
 // The number of a raw value, or null for an empty value. A value that is not a number is null.
 function toNumber(value) {
@@ -612,4 +776,29 @@ function toNumber(value) {
   const number = Number(value)
 
   return Number.isFinite(number) ? number : null
+}
+
+// The parts of a formatted number that are not its digits.
+const NUMBER_PARTS = new Set(["integer", "fraction", "exponentInteger", "compact"])
+
+const PERCENT_SIGNS = ["%", "٪", "％", "﹪"]
+const PERMILLE_SIGNS = ["‰", "؉"]
+const MINUS = anyOf(MINUS_SIGNS)
+const PLUS = anyOf(PLUS_SIGNS)
+const SIGN = anyOf([...MINUS_SIGNS, ...PLUS_SIGNS])
+const PERCENT = anyOf([...PERCENT_SIGNS, ...PERMILLE_SIGNS])
+
+// A global regex that matches one of the characters.
+function anyOf(characters) {
+  return new RegExp(`[${characters.map((c) => c.replace(/[-\\\]^]/g, "\\$&")).join("")}]`, "g")
+}
+
+// A touch or a pen press waits `TOUCH_DELAY` ms before the hold. `MAX_TOUCH_MOVES` moves, or a
+// movement of more than `SCROLL_DISTANCE` px, is a scroll.
+const TOUCH_DELAY = 50
+const MAX_TOUCH_MOVES = 3
+const SCROLL_DISTANCE = 8
+
+function isTouchLike(type) {
+  return type === "touch" || type === "pen"
 }

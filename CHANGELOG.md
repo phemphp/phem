@@ -8,6 +8,33 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: `phem-number-field` does not handle PageUp and PageDown, as in Base UI. Use Shift
+  with an arrow key for the large step.
+- **Breaking**: Enter in a `phem-number-field` does not format the text. Only a blur does. Enter
+  puts the value of the hidden input in the limits, so a form submit gets a valid value, and
+  sends `phem-number-field:commit` with the reason `keyboard`. Before, the reason was
+  `input-blur`.
+- **Breaking**: the input of a `phem-number-field` gets `inputmode="numeric"` (on iOS `decimal`
+  with a `min` of 0 or more, else `text`). Before, it was `decimal`.
+- **Breaking**: the first step of a `phem-number-field` with no value goes to 0 in the limits
+  (`min` when `min` is more than 0, `max` when `max` is less than 0). This is one step, also for
+  a wheel step or a scrub of many steps. Before, the step started from 0 (or from `min`), so
+  ArrowUp gave 1 and ArrowDown gave -1.
+- `phem-number-field` takes one sign, one decimal separator, one currency sign and one percent
+  sign, and a minus sign only when the value can be negative. It reads the digits of other
+  scripts (Arabic-Indic, Persian, fullwidth, Han), and the Arabic and fullwidth separators.
+- The scrub area of `phem-number-field` locks the pointer on the body, and not on WebKit. A press
+  with no movement is a click, so a click on the label focuses the input. The controller sends
+  this click only when the pointer was locked: else the browser sends it. A touch press on a
+  button waits 50 ms before the repeat, so a scroll does not change the value.
+- **Breaking**: the slots of a `phem-otp-field` get `type="text"` (or `password` with `mask`).
+  `phem-otp-field:complete` comes when a typed character fills the code, and at each paste of a
+  full code (also the same code). Before, a change of a character in a complete code sent it,
+  and a paste of the same code did not.
+- `phem-otp-field` waits for the end of an IME composition, and a slot with two characters fills
+  two slots, in the order of the text of the slot (as in Base UI). The root gets `role="group"`
+  and `aria-labelledby`, and the slots get `autocorrect`, `enterkeyhint` and `maxlength` on the
+  first slot.
 - **Breaking** An open panel of `phem-collapsible` and `phem-accordion` has the `auto` size in
   `--collapsible-panel-height` and `--collapsible-panel-width` (`--accordion-panel-height` and
   `--accordion-panel-width`) at the end of its open animation, and on load. Before, the size

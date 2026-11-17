@@ -1,5 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
+import { link } from "./phem_aria.js"
+import { isAndroid } from "./phem_platform.js"
 
 // The `phem-otp-field` controller: a one-time code with one input for each character (a slot). The
 // value stays after the morph of an event.
@@ -23,21 +25,29 @@ import { ClientState } from "./phem_client_state.js"
 // `name`. When the user changes the value, it gets an `input` and a `change` event, and the
 // controller sends `phem-otp-field:change` with `detail.value` and `detail.reason`
 // (`input-change`, `input-clear`, `input-paste` or `keyboard`). When all the slots have a value,
-// it sends `phem-otp-field:complete`, and with the `autoSubmit` value it submits the form
-// (`requestSubmit()`). A character that `validationType` refuses sends `phem-otp-field:invalid`
-// with the text in `detail.value`.
+// it sends `phem-otp-field:complete` (when a typed character fills the last empty slot, or at
+// each paste after which all the slots have a value, also with the same code), and with the
+// `autoSubmit` value it submits the form (`requestSubmit()`). A typed character in a complete code
+// does not send it. A character that `validationType` refuses sends `phem-otp-field:invalid` with
+// the text in `detail.value`.
 //
 // The `validationType` value is `numeric` (the default, the digits), `alpha` (the letters A to
 // Z), `alphanumeric` or `none` (all the characters, except the spaces). The slots get the
 // `inputmode` of the type (`numeric` or `text`), or the `inputMode` value, and the `pattern` of one
-// character. With the `mask` value, the slots are `type="password"`. The first slot gets
-// `autocomplete="one-time-code"` (the `autocomplete` value), so the browser can fill the code from
-// a message: all the characters then go in the slots. The `disabled`, `readOnly` and `required`
-// values go on the slots (and `disabled` on the hidden input).
+// character. The slots are `type="text"`, and with the `mask` value `type="password"`. Each slot
+// gets `autocorrect="off"` and `enterkeyhint` (`done` on the last slot, else `next`). The first
+// slot gets `autocomplete="one-time-code"` (the `autocomplete` value) and `maxlength` (the number
+// of slots), so the browser can fill the code from a message: all the characters then go in the
+// slots. The `disabled`, `readOnly` and `required` values go on the slots (and `disabled` on the
+// hidden input).
 //
-// A character that the user types goes in the slot and the focus goes to the next slot. A paste
-// fills the slots from the slot with the focus. The value has no gaps: the focus can go to a slot
-// after the first empty slot, and the controller then focuses the first empty slot.
+// A character that the user types goes in the slot and the focus goes to the next slot. When a
+// slot has two characters (its character and a new one), the two characters go in the slots from
+// it on, in the order of the text of the slot. A paste fills the slots from the
+// slot with the focus. During an IME composition, the slot keeps the text of the IME and the keys
+// are for the IME: the end of the composition puts the text in the slots one time. The value has
+// no gaps: the focus can go to a slot after the first empty slot, and the controller then focuses
+// the first empty slot.
 //
 // | Key        | Action                                                                    |
 // |------------|---------------------------------------------------------------------------|
@@ -52,8 +62,9 @@ import { ClientState } from "./phem_client_state.js"
 //
 // The slots have one tab stop: the slot with the focus, or else the first empty slot (the last slot
 // when the code is complete). Tab and Shift+Tab go out of the field.
-// A slot after the first one with no `aria-label` or `aria-labelledby` gets
-// `aria-label="Character 2 of 6"`; the first slot uses the label of the field. The controller
+// The controller element gets `role="group"` and, with no `aria-label`, `aria-labelledby` to the
+// label of the first slot. A slot after the first one with no `aria-label` or `aria-labelledby`
+// gets `aria-label="Character 2 of 6"`; the first slot uses the label of the field. The controller
 // element and the slots get `data-disabled`, `data-readonly`, `data-required`, `data-complete` (all
 // the slots have a value) and `data-focused` (a slot has the focus). The controller element gets
 // `data-filled` when the value is not empty, and a slot when it has a character. A `separator`
@@ -93,6 +104,8 @@ export default class PhemOtpFieldController extends Controller {
     this.element.addEventListener("paste", this.onPaste, options)
     this.element.addEventListener("focusin", this.onFocusin, options)
     this.element.addEventListener("focusout", this.onFocusout, options)
+    this.element.addEventListener("compositionstart", this.onCompositionstart, options)
+    this.element.addEventListener("compositionend", this.onCompositionend, options)
 
     this.#render()
   }
@@ -108,6 +121,11 @@ export default class PhemOtpFieldController extends Controller {
     if (this.rendered !== undefined && this.rendered !== this.#value) this.#render()
   }
 
+  // A change of `mask` changes the type of the slots.
+  maskValueChanged() {
+    if (this.rendered !== undefined) this.#render()
+  }
+
   inputTargetConnected() {
     if (this.rendered !== undefined) this.#render()
   }
@@ -120,40 +138,40 @@ export default class PhemOtpFieldController extends Controller {
     if (this.rendered !== undefined) this.#render()
   }
 
+  // The slot keeps the text of an IME composition up to its end.
   onInput = (event) => {
-    const slots = this.#slots
-    const index = slots.indexOf(event.target)
-    if (index < 0) return
+    const index = this.#slots.indexOf(event.target)
+    if (index < 0 || this.composing === event.target || this.composed === event.target) return
 
-    const chars = [...this.#value]
-    const before = chars[index] ?? ""
     if (this.#locked) {
-      event.target.value = before
+      event.target.value = [...this.#value][index] ?? ""
 
       return
     }
 
-    // The text of the slot without its old character: a slot with a character gets one more.
-    let typed = event.target.value
-    if (before && typed.length > before.length) typed = typed.startsWith(before) ? typed.slice(before.length) : typed.endsWith(before) ? typed.slice(0, -before.length) : typed
+    this.#commit(index, event.target.value, "input-change")
+  }
 
-    if (typed === "") {
-      chars.splice(index, 1)
-      this.#change(chars.join(""), "input-clear")
-      this.#focus(Math.min(index, this.#active))
+  // An Android keyboard makes a composition of each word: the controller reads each `input` event.
+  onCompositionstart = (event) => {
+    if (this.#slots.includes(event.target) && !isAndroid()) this.composing = event.target
+  }
+
+  // WebKit sends the last `input` event of the composition after `compositionend`, in the same
+  // task: the controller does not read it.
+  onCompositionend = (event) => {
+    if (this.composing !== event.target) return
+
+    this.composing = null
+    this.composed = event.target
+    setTimeout(() => (this.composed = null), 0)
+    if (this.#locked) {
+      this.#render()
 
       return
     }
 
-    const accepted = this.#accept(typed)
-    if (!accepted) {
-      event.target.value = before
-      event.target.select?.()
-
-      return
-    }
-
-    this.#insert(index, accepted, "input-change")
+    this.#commit(this.#slots.indexOf(event.target), event.target.value, "input-change")
   }
 
   onPaste = (event) => {
@@ -168,6 +186,9 @@ export default class PhemOtpFieldController extends Controller {
   }
 
   onKeydown = (event) => {
+    // The keys of a composition are for the IME.
+    if (this.composing) return
+
     const index = this.#slots.indexOf(event.target)
     if (index < 0 || event.defaultPrevented) return
 
@@ -272,11 +293,37 @@ export default class PhemOtpFieldController extends Controller {
   }
 
   onFocusout = (event) => {
+    if (this.composing === event.target) this.composing = null
     if (!this.#slots.includes(event.target) || this.#slots.includes(event.relatedTarget)) return
 
     this.focused = false
     this.focusedIndex = undefined
     this.#render()
+  }
+
+  // The `text` of the slot `index`: all its characters go in the slots from it on. An empty text
+  // removes the character of the slot.
+  #commit(index, text, reason) {
+    const slot = this.#slots[index]
+    const chars = [...this.#value]
+
+    if (text === "") {
+      chars.splice(index, 1)
+      this.#change(chars.join(""), "input-clear")
+      this.#focus(Math.min(index, this.#active))
+
+      return
+    }
+
+    const accepted = this.#accept(text)
+    if (!accepted) {
+      slot.value = chars[index] ?? ""
+      slot.select?.()
+
+      return
+    }
+
+    this.#insert(index, accepted, reason)
   }
 
   // Puts `text` in the slots from the slot `index` (the first empty slot when it is after it), and
@@ -307,9 +354,15 @@ export default class PhemOtpFieldController extends Controller {
     return pattern ? new RegExp(`^${pattern}$`).test(char) : !/\s/.test(char)
   }
 
+  // A typed character that fills the last empty slot completes the code, and each paste that
+  // fills all the slots (also with the same code). A change of a complete code does not.
   #change(value, reason) {
+    const full = this.#length > 0 && [...value].length === this.#length
+    const completes = full && (reason === "input-paste" || (reason === "input-change" && !this.#complete))
+
     if (value === this.#value) {
       this.#render()
+      if (completes) this.#completed(value)
 
       return
     }
@@ -323,8 +376,11 @@ export default class PhemOtpFieldController extends Controller {
     }
 
     this.dispatch("change", { detail: { value, reason } })
-    if (!this.#complete) return
+    if (completes) this.#completed(value)
+  }
 
+  // `phem-otp-field:complete`, and the submit of the form with `autoSubmit`.
+  #completed(value) {
     this.dispatch("complete", { detail: { value } })
     if (this.autoSubmitValue) (this.hiddenInputTargets[0]?.form ?? this.element.closest("form"))?.requestSubmit()
   }
@@ -358,6 +414,11 @@ export default class PhemOtpFieldController extends Controller {
     }
 
     this.element.toggleAttribute("data-filled", value !== "")
+    if (!this.element.hasAttribute("role")) this.element.setAttribute("role", "group")
+
+    // The label of the first slot names the group.
+    const label = slots[0]?.labels?.[0]
+    if (label && !this.element.hasAttribute("aria-label")) link(this.element, "aria-labelledby", "ariaLabelledByElements", label)
 
     const pattern = PATTERNS[this.validationTypeValue]
     const inputMode = this.inputModeValue || (this.validationTypeValue === "numeric" ? "numeric" : "text")
@@ -374,7 +435,11 @@ export default class PhemOtpFieldController extends Controller {
       slot.readOnly = this.readOnlyValue
       slot.required = this.requiredValue
       slot.spellcheck = false
-      if (this.maskValue) slot.type = "password"
+      slot.type = this.maskValue ? "password" : "text"
+      slot.setAttribute("autocorrect", "off")
+      slot.setAttribute("enterkeyhint", i === slots.length - 1 ? "done" : "next")
+      if (i === 0) slot.setAttribute("maxlength", String(this.#length))
+      else slot.removeAttribute("maxlength")
       if (pattern && !slot.hasAttribute("pattern")) slot.setAttribute("pattern", pattern)
       if (i > 0 && !slot.hasAttribute("aria-label") && !slot.hasAttribute("aria-labelledby")) slot.setAttribute("aria-label", `Character ${i + 1} of ${slots.length}`)
     })
