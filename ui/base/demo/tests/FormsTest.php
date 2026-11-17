@@ -15,6 +15,11 @@ final class FormsTest extends DemoTestCase
         $input = $page->getByRole('textbox', ['name' => 'Name']);
         $error = $page->getByText('Please enter your name');
 
+        // The parts link with the ids of the Field, as in Base UI.
+        expect($page->locator('label', ['hasText' => 'Name']))->toHaveAttribute('for', 'name-control');
+        expect($input)->toHaveAttribute('id', 'name-control');
+        expect($input)->toHaveAttribute('aria-describedby', 'name-description');
+
         $input->focus();
         expect($input)->toHaveAttribute('data-focused', '');
 
@@ -40,6 +45,9 @@ final class FormsTest extends DemoTestCase
         $submit->click();
         expect($page->getByText('The example domain is not allowed'))->toBeVisible();
         expect($input)->toHaveAttribute('aria-invalid', 'true');
+        expect($input)->toHaveAttribute('aria-describedby', 'url-error');
+        // The lock of the submit (`aria-disabled`) goes at the end of the request.
+        expect($submit)->not()->toHaveAttribute('aria-disabled', 'true');
 
         // An empty value does not go to the server: the field shows the error of the browser,
         // and the control gets the focus.

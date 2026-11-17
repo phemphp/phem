@@ -55,11 +55,11 @@ function FieldsetPage(): Node
         <DemoPage title="Fieldset">
             <Fieldset>
                 <FieldsetLegend>Billing details</FieldsetLegend>
-                <Field>
+                <Field id="company">
                     <FieldLabel>Company</FieldLabel>
                     <FieldControl placeholder="Enter company name" />
                 </Field>
-                <Field>
+                <Field id="tax-id">
                     <FieldLabel>Tax ID</FieldLabel>
                     <FieldControl placeholder="Enter fiscal number" />
                 </Field>

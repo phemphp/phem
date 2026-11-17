@@ -17,10 +17,21 @@ final class FormsTest extends KernelTestCase
     {
         $this->mount(self::APP.'FieldDemo')
             ->assertSelectorExists('form[data-controller="phem-form"] [data-controller="phem-field"][data-phem-field-validation-mode-value="onBlur"]')
-            ->assertSelectorExists('label[data-phem-field-target="label"]')
-            ->assertSelectorExists('input[data-phem-field-target="control"][name="name"][required][value="Ada"]')
-            ->assertSelectorExists('div[data-phem-field-target="error"][data-match="valueMissing"][hidden]')
-            ->assertSelectorExists('p[data-phem-field-target="description"]');
+            ->assertSelectorExists('[data-controller="phem-field"]#name')
+            ->assertSelectorExists('label[for="name-control"][data-phem-field-target="label"]')
+            ->assertSelectorExists('input#name-control[data-phem-field-target="control"][name="name"][required][value="Ada"]')
+            ->assertSelectorExists('div#name-error-valueMissing[data-phem-field-target="error"][data-match="valueMissing"][hidden]')
+            ->assertSelectorExists('p#name-description[data-phem-field-target="description"]')
+            ->assertSelectorNotExists('#other');
+    }
+
+    public function testAFieldWithNoIdGivesNoIdToItsParts(): void
+    {
+        $this->mount(self::APP.'FieldWithNoIdDemo')
+            ->assertSelectorExists('label[data-phem-field-target="label"]:not([id]):not([for])')
+            ->assertSelectorExists('input[data-phem-field-target="control"]:not([id])')
+            ->assertSelectorExists('div[data-phem-field-target="error"]:not([id])')
+            ->assertSelectorExists('p[data-phem-field-target="description"]:not([id])');
     }
 
     public function testAnInputOutOfAFieldIsNotAControl(): void

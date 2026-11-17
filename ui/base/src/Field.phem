@@ -2,13 +2,20 @@
 
 namespace Phem\Ui\Base;
 
-use Phem\Attribute\{Component, Prop, Provide};
+use Phem\Attribute\{Component, Context, Prop, Provide};
 use Phem\{Html, Node};
 
 /**
  * A form control with a label, a description and errors: Base UI Field.Root, on the `phem-field`
  * controller. The browser validates the control (`required`, `type="email"`, `pattern`…) in the
  * `validationMode` (`onSubmit`, `onBlur`, `onChange`). An Input in a Field is its control.
+ *
+ * Give an `id` to link the parts with ids, as in Base UI: the control gets `<id>-control` (in
+ * place of an `id` of the control), the label gets `for`, and the description and the errors get
+ * `<id>-description` and `<id>-error` (`<id>-error-<match>` for an error with `match`). A field has
+ * one control. Give two errors with the same `match` their own `id`. With no `id`, the controller
+ * links the parts with element references, and the `for`, `aria-labelledby` and
+ * `aria-describedby` attributes stay empty.
  */
 #[Component, Provide]
 class Field
@@ -16,13 +23,20 @@ class Field
     #[Prop] public ?string $validationMode = null;
     #[Prop] public int $validationDebounceTime = 0;
     #[Prop] public bool $disabled = false;
+    #[Prop] public ?string $id = null;
     #[Prop] public ?Html $children = null;
     #[Prop(rest: true)] public array $attrs = [];
+
+    public function partId(string $part): ?string
+    {
+        return null === $this->id ? null : $this->id.'-'.$part;
+    }
 
     public function render(): Node
     {
         return (
             <div
+                id={{ id }}
                 data-controller="phem-field"
                 data-phem-field-validation-mode-value={{ validationMode }}
                 data-phem-field-validation-debounce-time-value={{ validationDebounceTime ?: null }}
@@ -38,9 +52,11 @@ class Field
 }
 
 #[Component]
-function FieldLabel(?Html $children = null, mixed ...$rest): Node
+function FieldLabel(#[Context] ?Field $field = null, ?Html $children = null, mixed ...$rest): Node
 {
-    return <label data-phem-field-target="label" className={{ classes('text-sm font-bold text-neutral-950 dark:text-white data-disabled:text-neutral-500') }} {{ ...rest }}>{{ children }}</label>;
+    $for = $field?->partId('control');
+
+    return <label htmlFor={{ for }} data-phem-field-target="label" className={{ classes('text-sm font-bold text-neutral-950 dark:text-white data-disabled:text-neutral-500') }} {{ ...rest }}>{{ children }}</label>;
 }
 
 /** The control of the field: an Input with the width of the field. */
@@ -51,9 +67,11 @@ function FieldControl(mixed ...$rest): Node
 }
 
 #[Component]
-function FieldDescription(?Html $children = null, mixed ...$rest): Node
+function FieldDescription(#[Context] ?Field $field = null, ?Html $children = null, mixed ...$rest): Node
 {
-    return <p data-phem-field-target="description" className={{ classes('m-0 text-sm text-neutral-600 dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</p>;
+    $id = $field?->partId('description');
+
+    return <p id={{ id }} data-phem-field-target="description" className={{ classes('m-0 text-sm text-neutral-600 dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</p>;
 }
 
 /**
@@ -61,10 +79,13 @@ function FieldDescription(?Html $children = null, mixed ...$rest): Node
  * error only. With no text, it shows the message of the browser.
  */
 #[Component]
-function FieldError(?string $match = null, ?Html $children = null, mixed ...$rest): Node
+function FieldError(#[Context] ?Field $field = null, ?string $match = null, ?Html $children = null, mixed ...$rest): Node
 {
+    $id = $field?->partId(null === $match ? 'error' : 'error-'.$match);
+
     return (
         <div
+            id={{ id }}
             data-phem-field-target="error"
             data-match={{ match }}
             hidden

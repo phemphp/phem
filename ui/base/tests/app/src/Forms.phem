@@ -13,13 +13,26 @@ function FieldDemo(): Node
 {
     return (
         <Form>
-            <Field validationMode="onBlur">
+            <Field id="name" validationMode="onBlur">
                 <FieldLabel>Name</FieldLabel>
-                <FieldControl name="name" required defaultValue="Ada" />
+                <FieldControl id="other" name="name" required defaultValue="Ada" />
                 <FieldError match="valueMissing">Please enter your name</FieldError>
                 <FieldDescription>Visible on your profile</FieldDescription>
             </Field>
         </Form>
+    );
+}
+
+#[Component]
+function FieldWithNoIdDemo(): Node
+{
+    return (
+        <Field>
+            <FieldLabel>Name</FieldLabel>
+            <FieldControl required />
+            <FieldError />
+            <FieldDescription>Visible on your profile</FieldDescription>
+        </Field>
     );
 }
 

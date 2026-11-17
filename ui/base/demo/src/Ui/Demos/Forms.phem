@@ -14,7 +14,7 @@ function FieldPage(): Node
 {
     return (
         <DemoPage title="Field">
-            <Field>
+            <Field id="name">
                 <FieldLabel>Name</FieldLabel>
                 <FieldControl required placeholder="Required" />
                 <FieldError match="valueMissing">Please enter your name</FieldError>
@@ -26,7 +26,7 @@ function FieldPage(): Node
 
 // The submit of the Base UI demo: the server answers after 1 second, and refuses the example
 // domain. The error of the server shows in the Field.Error of the field. While the request runs,
-// the button has the disabled look and takes no click (the `phem-loading` class of the form).
+// phem locks the button with `aria-disabled="true"`, and the button has the disabled look.
 #[Page('/components/form')]
 final class FormPage
 {
@@ -50,8 +50,8 @@ final class FormPage
     {
         return (
             <DemoPage title="Form">
-                <Form onSubmit={{ submit }} className="[&.phem-loading_button]:pointer-events-none [&.phem-loading_button]:border-neutral-500 [&.phem-loading_button]:text-neutral-500 dark:[&.phem-loading_button]:border-neutral-400 dark:[&.phem-loading_button]:text-neutral-400">
-                    <Field>
+                <Form onSubmit={{ submit }} className="[&_button[aria-disabled=true]]:pointer-events-none [&_button[aria-disabled=true]]:border-neutral-500 [&_button[aria-disabled=true]]:text-neutral-500 dark:[&_button[aria-disabled=true]]:border-neutral-400 dark:[&_button[aria-disabled=true]]:text-neutral-400">
+                    <Field id="url">
                         <FieldLabel>Homepage</FieldLabel>
                         <FieldControl
                             type="url"
@@ -63,7 +63,7 @@ final class FormPage
                             aria-invalid={{ error ? 'true' : null }}
                             aria-describedby={{ error ? 'url-error' : null }}
                         />
-                        <FieldError id="url-error">{{ error }}</FieldError>
+                        <FieldError>{{ error }}</FieldError>
                     </Field>
                     <Button type="submit">Submit</Button>
                 </Form>

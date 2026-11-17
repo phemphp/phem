@@ -2,9 +2,16 @@
 
 The work that is still open in `phem/ui-base`. The bundle has no workarounds. A missing feature goes into phem core first, then the bundle uses it.
 
-## Waiting for a phem fix
+## Gaps of phem
 
-A comparison of each demo page with base-ui.com (Base UI v1.9.0) in a browser (2026-11-16) found the open gaps. phem v0.4.8 is the installed release, and 15 groups of gaps are still open. The most important open item is Tab in the modal dialogs. See [notes/phem-gaps.md](notes/phem-gaps.md) for the list. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
+A gap is a behavior of Base UI v1.9.0 that needs a change in a phem controller. Fix it in phem and in the bundle in the same change: the bundle does not work around it.
+
+- **Submenu: the close after a move to a sibling item.** In phem v0.4.8, it took about 19 ms (Base UI: about 60 ms). No phem change names this timing: measure it again.
+
+These results are different from Base UI, and phem keeps them:
+
+- **Toast: a new toast for the same message.** Base UI shows a new toast for each `add`, unless the `id` is the same. `phem-toast` does not show a toast with the same type, title and message as a toast on the screen: it starts the time of that toast again.
+- **Menu: `data-instant="trigger-change"`.** Base UI sets it when a menu with more than one trigger changes its trigger. A phem menu has one trigger, so the value does not apply.
 
 ## Open differences in the bundle
 
@@ -19,7 +26,6 @@ These differences need no phem change. The hero demos show the first two, and do
 - **Props that Base UI has and the bundle does not have:** `name`, `thumbAlignment` and `thumbCollisionBehavior` on `Slider`; `uncheckedValue` and `form` on `SwitchRoot`; `modal` and `disablePointerDismissal` on `Drawer`; `format` and `locale` on `Progress` and `Meter`; `hiddenUntilFound` on `CollapsiblePanel`; `delay` on `AvatarFallback` (the bundle has it on `Avatar`).
 - **Defaults:** the Positioner `align` of Base UI is `center` for a root menu, a select and a combobox. The bundle uses `start`. The hero demos set `start` or have the width of the anchor, so the look is equal.
 - **Elements:** `FieldsetLegend` is a native `<legend>` (Base UI: a `<div>`), and it gets no `data-disabled`. The popup and the arrow of a tooltip are `<span>` elements (Base UI: `<div>`). An item of a menu is a `<button>` (Base UI: a `<div>`).
-- **Form demo:** the Submit button does not have the disabled look during the 1 second of the request.
 - **Font:** base-ui.com uses its own font ("Die Grotesk A"). The demo uses the system font, so a text is about 1% wider and the description of the OTP field has two lines.
 
 ## Browser tests of the demo
@@ -73,4 +79,5 @@ Other open work for the browser tests:
 
 ## To build here
 
-- **Dark mode check.** Compare each demo page with base-ui.com in dark mode. The light mode check matched.
+- **Check the phem fixes.** phem now has a fix for the 15 groups of gaps that the comparison of 2026-11-16 found. Compare each demo page with base-ui.com again in light mode. Fix each gap that is still open in phem and in the bundle.
+- **Dark mode check.** Compare each demo page with base-ui.com in dark mode.

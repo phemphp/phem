@@ -13,6 +13,7 @@ use Phem\{Bound, Node};
 function Input(#[Context] ?Field $field = null, ?Bound $value = null, ?string $defaultValue = null, bool $disabled = false, mixed ...$rest): Node
 {
     $target = null !== $field ? 'control' : null;
+    $id = $field?->partId('control');
 
     return (
         <input
@@ -23,6 +24,7 @@ function Input(#[Context] ?Field $field = null, ?Bound $value = null, ?string $d
             data-disabled={{ disabled ? '' : null }}
             className={{ classes('h-8 w-40 border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white data-disabled:border-neutral-500 data-disabled:text-neutral-500') }}
             {{ ...rest }}
+            id={{ id ?? rest['id'] ?? null }}
         />
     );
 }
