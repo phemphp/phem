@@ -85,22 +85,59 @@ function DemoPage(string $slug, Html $children): Node
     );
 }
 
-/** The box of a demo, with the demo in the middle. */
+/**
+ * The box of a demo, with the demo in the middle. With a `source` (the name of the demo
+ * component), the source of the demo goes below it, as on ui.shadcn.com: the colored code, with
+ * a copy button in its top right corner. A long code shows its first lines, and "Show code"
+ * shows all of it.
+ */
 #[Component]
-function DemoBox(Html $children): Node
+function DemoBox(Html $children, ?string $source = null): Node
 {
+    $code = null === $source ? null : Gallery::source($source);
+    $html = null === $code ? null : Highlighter::phem($code);
+    $long = null !== $code && substr_count($code, "\n") > 8;
+    $id = null === $source ? null : Gallery::anchor($source).'-code';
+
     return (
-        <div className="flex min-h-80 items-center justify-center border border-neutral-200 p-10 dark:border-neutral-800">
-            {{ children }}
+        <div className="flex flex-col">
+            <div data-demo="preview" className={{ 'flex min-h-80 items-center justify-center border border-neutral-200 p-10 dark:border-neutral-800 ' ~ (code is null ? 'rounded-lg' : 'rounded-t-lg') }}>
+                {{ children }}
+            </div>
+            {% if code is not null %}
+                <div data-demo="source" data-controller="phem-clipboard" className="relative flex flex-col overflow-hidden rounded-b-lg border border-t-0 border-neutral-200 bg-[#fcfcfc] dark:border-neutral-800 dark:bg-[#0d0d0d]">
+                    <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
+                        <span data-phem-clipboard-target="feedback" className="text-xs text-[#767676] dark:text-[#b3b3b3]"></span>
+                        <button type="button" data-action="phem-clipboard#copy" aria-label="Copy code" className="flex size-7 items-center justify-center rounded-md bg-[#fcfcfc] text-[#767676] hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-blue-800 dark:bg-[#0d0d0d] dark:text-[#b3b3b3] dark:hover:bg-neutral-800 dark:hover:text-white">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                                <rect x="5.25" y="5.25" width="8.5" height="8.5" rx="1.5" />
+                                <path d="M10.75 5.25V3.75a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v5a1.5 1.5 0 0 0 1.5 1.5h1.5" />
+                            </svg>
+                        </button>
+                    </div>
+                    {% if long %}
+                        <input type="checkbox" id={{ id }} aria-label="Show code" className="peer sr-only" />
+                    {% endif %}
+                    <div data-phem-clipboard-target="source" data-short={{ long ? null : '' }} className="max-h-48 overflow-hidden peer-checked:max-h-none data-short:max-h-none [&_pre]:overflow-x-auto [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-5">{{ html }}</div>
+                    {% if long %}
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-28 items-end justify-center bg-linear-to-t from-[#fcfcfc] from-30% to-transparent pb-4 peer-checked:static peer-checked:h-auto peer-checked:bg-none peer-checked:pt-1 peer-focus-visible:[&_label]:outline-2 peer-focus-visible:[&_label]:outline-offset-2 peer-focus-visible:[&_label]:outline-blue-800 dark:from-[#0d0d0d] peer-checked:[&_[data-show]]:hidden [&_[data-hide]]:hidden peer-checked:[&_[data-hide]]:inline">
+                            <label htmlFor={{ id }} aria-hidden="true" className="pointer-events-auto cursor-pointer rounded-full border border-neutral-200 bg-white px-3.5 py-1 text-sm font-medium text-neutral-950 shadow-xs select-none hover:bg-neutral-50 active:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">
+                                <span data-show>Show code</span>
+                                <span data-hide>Hide code</span>
+                            </label>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
         </div>
     );
 }
 
-/** The demo at the top of the page. */
+/** The demo at the top of the page, with its source when `source` is set. */
 #[Component]
-function Hero(Html $children): Node
+function Hero(Html $children, ?string $source = null): Node
 {
-    return <section aria-label="Demo"><DemoBox>{{ children }}</DemoBox></section>;
+    return <section aria-label="Demo"><DemoBox source={{ source }}>{{ children }}</DemoBox></section>;
 }
 
 /** The "Examples" section of a page: a heading, then its Example blocks. */
@@ -117,11 +154,11 @@ function Examples(Html $children): Node
 
 /**
  * One example of base-ui.com: its heading, its description (paragraphs, with `<code>` and `<kbd>`),
- * and its demo. An example with no demo (a section of base-ui.com with code only) shows only its
- * heading and its description.
+ * and its demo, with its source when `source` is set. An example with no demo (a section of
+ * base-ui.com with code only) shows only its heading and its description.
  */
 #[Component]
-function Example(string $title, Html $description, ?Html $children = null): Node
+function Example(string $title, Html $description, ?Html $children = null, ?string $source = null): Node
 {
     $id = Gallery::anchor($title);
 
@@ -132,7 +169,7 @@ function Example(string $title, Html $description, ?Html $children = null): Node
                 {{ description }}
             </div>
             {% if children is not empty %}
-                <DemoBox>{{ children }}</DemoBox>
+                <DemoBox source={{ source }}>{{ children }}</DemoBox>
             {% endif %}
         </section>
     );

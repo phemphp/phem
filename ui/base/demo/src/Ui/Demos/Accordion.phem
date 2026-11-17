@@ -14,17 +14,17 @@ function AccordionPage(): Node
 {
     return (
         <DemoPage slug="accordion">
-            <Hero>
+            <Hero source="AccordionHeroDemo">
                 <AccordionHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Open multiple panels">
+                <Example title="Open multiple panels" source="AccordionMultipleDemo">
                     <Example.description>
                         <p>You can set up the accordion to allow multiple panels to be open at the same time using the <code>multiple</code> prop.</p>
                     </Example.description>
                     <AccordionMultipleDemo />
                 </Example>
-                <Example title="Hidden until found">
+                <Example title="Hidden until found" source="AccordionHiddenUntilFoundDemo">
                     <Example.description>
                         <p>The <code>hiddenUntilFound</code> prop hides closed panels with <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/hidden" className="underline"><code>hidden="until-found"</code></a> so the browser can search their contents and reveal the matching panel automatically. It can be set on each <code>AccordionPanel</code>, or once on <code>Accordion</code> to apply to all panels.</p>
                         <p>To try it, press <kbd>Ctrl</kbd>+<kbd>F</kbd> (<kbd>Cmd</kbd>+<kbd>F</kbd> on macOS) and search for “restocking”—the browser opens the closed panel containing the match. When <code>hiddenUntilFound</code> is enabled, closed panels always remain in the DOM, which also makes their contents indexable by search engines.</p>

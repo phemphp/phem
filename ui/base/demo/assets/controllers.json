@@ -115,6 +115,10 @@
             "button": {
                 "enabled": true,
                 "fetch": "eager"
+            },
+            "clipboard": {
+                "enabled": true,
+                "fetch": "eager"
             }
         }
     },

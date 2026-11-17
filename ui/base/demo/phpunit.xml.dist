@@ -7,6 +7,8 @@
          failOnRisky="true">
     <php>
         <ini name="error_reporting" value="-1"/>
+        <!-- The kernel handles the requests of all the pages in the PHPUnit process. -->
+        <ini name="memory_limit" value="512M"/>
         <server name="APP_ENV" value="test" force="true"/>
         <server name="KERNEL_CLASS" value="App\Kernel"/>
         <server name="SHELL_VERBOSITY" value="-1"/>

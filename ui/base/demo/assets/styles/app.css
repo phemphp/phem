@@ -3,3 +3,15 @@
 /* The components of phem/ui-base. In an app: @source "../../vendor/phem/ui-base/src"; */
 @source "../../../src";
 @source "../../src";
+
+/* The code of the demos (App\Ui\Highlighter): the background of its box, and GitHub Dark in the dark mode. */
+.phiki {
+    background-color: transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .phiki,
+    .phiki span {
+        color: var(--phiki-dark-color) !important;
+    }
+}

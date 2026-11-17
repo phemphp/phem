@@ -60,4 +60,73 @@ final class Gallery
     {
         return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($title)), '-');
     }
+
+    /**
+     * The source of a demo component, as on base-ui.com: the `use` statements that it needs and
+     * its function. The demo is a `#[Component]` function of a file in src/Ui/Demos/.
+     */
+    public static function source(string $component): string
+    {
+        foreach (glob(__DIR__.'/Demos/*.phem') ?: [] as $file) {
+            $code = (string) file_get_contents($file);
+
+            if (1 !== preg_match('/^(?:#\[[^\n]+\]\n)*function '.preg_quote($component, '/').'\(.*?^\}$/ms', $code, $function)) {
+                continue;
+            }
+
+            $uses = self::uses($code, $function[0]);
+
+            return "<?phem\n\n".('' === $uses ? '' : $uses."\n\n").$function[0]."\n";
+        }
+
+        throw new \InvalidArgumentException(\sprintf('No demo in src/Ui/Demos/ has the function "%s".', $component));
+    }
+
+    /**
+     * The `use` statements of a file, with only the names that the function uses. The classes come
+     * first, then the functions, each in the alphabetical order.
+     */
+    private static function uses(string $code, string $function): string
+    {
+        preg_match_all('/^use (function )?([\w\\\\]+?)(?:\\\\\{([^}]+)\})?;$/m', $code, $statements, \PREG_SET_ORDER | \PREG_UNMATCHED_AS_NULL);
+
+        $uses = [];
+
+        foreach ($statements as [, $kind, $prefix, $group]) {
+            $names = null === $group ? [$prefix] : array_map(static fn (string $name): string => $prefix.'\\'.trim($name), explode(',', $group));
+            $names = array_filter($names, static fn (string $name): bool => 1 === preg_match('/\b'.preg_quote(substr((string) strrchr('\\'.$name, '\\'), 1), '/').'\b/', $function));
+
+            if ([] === $names) {
+                continue;
+            }
+
+            sort($names, \SORT_FLAG_CASE | \SORT_STRING);
+            $uses[null === $kind ? 0 : 1][] = 'use '.($kind ?? '').self::group($names).';';
+        }
+
+        ksort($uses);
+
+        return implode("\n", array_merge(...array_map(static function (array $statements): array {
+            sort($statements, \SORT_FLAG_CASE | \SORT_STRING);
+
+            return $statements;
+        }, $uses)));
+    }
+
+    /**
+     * The names of one `use` statement: `Phem\Node`, or `Phem\Ui\Base\{Accordion, AccordionItem}`.
+     *
+     * @param list<string> $names
+     */
+    private static function group(array $names): string
+    {
+        if (1 === \count($names)) {
+            return $names[0];
+        }
+
+        $prefix = substr($names[0], 0, (int) strrpos($names[0], '\\'));
+        $short = array_map(static fn (string $name): string => substr($name, \strlen($prefix) + 1), $names);
+
+        return $prefix.'\{'.implode(', ', $short).'}';
+    }
 }

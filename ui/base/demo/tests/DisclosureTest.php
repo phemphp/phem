@@ -11,7 +11,7 @@ final class DisclosureTest extends DemoTestCase
     public function testAccordionOpensOneItemAtATime(): void
     {
         $page = $this->visitComponent('accordion');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         $what = $hero->getByRole('button', ['name' => 'What is Base UI?']);
         $start = $hero->getByRole('button', ['name' => 'How do I get started?']);
@@ -38,7 +38,7 @@ final class DisclosureTest extends DemoTestCase
     public function testAccordionOpensMultiplePanels(): void
     {
         $page = $this->visitComponent('accordion');
-        $example = $page->getByRole('region', ['name' => 'Open multiple panels']);
+        $example = $page->getByRole('region', ['name' => 'Open multiple panels'])->locator('[data-demo="preview"]');
 
         $example->getByRole('button', ['name' => 'What is Base UI?'])->click();
         $example->getByRole('button', ['name' => 'How do I get started?'])->click();
@@ -49,7 +49,7 @@ final class DisclosureTest extends DemoTestCase
     public function testAccordionHidesTheClosedPanelsUntilFound(): void
     {
         $page = $this->visitComponent('accordion');
-        $example = $page->getByRole('region', ['name' => 'Hidden until found']);
+        $example = $page->getByRole('region', ['name' => 'Hidden until found'])->locator('[data-demo="preview"]');
         $panel = $example->locator('text=restocking fee')->locator('xpath=ancestor::*[@data-phem-accordion-target="panel"]');
 
         expect($panel)->toHaveAttribute('hidden', 'until-found');
@@ -58,6 +58,35 @@ final class DisclosureTest extends DemoTestCase
         $panel->dispatchEvent('beforematch');
         expect($example->getByRole('button', ['name' => 'What is your return policy?']))->toHaveAttribute('aria-expanded', 'true');
         expect($example->locator('text=restocking fee'))->toBeVisible();
+    }
+
+    public function testAccordionShowsTheSourceOfEachDemo(): void
+    {
+        $page = $this->visitComponent('accordion');
+        $page->context()->grantPermissions(['clipboard-read', 'clipboard-write']);
+
+        $sources = $page->locator('[data-demo="source"]');
+        expect($sources)->toHaveCount(3);
+
+        $source = $page->getByRole('region', ['name' => 'Open multiple panels'])->locator('[data-demo="source"]');
+        // The classes first, then the functions, each in the alphabetical order.
+        $code = $source->locator('code');
+        expect($code)->toContainText("use Phem\\Node;\nuse Phem\\Ui\\Base\\{Accordion, AccordionItem};\nuse function Phem\\Ui\\Base\\{AccordionHeader, AccordionPanel, AccordionTrigger};");
+        expect($code)->toContainText('<Accordion id="multiple" multiple>');
+        expect($code)->not()->toContainText('DemoPage');
+
+        // A long code shows its first lines. "Show code" shows all of it, and "Hide code" hides it again.
+        $clipped = 'box => box.scrollHeight > box.clientHeight';
+        self::assertTrue($source->locator('[data-phem-clipboard-target="source"]')->evaluate($clipped));
+        $source->getByText('Show code')->click();
+        expect($source->getByRole('checkbox', ['name' => 'Show code']))->toBeChecked();
+        self::assertFalse($source->locator('[data-phem-clipboard-target="source"]')->evaluate($clipped));
+        $source->getByText('Hide code')->click();
+        self::assertTrue($source->locator('[data-phem-clipboard-target="source"]')->evaluate($clipped));
+
+        $source->getByRole('button', ['name' => 'Copy code'])->click();
+        expect($source->getByRole('status'))->toHaveText('Copied');
+        self::assertStringStartsWith('<?phem', $page->evaluate('() => navigator.clipboard.readText()'));
     }
 
     public function testCollapsible(): void
@@ -79,7 +108,7 @@ final class DisclosureTest extends DemoTestCase
     public function testCollapsibleHidesItsPanelUntilFound(): void
     {
         $page = $this->visitComponent('collapsible');
-        $example = $page->getByRole('region', ['name' => 'Hidden until found']);
+        $example = $page->getByRole('region', ['name' => 'Hidden until found'])->locator('[data-demo="preview"]');
         $panel = $example->locator('[data-phem-collapsible-target="panel"]');
 
         expect($panel)->toHaveAttribute('hidden', 'until-found');
