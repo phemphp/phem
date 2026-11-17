@@ -132,10 +132,29 @@ export function measure(panel, name) {
   style.setProperty(`--${name}-panel-width`, `${width}px`)
 }
 
+// Opens a panel that the search of the browser (Ctrl+F) found, with no animation, as Base UI
+// `useCollapsiblePanel` does after `beforematch`: the browser scrolls to the text in the panel,
+// and a height animation would move the text away. The size is `auto` at once, and a CSS
+// transition does not go from a length to `auto`. The panel gets `data-instant`.
+export function showFound(panel, name) {
+  show(panel, { instant: true })
+  autoSize(panel, name)
+}
+
+// Gives a closed panel the size 0 in `--<name>-panel-height` and `--<name>-panel-width`, as Base
+// UI `useCollapsiblePanel` does at the end of a close. Call it in the `onEnd` of hide(). A panel
+// with `hidden="until-found"` stays in the layout (`content-visibility: hidden`, not
+// `display: none`): with the size in px of measure(), it gets its open height again as an empty
+// block when `[data-ending-style]` goes.
+export function collapse(panel, name) {
+  panel.style.setProperty(`--${name}-panel-height`, "0px")
+  panel.style.setProperty(`--${name}-panel-width`, "0px")
+}
+
 // After the animations of `panel`: `--<name>-panel-height` and `--<name>-panel-width` get `auto`
 // when the panel is still open, so the content can change its size (Base UI
 // `useCollapsiblePanel`). Call it after measure() and show(): the open animation goes from 0 to
-// the size in px. A new show() or hide() stops it, and a closed panel keeps its size in px.
+// the size in px. A new show() or hide() stops it, and collapse() gives a closed panel the size 0.
 //
 // It waits for the next frame, so a call just after show() sees the transition from the
 // `[data-starting-style]` size. It waits only for the finite animations of the panel itself: an

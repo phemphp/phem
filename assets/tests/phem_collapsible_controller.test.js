@@ -234,6 +234,40 @@ describe("phem-collapsible", () => {
     expect(panel.hasAttribute("data-ending-style")).toBe(false)
   })
 
+  it("opens the panel that the search of the browser found with no animation", async () => {
+    // The browser scrolls to the text: a height animation would move it away (Base UI sets
+    // `transition-duration: 0s`).
+    await mount(section('data-phem-collapsible-hidden-until-found-value="true"'))
+    const panel = document.getElementById("panel")
+    panel.dispatchEvent(new Event("beforematch", { bubbles: true }))
+
+    expect(isOpen()).toBe(true)
+    expect(panel.hasAttribute("data-starting-style")).toBe(false)
+    expect(panel.getAttribute("data-instant")).toBe("")
+    expect(panel.style.getPropertyValue("--collapsible-panel-height")).toBe("auto")
+    expect(panel.style.getPropertyValue("--collapsible-panel-width")).toBe("auto")
+  })
+
+  it("gives the closed panel the size 0 at the end of the close", async () => {
+    // A panel with hidden="until-found" stays in the layout: with the size in px, it gets its
+    // open height again as an empty block.
+    await mount(section('data-phem-collapsible-open-value="true" data-phem-collapsible-hidden-until-found-value="true"'))
+    const panel = document.getElementById("panel")
+    Object.defineProperty(panel, "scrollHeight", { value: 120 })
+    Object.defineProperty(panel, "scrollWidth", { value: 300 })
+    let finish
+    panel.getAnimations = () => [{ finished: new Promise((resolve) => (finish = resolve)) }]
+    click("#open")
+    expect(panel.style.getPropertyValue("--collapsible-panel-height")).toBe("120px")
+
+    finish()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(panel.getAttribute("hidden")).toBe("until-found")
+    expect(panel.style.getPropertyValue("--collapsible-panel-height")).toBe("0px")
+    expect(panel.style.getPropertyValue("--collapsible-panel-width")).toBe("0px")
+  })
+
   it("gives data-starting-style for the first frame of the open", async () => {
     await mount(section())
     const panel = document.getElementById("panel")
@@ -507,7 +541,7 @@ describe("phem-collapsible: the size of an open panel", () => {
     finish()
     await frame()
     expect(isOpen()).toBe(false)
-    expect(size()[0]).toBe("120px")
+    expect(size()[0]).toBe("0px")
   })
 
   it("keeps the size in px after a morph during the open animation", async () => {

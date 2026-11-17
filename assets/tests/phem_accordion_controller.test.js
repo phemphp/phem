@@ -357,7 +357,41 @@ describe("phem-accordion: the size of an open panel", () => {
     await frame()
 
     expect(panel().hasAttribute("data-open")).toBe(false)
-    expect(size()[0]).toBe("120px")
+    expect(size()[0]).toBe("0px")
+  })
+
+  it("opens the panel that the search of the browser found with no animation", async () => {
+    // The browser scrolls to the text: a height animation would move it away (Base UI sets
+    // `transition-duration: 0s`).
+    await mount(accordion('data-phem-accordion-hidden-until-found-value="true"'))
+    panel().dispatchEvent(new Event("beforematch", { bubbles: true }))
+
+    expect(open()).toEqual(["shipping"])
+    expect(panel().hasAttribute("data-starting-style")).toBe(false)
+    expect(panel().getAttribute("data-instant")).toBe("")
+    expect(size()).toEqual(["auto", "auto"])
+
+    // A click after it animates again.
+    click("#shipping-trigger")
+    expect(panel().hasAttribute("data-instant")).toBe(false)
+  })
+
+  it("gives a closed panel the size 0 at the end of the close", async () => {
+    // A panel with hidden="until-found" stays in the layout: with the size in px, it gets its
+    // open height again as an empty block.
+    await mount(accordion(`data-phem-accordion-open-value='["shipping"]' data-phem-accordion-hidden-until-found-value="true"`))
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    Object.defineProperty(panel(), "scrollWidth", { value: 300 })
+    let finish
+    panel().getAnimations = () => [{ finished: new Promise((resolve) => (finish = resolve)) }]
+    click("#shipping-trigger")
+    expect(size()).toEqual(["120px", "300px"])
+
+    finish()
+    await frame()
+
+    expect(panel().getAttribute("hidden")).toBe("until-found")
+    expect(size()).toEqual(["0px", "0px"])
   })
 
   it("keeps the auto size after the morph of an event", async () => {

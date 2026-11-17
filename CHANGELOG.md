@@ -8,6 +8,13 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A panel of `phem-collapsible` and `phem-accordion` that the search of the browser (Ctrl+F)
+  finds opens with no animation, as in Base UI. It gets `data-instant` and the `auto` size at
+  once. Before, the height animation moved the text that the browser scrolled to.
+- A closed panel of `phem-collapsible` and `phem-accordion` gets `0px` in its
+  `--<name>-panel-height` and `--<name>-panel-width` variables at the end of the close. Before,
+  a panel with `hidden="until-found"` kept its size in px, and got its open height again as an
+  empty block after the close.
 - Fixes of the popups, the menu and the toasts:
   - The morph of an event keeps the `trigger-id` value of `phem-popover`, `phem-menu`,
     `phem-tooltip` and `phem-dialog`, and the attributes of a detached trigger

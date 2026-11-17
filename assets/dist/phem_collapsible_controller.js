@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { PhemStorage } from "./phem_storage.js"
-import { fit, hide, measure, render, settle, show } from "./phem_transition.js"
+import { collapse, fit, hide, measure, render, settle, show, showFound } from "./phem_transition.js"
 
 // The triggers whose `aria-controls` the controller set.
 const controlled = new WeakSet()
@@ -119,26 +119,29 @@ export default class PhemCollapsibleController extends Controller {
 
   // The search of the browser found a text in a closed panel.
   onBeforeMatch = (event) => {
-    if (this.panelTargets.includes(event.target)) this.#set(true)
+    if (this.panelTargets.includes(event.target)) this.#set(true, { found: event.target })
   }
 
-  #set(open, { store = false } = {}) {
+  #set(open, { store = false, found = null } = {}) {
     if (open !== this.openValue || this.rendered !== open) {
       this.openValue = open
-      this.#apply()
+      this.#apply({ found })
     }
 
     if (store) this.#store(open)
   }
 
-  // The state with its animations.
-  #apply() {
+  // The state with its animations. The `found` panel, which the search of the browser found,
+  // opens with no animation.
+  #apply({ found = null } = {}) {
     this.rendered = this.openValue
 
     const closing = []
 
     for (const panel of this.panelTargets) {
-      if (this.openValue) {
+      if (panel === found) {
+        showFound(panel, "collapsible")
+      } else if (this.openValue) {
         show(panel)
         measure(panel, "collapsible")
         settle(panel, "collapsible")
@@ -146,7 +149,7 @@ export default class PhemCollapsibleController extends Controller {
         // A transition does not start from `auto`: the close starts from the size in px.
         measure(panel, "collapsible")
         void panel.offsetHeight
-        closing.push(hide(panel, { hidden: this.#hiddenOf(panel) }))
+        closing.push(hide(panel, { hidden: this.#hiddenOf(panel), onEnd: () => collapse(panel, "collapsible") }))
       }
     }
 

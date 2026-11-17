@@ -8,6 +8,16 @@ use function Playwright\Testing\expect;
 
 final class DisclosureTest extends DemoTestCase
 {
+    // Fires `beforematch` on the panel, and counts the height animations that its open starts.
+    private const FOUND_ANIMATIONS = <<<'JS'
+        panel => {
+            panel.dispatchEvent(new Event('beforematch', { bubbles: true }));
+            getComputedStyle(panel).height;
+
+            return panel.getAnimations().filter((animation) => animation.transitionProperty === 'height').length;
+        }
+        JS;
+
     public function testAccordionOpensOneItemAtATime(): void
     {
         $page = $this->visitComponent('accordion');
@@ -54,10 +64,19 @@ final class DisclosureTest extends DemoTestCase
 
         expect($panel)->toHaveAttribute('hidden', 'until-found');
 
-        // The search of the browser fires `beforematch` on the panel with the text, and opens it.
-        $panel->dispatchEvent('beforematch');
-        expect($example->getByRole('button', ['name' => 'What is your return policy?']))->toHaveAttribute('aria-expanded', 'true');
+        // The search of the browser fires `beforematch` on the panel with the text, and opens it
+        // with no height animation: the browser scrolls to the text.
+        self::assertSame(0, $panel->evaluate(self::FOUND_ANIMATIONS));
+        $trigger = $example->getByRole('button', ['name' => 'What is your return policy?']);
+        expect($trigger)->toHaveAttribute('aria-expanded', 'true');
         expect($example->locator('text=restocking fee'))->toBeVisible();
+
+        // The closed panel stays in the layout (`content-visibility: hidden`), with the height 0
+        // after the end of the close.
+        $trigger->click();
+        expect($panel)->toHaveAttribute('hidden', 'until-found');
+        $page->evaluate('() => new Promise((resolve) => setTimeout(resolve, 400))');
+        self::assertSame(0, $panel->evaluate('panel => Math.round(panel.getBoundingClientRect().height)'));
     }
 
     public function testAccordionShowsTheSourceOfEachDemo(): void
@@ -114,10 +133,19 @@ final class DisclosureTest extends DemoTestCase
 
         expect($panel)->toHaveAttribute('hidden', 'until-found');
 
-        // The search of the browser fires `beforematch` on the panel with the text, and opens it.
-        $panel->dispatchEvent('beforematch');
-        expect($example->getByRole('button', ['name' => 'Shipping details']))->toHaveAttribute('aria-expanded', 'true');
+        // The search of the browser fires `beforematch` on the panel with the text, and opens it
+        // with no height animation: the browser scrolls to the text.
+        self::assertSame(0, $panel->evaluate(self::FOUND_ANIMATIONS));
+        $trigger = $example->getByRole('button', ['name' => 'Shipping details']);
+        expect($trigger)->toHaveAttribute('aria-expanded', 'true');
         expect($example->locator('text=Standard shipping takes'))->toBeVisible();
+
+        // The closed panel stays in the layout (`content-visibility: hidden`), with the height 0
+        // after the end of the close.
+        $trigger->click();
+        expect($panel)->toHaveAttribute('hidden', 'until-found');
+        $page->evaluate('() => new Promise((resolve) => setTimeout(resolve, 400))');
+        self::assertSame(0, $panel->evaluate('panel => Math.round(panel.getBoundingClientRect().height)'));
     }
 
     public function testTabs(): void

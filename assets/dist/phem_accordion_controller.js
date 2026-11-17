@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { isDisabled, nextItem } from "./phem_roving.js"
-import { fit, hide, measure, render, settle, show } from "./phem_transition.js"
+import { collapse, fit, hide, measure, render, settle, show, showFound } from "./phem_transition.js"
 
 // The `phem-accordion` controller: a list of items that open and close, with one open item at a
 // time.
@@ -126,23 +126,24 @@ export default class PhemAccordionController extends Controller {
   // The search of the browser found a text in a closed panel.
   onBeforeMatch = (event) => {
     const part = this.#parts().find(({ panel }) => panel === event.target)
-    if (part) this.#set(part.value, true)
+    if (part) this.#set(part.value, true, { found: part.panel })
   }
 
   #toggle(value) {
     this.#set(value, !this.#open.includes(value))
   }
 
-  #set(value, open) {
+  #set(value, open, { found = null } = {}) {
     const values = this.#open.filter((v) => v !== value)
     if (open) values.push(value)
 
     this.openValue = open && !this.multipleValue ? [value] : values
-    this.#apply()
+    this.#apply({ found })
   }
 
-  // The state with its animations.
-  #apply() {
+  // The state with its animations. The `found` panel, which the search of the browser found,
+  // opens with no animation.
+  #apply({ found = null } = {}) {
     const open = this.#open
     const parts = this.#parts()
     this.rendered = open
@@ -151,7 +152,9 @@ export default class PhemAccordionController extends Controller {
       const isOpen = open.includes(value)
       if (!panel || panel.hasAttribute("data-open") === isOpen) continue
 
-      if (isOpen) {
+      if (panel === found) {
+        showFound(panel, "accordion")
+      } else if (isOpen) {
         show(panel)
         measure(panel, "accordion")
         settle(panel, "accordion")
@@ -159,7 +162,7 @@ export default class PhemAccordionController extends Controller {
         // A transition does not start from `auto`: the close starts from the size in px.
         measure(panel, "accordion")
         void panel.offsetHeight
-        hide(panel, { hidden: this.#hiddenOf(panel) })
+        hide(panel, { hidden: this.#hiddenOf(panel), onEnd: () => collapse(panel, "accordion") })
       }
     }
 
