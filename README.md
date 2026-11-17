@@ -14,16 +14,18 @@ right beside the code that gives it life:
 
 namespace App\Ui;
 
-use Phem\Attribute\{Component, Page, State};
+use Phem\Attribute\{Component, Page};
 use Phem\{Html, Node, Root};
 
 #[Page('/')]
 function HomePage(): Node
 {
-    return <Document title="Phem">
+    return (
+        <Document title="Phem">
             <h2>Hello, Phem!</h2>
             <p>UI server components for Symfony web apps, made of old friends.</p>
-        </Document>;
+        </Document>
+    );
 }
 
 #[Component]
