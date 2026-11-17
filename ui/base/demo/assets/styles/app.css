@@ -15,3 +15,15 @@
         color: var(--phiki-dark-color) !important;
     }
 }
+
+/* The pulse of a toast that an update with the same id replays (the Toast demo). */
+@keyframes toast-pulse {
+    0%,
+    100% {
+        scale: 1;
+    }
+
+    50% {
+        scale: 1.04;
+    }
+}

@@ -10,8 +10,9 @@ A gap is a behavior of Base UI v1.9.0 that needs a change in a phem controller. 
 
 These results are different from Base UI, and phem keeps them:
 
-- **Toast: a new toast for the same message.** Base UI shows a new toast for each `add`, unless the `id` is the same. `phem-toast` does not show a toast with the same type, title and message as a toast on the screen: it starts the time of that toast again.
-- **Menu: `data-instant="trigger-change"`.** Base UI sets it when a menu with more than one trigger changes its trigger. A phem menu has one trigger, so the value does not apply.
+- **Toast: a new toast for the same message.** Base UI shows a new toast for each `add`, unless the `id` is the same. `phem-toast` does not show a toast with no `id` and the same type, title and message as a toast on the screen: it starts the time of that toast again. A toast with an `id` follows Base UI.
+- **Toast: the promise and the custom data.** Base UI `toastManager.promise()` and `data` (any object, also functions) are JavaScript. In phem, a `data-phem-toast-show` button shows the loading toast at the click, the handler answers with a toast with the same `id`, and `data` fills the `ToastData` parts of the template.
+- **Menu: `data-instant="trigger-change"`.** Base UI sets it when a menu with more than one trigger changes its trigger. A phem menu that moves to another trigger removes `data-instant`, so the CSS transitions of the move, of the size and of the content run (see the "Animating the Menu" example).
 
 ## Open differences in the bundle
 
@@ -65,7 +66,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Slider | `FormsTest` | ArrowRight, End, Home, a range, `step` and `largeStep`, `thumbAlignment="edge"`, vertical, `name` | Pointer drag on the track, `data-dragging` |
 | Switch | `ControlsTest` | Initial state, the accessible name, a click on the label, Space, a native button, the hidden input in a Field | — |
 | Tabs | `DisclosureTest` | A click selects, the arrow keys move the focus, Enter selects, `data-activation-direction` of the animated panels, link tabs (click and Enter) | The indicator variables |
-| Toast | `PickersTest` | A server event shows a toast with a title, one toast for each click, the text behind the last toast hides until hover, F6 moves the focus to the region, each toast is a dialog | Close button, swipe, the limit of visible toasts |
+| Toast | `PickersTest` | A server event shows a toast with a title, one toast for each click, the text behind the last toast hides until hover, F6 moves the focus to the region, each toast is a dialog; the anchored toast above the copy button, the top position, the undo action calls the handler, the loading toast becomes the answer, the custom data, the update of a toast with the same id, the varying heights | Close button, swipe, the limit of visible toasts |
 | Toggle | `ControlsTest` | A click and Space toggle `aria-pressed` | — |
 | Toggle Group | `ControlsTest` | One pressed item, ArrowRight, `multiple` | Home and End |
 | Toolbar | `ControlsTest` | ArrowRight, End, Home, the arrow keys leave a toggle group, a menu trigger, tooltip triggers and a number field input as items | The select in the toolbar |
@@ -78,5 +79,4 @@ Other open work for the browser tests:
 
 ## To build here
 
-- **Check the phem fixes.** phem now has a fix for the 15 groups of gaps that the comparison of 2026-11-16 found. Compare each demo page with base-ui.com again in light mode. Fix each gap that is still open in phem and in the bundle.
 - **Dark mode check.** Compare each demo page with base-ui.com in dark mode.

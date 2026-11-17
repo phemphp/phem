@@ -2,8 +2,15 @@
 
 namespace Phem\Ui\Base;
 
-use Phem\Attribute\Component;
+use Phem\Attribute\{Component, Context, Prop, Provide};
 use Phem\{Html, Node};
+
+/** The place of a stack of toasts on the screen. */
+enum ToastPosition: string
+{
+    case BottomRight = 'bottom-right';
+    case TopCenter = 'top-center';
+}
 
 /**
  * The place of the toasts: Base UI Toast.Viewport, on the `phem-toast` controller. Put one in the
@@ -11,33 +18,149 @@ use Phem\{Html, Node};
  * toast with a title with `$e->toast('The file is ready.', title: 'Export complete')`.
  *
  * Each toast is a copy of the template: a stack in the corner of the viewport that expands on hover,
- * and closes with a swipe. The template has the parts of Base UI: Toast.Root, Toast.Content (its
- * text hides behind the last toast, until the stack expands), Toast.Title, Toast.Description and
- * Toast.Close.
+ * and closes with a swipe. The template has the parts of Base UI: ToastRoot, ToastContent (its
+ * text hides behind the last toast, until the stack expands), ToastTitle, ToastDescription,
+ * ToastAction (removed when the toast has no `action`) and ToastClose. Give your own parts as the
+ * children for another template.
+ *
+ * `position` places the stack: at the bottom right (the default), or at the top center (a swipe up
+ * closes a toast). With `anchored`, each toast shows next to the element of its `anchor`, as Base
+ * UI Toast.Positioner, on the `side` with the `sideOffset`. A `name` takes only the toasts with
+ * this `viewport`: `$e->toast('Copied', anchor: 'copy', viewport: 'anchored')`.
+ */
+#[Component, Provide]
+class ToastViewport
+{
+    #[Prop] public ?string $name = null;
+    #[Prop] public ToastPosition $position = ToastPosition::BottomRight;
+    #[Prop] public bool $anchored = false;
+    #[Prop] public Side $side = Side::Top;
+    #[Prop] public int $sideOffset = 0;
+    #[Prop] public int $limit = 3;
+    #[Prop] public int $duration = 5000;
+    #[Prop] public string $closeLabel = 'Dismiss';
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        $place = match (true) {
+            $this->anchored => 'outline-0',
+            ToastPosition::TopCenter === $this->position => 'fixed top-[1rem] right-0 bottom-auto left-0 z-1 mx-auto w-[calc(100vw-2rem)] max-w-[22.5rem]',
+            default => 'fixed top-auto right-[1rem] bottom-[1rem] z-1 mx-auto w-[calc(100vw-2rem)] sm:right-[2rem] sm:bottom-[2rem] sm:w-[22.5rem]',
+        };
+        $swipe = ToastPosition::TopCenter === $this->position ? 'up' : null;
+
+        return (
+            <div
+                data-controller="phem-toast"
+                data-phem-toast-name-value={{ name }}
+                data-phem-toast-limit-value={{ 3 == limit ? null : limit }}
+                data-phem-toast-duration-value={{ 5000 == duration ? null : duration }}
+                data-phem-toast-close-label-value={{ closeLabel }}
+                data-phem-toast-swipe-direction-value={{ swipe }}
+                data-phem-toast-side-value={{ anchored ? side.value : null }}
+                data-phem-toast-side-offset-value={{ anchored and sideOffset ? sideOffset : null }}
+                className={{ classes(place) }}
+                {{ ...attrs }}
+            >
+                <template data-phem-toast-target="template">
+                    {% if children is not null %}
+                        {{ children }}
+                    {% elseif anchored %}
+                        <ToastRoot>
+                            <ToastArrow />
+                            <ToastContent>
+                                <ToastDescription />
+                            </ToastContent>
+                        </ToastRoot>
+                    {% else %}
+                        <ToastRoot>
+                            <ToastContent>
+                                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                    <ToastTitle />
+                                    <ToastDescription />
+                                </div>
+                                <ToastAction />
+                                <ToastClose>{{ closeLabel }}</ToastClose>
+                            </ToastContent>
+                        </ToastRoot>
+                    {% endif %}
+                </template>
+            </div>
+        );
+    }
+}
+
+/** A toast: Base UI Toast.Root. Its look follows the `position` and the `anchored` of the viewport. */
+#[Component]
+function ToastRoot(#[Context] ?ToastViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
+{
+    $base = match (true) {
+        true === $viewport?->anchored => 'z-[calc(1000-var(--toast-index))] flex w-max flex-col border border-neutral-950 bg-white px-2 py-1 text-sm text-neutral-950 origin-[var(--transform-origin)] shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[scale,opacity] duration-100 ease-out data-ending-style:opacity-0 data-ending-style:scale-[0.98] data-starting-style:opacity-0 data-starting-style:scale-[0.98] dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white',
+        ToastPosition::TopCenter === $viewport?->position => "[--gap:0.75rem] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)+(var(--toast-index)*var(--gap))+var(--toast-swipe-movement-y))] absolute top-0 right-0 left-0 z-[calc(1000-var(--toast-index))] mx-auto w-full origin-top [transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--peek))+(var(--shrink)*var(--height))))_scale(var(--scale))] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0] shadow-black/12 select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none after:absolute after:bottom-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-[''] data-ending-style:opacity-0 data-expanded:[transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--offset-y)))] data-limited:opacity-0 data-starting-style:[transform:translateY(-150%)] [&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:[transform:translateY(-150%)] data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))] data-expanded:data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))] data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))] data-expanded:data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))] data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))] data-expanded:data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))] data-ending-style:data-[swipe-direction=up]:[transform:translateY(calc(var(--toast-swipe-movement-y)-150%))] data-expanded:data-ending-style:data-[swipe-direction=up]:[transform:translateY(calc(var(--toast-swipe-movement-y)-150%))] h-[var(--height)] data-expanded:h-[var(--toast-height)] [transition:transform_0.5s_cubic-bezier(0.22,1,0.36,1),opacity_0.5s,height_0.15s] focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white",
+        default => "[--gap:0.75rem] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] absolute right-0 bottom-0 left-auto z-[calc(1000-var(--toast-index))] mr-0 w-full origin-bottom [transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)-(var(--toast-index)*var(--peek))-(var(--shrink)*var(--height))))_scale(var(--scale))] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0] shadow-black/12 select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-[''] data-ending-style:opacity-0 data-expanded:[transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--offset-y)))] data-limited:opacity-0 data-starting-style:[transform:translateY(150%)] [&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:[transform:translateY(150%)] data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))] data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))] data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))] data-ending-style:data-[swipe-direction=up]:[transform:translateY(calc(var(--toast-swipe-movement-y)-150%))] h-[var(--height)] data-expanded:h-[var(--toast-height)] [transition:transform_0.5s_cubic-bezier(0.22,1,0.36,1),opacity_0.5s,height_0.15s] focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-expanded:data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))] data-expanded:data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))] data-expanded:data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))] data-expanded:data-ending-style:data-[swipe-direction=up]:[transform:translateY(calc(var(--toast-swipe-movement-y)-150%))]",
+    };
+
+    return <div className={{ classes(base) }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/** The content of a toast: its text hides behind the newest toast, until the stack expands. */
+#[Component]
+function ToastContent(#[Context] ?ToastViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
+{
+    $base = true === $viewport?->anchored ? '' : 'flex items-center gap-4 p-3 overflow-hidden transition-opacity duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] data-behind:opacity-0 data-expanded:opacity-100';
+
+    return <div data-phem-toast-content className={{ classes(base) }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/** The title of a toast: the controller removes it from a toast with no title. */
+#[Component]
+function ToastTitle(mixed ...$rest): Node
+{
+    return <h2 data-phem-toast-title className={{ classes('text-sm font-bold') }} {{ ...rest }}></h2>;
+}
+
+/** The message of a toast. */
+#[Component]
+function ToastDescription(mixed ...$rest): Node
+{
+    return <p data-phem-toast-description className={{ classes('text-sm') }} {{ ...rest }}></p>;
+}
+
+/**
+ * The action button of a toast, with the label of its `action`: a click on it calls the `onCall`
+ * handler of the viewport, and closes the toast. A toast with no action has no action button.
  */
 #[Component]
-function ToastViewport(int $limit = 3, int $duration = 5000, string $closeLabel = 'Dismiss', mixed ...$rest): Node
+function ToastAction(mixed ...$rest): Node
 {
-    return (
-        <div
-            data-controller="phem-toast"
-            data-phem-toast-limit-value={{ 3 == limit ? null : limit }}
-            data-phem-toast-duration-value={{ 5000 == duration ? null : duration }}
-            data-phem-toast-close-label-value={{ closeLabel }}
-            className={{ classes('fixed top-auto right-[1rem] bottom-[1rem] z-1 mx-auto w-[calc(100vw-2rem)] sm:right-[2rem] sm:bottom-[2rem] sm:w-[22.5rem]') }}
-            {{ ...rest }}
-        >
-            <template data-phem-toast-target="template">
-                <div className="[--gap:0.75rem] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] absolute right-0 bottom-0 left-auto z-[calc(1000-var(--toast-index))] mr-0 w-full origin-bottom [transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)-(var(--toast-index)*var(--peek))-(var(--shrink)*var(--height))))_scale(var(--scale))] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0] shadow-black/12 select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-[''] data-ending-style:opacity-0 data-expanded:[transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--offset-y)))] data-limited:opacity-0 data-starting-style:[transform:translateY(150%)] [&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:[transform:translateY(150%)] data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))] data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))] data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))] data-ending-style:data-[swipe-direction=up]:[transform:translateY(calc(var(--toast-swipe-movement-y)-150%))] h-[var(--height)] data-expanded:h-[var(--toast-height)] [transition:transform_0.5s_cubic-bezier(0.22,1,0.36,1),opacity_0.5s,height_0.15s] focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-expanded:data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))] data-expanded:data-ending-style:data-[swipe-direction=left]:[transform:translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))] data-expanded:data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))] data-expanded:data-ending-style:data-[swipe-direction=up]:[transform:translateY(calc(var(--toast-swipe-movement-y)-150%))]">
-                    <div data-phem-toast-content className="flex items-center gap-4 p-3 overflow-hidden transition-opacity duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] data-behind:opacity-0 data-expanded:opacity-100">
-                        <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <h2 data-phem-toast-title className="text-sm font-bold"></h2>
-                            <p data-phem-toast-description className="text-sm"></p>
-                        </div>
-                        <button type="button" data-phem-toast-close className="flex h-8 shrink-0 items-center justify-center gap-2 rounded-none border border-neutral-950 bg-white px-3 py-0 font-[inherit] text-sm leading-none whitespace-nowrap font-normal text-neutral-950 hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">{{ closeLabel }}</button>
-                    </div>
-                </div>
-            </template>
-        </div>
-    );
+    $base = 'flex h-8 shrink-0 items-center justify-center gap-2 rounded-none border border-neutral-950 bg-white px-3 py-0 font-[inherit] text-sm leading-none whitespace-nowrap font-normal text-neutral-950 hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
+
+    return <button type="button" data-phem-toast-action className={{ classes(base) }} {{ ...rest }}></button>;
+}
+
+/** The button that closes the toast. */
+#[Component]
+function ToastClose(?Html $children = null, mixed ...$rest): Node
+{
+    $base = 'flex h-8 shrink-0 items-center justify-center gap-2 rounded-none border border-neutral-950 bg-white px-3 py-0 font-[inherit] text-sm leading-none whitespace-nowrap font-normal text-neutral-950 hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
+
+    return <button type="button" data-phem-toast-close className={{ classes(base) }} {{ ...rest }}>{{ children }}</button>;
+}
+
+/** The arrow of an anchored toast: it points to the anchor. */
+#[Component]
+function ToastArrow(mixed ...$rest): Node
+{
+    $base = "relative block w-3 h-1.5 overflow-clip data-[side=bottom]:top-[-6px] data-[side=left]:right-[-9px] data-[side=left]:rotate-90 data-[side=right]:left-[-9px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-6px] data-[side=top]:rotate-180 before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-[calc(6px*sqrt(2))] before:h-[calc(6px*sqrt(2))] before:bg-white dark:before:bg-neutral-950 before:border before:border-neutral-950 dark:before:border-white before:[transform:translate(-50%,50%)_rotate(45deg)]";
+
+    return <span data-phem-toast-arrow className={{ classes(base) }} {{ ...rest }}></span>;
+}
+
+/** The text of the `data` field `name` of the toast. With no value, the controller removes it. */
+#[Component]
+function ToastData(string $name, mixed ...$rest): Node
+{
+    return <span data-phem-toast-data={{ name }} {{ ...rest }}></span>;
 }

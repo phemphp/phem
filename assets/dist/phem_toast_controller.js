@@ -1,11 +1,16 @@
 import { Controller } from "@hotwired/stimulus"
 import { isFocusVisible, tabbables } from "./phem_focus.js"
+import { position } from "./phem_position.js"
 import { onControl, swipe } from "./phem_swipe.js"
 import { PausableTimers } from "./phem_timers.js"
 import { hide, show } from "./phem_transition.js"
 
-// The types of a toast. A toast with another type, or with no type, has no type.
-const TYPES = ["info", "success", "warning", "error"]
+// The types of a toast. A toast with another type, or with no type, has no type. `loading` is the
+// type of a toast that waits for the answer of the server (Base UI `toastManager.promise()`).
+const TYPES = ["info", "success", "warning", "error", "loading"]
+
+// toast => the AbortController of its place next to its anchor.
+const anchors = new WeakMap()
 
 // The default message of a failed event, as in the phem controller.
 const ERROR_MESSAGE = "Something went wrong. Please try again."
@@ -92,6 +97,30 @@ const OWNED = "data-phem-toast-owned"
 // phem_transition.js for the animations: a toast that goes stays until the end of its
 // `[data-ending-style]` transition.
 //
+// More options of a toast, as the options of `toastManager.add()` of Base UI:
+//
+// - `id`: a toast with the id of a toast on the screen updates it (its message, title, type, action
+//   and data), and starts its full time again. The root gets `data-update-key` (1 after the first
+//   update, then 2, …) and `data-updated`, which the controller removes and adds again for each
+//   update, so a CSS animation on `[data-updated]` plays again. A toast with an id is not the same
+//   as another toast with the same text;
+// - `action`: the label of an action button (`[data-phem-toast-action]`; with no action, the
+//   controller removes it). A click on it closes the toast, and dispatches a `phem:call` event on
+//   the button, with `{ action, id, data }` in the detail: the `onCall` handler around the element
+//   runs (see the docs of the events);
+// - `data`: an object. Each `[data-phem-toast-data="name"]` part of the template gets the text of
+//   `data.name` (with no value, the controller removes the part);
+// - `anchor`: the `id` of an element. The toast shows next to it (phem_position.js), on the `side`
+//   value ("top") with the `sideOffset` value, as Base UI `Toast.Positioner`. An
+//   `[data-phem-toast-arrow]` part points to it;
+// - `viewport`: the `name` value of the element that shows the toast. An element with a `name`
+//   shows only the toasts with this `viewport`, and an element with no name shows only the
+//   toasts with no `viewport` (also the toasts of `phem:error` and `phem:rate-limited`).
+//
+// A click on an element with `data-phem-toast-show` (a JSON detail, as the detail of `phem:toast`)
+// shows its toast at once, before the server answers the event of the same click: for example a
+// `loading` toast that the toast of the handler with the same `id` updates.
+//
 // The toasts and their durations are in the DOM, so a toast that the controller gets again (after a
 // move of the element, or in a page from the Turbo cache) has its time and its close button.
 export default class PhemToastController extends Controller {
@@ -104,6 +133,9 @@ export default class PhemToastController extends Controller {
     closeLabel: { type: String, default: "Close" },
     label: { type: String, default: "Notifications" },
     swipeDirection: { type: String, default: "down right" },
+    name: String,
+    side: { type: String, default: "top" },
+    sideOffset: { type: Number, default: 0 },
   }
 
   connect() {
@@ -173,6 +205,7 @@ export default class PhemToastController extends Controller {
     window.addEventListener("keydown", this.onWindowKeydown, options)
     window.addEventListener("blur", this.onWindowBlur, options)
     window.addEventListener("focus", this.onWindowFocus, options)
+    document.addEventListener("click", this.onShowClick, options)
 
     window.addEventListener("phem:toast", this.show)
     window.addEventListener("phem:error", this.onError)
@@ -198,34 +231,69 @@ export default class PhemToastController extends Controller {
     this.timers.clear()
   }
 
-  // The detail is the message, or `{ message, type, duration, title }`.
+  // The detail is the message, or `{ message, type, duration, title, id, action, data, anchor, viewport }`.
   show = (event) => {
-    const detail = typeof event.detail === "string" ? { message: event.detail } : (event.detail ?? {})
+    this.#show(event.detail, event)
+  }
+
+  // A click on an element with `data-phem-toast-show`: its toast shows at once.
+  onShowClick = (event) => {
+    const el = event.target.closest?.("[data-phem-toast-show]")
+    if (!el) return
+
+    let detail = null
+    try {
+      detail = JSON.parse(el.getAttribute("data-phem-toast-show"))
+    } catch {
+      detail = el.getAttribute("data-phem-toast-show")
+    }
+
+    this.#show(detail, event)
+  }
+
+  #show(raw, event) {
+    const detail = typeof raw === "string" ? { message: raw } : (raw ?? {})
     if (detail.message === undefined || detail.message === null || detail.message === "") return
+    if (text(detail.viewport) !== this.nameValue) return
     if (!this.#take(event)) return
 
     const type = TYPES.includes(detail.type) ? detail.type : ""
     const duration = Number(detail.duration ?? NaN)
-    // A title is a text or a number, as Phem\Toast reads it. Another value is no title.
-    const title = typeof detail.title === "string" || typeof detail.title === "number" ? String(detail.title).trim() : ""
-    this.#add(String(detail.message), type, Number.isFinite(duration) ? duration : this.durationValue, title)
+    const data = detail.data !== null && typeof detail.data === "object" && !Array.isArray(detail.data) ? detail.data : {}
+    this.#add(String(detail.message), type, Number.isFinite(duration) ? duration : this.durationValue, text(detail.title), {
+      id: text(detail.id),
+      action: text(detail.action),
+      anchor: text(detail.anchor),
+      data,
+    })
   }
 
-  // A listener before this one can show its own message: it prevents the default.
+  // A listener before this one can show its own message: it prevents the default. Only the element
+  // with no name shows it.
   onError = (event) => {
-    if (event.defaultPrevented || !this.#take(event)) return
+    if (event.defaultPrevented || this.nameValue || !this.#take(event)) return
 
     event.preventDefault()
     this.#add(this.#errorMessage(event.target), "error", this.durationValue)
   }
 
   onRateLimited = (event) => {
-    if (!this.#take(event)) return
+    if (this.nameValue || !this.#take(event)) return
 
     this.#add(this.rateLimitedMessageValue, "warning", this.durationValue)
   }
 
   onClick = (event) => {
+    const action = event.target.closest?.("[data-phem-toast-action]")
+    const toast = action ? this.#toastOf(action) : null
+    if (toast) {
+      const detail = { action: action.textContent.trim(), id: toast.dataset.phemToastId ?? null, data: JSON.parse(toast.dataset.phemToastData ?? "{}") }
+      action.dispatchEvent(new CustomEvent("phem:call", { detail }))
+      this.#remove(toast)
+
+      return
+    }
+
     const close = event.target.closest?.("[data-phem-toast-close]")
     const el = close ? this.#toastOf(close) : null
     if (el) this.#remove(el)
@@ -383,10 +451,18 @@ export default class PhemToastController extends Controller {
   }
 
   // The message and the title are text, not HTML.
-  #add(message, type, duration, title = "") {
+  #add(message, type, duration, title = "", { id = "", action = "", anchor = "", data = {} } = {}) {
     // A toast that goes away does not count: it is removed at the end of its animation.
-    const same = this.#toasts().find((el) => !el.hasAttribute("data-ending-style") && (el.getAttribute("data-type") ?? "") === type && this.#message(el) === message && this.#title(el) === title)
+    const live = this.#toasts().filter((el) => !el.hasAttribute("data-ending-style"))
+    const same = id
+      ? live.find((el) => el.dataset.phemToastId === id)
+      : live.find((el) => !el.dataset.phemToastId && (el.getAttribute("data-type") ?? "") === type && this.#message(el) === message && this.#title(el) === title)
     if (same) {
+      if (id) {
+        this.#fill(same, { message, type, title, action, data })
+        this.#updated(same)
+        this.#stack()
+      }
       same.dataset.phemToastDuration = String(duration)
       this.#schedule(same)
 
@@ -396,7 +472,7 @@ export default class PhemToastController extends Controller {
     const el = this.#make()
     el.id = `phem-toast-${++count}`
     el.setAttribute("data-phem-toast", "")
-    if (type) el.setAttribute("data-type", type)
+    if (id) el.dataset.phemToastId = id
     el.dataset.phemToastDuration = String(duration)
     el.hidden = true
     this.#unswipe(el)
@@ -406,6 +482,25 @@ export default class PhemToastController extends Controller {
     if (!el.hasAttribute("tabindex")) el.tabIndex = 0
     el.setAttribute("aria-modal", "false")
 
+    this.#fill(el, { message, type, title, action, data })
+
+    // The newest toast is first, as in Base UI. Another child of the element stays in its place.
+    const first = this.#toasts()[0]
+    if (first) first.before(el)
+    else this.element.append(el)
+
+    this.#anchor(el, anchor)
+    show(el)
+    this.#stack()
+    this.#renderExpanded(el)
+    this.#schedule(el)
+  }
+
+  // The text and the type of the parts of a toast.
+  #fill(el, { message, type, title, action, data }) {
+    el.toggleAttribute("data-type", type !== "")
+    if (type) el.setAttribute("data-type", type)
+
     const description = el.querySelector("[data-phem-toast-description]") ?? el
     description.textContent = message
     if (description !== el) {
@@ -414,30 +509,65 @@ export default class PhemToastController extends Controller {
     }
 
     // Each part has the type of its toast, as the root.
-    if (type) {
-      for (const part of el.querySelectorAll("[data-phem-toast-title], [data-phem-toast-description], [data-phem-toast-close]")) part.setAttribute("data-type", type)
+    for (const part of el.querySelectorAll("[data-phem-toast-title], [data-phem-toast-description], [data-phem-toast-close], [data-phem-toast-action]")) {
+      if (type) part.setAttribute("data-type", type)
+      else part.removeAttribute("data-type")
     }
 
     // The title is also on the root: a template with no title part does not show it.
     el.dataset.phemToastTitle = title
 
     const heading = el.querySelector("[data-phem-toast-title]")
-    if (title === "") heading?.remove()
-    else if (heading) {
+    if (title === "") {
+      heading?.remove()
+      el.removeAttribute("aria-labelledby")
+    } else if (heading) {
       heading.textContent = title
       heading.id ||= `${el.id}-title`
       el.setAttribute("aria-labelledby", heading.id)
     }
 
-    // The newest toast is first, as in Base UI. Another child of the element stays in its place.
-    const first = this.#toasts()[0]
-    if (first) first.before(el)
-    else this.element.append(el)
+    for (const button of el.querySelectorAll("[data-phem-toast-action]")) {
+      if (action) button.textContent = action
+      else button.remove()
+    }
 
-    show(el)
-    this.#stack()
-    this.#renderExpanded(el)
-    this.#schedule(el)
+    el.dataset.phemToastData = JSON.stringify(data)
+    for (const part of el.querySelectorAll("[data-phem-toast-data]")) {
+      const value = data[part.getAttribute("data-phem-toast-data")]
+      if (value === undefined || value === null) part.remove()
+      else part.textContent = String(value)
+    }
+  }
+
+  // An update of a toast with an id: `data-update-key` counts the updates, and `data-updated`
+  // comes again, so its CSS animation plays again.
+  #updated(el) {
+    el.setAttribute("data-update-key", String(Number(el.getAttribute("data-update-key") ?? 0) + 1))
+    el.removeAttribute("data-updated")
+    void el.offsetWidth
+    el.setAttribute("data-updated", "")
+  }
+
+  // A toast with an anchor shows next to it, until the end of its close animation.
+  #anchor(el, id) {
+    const anchor = id ? document.getElementById(id) : null
+    if (!anchor) return
+
+    const placing = new AbortController()
+    anchors.set(el, placing)
+    el.setAttribute("data-anchored", "")
+    position(anchor, el, () => ({
+      side: this.sideValue,
+      align: "center",
+      sideOffset: this.sideOffsetValue,
+      alignOffset: 0,
+      collisionPadding: 5,
+      collisionPaddingInline: -1,
+      flip: true,
+      arrowPadding: 5,
+      arrow: el.querySelector("[data-phem-toast-arrow]"),
+    }), placing.signal)
   }
 
   // A copy of the root of the template, or the default parts.
@@ -597,6 +727,7 @@ export default class PhemToastController extends Controller {
     this.#moveFocus(el, keyboard)
     hide(el, {
       onEnd: () => {
+        anchors.get(el)?.abort()
         el.remove()
         this.#release()
       },
@@ -647,3 +778,8 @@ export default class PhemToastController extends Controller {
   }
 }
 
+
+// A text of a detail: a string or a number that is not empty, or else "".
+function text(value) {
+  return typeof value === "string" || typeof value === "number" ? String(value).trim() : ""
+}

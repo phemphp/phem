@@ -8,6 +8,14 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A toast has the options of `toastManager.add()` of Base UI: `$e->toast()` and `Toasts::show()`
+  take an `id` (a toast with the same id updates the toast on the screen, with `data-update-key`
+  and `data-updated`), an `action` (a `[data-phem-toast-action]` button that calls the `onCall`
+  handler around the toasts), `data` (the `[data-phem-toast-data]` parts), an `anchor` (the toast
+  shows next to the element, with the `side` and `side-offset` values and a
+  `[data-phem-toast-arrow]` part) and a `viewport` (the `name` value of the `phem-toast` element
+  that shows it). A click on a `data-phem-toast-show` element shows its toast at once. The
+  `loading` type is new. `Phem\Toast` has the new options. See docs/controllers.md.
 - A drawer of `phem-dialog` opens with a swipe from the edge of the screen: the new `swipeArea`
   part. The new `virtual-keyboard` value gives the popup the height of the keyboard of the device
   in `--drawer-keyboard-inset`. The new `phem-drawer-provider` controller gives the page an indent

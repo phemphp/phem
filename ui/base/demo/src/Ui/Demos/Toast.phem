@@ -3,16 +3,25 @@
 namespace App\Ui\Demos;
 
 use Phem\Attribute\{Page, State};
-use Phem\{Event, Node};
+use Phem\{Event, Node, ToastType};
 
-use function App\Ui\{DemoPage, Hero};
-use function Phem\Ui\Base\ToastViewport;
-use Phem\Ui\Base\Button;
+use function App\Ui\{DemoPage, Example, Examples, Hero};
+use function Phem\Ui\Base\{ToastClose, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle, TooltipArrow, TooltipPopup, TooltipTrigger, Tooltip};
+use Phem\Ui\Base\{Button, ToastViewport};
+
+// The texts of the toasts of the varying heights example.
+const TOAST_TEXTS = [
+    'Short message.',
+    'A bit longer message that spans two lines.',
+    'This is a longer description that intentionally takes more vertical space to demonstrate stacking with varying heights.',
+    'An even longer description that should span multiple lines so we can verify the clamped collapsed height and smooth expansion animation when hovering or focusing the viewport.',
+];
 
 #[Page('/components/toast')]
 final class ToastPage
 {
     #[State] public int $count = 0;
+    #[State] public int $promises = 0;
 
     public function create(Event $e): void
     {
@@ -20,14 +29,162 @@ final class ToastPage
         $e->toast('This is a toast notification.', title: 'Toast '.$this->count.' created');
     }
 
+    /** Anchored toasts: a toast next to the copy button. */
+    public function copy(Event $e): void
+    {
+        $e->toast('Copied', duration: 1500, anchor: 'toast-copy', viewport: 'anchored');
+    }
+
+    public function stacked(Event $e): void
+    {
+        $e->toast('Copied');
+    }
+
+    /** Custom position: a toast at the top of the screen. */
+    public function createTop(Event $e): void
+    {
+        ++$this->count;
+        $e->toast('This is a toast notification.', title: 'Toast '.$this->count.' created', viewport: 'top');
+    }
+
+    /** Undo action: a toast with an action button. */
+    public function perform(Event $e): void
+    {
+        $e->toast('You can undo this action.', ToastType::Success, 10000, 'Action performed', action: 'Undo');
+    }
+
+    /** The action button of a toast calls the `onCall` handler of the viewport. */
+    public function action(Event $e): void
+    {
+        if ('Undo' === ($e->detail['action'] ?? null)) {
+            $e->toast('Action undone');
+        }
+    }
+
+    /** Promise: the loading toast of the click becomes the toast of the answer. */
+    public function runPromise(Event $e): void
+    {
+        $id = 'promise-'.++$this->promises;
+
+        // Simulate an API request that ends after 2 seconds.
+        usleep(2_000_000);
+
+        if (random_int(1, 10) <= 7) {
+            $e->toast('Success: operation completed', ToastType::Success, id: $id);
+        } else {
+            $e->toast('Error: operation failed', ToastType::Error, id: $id);
+        }
+    }
+
+    /** Custom: a toast with data for the template. */
+    public function custom(Event $e): void
+    {
+        $e->toast('Toast with custom data', data: ['userId' => '123'], viewport: 'custom');
+    }
+
+    /** Deduplicated toast: the same id updates the toast on the screen. */
+    public function saveDraft(Event $e): void
+    {
+        $e->toast('Click again while it is visible to replay the pulse.', title: 'Draft saved', id: 'save-status', viewport: 'pulse');
+    }
+
+    public function varying(Event $e): void
+    {
+        ++$this->count;
+        $e->toast(TOAST_TEXTS[random_int(0, \count(TOAST_TEXTS) - 1)], title: 'Toast '.$this->count.' created');
+    }
+
     public function render(): Node
     {
+        $loading = json_encode(['message' => 'Loading data…', 'type' => 'loading', 'id' => 'promise-'.($this->promises + 1), 'duration' => 0]);
+
         return (
             <DemoPage slug="toast">
                 <Hero>
                     <Button onClick={{ create }}>Create toast</Button>
-                    <ToastViewport />
+                    <ToastViewport onCall={{ action }} />
                 </Hero>
+                <Examples>
+                    <Example title="Anchored toasts">
+                        <Example.description>
+                            <p>Toasts can be anchored to a specific element: give the toast the <code>anchor</code> option with the <code>id</code> of the element. This is useful for showing contextual feedback like transient "Copied" toasts that appear near the button that triggered the action.</p>
+                            <p>Anchored toasts should be rendered in a separate <code>ToastViewport</code> from stacked toasts: an <code>anchored</code> viewport with a <code>name</code>, and the <code>viewport</code> option of the toast. The anchored viewport places each toast on its <code>side</code>, with its <code>sideOffset</code>.</p>
+                        </Example.description>
+                        <div className="flex items-center gap-2">
+                            <Tooltip sideOffset={{ 10 }}>
+                                <TooltipTrigger id="toast-copy" aria-label="Copy to clipboard" onClick={{ copy }} className="w-8 px-0">
+                                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="block">
+                                        <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+                                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                                    </svg>
+                                </TooltipTrigger>
+                                <TooltipPopup><TooltipArrow />Copy</TooltipPopup>
+                            </Tooltip>
+                            <Button onClick={{ stacked }}>Stacked toast</Button>
+                        </div>
+                        <ToastViewport name="anchored" anchored sideOffset={{ 10 }} />
+                    </Example>
+                    <Example title="Custom position">
+                        <Example.description>
+                            <p>The position of the toasts is controlled by the <code>position</code> prop of <code>ToastViewport</code>: <code>bottom-right</code> (the default) or <code>top-center</code>. A toast at the top closes with a swipe up. The following shows a top-center position.</p>
+                        </Example.description>
+                        <Button onClick={{ createTop }}>Create toast</Button>
+                        <ToastViewport name="top" position="top-center" />
+                    </Example>
+                    <Example title="Undo action">
+                        <Example.description>
+                            <p>When adding a toast, the <code>action</code> option gives the label of an action button inside of it. A click on the button closes the toast and calls the <code>onCall</code> handler of the viewport, with the <code>action</code>, the <code>id</code> and the <code>data</code> of the toast in <code>$e-&gt;detail</code>: this enables the ability to undo an action associated with the toast.</p>
+                        </Example.description>
+                        <Button onClick={{ perform }}>Perform action</Button>
+                    </Example>
+                    <Example title="Promise">
+                        <Example.description>
+                            <p>An asynchronous toast can be created with three possible states: <code>loading</code>, <code>success</code>, and <code>error</code>. The <code>type</code> string matches these states to change the styling.</p>
+                            <p>Here, the button has <code>data-phem-toast-show</code> with the detail of a <code>loading</code> toast: it shows at the click, before the server answers. The handler answers after two seconds with a <code>success</code> or an <code>error</code> toast with the same <code>id</code>, which updates the loading toast.</p>
+                        </Example.description>
+                        <Button onClick={{ runPromise }} data-phem-toast-show={{ loading }}>Run promise</Button>
+                    </Example>
+                    <Example title="Custom">
+                        <Example.description>
+                            <p>A toast with custom data can be created by passing an array to the <code>data</code> option. Each <code>ToastData</code> part of the template of the viewport shows the value of its <code>name</code>.</p>
+                        </Example.description>
+                        <Button onClick={{ custom }}>Create custom toast</Button>
+                        <ToastViewport name="custom">
+                            <ToastRoot>
+                                <ToastContent>
+                                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                        <ToastDescription className="font-bold" />
+                                        <p className="text-sm">data.userId is <ToastData name="userId" /></p>
+                                    </div>
+                                    <ToastClose>Dismiss</ToastClose>
+                                </ToastContent>
+                            </ToastRoot>
+                        </ToastViewport>
+                    </Example>
+                    <Example title="Deduplicated toast">
+                        <Example.description>
+                            <p>When you show the same toast by <code>id</code>, the toast on the screen updates, and its <code>data-update-key</code> attribute counts the updates. Its <code>data-updated</code> attribute comes again with each update, so a CSS animation on <code>[data-updated]</code> plays again while the same toast stays on the screen.</p>
+                        </Example.description>
+                        <Button onClick={{ saveDraft }}>Save draft</Button>
+                        <ToastViewport name="pulse">
+                            <ToastRoot className="data-updated:animate-[toast-pulse_0.28s_ease]">
+                                <ToastContent>
+                                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                        <ToastTitle />
+                                        <ToastDescription />
+                                    </div>
+                                    <ToastClose>Dismiss</ToastClose>
+                                </ToastContent>
+                            </ToastRoot>
+                        </ToastViewport>
+                    </Example>
+                    <Example title="Varying heights">
+                        <Example.description>
+                            <p>Toasts with varying heights are stacked by clamping every toast's height to the frontmost toast at index 0 using the <code>--toast-frontmost-height</code> CSS variable, while the <code>data-behind</code> attribute hides the content of the toasts behind it. Avoid sizing <code>ToastContent</code> to the root's height (such as <code>height: 100%</code>), as resizing it alongside the root cancels the root's height transition.</p>
+                        </Example.description>
+                        <Button onClick={{ varying }}>Create varying height toast</Button>
+                    </Example>
+                </Examples>
             </DemoPage>
         );
     }

@@ -2699,7 +2699,7 @@ public function save(Event $e): void
 }
 ```
 
-The types are `ToastType::Info`, `Success`, `Warning` and `Error`. With no type (the default), the toast gets no `data-type`, as in Base UI. A third argument sets the duration of this toast in milliseconds. `0` keeps the toast until the user closes it:
+The types are `ToastType::Info`, `Success`, `Warning` and `Error`. The browser also knows the `loading` type (see [Update a toast with its id](#update-a-toast-with-its-id)). With no type (the default), the toast gets no `data-type`, as in Base UI. A third argument sets the duration of this toast in milliseconds. `0` keeps the toast until the user closes it:
 
 ```php
 $e->toast('The order has no stock.', ToastType::Error, 0);
@@ -2840,6 +2840,108 @@ During a swipe to the right (a diagonal move of `+60, +50`):
 ```
 
 A shorter swipe removes `data-swipe-direction`, gives the toast its place again, and the time that remained goes on. A press on the close button, a link or a field of the toast does not start a swipe. `phem.css` moves a toast with the swipe variables. A touch that moves in a direction of the swipe does not scroll the page, and a touch that moves in another direction scrolls it.
+
+### Update a toast with its id
+
+Give a toast an `id`. A toast with the id of a toast on the screen updates it: its message, its title, its type, its action and its data change, and its full time starts again. This is the `id` of `toastManager.add()` of Base UI:
+
+```php
+$e->toast('Click again while it is visible to replay the pulse.', title: 'Draft saved', id: 'save-status');
+```
+
+A toast with an id is not the same as a toast with the same text and no id. The root gets `data-update-key` (`1` after the first update, then `2`, …) and `data-updated`. The controller removes `data-updated` and adds it again for each update, so a CSS animation on it plays again:
+
+```css
+@keyframes pulse { 50% { scale: 1.04; } }
+[data-phem-toast][data-updated] { animation: pulse 0.28s ease; }
+```
+
+The `loading` type is the type of a toast that waits for the answer of the server, as the `promise()` of Base UI. Show it at the click (see [Show a toast at the click](#show-a-toast-at-the-click)), and give the toast of the handler the same `id`:
+
+```php
+<button onClick={{ run }} data-phem-toast-show={{ {message: 'Loading data…', type: 'loading', id: 'job', duration: 0}|json_encode }}>Run</button>
+```
+
+```php
+public function run(Event $e): void
+{
+    $this->jobs->run();
+    $e->toast('Success: operation completed', ToastType::Success, id: 'job');
+}
+```
+
+The browser shows the loading toast at the click, and the toast of the answer replaces its text and its type:
+
+```html
+<div id="phem-toast-3" data-phem-toast data-phem-toast-id="job" data-type="success" data-update-key="1" data-updated ...>
+```
+
+### Show a toast at the click
+
+A click on an element with `data-phem-toast-show` shows its toast at once, before the server answers the event of the same click. The value is the detail of a `phem:toast` event, in JSON: a message, or an object with the options of a toast.
+
+### Add an action to a toast
+
+The `action` option gives the label of an action button, as the `actionProps` of Base UI. Put a `[data-phem-toast-action]` part in the template: the controller removes it from a toast with no action. A click on the button closes the toast, and dispatches a `phem:call` event on it, so the [`onCall` handler](events.md#call-a-handler-from-your-javascript) around the `phem-toast` element runs. `$e->detail` has the `action`, the `id` and the `data` of the toast:
+
+```php
+public function delete(Event $e): void
+{
+    $this->items->delete($this->id);
+    $e->toast('You can undo this action.', ToastType::Success, 10000, 'Action performed', id: 'delete-'.$this->id, action: 'Undo', data: ['item' => $this->id]);
+}
+
+public function undo(Event $e): void
+{
+    $this->items->restore($e->detail['data']['item']);
+    $e->toast('Action undone');
+}
+```
+
+```php
+<div data-controller="phem-toast" onCall={{ undo }}>
+    <template data-phem-toast-target="template">
+        <div>
+            <p data-phem-toast-description></p>
+            <button data-phem-toast-action></button>
+        </div>
+    </template>
+</div>
+```
+
+The browser dispatches `phem:call` with this detail: `{"action": "Undo", "id": "delete-7", "data": {"item": 7}}`. Check it in the handler, as you check `$e->value`.
+
+### Show data in a toast
+
+The `data` option is an array of values, as the `data` of Base UI. Each `[data-phem-toast-data="name"]` part of the template shows the value of its `name`. The controller removes a part with no value:
+
+```php
+$e->toast('Toast with custom data', data: ['userId' => '123']);
+```
+
+```html
+<p>data.userId is <span data-phem-toast-data="userId"></span></p>
+```
+
+### Anchor a toast to an element
+
+The `anchor` option is the `id` of an element: the toast shows next to it, as the `positionerProps` of Base UI, for feedback such as "Copied" next to a copy button. The toast gets `data-anchored`, and the position of a popover (see [Position](#position)): `position: fixed`, `data-side` and the CSS variables. The `side` value of the element (`top` by default) and its `side-offset` value place it. An `[data-phem-toast-arrow]` part of the template points to the anchor:
+
+```php
+$e->toast('Copied', duration: 1500, anchor: 'copy-button', viewport: 'anchored');
+```
+
+```html
+<div data-controller="phem-toast" data-phem-toast-name-value="anchored" data-phem-toast-side-offset-value="10">
+    <template data-phem-toast-target="template">
+        <div class="tip"><span data-phem-toast-arrow></span><span data-phem-toast-description></span></div>
+    </template>
+</div>
+```
+
+### Show the toasts in more than one place
+
+A page can have more than one `phem-toast` element: for example a stack at the bottom, and the anchored toasts. Give an element a `data-phem-toast-name-value`, and give a toast the `viewport` option with this name. An element with a name shows only the toasts with its name. The element with no name shows the toasts with no `viewport`, and the toasts of `phem:error` and `phem:rate-limited`.
 
 ## Copy text to the clipboard
 

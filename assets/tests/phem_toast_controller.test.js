@@ -1059,3 +1059,94 @@ describe("phem-toast: the time, the swipe, the order and the attributes, as in B
     expect(document.activeElement).toBe(first)
   })
 })
+
+describe("phem-toast: the options of a toast", () => {
+  // A template with the parts of the options.
+  const template = `<template data-phem-toast-target="template">
+      <div><div data-phem-toast-content><strong data-phem-toast-title></strong><span data-phem-toast-description></span><em data-phem-toast-data="userId"></em></div>
+      <button data-phem-toast-action></button><button data-phem-toast-close>×</button><span data-phem-toast-arrow></span></div>
+    </template>`
+
+  async function viewport(attributes = "") {
+    await mount(`<div id="toasts" data-controller="phem-toast" ${attributes}>${template}</div><div id="named" data-controller="phem-toast" data-phem-toast-name-value="top"></div><button id="copy">Copy</button>`)
+  }
+
+  const of = (id) => [...document.querySelectorAll(`#${id} > [data-phem-toast]`)]
+
+  it("updates the toast with the same id, and replays its update", async () => {
+    await viewport()
+
+    toast({ message: "Loading data…", type: "loading", id: "job", duration: 0 })
+    expect(toasts()).toHaveLength(1)
+    expect(toasts()[0].getAttribute("data-type")).toBe("loading")
+    expect(toasts()[0].hasAttribute("data-update-key")).toBe(false)
+
+    toast({ message: "Success: operation completed", type: "success", id: "job", title: "Done" })
+    expect(toasts()).toHaveLength(1)
+    expect(messages()).toEqual(["Success: operation completed"])
+    expect(toasts()[0].getAttribute("data-type")).toBe("success")
+    expect(toasts()[0].getAttribute("data-update-key")).toBe("1")
+    expect(toasts()[0].hasAttribute("data-updated")).toBe(true)
+
+    // A toast with no id and the same text is another toast.
+    toast({ message: "Success: operation completed", type: "success", title: "Done" })
+    expect(toasts()).toHaveLength(2)
+  })
+
+  it("shows the action, and a click on it calls the onCall handler with the detail and closes the toast", async () => {
+    await viewport()
+    const calls = []
+    // The phem root listens to `phem:call` in the capture phase: the event does not bubble.
+    document.getElementById("toasts").addEventListener("phem:call", (event) => calls.push(event.detail), { capture: true })
+
+    toast({ message: "You can undo this action.", id: "a1", action: "Undo", data: { item: 7 } })
+    toast({ message: "No action" })
+    expect(toasts()[0].querySelector("[data-phem-toast-action]")).toBeNull()
+
+    const button = toasts()[1].querySelector("[data-phem-toast-action]")
+    expect(button.textContent).toBe("Undo")
+    button.click()
+    expect(calls).toEqual([{ action: "Undo", id: "a1", data: { item: 7 } }])
+    expect(messages()).toEqual(["No action"])
+  })
+
+  it("fills the data parts, and removes a data part with no value", async () => {
+    await viewport()
+
+    toast({ message: "Custom", data: { userId: "123" } })
+    toast({ message: "Plain" })
+    expect(toasts()[1].querySelector('[data-phem-toast-data="userId"]').textContent).toBe("123")
+    expect(toasts()[0].querySelector("[data-phem-toast-data]")).toBeNull()
+  })
+
+  it("shows a toast with a viewport only in the element with that name", async () => {
+    await viewport()
+
+    toast({ message: "Top", viewport: "top" })
+    toast({ message: "Bottom" })
+    expect(of("named").map((el) => el.querySelector("[data-phem-toast-description]").textContent)).toEqual(["Top"])
+    expect(messages()).toEqual(["Bottom"])
+
+    window.dispatchEvent(new CustomEvent("phem:rate-limited"))
+    expect(of("named")).toHaveLength(1)
+  })
+
+  it("places a toast with an anchor next to the element", async () => {
+    await viewport('data-phem-toast-side-offset-value="10"')
+
+    toast({ message: "Copied", anchor: "copy" })
+    const el = toasts()[0]
+    expect(el.hasAttribute("data-anchored")).toBe(true)
+    expect(el.getAttribute("data-side")).toBe("top")
+    expect(el.style.position).toBe("fixed")
+  })
+
+  it("shows the toast of a data-phem-toast-show element at the click", async () => {
+    await viewport()
+    document.body.insertAdjacentHTML("beforeend", `<button id="run" data-phem-toast-show='{"message":"Loading data…","type":"loading","id":"job"}'>Run</button>`)
+
+    document.getElementById("run").click()
+    expect(messages()).toEqual(["Loading data…"])
+    expect(toasts()[0].getAttribute("data-type")).toBe("loading")
+  })
+})

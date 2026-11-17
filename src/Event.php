@@ -103,12 +103,26 @@ final class Event
      *                              keep the toast until its close button, or null for the
      *                              `duration` value of the controller
      * @param string|null $title    a short title above the message, or null for a toast with no title
+     * @param string|null $id       the id of the toast: a toast with the id of a toast on the screen updates it
+     * @param string|null $action   the label of an action button, for the `onCall` handler around the toasts
+     * @param array<string, scalar|null> $data the fields of the toast, and the data of its action
+     * @param string|null $anchor   the `id` of an element: the toast shows next to it
+     * @param string|null $viewport the `name` of the `phem-toast` element that shows the toast
      *
      * @throws \InvalidArgumentException for an empty message, an empty title or a duration out of range
      */
-    public function toast(string $message, ?ToastType $type = null, ?int $duration = null, ?string $title = null): void
-    {
-        new Toasts($this->dispatcher)->show($message, $type, $duration, $title);
+    public function toast(
+        string $message,
+        ?ToastType $type = null,
+        ?int $duration = null,
+        ?string $title = null,
+        ?string $id = null,
+        ?string $action = null,
+        array $data = [],
+        ?string $anchor = null,
+        ?string $viewport = null,
+    ): void {
+        new Toasts($this->dispatcher)->show($message, $type, $duration, $title, $id, $action, $data, $anchor, $viewport);
     }
 
     /**

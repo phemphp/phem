@@ -402,10 +402,11 @@ final class PickersTest extends DemoTestCase
     {
         $page = $this->visitComponent('toast');
 
-        // A long duration: the test does not depend on the time of a toast.
-        $page->locator('[data-controller~="phem-toast"]')->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
+        // A long duration: the test does not depend on the time of a toast. The first viewport is
+        // the viewport of the hero.
+        $page->locator('[data-controller~="phem-toast"]')->first()->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
 
-        $button = $page->getByRole('button', ['name' => 'Create toast']);
+        $button = $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->getByRole('button', ['name' => 'Create toast']);
         $button->click();
         expect($page->getByText('Toast 1 created'))->toBeVisible();
         expect($page->getByText('This is a toast notification.'))->toBeVisible();
@@ -424,14 +425,77 @@ final class PickersTest extends DemoTestCase
     {
         $page = $this->visitComponent('toast');
 
-        $region = $page->getByRole('region', ['name' => 'Notifications']);
+        $region = $page->getByRole('region', ['name' => 'Notifications'])->first();
         $region->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
 
-        $page->getByRole('button', ['name' => 'Create toast'])->click();
+        $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->getByRole('button', ['name' => 'Create toast'])->click();
         // Each toast is a dialog that is not modal, as in Base UI.
         expect($region->getByRole('dialog'))->toHaveCount(1);
 
         $page->keyboard()->press('F6');
         expect($region)->toBeFocused();
+    }
+
+    public function testToastExamples(): void
+    {
+        $page = $this->visitComponent('toast');
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+        $viewport = fn (string $name) => $page->locator('[data-phem-toast-name-value="'.$name.'"]');
+        $main = $page->locator('[data-controller~="phem-toast"]:not([data-phem-toast-name-value])');
+        $main->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
+
+        // Anchored toasts: the toast shows above the copy button, with its arrow.
+        $copy = $page->getByRole('button', ['name' => 'Copy to clipboard']);
+        $copy->click();
+        $anchored = $viewport('anchored')->locator('[data-phem-toast]');
+        expect($anchored)->toHaveText('Copied');
+        expect($anchored)->toHaveAttribute('data-side', 'top');
+        self::assertTrue($anchored->evaluate('(el) => el.getBoundingClientRect().bottom <= document.getElementById("toast-copy").getBoundingClientRect().top'));
+        expect($anchored)->toHaveCount(0, ['timeout' => 5000]);
+        $region('Anchored toasts')->getByRole('button', ['name' => 'Stacked toast'])->click();
+        expect($main->getByText('Copied'))->toBeVisible();
+
+        // Custom position: the stack is at the top of the screen.
+        $region('Custom position')->getByRole('button', ['name' => 'Create toast'])->click();
+        $top = $viewport('top')->locator('[data-phem-toast]');
+        expect($top)->toHaveCount(1);
+        self::assertTrue($top->evaluate('(el) => el.getBoundingClientRect().top < innerHeight / 2'));
+
+        // Undo action: the action button calls the handler, which shows another toast.
+        $region('Undo action')->getByRole('button', ['name' => 'Perform action'])->click();
+        $undo = $main->getByRole('button', ['name' => 'Undo']);
+        expect($main->getByText('Action performed'))->toBeVisible();
+        // The stack expands under the pointer: the button of the toast is in front.
+        $main->getByText('Action performed')->hover();
+        $undo->click();
+        expect($main->getByText('Action undone'))->toBeVisible();
+        expect($main->getByText('Action performed'))->toHaveCount(0);
+
+        // Promise: the loading toast of the click becomes the toast of the answer.
+        $region('Promise')->getByRole('button', ['name' => 'Run promise'])->click();
+        expect($main->getByText('Loading data…'))->toBeAttached();
+        expect($main->locator('[data-phem-toast][data-type="loading"]'))->toHaveCount(1);
+        expect($main->locator('[data-phem-toast][data-type="loading"]'))->toHaveCount(0, ['timeout' => 10000]);
+        $promise = $main->locator('[data-phem-toast-id="promise-1"]');
+        expect($promise)->toHaveCount(1);
+        self::assertContains($promise->locator('[data-phem-toast-description]')->textContent(), ['Success: operation completed', 'Error: operation failed']);
+
+        // Custom: the template shows the data of the toast.
+        $region('Custom')->getByRole('button', ['name' => 'Create custom toast'])->click();
+        expect($viewport('custom')->locator('[data-phem-toast]'))->toContainText('data.userId is 123');
+
+        // Deduplicated toast: the same id updates the toast, and counts the updates.
+        $save = $region('Deduplicated toast')->getByRole('button', ['name' => 'Save draft']);
+        $save->click();
+        $draft = $viewport('pulse')->locator('[data-phem-toast]');
+        expect($draft)->toHaveCount(1);
+        $save->click();
+        expect($draft)->toHaveAttribute('data-update-key', '1');
+        expect($draft)->toHaveAttribute('data-updated', '');
+        expect($draft)->toHaveCount(1);
+
+        // Varying heights: a toast with one of the texts.
+        $region('Varying heights')->getByRole('button', ['name' => 'Create varying height toast'])->click();
+        expect($main->locator('[data-phem-toast]')->first())->toContainText('created');
     }
 }

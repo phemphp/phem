@@ -69,6 +69,35 @@ final class ToastsTest extends TestCase
         ], $dispatcher->dispatched());
     }
 
+    public function testTheOptionsOfBaseUiGoInTheDetail(): void
+    {
+        $dispatcher = new BrowserEventDispatcher();
+        $toasts = new Toasts($dispatcher);
+        $toasts->show('You can undo this action.', ToastType::Success, 10000, 'Action performed', id: 'delete-7', action: 'Undo', data: ['item' => 7]);
+        $toasts->show('Copied', duration: 1500, anchor: 'copy-button', viewport: 'anchored');
+
+        self::assertSame([
+            ['name' => 'toast', 'detail' => ['message' => 'You can undo this action.', 'type' => 'success', 'duration' => 10000, 'title' => 'Action performed', 'id' => 'delete-7', 'action' => 'Undo', 'data' => ['item' => 7]]],
+            ['name' => 'toast', 'detail' => ['message' => 'Copied', 'duration' => 1500, 'anchor' => 'copy-button', 'viewport' => 'anchored']],
+        ], $dispatcher->dispatched());
+    }
+
+    public function testAnEventShowsAToastWithTheOptions(): void
+    {
+        $event = new Event('click');
+        $event->toast('Draft saved', id: 'save-status');
+
+        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Draft saved', 'id' => 'save-status']]], $event->dispatcher->dispatched());
+    }
+
+    public function testShowRejectsAnEmptyOption(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The action of a toast cannot be empty. Give null for a toast with no action.');
+
+        new Toasts(new BrowserEventDispatcher())->show('Saved', action: ' ');
+    }
+
     public function testShowRejectsAnEmptyTitle(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -128,6 +157,15 @@ final class ToastsTest extends TestCase
         self::assertEquals(new Toast('Saved', null), Toast::fromDetail(['message' => 'Saved', 'title' => ' ']));
         self::assertEquals(new Toast('Saved', null), Toast::fromDetail(['message' => 'Saved', 'title' => true]));
         self::assertEquals(new Toast('Saved', null), Toast::fromDetail(['message' => 'Saved', 'title' => ['a']]));
+    }
+
+    public function testFromDetailReadsTheOptions(): void
+    {
+        $toast = new Toast('Saved', id: 'save', action: 'Undo', data: ['item' => 7], anchor: 'copy', viewport: 'top');
+
+        self::assertEquals($toast, Toast::fromDetail($toast->detail()));
+        // An option that is empty or not a text is no option, and data that is not an array is no data.
+        self::assertEquals(new Toast('Saved'), Toast::fromDetail(['message' => 'Saved', 'id' => ' ', 'action' => ['a'], 'data' => 'x', 'anchor' => true, 'viewport' => '']));
     }
 
     public function testFromDetailGivesNullWhenTheControllerShowsNoToast(): void

@@ -24,19 +24,34 @@ final class Toast
      * @param int|null       $duration the time on the screen in ms, `0` to keep the toast until its
      *                                 close button, or null for the `duration` value of the controller
      * @param string|null    $title    a short title above the message, or null for a toast with no title
+     * @param string|null    $id       the id of the toast: a toast with the id of a toast on the
+     *                                 screen updates it (Base UI `id`)
+     * @param string|null    $action   the label of the action button of the toast (Base UI `actionProps`)
+     * @param array<string, scalar|null> $data the fields of the `[data-phem-toast-data]` parts, and
+     *                                 the detail of the action (Base UI `data`)
+     * @param string|null    $anchor   the `id` of the element that the toast points to (Base UI
+     *                                 `positionerProps.anchor`)
+     * @param string|null    $viewport the `name` of the `phem-toast` element that shows the toast
      */
     public function __construct(
         public readonly string $message,
         public readonly ?ToastType $type = null,
         public readonly ?int $duration = null,
         public readonly ?string $title = null,
+        public readonly ?string $id = null,
+        public readonly ?string $action = null,
+        public readonly array $data = [],
+        public readonly ?string $anchor = null,
+        public readonly ?string $viewport = null,
     ) {
     }
 
     /**
      * Reads the detail of a `phem:toast` event as the controller does: the detail is the message,
-     * or an array with `message`, and an optional `type`, `duration` and `title`. A missing type, or a type
-     * that the controller does not know, is no type, and a title that is empty or not a text is no title.
+     * or an array with `message`, and an optional `type`, `duration`, `title`, `id`, `action`,
+     * `data`, `anchor` and `viewport`. A missing type, or a type that the controller does not know,
+     * is no type, and a title (an id, an action, an anchor, a viewport) that is empty or not a text
+     * is no title. Data that is not an array is no data.
      *
      * @return self|null null when the controller shows no toast (no message, or an empty one)
      */
@@ -53,21 +68,31 @@ final class Toast
         $message = $detail['message'];
         $type = $detail['type'] ?? null;
         $duration = $detail['duration'] ?? null;
-        $title = $detail['title'] ?? null;
+        $data = $detail['data'] ?? [];
 
         return new self(
             \is_string($message) || \is_int($message) || \is_float($message) ? (string) $message : json_encode($message, \JSON_THROW_ON_ERROR),
             \is_string($type) ? ToastType::tryFrom($type) : null,
             \is_int($duration) ? $duration : null,
-            (\is_string($title) || \is_int($title) || \is_float($title)) && '' !== trim((string) $title) ? trim((string) $title) : null,
+            self::text($detail['title'] ?? null),
+            self::text($detail['id'] ?? null),
+            self::text($detail['action'] ?? null),
+            \is_array($data) ? $data : [],
+            self::text($detail['anchor'] ?? null),
+            self::text($detail['viewport'] ?? null),
         );
     }
 
+    /** A text of the detail: a string or a number that is not empty, or else null. */
+    private static function text(mixed $value): ?string
+    {
+        return (\is_string($value) || \is_int($value) || \is_float($value)) && '' !== trim((string) $value) ? trim((string) $value) : null;
+    }
+
     /**
-     * The detail of the `phem:toast` event: the type, the duration and the title go only when they
-     * are set.
+     * The detail of the `phem:toast` event: the other keys go only when they are set.
      *
-     * @return array{message: string, type?: string, duration?: int, title?: string}
+     * @return array{message: string, type?: string, duration?: int, title?: string, id?: string, action?: string, data?: array<string, scalar|null>, anchor?: string, viewport?: string}
      */
     public function detail(): array
     {
@@ -83,6 +108,16 @@ final class Toast
 
         if (null !== $this->title) {
             $detail['title'] = $this->title;
+        }
+
+        foreach (['id' => $this->id, 'action' => $this->action, 'anchor' => $this->anchor, 'viewport' => $this->viewport] as $key => $value) {
+            if (null !== $value) {
+                $detail[$key] = $value;
+            }
+        }
+
+        if ([] !== $this->data) {
+            $detail['data'] = $this->data;
         }
 
         return $detail;

@@ -111,5 +111,24 @@ final class PickersTest extends KernelTestCase
         self::assertStringContainsString('data-phem-toast-title', $html);
         self::assertStringContainsString('data-phem-toast-description', $html);
         self::assertStringContainsString('data-phem-toast-close', $html);
+        self::assertStringContainsString('data-phem-toast-action', $html);
+    }
+
+    public function testTheToastViewportHasAPositionAnAnchorAndATemplateOfTheApp(): void
+    {
+        $html = $this->mount(self::APP.'ToastOptionsDemo')
+            ->assertSelectorExists('[data-phem-toast-name-value="top"][data-phem-toast-swipe-direction-value="up"][class~="top-[1rem]"]')
+            ->assertSelectorExists('[data-phem-toast-name-value="anchored"][data-phem-toast-side-value="top"][data-phem-toast-side-offset-value="10"][class~="outline-0"]')
+            ->assertSelectorExists('[data-phem-toast-name-value="custom"] template')
+            ->html();
+
+        // The template of the app replaces the default parts: it has no close button.
+        $custom = substr($html, (int) strpos($html, 'data-phem-toast-name-value="custom"'));
+        $custom = substr($custom, 0, (int) strpos($custom, '</template>'));
+        self::assertStringContainsString('data-phem-toast-data="userId"', $custom);
+        self::assertDoesNotMatchRegularExpression('/data-phem-toast-close(?!-label)/', $custom);
+
+        $anchored = substr($html, (int) strpos($html, 'data-phem-toast-name-value="anchored"'));
+        self::assertStringContainsString('data-phem-toast-arrow', substr($anchored, 0, (int) strpos($anchored, '</template>')));
     }
 }

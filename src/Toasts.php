@@ -46,11 +46,31 @@ final class Toasts
      *                              the toast until its close button, or null for the `duration`
      *                              value of the controller
      * @param string|null $title    a short title above the message, or null for a toast with no title
+     * @param string|null $id       the id of the toast: a toast with the id of a toast on the screen
+     *                              updates it, and replays its `data-updated` animation
+     * @param string|null $action   the label of an action button: a click on it calls the `onCall`
+     *                              handler around the `phem-toast` element, with the `action`, the `id`
+     *                              and the `data` of the toast in `$e->detail`, and closes the toast
+     * @param array<string, scalar|null> $data the fields of the `[data-phem-toast-data]` parts of the
+     *                              template, and the data of the action
+     * @param string|null $anchor   the `id` of an element: the toast shows next to it
+     * @param string|null $viewport the `name` of the `phem-toast` element that shows the toast, or
+     *                              null for the element with no name
      *
-     * @throws \InvalidArgumentException for an empty message, an empty title or a duration out of range
+     * @throws \InvalidArgumentException for an empty message, an empty title (id, action, anchor,
+     *                                   viewport) or a duration out of range
      */
-    public function show(string $message, ?ToastType $type = null, ?int $duration = null, ?string $title = null): void
-    {
+    public function show(
+        string $message,
+        ?ToastType $type = null,
+        ?int $duration = null,
+        ?string $title = null,
+        ?string $id = null,
+        ?string $action = null,
+        array $data = [],
+        ?string $anchor = null,
+        ?string $viewport = null,
+    ): void {
         if ('' === trim($message)) {
             throw new \InvalidArgumentException('The message of a toast cannot be empty.');
         }
@@ -63,7 +83,13 @@ final class Toasts
             throw new \InvalidArgumentException(\sprintf('The duration of a toast is from 0 to %d ms, %d given. Give 0 to keep the toast until the user closes it.', self::MAX_DURATION, $duration));
         }
 
-        $this->dispatcher->dispatch('toast', new Toast($message, $type, $duration, $title)->detail());
+        foreach (['id' => $id, 'action' => $action, 'anchor' => $anchor, 'viewport' => $viewport] as $name => $value) {
+            if (null !== $value && '' === trim($value)) {
+                throw new \InvalidArgumentException(\sprintf('The %s of a toast cannot be empty. Give null for a toast with no %1$s.', $name));
+            }
+        }
+
+        $this->dispatcher->dispatch('toast', new Toast($message, $type, $duration, $title, $id, $action, $data, $anchor, $viewport)->detail());
     }
 
     public function info(string $message, ?int $duration = null, ?string $title = null): void
