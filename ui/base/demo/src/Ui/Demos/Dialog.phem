@@ -1,0 +1,32 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger};
+
+#[Page('/components/dialog')]
+function DialogPage(): Node
+{
+    return (
+        <DemoPage slug="dialog">
+            <Hero>
+                <Dialog>
+                    <DialogTrigger>View notifications</DialogTrigger>
+                    <DialogPopup>
+                        <div className="flex flex-col gap-1">
+                            <DialogTitle>Notifications</DialogTitle>
+                            <DialogDescription>You are all caught up. Good job!</DialogDescription>
+                        </div>
+                        <div className="flex justify-end gap-3">
+                            <DialogClose>Close</DialogClose>
+                        </div>
+                    </DialogPopup>
+                </Dialog>
+            </Hero>
+        </DemoPage>
+    );
+}

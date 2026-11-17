@@ -1,0 +1,25 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\CheckboxIndicator;
+use Phem\Ui\Base\Checkbox;
+
+#[Page('/components/checkbox')]
+function CheckboxPage(): Node
+{
+    return (
+        <DemoPage slug="checkbox">
+            <Hero>
+                <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+                    <Checkbox defaultChecked><CheckboxIndicator /></Checkbox>
+                    Enable notifications
+                </label>
+            </Hero>
+        </DemoPage>
+    );
+}

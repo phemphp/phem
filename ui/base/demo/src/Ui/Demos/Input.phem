@@ -1,0 +1,24 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use Phem\Ui\Base\Input;
+
+#[Page('/components/input')]
+function InputPage(): Node
+{
+    return (
+        <DemoPage slug="input">
+            <Hero>
+                <label className="flex flex-col items-start gap-1 text-sm font-bold text-neutral-950 dark:text-white">
+                    Name
+                    <Input placeholder="e.g. Colm Tuite" />
+                </label>
+            </Hero>
+        </DemoPage>
+    );
+}

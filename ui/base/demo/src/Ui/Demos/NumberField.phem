@@ -1,0 +1,31 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput, NumberFieldScrubArea, NumberFieldScrubAreaCursor};
+
+#[Page('/components/number-field')]
+function NumberFieldPage(): Node
+{
+    return (
+        <DemoPage slug="number-field">
+            <Hero>
+                <NumberField defaultValue={{ 100 }}>
+                    <NumberFieldScrubArea>
+                        <label htmlFor="amount" className="cursor-ew-resize text-sm font-bold text-neutral-950 dark:text-white">Amount</label>
+                        <NumberFieldScrubAreaCursor />
+                    </NumberFieldScrubArea>
+                    <NumberFieldGroup>
+                        <NumberFieldDecrement />
+                        <NumberFieldInput id="amount" />
+                        <NumberFieldIncrement />
+                    </NumberFieldGroup>
+                </NumberField>
+            </Hero>
+        </DemoPage>
+    );
+}

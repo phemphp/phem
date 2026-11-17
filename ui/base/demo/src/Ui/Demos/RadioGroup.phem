@@ -1,0 +1,30 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\RadioIndicator;
+use Phem\Ui\Base\{Radio, RadioGroup};
+
+#[Page('/components/radio-group')]
+function RadioGroupPage(): Node
+{
+    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
+    $label = 'flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white';
+
+    return (
+        <DemoPage slug="radio-group">
+            <Hero>
+                <RadioGroup aria-labelledby="best-apple" defaultValue="fuji-apple" name="apple">
+                    <div className="text-sm font-bold" id="best-apple">Best apple</div>
+                    {% for value, name in apples %}
+                        <label key={{ value }} className={{ label }}><Radio value={{ value }}><RadioIndicator /></Radio>{{ name }}</label>
+                    {% endfor %}
+                </RadioGroup>
+            </Hero>
+        </DemoPage>
+    );
+}

@@ -1,0 +1,28 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger};
+
+#[Page('/components/popover')]
+function PopoverPage(): Node
+{
+    return (
+        <DemoPage slug="popover">
+            <Hero>
+                <Popover sideOffset={{ 8 }}>
+                    <PopoverTrigger>Notifications</PopoverTrigger>
+                    <PopoverPopup>
+                        <PopoverArrow />
+                        <PopoverTitle>Notifications</PopoverTitle>
+                        <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
+                    </PopoverPopup>
+                </Popover>
+            </Hero>
+        </DemoPage>
+    );
+}

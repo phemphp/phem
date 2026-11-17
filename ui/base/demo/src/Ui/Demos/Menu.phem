@@ -1,0 +1,104 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Example, Examples, Hero};
+use function Phem\Ui\Base\{MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger};
+use Phem\Ui\Base\{Menu, MenuRadioGroup, MenuSubmenu};
+
+#[Page('/components/menu')]
+function MenuPage(): Node
+{
+    return (
+        <DemoPage slug="menu">
+            <Hero>
+                <Menu sideOffset={{ 8 }}>
+                    <MenuTrigger>Song</MenuTrigger>
+                    <MenuPopup>
+                        <MenuItem>Add to Library</MenuItem>
+                        <MenuItem>Add to Playlist</MenuItem>
+                        <MenuSeparator />
+                        <MenuItem>Play Next</MenuItem>
+                        <MenuItem>Play Last</MenuItem>
+                        <MenuSeparator />
+                        <MenuItem>Favorite</MenuItem>
+                        <MenuItem>Share</MenuItem>
+                    </MenuPopup>
+                </Menu>
+            </Hero>
+            <Examples>
+                <Example title="Submenu, checkbox items and radio items" description="A submenu, checkbox items and radio items. The browser keeps the state of the items with no handler. Autosave has a handler: the server keeps its state.">
+                    <MenuCheckItemsDemo />
+                </Example>
+            </Examples>
+        </DemoPage>
+    );
+}
+
+// The other examples of the Base UI Menu docs: a submenu, checkbox items and radio items. The
+// browser keeps the state of the items with no handler. "Autosave" has a handler: the server
+// keeps its state.
+#[Component]
+final class MenuCheckItemsDemo
+{
+    #[State] public bool $autosave = true;
+
+    public function toggleAutosave(): void
+    {
+        $this->autosave = !$this->autosave;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Menu sideOffset={{ 8 }}>
+                <MenuTrigger>Workspace</MenuTrigger>
+                <MenuPopup>
+                    <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
+                        <MenuSubmenuTrigger>Add to Playlist</MenuSubmenuTrigger>
+                        <MenuPopup>
+                            <MenuItem>Get Up!</MenuItem>
+                            <MenuItem>Inside Out</MenuItem>
+                            <MenuItem>Night Beats</MenuItem>
+                        </MenuPopup>
+                    </MenuSubmenu>
+                    <MenuSeparator />
+                    <MenuCheckboxItem defaultChecked>
+                        <MenuItemIndicator />
+                        <MenuItemLabel>Minimap</MenuItemLabel>
+                    </MenuCheckboxItem>
+                    <MenuCheckboxItem defaultChecked>
+                        <MenuItemIndicator />
+                        <MenuItemLabel>Search</MenuItemLabel>
+                    </MenuCheckboxItem>
+                    <MenuCheckboxItem>
+                        <MenuItemIndicator />
+                        <MenuItemLabel>Sidebar</MenuItemLabel>
+                    </MenuCheckboxItem>
+                    <MenuCheckboxItem checked={{ autosave }} onClick={{ toggleAutosave }}>
+                        <MenuItemIndicator />
+                        <MenuItemLabel>Autosave</MenuItemLabel>
+                    </MenuCheckboxItem>
+                    <MenuSeparator />
+                    <MenuRadioGroup defaultValue="date">
+                        <MenuRadioItem value="date">
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Date</MenuItemLabel>
+                        </MenuRadioItem>
+                        <MenuRadioItem value="name">
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Name</MenuItemLabel>
+                        </MenuRadioItem>
+                        <MenuRadioItem value="type">
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Type</MenuItemLabel>
+                        </MenuRadioItem>
+                    </MenuRadioGroup>
+                </MenuPopup>
+            </Menu>
+        );
+    }
+}

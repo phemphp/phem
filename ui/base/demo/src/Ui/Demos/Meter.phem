@@ -1,0 +1,26 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{MeterIndicator, MeterLabel, MeterTrack, MeterValue};
+use Phem\Ui\Base\Meter;
+
+#[Page('/components/meter')]
+function MeterPage(): Node
+{
+    return (
+        <DemoPage slug="meter">
+            <Hero>
+                <Meter id="storage" value={{ 24 }}>
+                    <MeterLabel>Storage Used</MeterLabel>
+                    <MeterValue />
+                    <MeterTrack><MeterIndicator /></MeterTrack>
+                </Meter>
+            </Hero>
+        </DemoPage>
+    );
+}

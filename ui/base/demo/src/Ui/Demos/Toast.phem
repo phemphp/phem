@@ -1,0 +1,34 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\{Page, State};
+use Phem\{Event, Node};
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\ToastViewport;
+use Phem\Ui\Base\Button;
+
+#[Page('/components/toast')]
+final class ToastPage
+{
+    #[State] public int $count = 0;
+
+    public function create(Event $e): void
+    {
+        ++$this->count;
+        $e->toast('This is a toast notification.', title: 'Toast '.$this->count.' created');
+    }
+
+    public function render(): Node
+    {
+        return (
+            <DemoPage slug="toast">
+                <Hero>
+                    <Button onClick={{ create }}>Create toast</Button>
+                    <ToastViewport />
+                </Hero>
+            </DemoPage>
+        );
+    }
+}

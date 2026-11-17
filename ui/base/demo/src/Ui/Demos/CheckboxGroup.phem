@@ -1,0 +1,30 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\CheckboxIndicator;
+use Phem\Ui\Base\{Checkbox, CheckboxGroup};
+
+#[Page('/components/checkbox-group')]
+function CheckboxGroupPage(): Node
+{
+    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
+    $label = 'flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white';
+
+    return (
+        <DemoPage slug="checkbox-group">
+            <Hero>
+                <CheckboxGroup aria-labelledby="apples-caption" defaultValue={{ ['fuji-apple'] }}>
+                    <div className="text-sm font-bold" id="apples-caption">Apples</div>
+                    {% for value, name in apples %}
+                        <label key={{ value }} className={{ label }}><Checkbox name="apple" value={{ value }}><CheckboxIndicator /></Checkbox>{{ name }}</label>
+                    {% endfor %}
+                </CheckboxGroup>
+            </Hero>
+        </DemoPage>
+    );
+}

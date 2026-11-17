@@ -1,0 +1,29 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{OTPField, OTPFieldInput};
+
+#[Page('/components/otp-field')]
+function OTPFieldPage(): Node
+{
+    $slots = range(1, 6);
+
+    return (
+        <DemoPage slug="otp-field">
+            <Hero>
+                <div className="flex w-full max-w-80 flex-col items-start gap-1">
+                    <label htmlFor="otp-1" className="text-sm font-bold text-neutral-950 dark:text-white">Verification code</label>
+                    <OTPField name="code" aria-describedby="otp-description">
+                        {% for i in slots %}<OTPFieldInput key={{ i }} id={{ i == 1 ? 'otp-1' : null }} />{% endfor %}
+                    </OTPField>
+                    <p id="otp-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Enter the 6-character code we sent to your device.</p>
+                </div>
+            </Hero>
+        </DemoPage>
+    );
+}

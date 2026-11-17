@@ -1,0 +1,45 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue};
+use Phem\Ui\Base\Progress;
+
+// The value grows each second, as in the Base UI demo: a poll adds a random step, up to 100.
+#[Page('/components/progress')]
+final class ProgressPage
+{
+    #[State] public int $value = 20;
+
+    public function advance(): void
+    {
+        $this->value = min(100, $this->value + random_int(0, 25));
+    }
+
+    public function render(): Node
+    {
+        $bar = (
+            <Progress id="export" value={{ value }}>
+                <ProgressLabel>Export data</ProgressLabel>
+                <ProgressValue />
+                <ProgressTrack><ProgressIndicator /></ProgressTrack>
+            </Progress>
+        );
+
+        return (
+            <DemoPage slug="progress">
+                <Hero>
+                    {% if value < 100 %}
+                        <div className="contents" onPoll={{ advance }} phem:poll={{ 1000 }}>{{ bar }}</div>
+                    {% else %}
+                        <div className="contents">{{ bar }}</div>
+                    {% endif %}
+                </Hero>
+            </DemoPage>
+        );
+    }
+}

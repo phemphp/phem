@@ -1,0 +1,60 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\{Page, State};
+use Phem\{Event, Node};
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{FieldControl, FieldError, FieldLabel, Form};
+use Phem\Ui\Base\{Button, Field};
+
+// The submit of the Base UI demo: the server answers after 1 second, and refuses the example
+// domain. The error of the server shows in the Field.Error of the field. While the request runs,
+// phem locks the button with `aria-disabled="true"`, and the button has the disabled look.
+#[Page('/components/form')]
+final class FormPage
+{
+    #[State] public string $url = 'https://example.com';
+    #[State] public ?string $error = null;
+
+    public function submit(Event $e): void
+    {
+        $this->url = (string) ($e->form['url'] ?? '');
+        sleep(1);
+
+        $host = parse_url($this->url, \PHP_URL_HOST);
+        $this->error = match (true) {
+            !\is_string($host) || '' === $host => 'This is not a valid URL',
+            str_ends_with($host, 'example.com') => 'The example domain is not allowed',
+            default => null,
+        };
+    }
+
+    public function render(): Node
+    {
+        return (
+            <DemoPage slug="form">
+                <Hero>
+                    <Form onSubmit={{ submit }} className="[&_button[aria-disabled=true]]:pointer-events-none [&_button[aria-disabled=true]]:border-neutral-500 [&_button[aria-disabled=true]]:text-neutral-500 dark:[&_button[aria-disabled=true]]:border-neutral-400 dark:[&_button[aria-disabled=true]]:text-neutral-400">
+                        <Field id="url">
+                            <FieldLabel>Homepage</FieldLabel>
+                            <FieldControl
+                                type="url"
+                                name="url"
+                                required
+                                defaultValue={{ url }}
+                                placeholder="https://example.com"
+                                pattern="https?://.*"
+                                aria-invalid={{ error ? 'true' : null }}
+                                aria-describedby={{ error ? 'url-error' : null }}
+                            />
+                            <FieldError>{{ error }}</FieldError>
+                        </Field>
+                        <Button type="submit">Submit</Button>
+                    </Form>
+                </Hero>
+            </DemoPage>
+        );
+    }
+}

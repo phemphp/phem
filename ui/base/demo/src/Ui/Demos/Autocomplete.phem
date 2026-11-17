@@ -1,0 +1,81 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxLabel, ComboboxList, ComboboxPopup};
+use Phem\Ui\Base\Autocomplete;
+
+// The 41 tags of the Base UI autocomplete demo.
+const TAGS = [
+    't1' => 'feature',
+    't2' => 'fix',
+    't3' => 'bug',
+    't4' => 'docs',
+    't5' => 'internal',
+    't6' => 'mobile',
+    'c-accordion' => 'component: accordion',
+    'c-alert-dialog' => 'component: alert dialog',
+    'c-autocomplete' => 'component: autocomplete',
+    'c-avatar' => 'component: avatar',
+    'c-checkbox' => 'component: checkbox',
+    'c-checkbox-group' => 'component: checkbox group',
+    'c-collapsible' => 'component: collapsible',
+    'c-combobox' => 'component: combobox',
+    'c-context-menu' => 'component: context menu',
+    'c-dialog' => 'component: dialog',
+    'c-field' => 'component: field',
+    'c-fieldset' => 'component: fieldset',
+    'c-filterable-menu' => 'component: filterable menu',
+    'c-form' => 'component: form',
+    'c-input' => 'component: input',
+    'c-menu' => 'component: menu',
+    'c-menubar' => 'component: menubar',
+    'c-meter' => 'component: meter',
+    'c-navigation-menu' => 'component: navigation menu',
+    'c-number-field' => 'component: number field',
+    'c-popover' => 'component: popover',
+    'c-preview-card' => 'component: preview card',
+    'c-progress' => 'component: progress',
+    'c-radio' => 'component: radio',
+    'c-scroll-area' => 'component: scroll area',
+    'c-select' => 'component: select',
+    'c-separator' => 'component: separator',
+    'c-slider' => 'component: slider',
+    'c-switch' => 'component: switch',
+    'c-tabs' => 'component: tabs',
+    'c-toast' => 'component: toast',
+    'c-toggle' => 'component: toggle',
+    'c-toggle-group' => 'component: toggle group',
+    'c-toolbar' => 'component: toolbar',
+    'c-tooltip' => 'component: tooltip',
+];
+
+// The browser filters the tags, as the Base UI demo does. The popup has no animation.
+#[Page('/components/autocomplete')]
+function AutocompletePage(): Node
+{
+    $tags = TAGS;
+
+    return (
+        <DemoPage slug="autocomplete">
+            <Hero>
+                <Autocomplete id="tags" filter="contains">
+                    <ComboboxLabel>Search tags</ComboboxLabel>
+                    <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 px-2 placeholder:opacity-100 placeholder:[-webkit-text-fill-color:var(--color-neutral-500)] dark:placeholder:[-webkit-text-fill-color:var(--color-neutral-400)] focus:outline-solid focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:border-white dark:focus:outline-white" />
+                    <ComboboxPopup>
+                        <ComboboxEmpty>No tags found.</ComboboxEmpty>
+                        <ComboboxList className="scroll-py-[0.25rem]">
+                            {% for id, tag in tags %}
+                                <ComboboxItem key={{ id }} value={{ id }} className="flex">{{ tag }}</ComboboxItem>
+                            {% endfor %}
+                        </ComboboxList>
+                    </ComboboxPopup>
+                </Autocomplete>
+            </Hero>
+        </DemoPage>
+    );
+}

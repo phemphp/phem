@@ -1,0 +1,27 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{FieldControl, FieldDescription, FieldError, FieldLabel};
+use Phem\Ui\Base\Field;
+
+#[Page('/components/field')]
+function FieldPage(): Node
+{
+    return (
+        <DemoPage slug="field">
+            <Hero>
+                <Field id="name">
+                    <FieldLabel>Name</FieldLabel>
+                    <FieldControl required placeholder="Required" />
+                    <FieldError match="valueMissing">Please enter your name</FieldError>
+                    <FieldDescription>Visible on your profile</FieldDescription>
+                </Field>
+            </Hero>
+        </DemoPage>
+    );
+}

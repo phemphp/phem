@@ -1,0 +1,34 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{TabsIndicator, TabsList, TabsPanel, TabsTab};
+use Phem\Ui\Base\Tabs;
+
+#[Page('/components/tabs')]
+function TabsPage(): Node
+{
+    return (
+        <DemoPage slug="tabs">
+            <Hero>
+                <Tabs defaultValue="overview">
+                    <TabsList>
+                        <TabsTab value="overview">Overview</TabsTab>
+                        <TabsTab value="projects">Projects</TabsTab>
+                        <TabsTab value="account">Account</TabsTab>
+                        <TabsIndicator />
+                    </TabsList>
+                    <div className="grid w-full min-h-32 grid-cols-1 border border-neutral-950 dark:border-white">
+                        <TabsPanel value="overview"><p>Workspace stats and activity.</p></TabsPanel>
+                        <TabsPanel value="projects"><p>Milestones and deadlines.</p></TabsPanel>
+                        <TabsPanel value="account"><p>Profile and preferences.</p></TabsPanel>
+                    </div>
+                </Tabs>
+            </Hero>
+        </DemoPage>
+    );
+}

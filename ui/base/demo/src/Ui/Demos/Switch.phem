@@ -1,0 +1,25 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\SwitchThumb;
+use Phem\Ui\Base\SwitchRoot;
+
+#[Page('/components/switch')]
+function SwitchPage(): Node
+{
+    return (
+        <DemoPage slug="switch">
+            <Hero>
+                <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+                    <SwitchRoot defaultChecked><SwitchThumb /></SwitchRoot>
+                    Notifications
+                </label>
+            </Hero>
+        </DemoPage>
+    );
+}

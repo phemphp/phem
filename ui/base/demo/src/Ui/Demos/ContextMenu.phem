@@ -1,0 +1,34 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{ContextMenuTrigger, MenuItem, MenuPopup, MenuSeparator};
+use Phem\Ui\Base\ContextMenu;
+
+#[Page('/components/context-menu')]
+function ContextMenuPage(): Node
+{
+    return (
+        <DemoPage slug="context-menu">
+            <Hero>
+                <ContextMenu>
+                    <ContextMenuTrigger>Right click here</ContextMenuTrigger>
+                    <MenuPopup>
+                        <MenuItem>Add to Library</MenuItem>
+                        <MenuItem>Add to Playlist</MenuItem>
+                        <MenuSeparator />
+                        <MenuItem>Play Next</MenuItem>
+                        <MenuItem>Play Last</MenuItem>
+                        <MenuSeparator />
+                        <MenuItem>Favorite</MenuItem>
+                        <MenuItem>Share</MenuItem>
+                    </MenuPopup>
+                </ContextMenu>
+            </Hero>
+        </DemoPage>
+    );
+}

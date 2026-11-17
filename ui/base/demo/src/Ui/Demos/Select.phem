@@ -1,0 +1,36 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{SelectIcon, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectList, SelectPopup, SelectScrollDownArrow, SelectScrollUpArrow, SelectTrigger, SelectValue};
+use Phem\Ui\Base\Select;
+
+#[Page('/components/select')]
+function SelectPage(): Node
+{
+    $apples = ['gala' => 'Gala', 'fuji' => 'Fuji', 'honeycrisp' => 'Honeycrisp', 'granny-smith' => 'Granny Smith', 'pink-lady' => 'Pink Lady'];
+
+    return (
+        <DemoPage slug="select">
+            <Hero>
+                <Select id="apple" name="apple" sideOffset={{ 4 }}>
+                    <SelectLabel>Apple</SelectLabel>
+                    <SelectTrigger><SelectValue placeholder="Select apple" /><SelectIcon /></SelectTrigger>
+                    <SelectPopup>
+                        <SelectScrollUpArrow />
+                        <SelectList>
+                            {% for value, name in apples %}
+                                <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                            {% endfor %}
+                        </SelectList>
+                        <SelectScrollDownArrow />
+                    </SelectPopup>
+                </Select>
+            </Hero>
+        </DemoPage>
+    );
+}

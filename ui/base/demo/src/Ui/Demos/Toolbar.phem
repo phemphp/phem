@@ -1,0 +1,44 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{SelectIcon, SelectItem, SelectItemIndicator, SelectItemText, SelectList, SelectPopup, SelectTrigger, SelectValue, Toggle, ToolbarButton, ToolbarGroup, ToolbarLink, ToolbarSeparator};
+use Phem\Ui\Base\{Select, ToggleGroup, Toolbar};
+
+#[Page('/components/toolbar')]
+function ToolbarPage(): Node
+{
+    return (
+        <DemoPage slug="toolbar">
+            <Hero>
+                <Toolbar className="w-150">
+                    <ToggleGroup aria-label="Alignment">
+                        <Toggle aria-label="Align left" value="align-left">Align Left</Toggle>
+                        <Toggle aria-label="Align right" value="align-right">Align Right</Toggle>
+                    </ToggleGroup>
+                    <ToolbarSeparator />
+                    <ToolbarGroup aria-label="Numerical format">
+                        <ToolbarButton aria-label="Format as currency" className="px-0">$</ToolbarButton>
+                        <ToolbarButton aria-label="Format as percent" className="px-0">%</ToolbarButton>
+                    </ToolbarGroup>
+                    <ToolbarSeparator />
+                    <Select defaultValue="Helvetica" sideOffset={{ 4 }}>
+                        <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
+                        <SelectPopup>
+                            <SelectList>
+                                <SelectItem value="Helvetica"><SelectItemIndicator /><SelectItemText>Helvetica</SelectItemText></SelectItem>
+                                <SelectItem value="Arial"><SelectItemIndicator /><SelectItemText>Arial</SelectItemText></SelectItem>
+                            </SelectList>
+                        </SelectPopup>
+                    </Select>
+                    <ToolbarSeparator />
+                    <ToolbarLink href="#">Edited 51m ago</ToolbarLink>
+                </Toolbar>
+            </Hero>
+        </DemoPage>
+    );
+}

@@ -1,0 +1,32 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{PreviewCard, PreviewCardArrow, PreviewCardPopup, PreviewCardTrigger};
+
+#[Page('/components/preview-card')]
+function PreviewCardPage(): Node
+{
+    return (
+        <DemoPage slug="preview-card">
+            <Hero>
+                <PreviewCard>
+                    <p className="text-base text-neutral-950 text-balance dark:text-white">
+                        The principles of good <PreviewCardTrigger href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.
+                    </p>
+                    <PreviewCardPopup>
+                        <PreviewCardArrow />
+                        <div className="flex w-min flex-col gap-2 p-2">
+                            <img width="224" height="150" className="block max-w-none" src="https://images.unsplash.com/photo-1619615391095-dfa29e1672ef?q=80&w=448&h=300" alt="Station Hofplein signage in Rotterdam, Netherlands" />
+                            <p className="text-sm"><strong>Typography</strong> is the art and science of arranging type to make written language clear, visually appealing, and effective in communication.</p>
+                        </div>
+                    </PreviewCardPopup>
+                </PreviewCard>
+            </Hero>
+        </DemoPage>
+    );
+}

@@ -1,0 +1,31 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{DrawerClose, DrawerContent, DrawerDescription, DrawerPopup, DrawerTitle, DrawerTrigger};
+use Phem\Ui\Base\Drawer;
+
+#[Page('/components/drawer')]
+function DrawerPage(): Node
+{
+    return (
+        <DemoPage slug="drawer">
+            <Hero>
+                <Drawer swipeDirection="right">
+                    <DrawerTrigger>Open drawer</DrawerTrigger>
+                    <DrawerPopup>
+                        <DrawerContent>
+                            <DrawerTitle>Drawer</DrawerTitle>
+                            <DrawerDescription>This is a drawer that slides in from the side. You can swipe to dismiss it.</DrawerDescription>
+                            <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                        </DrawerContent>
+                    </DrawerPopup>
+                </Drawer>
+            </Hero>
+        </DemoPage>
+    );
+}

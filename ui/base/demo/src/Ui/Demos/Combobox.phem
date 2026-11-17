@@ -1,0 +1,73 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxTrigger};
+use Phem\Ui\Base\Combobox;
+
+// The 25 fruits of the Base UI combobox demo.
+const FRUITS = [
+    'apple' => 'Apple',
+    'banana' => 'Banana',
+    'orange' => 'Orange',
+    'pineapple' => 'Pineapple',
+    'grape' => 'Grape',
+    'mango' => 'Mango',
+    'strawberry' => 'Strawberry',
+    'blueberry' => 'Blueberry',
+    'raspberry' => 'Raspberry',
+    'blackberry' => 'Blackberry',
+    'cherry' => 'Cherry',
+    'peach' => 'Peach',
+    'pear' => 'Pear',
+    'plum' => 'Plum',
+    'kiwi' => 'Kiwi',
+    'watermelon' => 'Watermelon',
+    'cantaloupe' => 'Cantaloupe',
+    'honeydew' => 'Honeydew',
+    'papaya' => 'Papaya',
+    'guava' => 'Guava',
+    'lychee' => 'Lychee',
+    'pomegranate' => 'Pomegranate',
+    'apricot' => 'Apricot',
+    'grapefruit' => 'Grapefruit',
+    'passionfruit' => 'Passionfruit',
+];
+
+#[Page('/components/combobox')]
+function ComboboxPage(): Node
+{
+    $fruits = FRUITS;
+
+    return (
+        <DemoPage slug="combobox">
+            <Hero>
+                <Combobox id="fruit" filter="contains">
+                    <ComboboxLabel>Choose a fruit</ComboboxLabel>
+                    <ComboboxInputGroup>
+                        <ComboboxInput placeholder="e.g. Apple" />
+                        <ComboboxActions>
+                            <ComboboxClear aria-label="Clear selection" />
+                            <ComboboxTrigger aria-label="Open popup" />
+                        </ComboboxActions>
+                    </ComboboxInputGroup>
+                    <ComboboxPopup>
+                        <ComboboxEmpty>No fruits found.</ComboboxEmpty>
+                        <ComboboxList>
+                            {% for value, label in fruits %}
+                                <ComboboxItem key={{ value }} value={{ value }}>
+                                    <ComboboxItemIndicator />
+                                    <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                                </ComboboxItem>
+                            {% endfor %}
+                        </ComboboxList>
+                    </ComboboxPopup>
+                </Combobox>
+            </Hero>
+        </DemoPage>
+    );
+}

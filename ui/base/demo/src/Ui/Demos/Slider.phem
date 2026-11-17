@@ -1,0 +1,29 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{SliderControl, SliderIndicator, SliderThumb, SliderTrack};
+use Phem\Ui\Base\Slider;
+
+#[Page('/components/slider')]
+function SliderPage(): Node
+{
+    return (
+        <DemoPage slug="slider">
+            <Hero>
+                <Slider defaultValue={{ 25 }}>
+                    <SliderControl>
+                        <SliderTrack>
+                            <SliderIndicator />
+                            <SliderThumb aria-label="Volume" />
+                        </SliderTrack>
+                    </SliderControl>
+                </Slider>
+            </Hero>
+        </DemoPage>
+    );
+}

@@ -131,6 +131,14 @@ final class MenusTest extends DemoTestCase
         $page->keyboard()->press('Escape');
         expect($page->getByRole('menuitem', ['name' => 'Full Screen']))->toBeHidden();
         expect($page->getByRole('menuitem', ['name' => 'Help']))->toBeDisabled();
+
+        // Enter on a trigger opens its menu with the first item highlighted, as in Base UI.
+        $file->focus();
+        $page->keyboard()->press('Enter');
+        $new = $page->getByRole('menuitem', ['name' => 'New']);
+        expect($new)->toBeFocused();
+        expect($new)->toHaveAttribute('data-highlighted', '');
+        expect($new)->toHaveAttribute('tabindex', '0');
     }
 
     public function testNavigationMenuOpensItsContentInTheViewport(): void

@@ -1,0 +1,33 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger};
+
+#[Page('/components/alert-dialog')]
+function AlertDialogPage(): Node
+{
+    return (
+        <DemoPage slug="alert-dialog">
+            <Hero>
+                <AlertDialog>
+                    <AlertDialogTrigger className="text-red-700 dark:text-red-400">Discard draft</AlertDialogTrigger>
+                    <AlertDialogPopup>
+                        <div className="flex flex-col gap-1">
+                            <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                            <AlertDialogDescription>You can’t undo this action.</AlertDialogDescription>
+                        </div>
+                        <div className="flex justify-end gap-3">
+                            <AlertDialogClose>Cancel</AlertDialogClose>
+                            <AlertDialogClose className="text-red-700 dark:text-red-400">Discard</AlertDialogClose>
+                        </div>
+                    </AlertDialogPopup>
+                </AlertDialog>
+            </Hero>
+        </DemoPage>
+    );
+}

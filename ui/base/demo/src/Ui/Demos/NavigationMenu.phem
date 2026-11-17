@@ -1,0 +1,64 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\{NavigationMenuArrow, NavigationMenuContent, NavigationMenuIcon, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuPopup, NavigationMenuPositioner, NavigationMenuTrigger, NavigationMenuViewport};
+use Phem\Ui\Base\NavigationMenu;
+
+#[Page('/components/navigation-menu')]
+function NavigationMenuPage(): Node
+{
+    $overview = [
+        ['/quick-start', 'Quick Start', 'Install and assemble your first component.'],
+        ['/accessibility', 'Accessibility', 'Learn how we build accessible components.'],
+        ['/releases', 'Releases', 'See what’s new in the latest Base UI versions.'],
+        ['/about', 'About', 'Learn more about Base UI and our mission.'],
+    ];
+    $handbook = [
+        ['/styling', 'Styling', 'Base UI components can be styled with plain CSS, Tailwind CSS, CSS-in-JS, or CSS Modules.'],
+        ['/animation', 'Animation', 'Base UI components can be animated with CSS transitions, CSS animations, or JavaScript libraries.'],
+        ['/composition', 'Composition', 'Base UI components can be replaced and composed with your own existing components.'],
+    ];
+
+    return (
+        <DemoPage slug="navigation-menu">
+            <Hero>
+                <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
+                    <NavigationMenuList>
+                        <NavigationMenuItem value="overview">
+                            <NavigationMenuTrigger>Overview <NavigationMenuIcon /></NavigationMenuTrigger>
+                            <NavigationMenuContent>
+                                <ul className="m-0 grid list-none grid-cols-2 p-0 max-[500px]:grid-cols-1">
+                                    {% for link in overview %}
+                                        <li key={{ link[0] }}><NavigationMenuLink href={{ link[0] }} card><h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3><p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p></NavigationMenuLink></li>
+                                    {% endfor %}
+                                </ul>
+                            </NavigationMenuContent>
+                        </NavigationMenuItem>
+                        <NavigationMenuItem value="handbook">
+                            <NavigationMenuTrigger>Handbook <NavigationMenuIcon /></NavigationMenuTrigger>
+                            <NavigationMenuContent>
+                                <ul className="m-0 flex max-w-[400px] list-none flex-col justify-center p-0">
+                                    {% for link in handbook %}
+                                        <li key={{ link[0] }}><NavigationMenuLink href={{ link[0] }} card><h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3><p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p></NavigationMenuLink></li>
+                                    {% endfor %}
+                                </ul>
+                            </NavigationMenuContent>
+                        </NavigationMenuItem>
+                        <NavigationMenuItem><NavigationMenuLink href="https://github.com/mui/base-ui">GitHub</NavigationMenuLink></NavigationMenuItem>
+                    </NavigationMenuList>
+                    <NavigationMenuPositioner>
+                        <NavigationMenuPopup>
+                            <NavigationMenuArrow />
+                            <NavigationMenuViewport />
+                        </NavigationMenuPopup>
+                    </NavigationMenuPositioner>
+                </NavigationMenu>
+            </Hero>
+        </DemoPage>
+    );
+}

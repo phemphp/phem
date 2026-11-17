@@ -1,0 +1,26 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\{DemoPage, Hero};
+use function Phem\Ui\Base\Toggle;
+use Phem\Ui\Base\ToggleGroup;
+
+#[Page('/components/toggle-group')]
+function ToggleGroupPage(): Node
+{
+    return (
+        <DemoPage slug="toggle-group">
+            <Hero>
+                <ToggleGroup aria-label="Text alignment" defaultValue={{ ['left'] }}>
+                    <Toggle aria-label="Align left" value="left"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-11 7h9M2.5 8h5" /></svg></Toggle>
+                    <Toggle aria-label="Align center" value="center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-10 7h9M5.5 8h5" /></svg></Toggle>
+                    <Toggle aria-label="Align right" value="right"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-9 7h9M8.5 8h5" /></svg></Toggle>
+                </ToggleGroup>
+            </Hero>
+        </DemoPage>
+    );
+}
