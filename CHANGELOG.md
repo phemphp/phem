@@ -8,6 +8,27 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: `phem-navigation-menu`: a click on a trigger that the pointer opened 500 ms or
+  more before closes the menu, as in Base UI. Before, the first click always kept it open.
+- **Breaking**: `phem-navigation-menu`: Escape, a link with `close-on-click` and the `close` action
+  give the focus back to the trigger only when the focus is in the content, in the popup, on that
+  trigger or on the page body, as in Base UI. Before, Escape with the focus on another trigger
+  moved the focus to the trigger of the open item. The pointer out, a click outside and the focus
+  out never move the focus.
+- **Breaking**: `phem-navigation-menu`: the `--popup-width`, `--popup-height`,
+  `--positioner-width` and `--positioner-height` variables are `auto` at rest. They have px values
+  only during the size transition from one item to another, and go back to `auto` when the `width`
+  or `height` transition of the popup ends. The positioner gets the new size at once. Before, they
+  kept the px size of the content, and content that grew in the open popup was cut.
+- `phem-navigation-menu` gives `data-open` to the `nav`, the lists and the arrow while an item is
+  open, `data-side` and `data-align` to the popup in a positioner, and `tabindex="-1"` to the
+  popup. It keeps them after the morph of an event.
+- `phem-navigation-menu`: the first move from one trigger to another animates the position of the
+  popup. Before, only the next moves animated it.
+- `phem-navigation-menu`: the arrow is at its place at the first open. Before, it slid in from the
+  place of the last content.
+- `phem_position.js`: `place()` and `unposition()` take `mirror` elements, which get the
+  `data-side` and the `data-align` of the popup. `Popup` (phem_popup.js) takes a `mirror` option.
 - `phem-menu`, `phem-context-menu` and `phem-select`: a touch outside closes the popup at the end
   of the touch (in 1 s), or when the touch moves more than 10 px, as in Base UI. Before, the popup
   closed at the start of the touch. A long touch does not close it.
@@ -85,7 +106,6 @@ that break the code of an application start with **Breaking**.
 - The trigger of an open `phem-dialog` gets `aria-controls`.
 - A press on the backdrop of a `phem-dialog` does not move the focus to the page. After an open
   with the keyboard, the trigger gets the focus back with its focus ring.
-
 - Escape on a `phem-popover` gives the focus back to the trigger only when the focus is in the
   popup. Before, Escape on a preview card that the pointer opened focused the link, and the
   keyboard focus then opened the card again after its delay.

@@ -28,7 +28,9 @@
 // that it points at the center of the anchor. The value is from the padding box of the popup (the
 // box of an arrow with `position: absolute`), so a border of the popup does not move the arrow. It
 // gets `data-uncentered` when the popup is too far to the side. The CSS of the app puts the arrow on the edge of the popup with `[data-side]`.
-// The popup gets `data-anchor-hidden` when the anchor is out of the viewport.
+// The popup gets `data-anchor-hidden` when the anchor is out of the viewport. The `mirror`
+// elements (a popup in a positioner, as in Base UI) also get the `data-side` and the `data-align`
+// of the popup.
 //
 // The anchor can be a virtual element: an object with `getBoundingClientRect()` and a
 // `contextElement` (the element of its direction), for a popup at the point of the pointer
@@ -108,11 +110,16 @@ export function position(anchor, popup, options, signal) {
   return update
 }
 
-// Removes the position of `popup` and of its arrow.
-export function unposition(popup, arrow = null) {
+// Removes the position of `popup`, of its arrow and of its `mirror` elements.
+export function unposition(popup, arrow = null, mirror = []) {
   for (const name of POPUP_STYLES) popup.style.removeProperty(name)
   for (const name of ["data-side", "data-align", "data-anchor-hidden"]) popup.removeAttribute(name)
   if (popup.getAttribute("style") === "") popup.removeAttribute("style")
+
+  for (const el of mirror) {
+    el.removeAttribute("data-side")
+    el.removeAttribute("data-align")
+  }
 
   if (!arrow) return
 
@@ -121,7 +128,7 @@ export function unposition(popup, arrow = null) {
   if (arrow.getAttribute("style") === "") arrow.removeAttribute("style")
 }
 
-export function place(anchor, popup, { side = "bottom", align = "center", sideOffset = 0, alignOffset = 0, collisionPadding = 5, collisionPaddingInline = -1, flip = true, arrowPadding = 5, arrow = null, collision = "flip" } = {}) {
+export function place(anchor, popup, { side = "bottom", align = "center", sideOffset = 0, alignOffset = 0, collisionPadding = 5, collisionPaddingInline = -1, flip = true, arrowPadding = 5, arrow = null, mirror = [], collision = "flip" } = {}) {
   side = SIDES.has(side) ? side : "bottom"
   align = ALIGNS.has(align) ? align : "center"
 
@@ -191,6 +198,11 @@ export function place(anchor, popup, { side = "bottom", align = "center", sideOf
   setAttribute(popup, "data-side", finalSide)
   setAttribute(popup, "data-align", align)
   popup.toggleAttribute("data-anchor-hidden", a.bottom < 0 || a.top > view.height || a.right < 0 || a.left > view.width)
+
+  for (const el of mirror) {
+    setAttribute(el, "data-side", finalSide)
+    setAttribute(el, "data-align", align)
+  }
 
   if (arrow) placeArrow(arrow, popup, a, size, x, y, finalPhysical, finalSide, align, arrowPadding)
 

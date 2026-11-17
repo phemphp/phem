@@ -22,6 +22,8 @@ import { hide, render, show } from "./phem_transition.js"
 //
 // `outside` (`() => true`) keeps the popup open on a press outside when it gives false. `event`
 // (`() => "click"`) is the event of a press outside: `"click"` or `"pointerdown"` (phem_dismiss.js).
+// `mirror` (`() => []`) gives the elements that get the `data-side` and the `data-align` of the
+// popup (phem_position.js).
 export class Popup {
   #parts
   #placing = null
@@ -29,8 +31,8 @@ export class Popup {
   #update = null
   #open = false
 
-  constructor({ anchor, popup, arrow = () => null, options, inside, dismiss = null, outside = () => true, event = () => "click" }) {
-    this.#parts = { anchor, popup, arrow, options, inside, dismiss, outside, event }
+  constructor({ anchor, popup, arrow = () => null, options, inside, dismiss = null, outside = () => true, event = () => "click", mirror = () => [] }) {
+    this.#parts = { anchor, popup, arrow, options, inside, dismiss, outside, event, mirror }
   }
 
   get open() {
@@ -91,10 +93,11 @@ export class Popup {
     this.#update?.()
   }
 
-  // The attributes of the popup and of the arrow that belong to the client.
+  // The attributes of the popup, of the arrow and of the mirror elements that belong to the client.
   owns(el, name) {
     if (el === this.#parts.popup()) return OPEN_ATTRIBUTES.has(name) || (this.#open && POSITION_ATTRIBUTES.has(name))
     if (el === this.#parts.arrow()) return this.#open && POSITION_ATTRIBUTES.has(name)
+    if (this.#parts.mirror().includes(el)) return this.#open && (name === "data-side" || name === "data-align")
 
     return false
   }
@@ -121,14 +124,14 @@ export class Popup {
 
     this.#placing?.abort()
     this.#placing = new AbortController()
-    this.#update = position(anchor, popup, () => ({ ...this.#parts.options(), arrow: this.#parts.arrow() }), this.#placing.signal)
+    this.#update = position(anchor, popup, () => ({ ...this.#parts.options(), arrow: this.#parts.arrow(), mirror: this.#parts.mirror() }), this.#placing.signal)
   }
 
   #stop(popup) {
     this.#placing?.abort()
     this.#placing = null
     this.#update = null
-    unposition(popup, this.#parts.arrow())
+    unposition(popup, this.#parts.arrow(), this.#parts.mirror())
   }
 }
 

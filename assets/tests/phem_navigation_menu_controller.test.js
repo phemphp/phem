@@ -31,16 +31,14 @@ afterEach(async () => {
 })
 
 // A menu: "Overview" and "Guides" open a content, "Blog" is a link of the list (the current page),
-// and "Archive" is disabled. With `viewport`, the popup has a viewport.
-function nav({ attributes = "", viewport = true, log = "" } = {}) {
-  const popup = viewport
-    ? `<div id="positioner" data-phem-navigation-menu-target="positioner" hidden>
-        <div id="popup" data-phem-navigation-menu-target="popup">
+// and "Archive" is disabled. With `viewport`, the popup has a viewport. With no `positioner`, the
+// popup is the element next to the trigger.
+function nav({ attributes = "", viewport = true, positioner = true, log = "" } = {}) {
+  const inner = `<div id="popup" data-phem-navigation-menu-target="popup"${positioner ? "" : " hidden"}>
           <div id="arrow" data-phem-navigation-menu-target="arrow"></div>
           <div id="viewport" data-phem-navigation-menu-target="viewport"></div>
-        </div>
-      </div>`
-    : ""
+        </div>`
+  const popup = !viewport ? "" : positioner ? `<div id="positioner" data-phem-navigation-menu-target="positioner" hidden>${inner}</div>` : inner
 
   return `<nav id="nav" data-controller="phem-navigation-menu" ${attributes}>
       <ul data-phem-navigation-menu-target="list">
@@ -119,8 +117,8 @@ describe("phem-navigation-menu", () => {
     expect($("overview-trigger").hasAttribute("data-popup-open")).toBe(true)
     expect($("overview-trigger").hasAttribute("data-pressed")).toBe(true)
     expect($("icon").hasAttribute("data-popup-open")).toBe(true)
-    expect($("popup").style.getPropertyValue("--popup-width")).toBe("0px")
-    expect($("positioner").style.getPropertyValue("--positioner-height")).toBe("0px")
+    expect($("popup").style.getPropertyValue("--popup-width")).toBe("auto")
+    expect($("positioner").style.getPropertyValue("--positioner-height")).toBe("auto")
 
     clickOn($("overview-trigger"))
     expect($("positioner").hidden).toBe(true)
@@ -155,6 +153,233 @@ describe("phem-navigation-menu", () => {
     clickOn($("guides-trigger"))
     clickOn($("overview-trigger"))
     expect($("positioner").hasAttribute("data-instant")).toBe(true)
+  })
+
+  it("animates the position at the first move from one trigger to another", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+
+    // The surface is placed next to the new trigger with no `data-instant`, so its position
+    // animates.
+    const instant = []
+    vi.spyOn($("guides-trigger"), "getBoundingClientRect").mockImplementation(() => {
+      instant.push($("positioner").hasAttribute("data-instant"))
+
+      return new DOMRect(100, 0, 80, 20)
+    })
+
+    clickOn($("guides-trigger"))
+    expect(instant.length).toBeGreaterThan(0)
+    expect(instant).not.toContain(true)
+  })
+
+  it("sets the size of the popup before the first placement of the arrow", async () => {
+    await mount(nav())
+
+    // The arrow is placed with the size of the open content, so it does not slide at the first frame.
+    const sizes = []
+    vi.spyOn($("overview-trigger"), "getBoundingClientRect").mockImplementation(() => {
+      sizes.push($("popup").style.getPropertyValue("--popup-width"))
+
+      return new DOMRect(0, 0, 80, 20)
+    })
+
+    clickOn($("overview-trigger"))
+    expect(sizes.length).toBeGreaterThan(0)
+    expect(sizes[0]).not.toBe("")
+  })
+
+  it("closes on a click 500 ms or more after a hover open", async () => {
+    await mount(nav())
+    vi.useFakeTimers()
+
+    pointer("pointerover", $("overview-trigger"))
+    vi.advanceTimersByTime(50)
+    expect($("overview-content").hidden).toBe(false)
+
+    vi.advanceTimersByTime(500)
+    clickOn($("overview-trigger"))
+    expect($("overview-content").hidden).toBe(true)
+  })
+
+  it("keeps the focus on another trigger on Escape", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+    $("guides-trigger").focus()
+    press("Escape")
+
+    expect($("positioner").hidden).toBe(true)
+    expect(document.activeElement).toBe($("guides-trigger"))
+  })
+
+  it("gives the focus to the open trigger on Escape in its content", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+    $("start").focus()
+    press("Escape")
+
+    expect(document.activeElement).toBe($("overview-trigger"))
+  })
+
+  it("sets the open state on the nav, the lists, the arrow and the popup", async () => {
+    await mount(nav())
+
+    expect($("nav").hasAttribute("data-open")).toBe(false)
+    expect($("popup").getAttribute("tabindex")).toBe("-1")
+
+    clickOn($("overview-trigger"))
+    expect($("nav").hasAttribute("data-open")).toBe(true)
+    expect($("nav").querySelector('[data-phem-navigation-menu-target="list"]').hasAttribute("data-open")).toBe(true)
+    expect($("arrow").hasAttribute("data-open")).toBe(true)
+    expect($("popup").getAttribute("data-side")).toBe($("positioner").getAttribute("data-side"))
+    expect($("popup").getAttribute("data-align")).toBe($("positioner").getAttribute("data-align"))
+    expect($("popup").getAttribute("data-side")).toBe("bottom")
+
+    clickOn($("overview-trigger"))
+    expect($("nav").hasAttribute("data-open")).toBe(false)
+    expect($("arrow").hasAttribute("data-open")).toBe(false)
+  })
+
+  it("sets the size variables to auto after the size transition", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+    clickOn($("guides-trigger"))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect($("popup").style.getPropertyValue("--popup-width")).toBe("auto")
+    expect($("popup").style.getPropertyValue("--popup-height")).toBe("auto")
+    expect($("positioner").style.getPropertyValue("--positioner-width")).toBe("auto")
+    expect($("positioner").style.getPropertyValue("--positioner-height")).toBe("auto")
+  })
+
+  it("keeps the open state of the nav and the popup after the morph of an event", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+    respond(nav({ log: "saved" }))
+    const done = nextDone()
+    $("save").click()
+    await done
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect($("log").textContent).toBe("saved")
+    expect($("nav").hasAttribute("data-open")).toBe(true)
+    expect($("nav").querySelector('[data-phem-navigation-menu-target="list"]').hasAttribute("data-open")).toBe(true)
+    expect($("arrow").hasAttribute("data-open")).toBe(true)
+    expect($("popup").getAttribute("data-side")).toBe("bottom")
+    expect($("popup").getAttribute("tabindex")).toBe("-1")
+  })
+
+  it("keeps the open state of a popup with no positioner after the morph of an event", async () => {
+    await mount(nav({ positioner: false }))
+
+    expect($("popup").getAttribute("tabindex")).toBe("-1")
+
+    clickOn($("overview-trigger"))
+    expect($("popup").hidden).toBe(false)
+    expect($("popup").getAttribute("data-side")).toBe("bottom")
+
+    respond(nav({ positioner: false, log: "saved" }))
+    const done = nextDone()
+    $("save").click()
+    await done
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect($("log").textContent).toBe("saved")
+    expect($("popup").hidden).toBe(false)
+    expect($("popup").hasAttribute("data-open")).toBe(true)
+    expect($("popup").getAttribute("data-side")).toBe("bottom")
+    expect($("popup").getAttribute("tabindex")).toBe("-1")
+    expect($("nav").hasAttribute("data-open")).toBe(true)
+  })
+
+  it("gives the focus to the open trigger on Escape with the focus on the page", async () => {
+    await mount(nav())
+    vi.useFakeTimers()
+
+    pointer("pointerover", $("overview-trigger"))
+    vi.advanceTimersByTime(50)
+    document.activeElement.blur()
+    expect(document.activeElement).toBe(document.body)
+
+    press("Escape")
+    expect($("positioner").hidden).toBe(true)
+    expect(document.activeElement).toBe($("overview-trigger"))
+  })
+
+  it("keeps the focus at a close of the pointer", async () => {
+    await mount(nav())
+    vi.useFakeTimers()
+
+    pointer("pointerover", $("overview-trigger"))
+    vi.advanceTimersByTime(50)
+    $("popup").focus()
+
+    pointer("pointerout", $("popup"), $("outside"))
+    vi.advanceTimersByTime(50)
+    expect($("positioner").hidden).toBe(true)
+    expect(document.activeElement).not.toBe($("overview-trigger"))
+  })
+
+  it("keeps the focus at a click outside", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+    $("start").focus()
+    document.activeElement.blur()
+    clickOn($("log"))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect($("positioner").hidden).toBe(true)
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it("removes the open state of the nav and the placement of the popup after the close", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+    clickOn($("overview-trigger"))
+    await Promise.resolve()
+
+    expect($("nav").hasAttribute("data-open")).toBe(false)
+    expect($("nav").querySelector('[data-phem-navigation-menu-target="list"]').hasAttribute("data-open")).toBe(false)
+    expect($("popup").hasAttribute("data-side")).toBe(false)
+    expect($("popup").hasAttribute("data-align")).toBe(false)
+    expect($("popup").getAttribute("tabindex")).toBe("-1")
+  })
+
+  it("keeps the menu open on a click less than 500 ms after a hover open", async () => {
+    await mount(nav())
+    vi.useFakeTimers()
+
+    pointer("pointerover", $("overview-trigger"))
+    vi.advanceTimersByTime(50)
+    expect($("overview-content").hidden).toBe(false)
+
+    vi.advanceTimersByTime(499)
+    clickOn($("overview-trigger"))
+    expect($("overview-content").hidden).toBe(false)
+
+    // The click opened it now: the pointer out does not close it.
+    pointer("pointerout", $("overview-trigger"), $("outside"))
+    vi.advanceTimersByTime(100)
+    expect($("overview-content").hidden).toBe(false)
+  })
+
+  it("gives the focus to the trigger on Escape with the focus on the popup", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+    $("popup").focus()
+    expect(document.activeElement).toBe($("popup"))
+    press("Escape")
+
+    expect($("positioner").hidden).toBe(true)
+    expect(document.activeElement).toBe($("overview-trigger"))
   })
 
   it("changes the open item with the activation direction", async () => {

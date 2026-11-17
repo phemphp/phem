@@ -83,6 +83,20 @@ describe("place()", () => {
     expect(popup.getAttribute("data-side")).toBe("top")
   })
 
+  it("gives the side and the align to the mirror elements, and removes them", () => {
+    const inner = document.createElement("div")
+    popup.append(inner)
+    box(anchor, { left: 400, top: 720, width: 100, height: 40 })
+    place(anchor, popup, { side: "bottom", align: "start", mirror: [inner] })
+
+    expect(inner.getAttribute("data-side")).toBe("top")
+    expect(inner.getAttribute("data-align")).toBe("start")
+
+    unposition(popup, arrow, [inner])
+    expect(inner.hasAttribute("data-side")).toBe(false)
+    expect(inner.hasAttribute("data-align")).toBe(false)
+  })
+
   it("does not flip with flip false", () => {
     box(anchor, { left: 400, top: 750, width: 100, height: 40 })
     place(anchor, popup, { side: "bottom", flip: false })

@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { dismissable } from "./phem_dismiss.js"
 import { Popup } from "./phem_popup.js"
+import { PopupSize } from "./phem_popup_size.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, movesFocus, nextItem } from "./phem_roving.js"
 import { hide, render, show } from "./phem_transition.js"
@@ -12,6 +13,13 @@ const TABBABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([ty
 
 // The styles of a content that leaves the viewport: it does not take space while it animates out.
 const EXIT_STYLES = ["position", "inset-block-start", "inset-inline-start", "width"]
+
+// The time (ms) after a hover open in which a click on the trigger keeps the menu open, as in
+// Base UI. A later click closes it.
+const PATIENT_CLICK = 500
+
+// The causes of a close that do not give the focus back to the trigger, as in Base UI.
+const KEEPS_FOCUS = new Set(["hover", "outside", "focusout"])
 
 // The `phem-navigation-menu` controller: the links of a site, with a panel of links (a content)
 // under some items. The content of the open item shows in one shared popup. The open item stays
@@ -46,11 +54,14 @@ const EXIT_STYLES = ["position", "inset-block-start", "inset-inline-start", "wid
 //
 // The pointer on a trigger opens its content after the `delay` value (50 ms), also when another
 // item is open. The pointer out of the triggers and of the popup closes the menu after the
-// `closeDelay` value (50 ms). A click on a trigger opens and closes its content. The first click
-// on a trigger that the pointer opened keeps it open, and a menu that a click or a key opened does
-// not close when the pointer goes out. A click outside, Escape and the focus out of the menu close
-// it. Escape gives the focus back to the trigger. A link with
-// `data-phem-navigation-menu-close-on-click="true"` closes the menu.
+// `closeDelay` value (50 ms). A click on a trigger opens and closes its content. A click on a
+// trigger that the pointer opened less than 500 ms before keeps it open; a later click closes it.
+// A menu that a click or a key opened does not close when the pointer goes out. A click outside,
+// Escape and the focus out of the menu close it. A link with
+// `data-phem-navigation-menu-close-on-click="true"` closes the menu. Escape, the link and the
+// `close` action give the focus back to the trigger when the focus is in the content, in the
+// popup, on that trigger or on the page body, as in Base UI. A focus on another trigger stays. The
+// pointer out, a click outside and the focus out do not move the focus.
 //
 // The arrow keys of the `orientation` value (`horizontal` by default) move the focus between the
 // triggers and the links of the list, and skip a disabled trigger. They stop at the first and at
@@ -71,19 +82,24 @@ const EXIT_STYLES = ["position", "inset-block-start", "inset-inline-start", "wid
 // target (or the `popup` target, with no positioner) goes next to the trigger of the open item
 // (phem_position.js, the `side`, `align`, `sideOffset`, `alignOffset`, `collisionPadding` and
 // `arrowPadding` values), with the `--anchor-*`, `--available-*` and `--transform-origin`
-// variables, `data-side` and `data-align`.
+// variables, `data-side` and `data-align`. The popup in a positioner also gets the `data-side` and
+// the `data-align`. The popup gets `tabindex="-1"`: a click on its space gives it the focus, and
+// Tab does not stop on it.
 //
 // The `popup` target gets the size of the open content in `--popup-width` and `--popup-height`, and
-// the positioner in `--positioner-width` and `--positioner-height`: when the open item changes,
-// they change from the old size to the new size, for a CSS transition of the size. When the open
-// item changes, the old and the new contents get `data-activation-direction` (`left` or `right`,
-// `up` or `down` in a vertical menu): the direction of the new item from the old one. A content
-// that leaves the viewport gets `position: absolute` at the start of the viewport until its
-// animation ends.
+// the positioner in `--positioner-width` and `--positioner-height` (phem_popup_size.js). At rest,
+// they are `auto`. When the open item changes, the popup goes from the old size to the new size
+// in px for a CSS transition, and the variables go back to `auto` when the transition ends.
+//
+// When the open item changes, the old and the new contents get `data-activation-direction`
+// (`left` or `right`, `up` or `down` in a vertical menu): the direction of the new item from the
+// old one. A content that leaves the viewport gets `position: absolute` at the start of the
+// viewport until its animation ends.
 //
 // A trigger gets `aria-expanded`, `aria-controls` (with an element reference when its content has
 // no id), `data-popup-open` and `data-pressed` when its item is open, and `data-disabled`. An icon
-// gets `data-popup-open`. The contents, the positioner, the popup and the backdrop get
+// gets `data-popup-open`. The `nav`, the lists and the arrow get `data-open` while an item is
+// open. The contents, the positioner, the popup and the backdrop get
 // `data-open`, `data-closed` and the animations of phem_transition.js. A link with
 // `aria-current="page"` or `data-active` from the server gets both. The controller sends
 // `phem-navigation-menu:change` with `{ value }` when the user opens, changes or closes an item.
@@ -103,13 +119,17 @@ export default class PhemNavigationMenuController extends Controller {
     this.homes = new Map()
     this.exiting = new Set()
     this.generation = 0
+    this.openedBy = null
+    this.openedAt = 0
     this.popup = new Popup({
       anchor: () => this.#triggerOf(this.openItem),
       popup: () => this.#surface,
       arrow: () => this.arrowTargets[0] ?? null,
       options: () => positionOptions(this),
       inside: () => [this.element],
+      mirror: () => this.#layers.filter((el) => this.popupTargets.includes(el)),
     })
+    this.size = new PopupSize({ popup: () => this.popupTargets[0] ?? null, positioner: () => this.positionerTargets[0] ?? null })
   }
 
   connect() {
@@ -144,7 +164,7 @@ export default class PhemNavigationMenuController extends Controller {
   }
 
   close() {
-    this.#close({ focus: false })
+    this.#close()
   }
 
   // A server render with a new `value`, or a change of the value by a script.
@@ -159,7 +179,7 @@ export default class PhemNavigationMenuController extends Controller {
 
     const link = this.linkTargets.find((el) => el.contains(event.target))
     if (link) {
-      if (link.getAttribute(`data-${this.identifier}-close-on-click`) === "true") this.#close({ focus: false })
+      if (link.getAttribute(`data-${this.identifier}-close-on-click`) === "true") this.#close("link")
 
       return
     }
@@ -172,8 +192,9 @@ export default class PhemNavigationMenuController extends Controller {
 
     if (item !== this.openItem) {
       this.#select(item, keyboard ? "keyboard" : "click")
-    } else if (this.openedBy === "hover" && !keyboard) this.openedBy = "click"
-    else this.#close({ focus: false })
+    } else if (this.openedBy === "hover" && !keyboard && Date.now() - this.openedAt < PATIENT_CLICK) {
+      this.openedBy = "click"
+    } else this.#close("trigger")
   }
 
   onKeydown = (event) => {
@@ -263,7 +284,7 @@ export default class PhemNavigationMenuController extends Controller {
     // focus can go to the browser UI, with no `focusout` to another element.
     if (event.key === "Tab" && !event.shiftKey && this.openItem && this.homes.has(this.#contentOf(this.openItem)) && this.#isLast(entry, entries)) {
       this.#skip(this.#surface, () => {
-        if (!this.element.contains(document.activeElement)) this.#close({ focus: false })
+        if (!this.element.contains(document.activeElement)) this.#close("focusout")
       })
 
       return
@@ -299,7 +320,7 @@ export default class PhemNavigationMenuController extends Controller {
     const to = event.relatedTarget
     if (!this.openItem || !(to instanceof Node) || this.element.contains(to)) return
 
-    this.#close({ focus: false })
+    this.#close("focusout")
   }
 
   // The pointer on a trigger opens its item after the `delay` value.
@@ -332,7 +353,7 @@ export default class PhemNavigationMenuController extends Controller {
     if (!this.openItem || this.openedBy !== "hover") return
 
     clearTimeout(this.closing)
-    this.closing = setTimeout(() => this.#close({ focus: false }), this.closeDelayValue)
+    this.closing = setTimeout(() => this.#close("hover"), this.closeDelayValue)
   }
 
   // Before a morph of this menu (or of an element around it): the contents go back to their items,
@@ -357,23 +378,35 @@ export default class PhemNavigationMenuController extends Controller {
     if (!item || !trigger || isDisabled(trigger) || !this.#contentOf(item)) return
 
     this.openedBy = by
+    this.openedAt = Date.now()
     this.valueValue = valueOf(item, this.itemTargets.indexOf(item))
     this.#apply()
     this.dispatch("change", { detail: { value: this.valueValue } })
   }
 
-  #close({ focus }) {
+  // Closes the open item. `reason` is "escape", "outside", "hover", "focusout", "trigger", "link"
+  // or "close".
+  #close(reason = "close") {
     this.#cancelHover()
     if (!this.openItem) return
 
     const trigger = this.#triggerOf(this.openItem)
-    const content = this.#contentOf(this.openItem)
-    const inside = content?.contains(document.activeElement)
+    const back = !KEEPS_FOCUS.has(reason) && this.#focusIn(this.openItem)
 
     this.valueValue = ""
     this.#apply()
     this.dispatch("change", { detail: { value: "" } })
-    if (focus || inside) trigger?.focus()
+
+    if (back) trigger?.focus()
+  }
+
+  // Whether the focus is in the content of `item`, in the popup, on its trigger or on the body: the
+  // focus that goes back to the trigger at a close. A focus on another trigger stays.
+  #focusIn(item) {
+    const active = document.activeElement
+    if (!active || active === document.body) return true
+
+    return [this.#contentOf(item), this.#surface, this.#triggerOf(item)].some((el) => el?.contains(active))
   }
 
   // Renders a change of the open item, with the animations.
@@ -393,6 +426,9 @@ export default class PhemNavigationMenuController extends Controller {
       const old = switching ? this.#contentOf(previous) : null
       const content = this.#contentOf(item)
 
+      // The size before the change: the old content takes no space after #exit().
+      const from = switching ? this.size.measure() : null
+
       if (old) {
         setDirection(old, direction)
         this.#exit(old)
@@ -401,19 +437,25 @@ export default class PhemNavigationMenuController extends Controller {
       setDirection(content, direction)
       this.#enter(content, { animate: true })
 
-      // Another item: the popup stays open and goes to the new trigger.
-      if (switching) this.popup.render(true)
-      else {
-        this.popup.show()
+      // Another item: the size of the popup goes from the old size to the new one, and the
+      // positioner gets the new size at once. Then the popup stays open and goes to the new
+      // trigger, with the animation of its position.
+      if (switching) {
+        this.size.change(from)
+        this.#surface?.removeAttribute("data-instant")
+        this.popup.render(true)
+      } else {
+        // The size of the content, and the popup in the positioner shows first: the first
+        // placement of the arrow uses its size, and the arrow does not move after it.
+        this.size.rest()
         for (const part of this.#layers) show(part)
+        this.popup.show()
+
+        // The first open places the surface at once: only the move from one trigger to another
+        // animates its position. show() removes `data-instant`, so it goes on after it.
+        this.#surface?.setAttribute("data-instant", "")
       }
 
-      // The first open places the surface at once (`data-instant`): only the move from one
-      // trigger to another animates its position.
-      this.#surface?.toggleAttribute("data-instant", !switching)
-
-      this.#resize({ animate: switching })
-      this.popup.reposition()
       this.#renderDismiss(true)
 
       return
@@ -466,7 +508,7 @@ export default class PhemNavigationMenuController extends Controller {
     this.popup.render(item !== null)
     for (const part of this.#layers) render(part, item !== null)
     if (item) {
-      this.#resize({ animate: false })
+      this.size.rest()
       this.popup.reposition()
     }
 
@@ -496,6 +538,14 @@ export default class PhemNavigationMenuController extends Controller {
       el.toggleAttribute("data-active", active)
       if (active && !el.hasAttribute("aria-current")) el.setAttribute("aria-current", "page")
     }
+
+    // The open state of the menu on the nav, the lists and the arrow.
+    const open = this.openItem !== null
+    for (const el of [this.element, ...this.listTargets, ...this.arrowTargets]) el.toggleAttribute("data-open", open)
+
+    // The popup gets the focus of a click on its space, and is not a stop of the Tab key.
+    const popup = this.popupTargets[0]
+    if (popup && !popup.hasAttribute("tabindex")) popup.setAttribute("tabindex", "-1")
   }
 
   // Shows a content: in the viewport, when the menu has one.
@@ -558,42 +608,10 @@ export default class PhemNavigationMenuController extends Controller {
     moveNode(home.parent, content, next)
   }
 
-  // The size of the open content on the popup and on the positioner. For a transition, the old
-  // size stays for one frame, then the new size goes on.
-  #resize({ animate }) {
-    const popup = this.popupTargets[0]
-    if (!popup) return
-
-    const parts = [[popup, "popup"]]
-    if (this.hasPositionerTarget) parts.push([this.positionerTarget, "positioner"])
-
-    const before = parts.map(([el, name]) => [el.style.getPropertyValue(`--${name}-width`), el.style.getPropertyValue(`--${name}-height`)])
-    for (const [el, name] of parts) {
-      el.style.setProperty(`--${name}-width`, "auto")
-      el.style.setProperty(`--${name}-height`, "auto")
-    }
-
-    const width = popup.offsetWidth
-    const height = popup.offsetHeight
-
-    if (animate && before[0][0]) {
-      parts.forEach(([el, name], i) => {
-        el.style.setProperty(`--${name}-width`, before[i][0])
-        el.style.setProperty(`--${name}-height`, before[i][1])
-      })
-      void popup.offsetWidth
-    }
-
-    for (const [el, name] of parts) {
-      el.style.setProperty(`--${name}-width`, `${width}px`)
-      el.style.setProperty(`--${name}-height`, `${height}px`)
-    }
-  }
-
   // An open menu closes on Escape and on a click outside (phem_dismiss.js).
   #renderDismiss(open) {
     if (open && !this.undismiss) {
-      this.undismiss = dismissable({ inside: () => [this.element], dismiss: (reason) => this.#close({ focus: reason === "escape" }) })
+      this.undismiss = dismissable({ inside: () => [this.element], dismiss: (reason) => this.#close(reason) })
     } else if (!open && this.undismiss) {
       this.undismiss()
       this.undismiss = null
@@ -601,15 +619,23 @@ export default class PhemNavigationMenuController extends Controller {
   }
 
   // The attributes of the state: `aria-expanded`, `data-popup-open` and `data-pressed` on a
-  // trigger and on an icon, the open state and the position of the popup parts, and the open
-  // state, the direction and the exit styles of a content.
+  // trigger and on an icon, `data-open` on the nav, the lists and the arrow, the open state, the
+  // position and the placement of the popup parts (phem_popup.js), the size of an open popup, and
+  // the open state, the direction and the exit styles of a content.
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
+    if (el === this.element || this.listTargets.includes(el)) return name === "data-open"
+    if (this.arrowTargets.includes(el) && name === "data-open") return true
+    if (el === this.popupTargets[0]) {
+      if (this.#layers.includes(el) && OPEN_ATTRIBUTES.has(name)) return true
+
+      return this.openItem !== null && name === "style"
+    }
+
     if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed"
     if (this.iconTargets.includes(el)) return name === "data-popup-open"
     if (this.contentTargets.includes(el)) return OPEN_ATTRIBUTES.has(name) || name === "data-activation-direction" || (name === "style" && this.exiting.has(el))
     if (this.#layers.includes(el)) return OPEN_ATTRIBUTES.has(name)
-    if (el === this.popupTargets[0]) return name === "style" && this.openItem !== null
 
     return false
   }

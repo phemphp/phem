@@ -75,10 +75,10 @@ The controller shows its state in data attributes. Use them in your CSS, or as T
 
 | Attribute | Part | When |
 |---|---|---|
-| `data-open`, `data-closed` | The root, the popup, the panel | The part is open, or closed |
+| `data-open`, `data-closed` | The root, the popup, the panel | The part is open, or closed. The `nav`, the lists and the arrow of a navigation menu get `data-open` while an item is open |
 | `data-popup-open` | A trigger | Its popup is open |
 | `data-panel-open` | A trigger of `phem-collapsible` | Its panel is open |
-| `data-side`, `data-align` | A positioned popup, its arrow | The side and the alignment after a flip: `top`, `bottom`, `left`, `right`, `inline-start`, `inline-end`, and `start`, `center`, `end` |
+| `data-side`, `data-align` | A positioned popup, its arrow, the popup of a navigation menu | The side and the alignment after a flip: `top`, `bottom`, `left`, `right`, `inline-start`, `inline-end`, and `start`, `center`, `end` |
 | `data-highlighted` | An item of a menu or of a combobox | The item has the focus, or the highlight |
 | `data-selected` | An item of a combobox with `multiple` | The server chose the item (`aria-selected="true"`) |
 | `data-expanded` | The `phem-toast` element, a toast | The pointer or the focus is on the stack |
@@ -634,7 +634,7 @@ The contents stay in their items in the server render. With a `viewport` part, t
 | `loopFocus` | `true` | From the last trigger or link, the arrow key goes to the first one |
 | `side`, `align`, `sideOffset`, `alignOffset`, `collisionPadding`, `arrowPadding` | `bottom`, `center`, `0`, `0`, `5`, `5` | The position of the popup next to the trigger of the open item, as in [Position](#position) |
 
-The pointer on a trigger opens its content after the `delay` value, also when another item is open. The pointer out of the triggers and of the popup closes the menu after the `closeDelay` value. A click on a trigger opens and closes its content. The first click on a trigger that the pointer opened keeps it open, and a menu that a click or a key opened does not close when the pointer goes out. A click outside, Escape and the focus out of the menu close it. A link with `data-phem-navigation-menu-close-on-click="true"` closes the menu.
+The pointer on a trigger opens its content after the `delay` value, also when another item is open. The pointer out of the triggers and of the popup closes the menu after the `closeDelay` value. A click on a trigger opens and closes its content. A click less than 500 ms after the pointer opened the content keeps it open, and a later click closes it, as in Base UI. A menu that a click or a key opened does not close when the pointer goes out. A click outside, Escape and the focus out of the menu close it. A link with `data-phem-navigation-menu-close-on-click="true"` closes the menu. Escape, this link and the `close` action give the focus back to the trigger as Escape does in the table below. The pointer out, a click outside and the focus out do not move the focus.
 
 | Key | On | Action |
 |---|---|---|
@@ -645,11 +645,11 @@ The pointer on a trigger opens its content after the `delay` value, also when an
 | Tab | The last element of the content | Moves the focus to the next trigger. The menu stays open until the focus goes out of it |
 | Tab | The last trigger or link of the list | Moves the focus to the next element of the page, not into the content. The menu closes |
 | ArrowDown, ArrowUp, ArrowRight, ArrowLeft | A link of a content | Moves the focus to the next or to the previous link of the content, and from the last one to the first one. A field in the content keeps its arrow keys |
-| Escape | The menu | Closes the menu, and gives the focus back to the trigger |
+| Escape | The menu | Closes the menu. The focus goes back to the trigger when it is in the content, in the popup, on the trigger or on the page body, as in Base UI. The focus on another trigger stays |
 
 The arrow keys of the list skip a disabled trigger, and do not go to the links in a content. They stop at the first and at the last one, as in Base UI: set `data-phem-navigation-menu-loop-focus-value="true"` to go from the last one to the first one. Home and End do not move the focus. In a right-to-left page, ArrowLeft and ArrowRight go the other way.
 
-The `positioner` part (or the `popup` part, with no positioner) goes next to the trigger of the open item, with the attributes and the variables of [Position](#position). The `popup` part gets the size of the open content in `--popup-width` and `--popup-height`, and the positioner in `--positioner-width` and `--positioner-height`. When the open item changes, they change from the old size to the new size, so a CSS transition animates the size. On the first open, the positioner (or the popup, with no positioner) gets `data-instant`: it goes to its place at once, and only the move from one trigger to another animates. Turn off the transition of the position with `[data-instant] { transition: none }`, or the Tailwind variant `data-instant:transition-none`:
+The `positioner` part (or the `popup` part, with no positioner) goes next to the trigger of the open item, with the attributes and the variables of [Position](#position). The `popup` part gets the size of the open content in `--popup-width` and `--popup-height`, and the positioner in `--positioner-width` and `--positioner-height`. At rest, they are `auto`: the popup has the size of its content. When the open item changes, the popup goes from the old size in px to the new size in px, so a CSS transition of its `width` and `height` animates the size. The positioner gets the new size at once, so its place does not change during the transition. When the `width` or `height` transition of the popup ends, the variables go back to `auto`: content that changes its size in the open popup changes the size of the popup. Other animations of the popup do not delay this. Do not use the variables as a length in `calc()`. On the first open, the positioner (or the popup, with no positioner) gets `data-instant`: it goes to its place at once, and only the move from one trigger to another animates, also the first move. Turn off the transition of the position with `[data-instant] { transition: none }`, or the Tailwind variant `data-instant:transition-none`:
 
 ```css
 [data-phem-navigation-menu-target="popup"] {
@@ -668,11 +668,13 @@ The `positioner` part (or the `popup` part, with no positioner) goes next to the
 
 When the open item changes, the old and the new contents get `data-activation-direction`: `right` or `left` (`down` or `up` in a vertical menu), the direction of the new item from the old one. A content that leaves the viewport gets `position: absolute` at the start of the viewport until its animation ends, so it takes no space. The contents, the positioner, the popup and the backdrop get `data-open`, `data-closed` and the animations of the [conventions](#animations).
 
+The `nav`, the lists and the arrow get `data-open` while an item is open. The popup in a positioner gets the `data-side` and `data-align` of the positioner, also after a flip. The popup gets `tabindex="-1"`, also with no positioner: a click on its space gives it the focus, and Tab does not stop on it. These attributes stay after the morph of an event.
+
 A trigger gets `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed` when its item is open, and `data-disabled`. A content needs no `id`: with no id, the controller links the trigger to it with an element reference (`ariaControlsElements`). An icon gets `data-popup-open`. A link with `aria-current="page"` or `data-active` from the server gets both. The controller sends `phem-navigation-menu:change` with `{ value }` when the user opens, changes or closes an item. After the pointer on **Overview** and then on **Guides** (the contents of this page have an `id`), the browser shows:
 
 ```html
-<nav data-controller="phem-navigation-menu" data-phem-navigation-menu-side-offset-value="8" data-phem-navigation-menu-value-value="guides">
-    <ul data-phem-navigation-menu-target="list">
+<nav data-controller="phem-navigation-menu" data-phem-navigation-menu-side-offset-value="8" data-phem-navigation-menu-value-value="guides" data-open="">
+    <ul data-phem-navigation-menu-target="list" data-open="">
         <li data-phem-navigation-menu-target="item" data-value="overview">
             <button data-phem-navigation-menu-target="trigger" aria-expanded="false" aria-controls="overview-content">Overview ...</button>
             <div id="overview-content" data-phem-navigation-menu-target="content" data-activation-direction="right" data-closed="" hidden="">...</div>
@@ -686,8 +688,10 @@ A trigger gets `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pre
         </li>
     </ul>
     <div data-phem-navigation-menu-target="positioner" data-open="" data-side="bottom" data-align="center"
-         style="position: fixed; inset: 37px auto auto 26px; --anchor-width: 58.234375px; ...; --positioner-width: 202px; --positioner-height: 82px;">
-        <div data-phem-navigation-menu-target="popup" data-open="" style="--popup-width: 202px; --popup-height: 82px;">
+         style="--positioner-width: auto; --positioner-height: auto; position: fixed; inset: 37px auto auto 26px; --anchor-width: 58.234375px; ...">
+        <div data-phem-navigation-menu-target="popup" tabindex="-1" data-open="" data-side="bottom" data-align="center"
+             style="--popup-width: auto; --popup-height: auto;">
+            <div data-phem-navigation-menu-target="arrow" data-open="" data-side="bottom" data-align="center" style="left: 96px;"></div>
             <div data-phem-navigation-menu-target="viewport">
                 <div id="guides-content" data-phem-navigation-menu-target="content" data-activation-direction="right" data-open="">
                     <a data-phem-navigation-menu-target="link" href="/styling">Styling</a>
@@ -697,6 +701,8 @@ A trigger gets `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pre
     </div>
 </nav>
 ```
+
+During the size transition (the first 200 ms of the move to **Guides**), the variables have px values: the popup goes from `--popup-width: 302px; --popup-height: 122px;` to `202px` and `82px`, and the positioner has `--positioner-width: 202px; --positioner-height: 82px;` at once. When the menu is closed, the `nav`, the list and the arrow have no `data-open`, the popup has no `data-side` and `data-align`, and `tabindex="-1"` stays.
 
 A navigation menu in a content (a nested menu of Base UI) is not supported yet.
 
