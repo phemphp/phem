@@ -176,13 +176,15 @@ export default class PhemNumberFieldController extends Controller {
   }
 
   // A character that no number of the format has does not go in the input, and the input takes
-  // one sign, one decimal separator, one currency sign and one percent sign.
+  // one sign, one decimal separator, one currency sign and one percent sign. A space goes in only
+  // when the format has one (a group separator, or a currency or a unit with a space), as in Base
+  // UI: "1 2" gives "12" in `en-US`.
   onBeforeInput = (event) => {
     const input = event.target
     if (!this.#isInput(input) || !event.data || !event.inputType?.startsWith("insert")) return
 
     const allowed = this.#characters
-    const known = [...event.data].every((c) => isDigit(c) || /[\s\p{Cf}]/u.test(c) || allowed.has(c))
+    const known = [...event.data].every((c) => isDigit(c) || /\p{Cf}/u.test(c) || allowed.has(c) || (/\s/.test(c) && allowed.has(" ")))
     if (!known || !this.#once(input, event.data)) event.preventDefault()
   }
 

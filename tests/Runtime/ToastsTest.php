@@ -29,8 +29,9 @@ final class ToastsTest extends TestCase
         $toasts->show('Saved');
         $toasts->show('No stock', ToastType::Error);
 
+        // No type by default, as in Base UI: the toast gets no `data-type`.
         self::assertSame([
-            ['name' => 'toast', 'detail' => ['message' => 'Saved', 'type' => 'info']],
+            ['name' => 'toast', 'detail' => ['message' => 'Saved']],
             ['name' => 'toast', 'detail' => ['message' => 'No stock', 'type' => 'error']],
         ], $dispatcher->dispatched());
     }

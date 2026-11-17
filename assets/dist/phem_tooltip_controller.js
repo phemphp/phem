@@ -30,7 +30,8 @@ let closing = null
 //
 // A tooltip that opens soon after another tooltip closed opens with no delay, and gets
 // `data-instant="delay"`. The other tooltip, if its close animation runs, also gets
-// `data-instant="delay"`, so a `[data-instant]` rule shows one tooltip at a time.
+// `data-instant="delay"`, so a `[data-instant]` rule shows one tooltip at a time. A focus that
+// moves from one trigger to the next (Tab) also ends the close of the other tooltip.
 //
 // The trigger gets `data-popup-open`. The tooltip is only visual, as the Tooltip of Base UI: the
 // popup gets no `role="tooltip"`, and the trigger gets no `aria-describedby`. A tooltip only helps
@@ -113,8 +114,7 @@ export default class PhemTooltipController extends Controller {
     // Another tooltip closed a short time ago: this one opens at once, and the close of the other
     // one ends at once, so the page shows one tooltip at a time.
     if (performance.now() - lastClose < GROUP_TIMEOUT) {
-      if (closing && closing !== this.popup) closing.hide({ instant: "delay" })
-      closing = null
+      this.#endOtherClose()
       this.#open({ instant: "delay" })
     } else {
       this.timer = setTimeout(() => this.#open({ instant: false }), this.delayValue)
@@ -137,7 +137,10 @@ export default class PhemTooltipController extends Controller {
   onFocusIn = (event) => {
     if (event.target !== this.#trigger || !matchesFocusVisible(event.target)) return
 
+    // The focus moves from another trigger (Tab in a toolbar): the close of the other tooltip
+    // ends at once, as for the pointer.
     clearTimeout(this.timer)
+    if (performance.now() - lastClose < GROUP_TIMEOUT) this.#endOtherClose()
     this.#open({ instant: "focus" })
   }
 
@@ -175,6 +178,12 @@ export default class PhemTooltipController extends Controller {
     })
 
     this.#trigger?.removeAttribute("data-popup-open")
+  }
+
+  // The close animation of another tooltip ends at once, with `data-instant="delay"`.
+  #endOtherClose() {
+    if (closing && closing !== this.popup) closing.hide({ instant: "delay" })
+    closing = null
   }
 
   // The pointer is on the trigger, or on the popup when it is hoverable.

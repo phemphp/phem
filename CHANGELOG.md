@@ -8,6 +8,22 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: `$e->toast()`, `Toasts::show()` and `new Toast()` give a toast with no type by
+  default, as in Base UI: the toast gets no `data-type`. Before, the default was
+  `ToastType::Info`. Give `ToastType::Info`, or call `Toasts::info()`, for an info toast.
+- **Breaking**: `phem-context-menu`: a release of the right button on an item clicks it at once
+  on macOS (more than 1 px from the point of the open), not after 500 ms. On the other systems,
+  which send `contextmenu` after the release, the release does not click an item, as in Base UI.
+- `phem-tooltip`: a focus that moves from one trigger to the next (Tab) ends the close of the
+  other tooltip at once, so the page shows one tooltip at a time, as for the pointer.
+- `phem-menu`: when a submenu closes before the 150 ms of the pointer on a sibling item, the
+  item gets the highlight at once, and the trigger of the submenu loses it.
+- `phem-select`: the text of the selected item is on the text of the value also when the popup
+  has a margin or a transform (`translate: 0 1px`). A popup over the trigger that gets smaller
+  gives its list the height of its content box in `--available-height`, so a list with
+  `max-height: var(--available-height)` scrolls, and the popup stays over the trigger.
+- `phem-number-field`: a space goes in the input only when the format has one (for example the
+  group separator of `fr-FR`): in `en-US`, "1 2" gives "12", as in Base UI.
 - **Breaking**: Home and End do not move the focus in a `phem-toolbar`, as in Base UI. Before, they
   went to the first and to the last item.
 - The tab stop of `phem-tabs` is the tab with the last focus, also after the morph of an event.

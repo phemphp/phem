@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
+use Playwright\Page\PageInterface;
+
 use function Playwright\Testing\expect;
 
 /**
@@ -262,30 +264,28 @@ final class MenuTest extends E2eTestCase
         expect($page->locator('#context-popup'))->toBeVisible();
     }
 
-    // A release of the right button on an item of a context menu, away from the
-    // open point and after the delay, runs the item.
+    // On macOS, a release of the right button on an item of a context menu, away from
+    // the open point, runs the item at once.
     public function testARightButtonReleaseOnAContextMenuItemRunsIt(): void
     {
         $page = $this->visit('/menu');
         self::assertResponseIsSuccessful();
-
-        $box = $page->locator('#area')->boundingBox();
-        $mouse = $page->mouse();
-
-        $mouse->move($box['x'] + 50, $box['y'] + 30);
-        $mouse->down(['button' => 'right']);
-        expect($page->locator('#context-popup'))->toBeVisible();
-
-        // A release counts 500 ms after the open.
-        usleep(600_000);
-
-        $copy = $page->locator('#context-copy')->boundingBox();
-
-        $mouse->move($copy['x'] + $copy['width'] / 2, $copy['y'] + $copy['height'] / 2, ['steps' => 5]);
-        $mouse->up(['button' => 'right']);
+        $this->releaseOnCopy($page, 'MacIntel');
 
         expect($page->locator('#log'))->toHaveExactText('copy');
         expect($page->locator('#context-popup'))->toBeHidden();
+    }
+
+    // The other systems send `contextmenu` after the release: a release does not run
+    // the item, as in Base UI.
+    public function testARightButtonReleaseOnAContextMenuItemDoesNothingOnOtherSystems(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+        $this->releaseOnCopy($page, 'Linux x86_64');
+
+        expect($page->locator('#context-popup'))->toBeVisible();
+        self::assertNotSame('copy', $page->locator('#log')->textContent());
     }
 
     // A submenu that the pointer entered stays open in empty space, and its trigger
@@ -311,5 +311,22 @@ final class MenuTest extends E2eTestCase
 
         $page->locator('#delete')->hover();
         expect($page->locator('#move-popup'))->toBeHidden();
+    }
+
+    // A press of the right button on the area, a move to "Copy" and a release, with the
+    // system `platform` in `navigator.platform`.
+    private function releaseOnCopy(PageInterface $page, string $platform): void
+    {
+        $page->evaluate(\sprintf("Object.defineProperty(navigator, 'platform', { get: () => '%s', configurable: true })", $platform));
+        $box = $page->locator('#area')->boundingBox();
+        $mouse = $page->mouse();
+
+        $mouse->move($box['x'] + 50, $box['y'] + 30);
+        $mouse->down(['button' => 'right']);
+        expect($page->locator('#context-popup'))->toBeVisible();
+
+        $copy = $page->locator('#context-copy')->boundingBox();
+        $mouse->move($copy['x'] + $copy['width'] / 2, $copy['y'] + $copy['height'] / 2, ['steps' => 5]);
+        $mouse->up(['button' => 'right']);
     }
 }

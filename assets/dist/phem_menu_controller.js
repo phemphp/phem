@@ -17,7 +17,7 @@ const MENUBAR = '[data-controller~="phem-menubar"]'
 
 // The time (ms) of the pointer on another item before it gets the highlight, while a submenu is
 // open and the pointer did not enter it yet: the pointer can cross an item on its way to the
-// submenu.
+// submenu. When the submenu closes before this time, the item gets the highlight at once.
 const SUBMENU_GRACE = 150
 
 // The time (ms) after the press on the trigger before a release on an item clicks it, as in Base
@@ -514,12 +514,16 @@ export default class PhemMenuController extends Controller {
 
     this.highlightingItem = item
     const highlight = () => {
-      this.highlightingItem = null
+      this.#cancelHighlight()
       if (item.isConnected && this.openValue) item.focus({ preventScroll: true })
     }
     const open = this.#submenus.some((menu) => menu.openValue && menu.#trigger !== item)
-    if (open) this.highlighting = setTimeout(highlight, SUBMENU_GRACE)
-    else highlight()
+    if (open) {
+      this.pendingHighlight = highlight
+      this.highlighting = setTimeout(highlight, SUBMENU_GRACE)
+    } else {
+      highlight()
+    }
   }
 
   onPointerOut = (event) => {
@@ -639,6 +643,16 @@ export default class PhemMenuController extends Controller {
   #cancelHighlight() {
     clearTimeout(this.highlighting)
     this.highlightingItem = null
+    this.pendingHighlight = null
+  }
+
+  // A submenu closed: the item that waits for its grace time gets the highlight at once, as in
+  // Base UI. The trigger of the submenu does not keep it.
+  #highlightNow() {
+    const highlight = this.pendingHighlight
+    if (!highlight || this.#submenus.some((menu) => menu.openValue)) return
+
+    highlight()
   }
 
   // The pointer entered a submenu, and came to another item of this menu: the submenu closes at
@@ -745,6 +759,7 @@ export default class PhemMenuController extends Controller {
     this.#apply()
     this.typeahead.reset()
     if (focus || inside) this.restoreFocus()
+    this.#parent?.#highlightNow()
   }
 
   // A click on an item closes the menu and the menus around it.

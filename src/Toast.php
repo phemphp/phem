@@ -27,7 +27,7 @@ final class Toast
      */
     public function __construct(
         public readonly string $message,
-        public readonly ?ToastType $type = ToastType::Info,
+        public readonly ?ToastType $type = null,
         public readonly ?int $duration = null,
         public readonly ?string $title = null,
     ) {

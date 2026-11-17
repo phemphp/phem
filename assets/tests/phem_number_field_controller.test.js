@@ -523,6 +523,18 @@ describe("phem-number-field: the hold and the scrub of Base UI", () => {
     expect(before("-")).toBe(false)
   })
 
+  it("refuses a space when the format has none, and allows it when the group separator is a space", async () => {
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US"'))
+    input().focus()
+    expect(beforeInput(" ")).toBe(true)
+    expect(beforeInput("1 2")).toBe(true)
+
+    document.body.innerHTML = ""
+    await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="fr-FR"'))
+    input().focus()
+    expect(beforeInput(" ")).toBe(false)
+  })
+
   it("allows one percent sign with the percent style", async () => {
     await mount(field('data-phem-number-field-value-value="" data-phem-number-field-locale-value="en-US" data-phem-number-field-format-value=\'{"style":"percent"}\''))
     input().focus()

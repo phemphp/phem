@@ -1,4 +1,5 @@
 import PhemMenuController from "./phem_menu_controller.js"
+import { isMac } from "./phem_platform.js"
 
 // The time (ms) of a touch on the trigger before the menu opens: iOS has no `contextmenu` event.
 const LONG_PRESS = 500
@@ -32,9 +33,10 @@ const MOVE = 10
 // collision of phem_position.js), as in Base UI. A menu that opens with no point (the `open`
 // action, or the `open` value of the server) goes below the trigger, as a `phem-menu`.
 //
-// A release of the right button on an item, 500 ms after the open and more than 1 px from the
-// point of the open, clicks the item: a right press, a move to the item and a release run it. The
-// popup gets `data-instant="click"` at the open.
+// On macOS, a release of the right button on an item more than 1 px from the point of the open
+// clicks the item: a right press, a move to the item and a release run it, as in Base UI. The
+// other systems send `contextmenu` after the release, so no release follows the open. The popup
+// gets `data-instant="click"` at the open.
 export default class PhemContextMenuController extends PhemMenuController {
   // The point of the menu, in the viewport, and whether the menu opened at it.
   point = { x: 0, y: 0 }
@@ -157,7 +159,8 @@ export default class PhemContextMenuController extends PhemMenuController {
   }
 
   // A `contextmenu` of the keyboard has the point of the element: the menu opens at it. It has no
-  // release, so no item waits for one.
+  // release, so no item waits for one. Only macOS sends `contextmenu` at the press, before the
+  // release.
   #openAt(trigger, x, y) {
     const keyboard = x === 0 && y === 0
     if (keyboard) {
@@ -186,8 +189,8 @@ export default class PhemContextMenuController extends PhemMenuController {
       }
     }
 
-    if (keyboard) return
+    if (keyboard || !isMac()) return
 
-    this.release.arm({ delay: LONG_PRESS, accepts: (e) => e.button === 2 && (Math.abs(e.clientX - x) > 1 || Math.abs(e.clientY - y) > 1) })
+    this.release.arm({ delay: 0, accepts: (e) => e.button === 2 && (Math.abs(e.clientX - x) > 1 || Math.abs(e.clientY - y) > 1) })
   }
 }

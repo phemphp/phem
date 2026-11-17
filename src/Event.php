@@ -93,10 +93,12 @@ final class Event
     /**
      * Shows a toast message after the morph (see Phem\Toasts):
      *
-     *     $e->toast('Saved');
+     *     $e->toast('Saved');                       // no type
      *     $e->toast('No stock', ToastType::Error);
      *     $e->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
      *
+     * @param ToastType|null $type a type, or null for a toast with no type (no `data-type`), as
+     *                             the Toast of Base UI
      * @param int|null    $duration the time on the screen in ms (up to Toasts::MAX_DURATION), `0` to
      *                              keep the toast until its close button, or null for the
      *                              `duration` value of the controller
@@ -104,7 +106,7 @@ final class Event
      *
      * @throws \InvalidArgumentException for an empty message, an empty title or a duration out of range
      */
-    public function toast(string $message, ToastType $type = ToastType::Info, ?int $duration = null, ?string $title = null): void
+    public function toast(string $message, ?ToastType $type = null, ?int $duration = null, ?string $title = null): void
     {
         new Toasts($this->dispatcher)->show($message, $type, $duration, $title);
     }

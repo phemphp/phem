@@ -18,6 +18,11 @@ export function isIOS() {
   return /^i(os$|p)/.test(platform) || (platform === "macintel" && navigator.maxTouchPoints > 1)
 }
 
+// macOS, not iPadOS.
+export function isMac() {
+  return /^mac/i.test(navigator.platform ?? "") && !isIOS()
+}
+
 export function isAndroid() {
   return /android/i.test(navigator.userAgent)
 }

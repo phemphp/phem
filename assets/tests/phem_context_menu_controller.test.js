@@ -28,6 +28,11 @@ afterEach(() => {
   document.body.innerHTML = ""
 })
 
+// The system of the browser (`navigator.platform`): only macOS sends `contextmenu` at the press.
+function platform(value) {
+  vi.spyOn(navigator, "platform", "get").mockReturnValue(value)
+}
+
 // An area with a context menu: "Copy" sends an event, and "Share" is a submenu.
 function area() {
   return `<div id="menu" data-controller="phem-context-menu">
@@ -201,32 +206,42 @@ describe("phem-context-menu: the behavior of Base UI", () => {
     expect(isOpen()).toBe(true)
   })
 
-  it("clicks an item at a release of the right button after the delay, more than 1 px from the open point", async () => {
+  it("clicks an item at a release of the right button on macOS, more than 1 px from the open point", async () => {
     await mount(area())
+    platform("MacIntel")
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
     contextMenu($("area"), 120, 80)
-    vi.advanceTimersByTime(600)
+    vi.advanceTimersByTime(0)
     pointerUp($("delete"), { clientX: 200, clientY: 150 })
 
     expect(isOpen()).toBe(false)
   })
 
-  it("does not click an item at a release of the right button before the delay, or at the open point", async () => {
+  it("does not click an item at a release of the right button at the open point", async () => {
     await mount(area())
+    platform("MacIntel")
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
     contextMenu($("area"), 120, 80)
-    pointerUp($("delete"), { clientX: 200, clientY: 150 })
-    expect(isOpen()).toBe(true)
-
-    press("Escape")
-    contextMenu($("area"), 120, 80)
-    vi.advanceTimersByTime(600)
+    vi.advanceTimersByTime(0)
     pointerUp($("delete"), { clientX: 121, clientY: 80 })
+
+    expect(isOpen()).toBe(true)
+  })
+
+  it("does not click an item at a release of the right button on the other systems", async () => {
+    await mount(area())
+    platform("Win32")
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    contextMenu($("area"), 120, 80)
+    vi.advanceTimersByTime(0)
+    pointerUp($("delete"), { clientX: 200, clientY: 150 })
+
     expect(isOpen()).toBe(true)
   })
 
   it("does not arm the release for a keyboard contextmenu", async () => {
     await mount(area())
+    platform("MacIntel")
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
     contextMenu($("area"), 0, 0)
     vi.advanceTimersByTime(600)

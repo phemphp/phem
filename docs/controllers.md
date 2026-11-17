@@ -355,7 +355,7 @@ A click on the link opens the link, not the popup. The keyboard focus on the lin
 
 The trigger is the controller element, or a `trigger` part in it. The pointer on the trigger opens the tooltip after the `delay` value (600 ms), and the pointer out closes it after the `close-delay` value (0 ms). The pointer can go on the tooltip, unless `data-phem-tooltip-hoverable-value="false"`. The focus of the keyboard (`:focus-visible`) opens it at once. Escape, the blur and a press on the trigger close it: the tooltip closes at the press of the pointer (`pointerdown`), before the click, and at the click of Enter or Space, as in Base UI. Set `data-phem-tooltip-close-on-click-value="false"` to keep it open on a press.
 
-A tooltip that opens less than 400 ms after another tooltip closed opens with no delay, and gets `data-instant="delay"`, so a `[data-instant]` rule can stop its animation, as in a toolbar. The tooltip that closed also gets `data-instant="delay"` while its close animation runs, so with the `[data-instant]` rule the page shows one tooltip at a time:
+A tooltip that opens less than 400 ms after another tooltip closed opens with no delay, and gets `data-instant="delay"`, so a `[data-instant]` rule can stop its animation, as in a toolbar. The tooltip that closed also gets `data-instant="delay"` while its close animation runs, so with the `[data-instant]` rule the page shows one tooltip at a time. A focus that moves from one trigger to the next with Tab also ends the close of the other tooltip at once:
 
 ```css
 [data-phem-tooltip-target="popup"][data-instant] { transition: none }
@@ -489,7 +489,7 @@ Put a `phem-menu` in the popup of a menu. Its trigger is an item of the menu aro
 </div>
 ```
 
-The arrow keys of the menu go to **Move to** as to the other items. The pointer on it opens the submenu after the `delay` value (100 ms), and the focus stays on it. While the submenu is open, the pointer on another item of the menu gives it the focus after 150 ms, so the pointer can cross an item on its way to the submenu. The 150 ms apply only before the pointer enters the submenu. In the submenu, the pointer removes the highlight from **Move to** (the focus stays on it). When the pointer goes from the submenu to empty space, the submenu stays open, as in Base UI. The pointer on another item of the menu closes it at once. A trigger with `aria-disabled="true"` does not open the submenu. Set `data-phem-menu-open-on-hover-value="false"` on the submenu to open it only with a click or a key. After ArrowRight on **Move to**, the browser shows:
+The arrow keys of the menu go to **Move to** as to the other items. The pointer on it opens the submenu after the `delay` value (100 ms), and the focus stays on it. While the submenu is open, the pointer on another item of the menu gives it the focus after 150 ms, so the pointer can cross an item on its way to the submenu. When the submenu closes before the end of the 150 ms, the item gets the focus at once. The 150 ms apply only before the pointer enters the submenu. In the submenu, the pointer removes the highlight from **Move to** (the focus stays on it). When the pointer goes from the submenu to empty space, the submenu stays open, as in Base UI. The pointer on another item of the menu closes it at once. A trigger with `aria-disabled="true"` does not open the submenu. Set `data-phem-menu-open-on-hover-value="false"` on the submenu to open it only with a click or a key. After ArrowRight on **Move to**, the browser shows:
 
 ```html
 <button data-phem-menu-target="trigger" role="menuitem" tabindex="-1" aria-haspopup="menu"
@@ -742,7 +742,7 @@ A right click on the trigger opens the menu with its top left corner at the poin
 
 The popup gets `data-instant="click"` at the open, as in Base UI: a `[data-instant]` rule opens it with no animation. Near an edge of the viewport, the popup keeps its side, moves on the two axes to stay in the viewport, and flips its align. A submenu of the context menu goes next to its trigger, as in `phem-menu`.
 
-The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, no item gets the focus until the pointer moves. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. Tab does nothing: the menu stays open. A press of the right button, a move to an item and a release of the button click the item, when the release is more than 1 px from the point of the open and 500 ms or more after the open. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
+The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, no item gets the focus until the pointer moves. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. Tab does nothing: the menu stays open. On macOS, a press of the right button, a move to an item and a release of the button click the item, when the release is more than 1 px from the point of the open, as in Base UI. The other systems send `contextmenu` after the release, so the release does not click an item there. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
 
 ## Suggest values while the user types
 
@@ -1759,7 +1759,7 @@ The `value` value is the state: the raw number (for example `1234.5`), or an emp
 
 The user types a number in the format of the locale. The controller reads the group and decimal separators of the locale, so `1.234,5` is `1234.5` in `de-DE`. The value changes while the user types. On blur, the input shows the formatted value, and a value out of the limits goes to the nearest limit. Enter does not format the text: it puts the value of the hidden input in the limits, so a form submit gets a valid value, and it ends the change (`phem-number-field:commit` with the reason `keyboard`). A text that is not a number gives the last value again.
 
-A character that no number of the format has does not go in the input. The input takes one sign, one decimal separator, one currency sign and one percent (or permille) sign, unless the new character replaces the selected one. A minus sign goes in only when the value can be negative (no `min`, a negative `min`, or `allowOutOfRange`). The digits of other scripts (Arabic-Indic, Persian, fullwidth and Han) are the same as `0`-`9`: `٤٢` is `42`. The Arabic decimal separator (`٫`) is the decimal separator of the locale, and the Arabic group separator (`٬`) is its group separator. The fullwidth `．` and `，` are `.` and `,`: `1，5` is `1.5` in `de-DE`.
+A character that no number of the format has does not go in the input. A space goes in only when the format has one, for example the group separator of `fr-FR`: in `en-US`, "1 2" gives "12". The input takes one sign, one decimal separator, one currency sign and one percent (or permille) sign, unless the new character replaces the selected one. A minus sign goes in only when the value can be negative (no `min`, a negative `min`, or `allowOutOfRange`). The digits of other scripts (Arabic-Indic, Persian, fullwidth and Han) are the same as `0`-`9`: `٤٢` is `42`. The Arabic decimal separator (`٫`) is the decimal separator of the locale, and the Arabic group separator (`٬`) is its group separator. The fullwidth `．` and `，` are `.` and `,`: `1，5` is `1.5` in `de-DE`.
 
 | Value | Default | Description |
 | --- | --- | --- |
@@ -2112,7 +2112,7 @@ The `input` part is the field of the form. An `<input>` gets the value, or the v
 
 The scroll arrows scroll the list one item each 40 ms while the pointer is on them. Each one shows only when the list can scroll in its direction, unless it has `data-keep-mounted`. The item with the focus does not go under a visible arrow: the list keeps the larger of its `scroll-padding-top` (or `scroll-padding-bottom`) and the height of the arrow free. The `list` part, or the popup with no list, is the element that scrolls: give it a `max-height`, for example `max-height: var(--available-height)`.
 
-A popup over the trigger gets smaller in a short viewport, and its list must then scroll. Make the open popup a flex column, and let the list scroll. Do not put `display` in the `style` attribute of the popup: it shows the popup when it has `hidden`.
+A popup over the trigger gets smaller in a short viewport, and its list must then scroll. The controller sets `--available-height` of the popup to the height of its content box (in its border and its padding), so a list with `max-height: var(--available-height)` and `overflow-y: auto` fits. You can also make the open popup a flex column, and let the list scroll. Do not put `display` in the `style` attribute of the popup: it shows the popup when it has `hidden`.
 
 ```css
 [data-phem-select-target="popup"]:not([hidden]) {
@@ -2125,6 +2125,8 @@ A popup over the trigger gets smaller in a short viewport, and its list must the
     min-height: 0;
 }
 ```
+
+A margin or a transform of the popup (for example `translate: 0 1px` over the trigger) does not move the text of the selected item from the text of the value: the controller measures the popup with them.
 
 The parts get these attributes:
 
@@ -2341,7 +2343,7 @@ public function save(Event $e): void
 }
 ```
 
-The types are `ToastType::Info` (the default), `Success`, `Warning` and `Error`. A third argument sets the duration of this toast in milliseconds. `0` keeps the toast until the user closes it:
+The types are `ToastType::Info`, `Success`, `Warning` and `Error`. With no type (the default), the toast gets no `data-type`, as in Base UI. A third argument sets the duration of this toast in milliseconds. `0` keeps the toast until the user closes it:
 
 ```php
 $e->toast('The order has no stock.', ToastType::Error, 0);

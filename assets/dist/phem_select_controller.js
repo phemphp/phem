@@ -656,15 +656,22 @@ export default class PhemSelectController extends Controller {
     const p = popup.getBoundingClientRect()
     const r = text.getBoundingClientRect()
 
-    const idealTop = v.top + v.height / 2 - (r.top - p.top + r.height / 2)
-    const top = Math.max(MARGIN, idealTop)
-    const height = Math.min(view.height - MARGIN, idealTop + p.height) - top
+    // The popup is at the top left of the viewport (`top` and `left` 0): the boxes give the
+    // `top` and the `left` that put the text on the value. A margin or a transform of the popup
+    // (`translate`) moves its box from its `top` by `p.top`.
+    const idealTop = v.top + v.height / 2 - (r.top + r.height / 2)
+    const top = Math.max(MARGIN - p.top, idealTop)
+    const height = Math.min(view.height - MARGIN, idealTop + p.top + p.height) - (top + p.top)
 
     if (height < p.height) {
+      // The list gets the content box of the popup (`--available-height`), in its border and its
+      // padding.
       const room = list.scrollHeight - list.clientHeight
-      style.setProperty("height", `${height - frameOf(popup)}px`)
+      const frame = frameOf(popup)
+      const borderBox = getComputedStyle(popup).boxSizing === "border-box"
+      style.setProperty("height", `${borderBox ? height : height - frame}px`)
       style.setProperty("max-height", "none")
-      style.setProperty("--available-height", `${height}px`)
+      style.setProperty("--available-height", `${height - frame}px`)
 
       // The list must get smaller by the height that the popup lost, and scroll.
       const scrolls = !["visible", "clip"].includes(getComputedStyle(list).overflowY)
@@ -681,11 +688,11 @@ export default class PhemSelectController extends Controller {
     // The text after the scroll gives the top: no rounding of a value that is measured again.
     const at = text.getBoundingClientRect()
     const box = popup.getBoundingClientRect()
-    const y = v.top + v.height / 2 - (at.top - box.top + at.height / 2)
-    const left = clamp(v.left - (at.left - box.left), PADDING, view.width - PADDING - box.width)
+    const y = v.top + v.height / 2 - (at.top + at.height / 2)
+    const left = clamp(v.left - at.left, PADDING - box.left, view.width - PADDING - box.width - box.left)
     style.setProperty("top", `${y}px`)
     style.setProperty("left", `${left}px`)
-    style.setProperty("--transform-origin", `${Math.round(v.left + v.width / 2 - left)}px ${Math.round(at.top - box.top + at.height / 2)}px`)
+    style.setProperty("--transform-origin", `${Math.round(v.left + v.width / 2 - left - box.left)}px ${Math.round(at.top - box.top + at.height / 2)}px`)
     this.offset = { x: left - t.left, y: y - t.top }
 
     for (const arrow of this.arrowTargets) {
@@ -1047,11 +1054,9 @@ function unsize(popup) {
   popup.style.removeProperty("max-height")
 }
 
-// The vertical padding and border (px) of a popup with `box-sizing: content-box`: its CSS height
-// does not count them.
+// The vertical padding and border (px) of a popup.
 function frameOf(popup) {
   const style = getComputedStyle(popup)
-  if (style.boxSizing === "border-box") return 0
 
   return ["paddingTop", "paddingBottom", "borderTopWidth", "borderBottomWidth"].reduce((sum, name) => sum + (parseFloat(style[name]) || 0), 0)
 }

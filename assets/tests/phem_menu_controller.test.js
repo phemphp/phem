@@ -1101,6 +1101,27 @@ describe("phem-menu: the behavior of Base UI", () => {
       expect($("move-trigger").hasAttribute("data-highlighted")).toBe(false)
     })
 
+    it("highlights a sibling item at once when the submenu closes before the grace time", async () => {
+      await mount(nested())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      mouseClick($("trigger"))
+      hover($("move-trigger"))
+      vi.advanceTimersByTime(100)
+      expect(subOpen()).toBe(true)
+
+      // The pointer goes from the trigger of the submenu to a sibling item: the item waits.
+      out($("move-trigger"), $("delete"))
+      hover($("delete"))
+      expect(document.activeElement.id).toBe("move-trigger")
+
+      // The submenu closes before the end of the grace time: the item gets the highlight then.
+      application.getControllerForElementAndIdentifier($("move"), "phem-menu").close()
+
+      expect(subOpen()).toBe(false)
+      expect(document.activeElement.id).toBe("delete")
+      expect($("move-trigger").hasAttribute("data-highlighted")).toBe(false)
+    })
+
     it("stays open when the pointer goes from the submenu to empty space", async () => {
       await enter()
 

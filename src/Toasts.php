@@ -41,6 +41,7 @@ final class Toasts
     }
 
     /**
+     * @param ToastType|null $type a type, or null for a toast with no type (no `data-type`)
      * @param int|null    $duration the time on the screen in ms (up to MAX_DURATION), `0` to keep
      *                              the toast until its close button, or null for the `duration`
      *                              value of the controller
@@ -48,7 +49,7 @@ final class Toasts
      *
      * @throws \InvalidArgumentException for an empty message, an empty title or a duration out of range
      */
-    public function show(string $message, ToastType $type = ToastType::Info, ?int $duration = null, ?string $title = null): void
+    public function show(string $message, ?ToastType $type = null, ?int $duration = null, ?string $title = null): void
     {
         if ('' === trim($message)) {
             throw new \InvalidArgumentException('The message of a toast cannot be empty.');

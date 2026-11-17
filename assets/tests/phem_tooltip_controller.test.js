@@ -127,6 +127,21 @@ describe("phem-tooltip", () => {
     expect($("tip").getAttribute("data-instant")).toBe("delay")
   })
 
+  it("shows one tooltip at a time when the focus of the keyboard moves to the next trigger", async () => {
+    await mount(toolbar())
+    $("tip").getAnimations = () => ($("tip").hasAttribute("data-instant") ? [] : [{ finished: new Promise(() => {}) }])
+    tabTo($("archive"))
+    expect($("tip").hidden).toBe(false)
+
+    // Tab: the blur closes the first tooltip, and the focus opens the next one.
+    tabTo($("delete"))
+
+    expect($("tip-2").hidden).toBe(false)
+    expect($("tip-2").getAttribute("data-instant")).toBe("focus")
+    expect($("tip").hidden).toBe(true)
+    expect($("tip").getAttribute("data-instant")).toBe("delay")
+  })
+
   it("keeps open a tooltip that opened again during its close animation, when the next tooltip of a group opens", async () => {
     await mount(toolbar('data-phem-tooltip-delay-value="0"'))
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
