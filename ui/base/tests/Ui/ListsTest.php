@@ -35,7 +35,8 @@ final class ListsTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-select-target="value"][data-placeholder][placeholder="Select apple"]')
             ->assertSelectorTextContains('[data-phem-select-target="value"]', 'Select apple')
             ->assertSelectorExists('input[name="apple"][data-phem-select-target="input"]')
-            ->assertSelectorExists('[data-phem-select-target="popup"][popover="manual"] [data-phem-select-target="item"][data-value="gala"]');
+            ->assertSelectorExists('[data-phem-select-target="popup"][popover="manual"] [data-phem-select-target="item"][data-value="gala"]')
+            ->assertSelectorExists('[data-phem-select-target="value"][data-phem-select-template="{first} (+{others} more)"][data-phem-select-markup]');
     }
 
     public function testASelectWithAValueMarksItsItem(): void

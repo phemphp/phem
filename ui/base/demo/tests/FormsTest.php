@@ -36,9 +36,10 @@ final class FormsTest extends DemoTestCase
     public function testFormShowsTheErrorOfTheServerAndFocusesAnInvalidField(): void
     {
         $page = $this->visitComponent('form');
+        $hero = $page->getByRole('region', ['name' => 'Demo']);
 
         $input = $page->getByRole('textbox', ['name' => 'Homepage']);
-        $submit = $page->getByRole('button', ['name' => 'Submit']);
+        $submit = $hero->getByRole('button', ['name' => 'Submit']);
         expect($input)->toHaveValue('https://example.com');
 
         // The value of the demo is valid for the browser: the server refuses it after 1 second.
@@ -62,6 +63,31 @@ final class FormsTest extends DemoTestCase
         $submit->click();
         expect($input)->not()->toHaveAttribute('aria-invalid', 'true');
         expect($input)->toHaveValue('https://base-ui.com');
+    }
+
+    public function testFormExamples(): void
+    {
+        $page = $this->visitComponent('form');
+
+        // The handler refuses the reserved name: the error shows in the FieldError.
+        $server = $page->getByRole('region', ['name' => 'Submit with a Server Function']);
+        $server->getByRole('button', ['name' => 'Submit'])->click();
+        expect($server->locator('text=\'admin\' is reserved for system use'))->toBeVisible();
+        expect($server->getByRole('textbox', ['name' => 'Username']))->toHaveAttribute('aria-invalid', 'true');
+
+        // The handler gets the values of the form.
+        $values = $page->getByRole('region', ['name' => 'Submit form values as a JavaScript object']);
+        $values->getByRole('spinbutton', ['name' => 'Quantity'])->fill('3');
+        $values->getByRole('button', ['name' => 'Submit'])->click();
+        expect($values->locator('pre[aria-label="Payload"]'))->toContainText('"order_quantity": 3');
+
+        // The checks of the server map their errors to the fields.
+        $zod = $page->getByRole('region', ['name' => 'Using with Zod']);
+        $zod->getByRole('textbox', ['name' => 'Age'])->fill('-2');
+        $zod->getByRole('button', ['name' => 'Submit'])->click();
+        expect($zod->locator('text=Name is required'))->toBeVisible();
+        expect($zod->locator('text=Age must be a positive number'))->toBeVisible();
+        expect($zod->getByRole('textbox', ['name' => 'Age']))->toHaveAttribute('aria-describedby', 'age-error');
     }
 
     public function testNumberField(): void

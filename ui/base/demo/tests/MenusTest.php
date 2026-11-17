@@ -99,13 +99,34 @@ final class MenusTest extends DemoTestCase
     {
         $page = $this->visitComponent('context-menu');
 
-        $page->getByText('Right click here')->click(['button' => 'right']);
+        $page->getByRole('region', ['name' => 'Demo'])->getByText('Right click here')->click(['button' => 'right']);
         $menu = $page->getByRole('menu');
         expect($menu)->toBeVisible();
         expect($page->getByRole('menuitem', ['name' => 'Favorite']))->toBeVisible();
 
         $page->getByRole('menuitem', ['name' => 'Play Next'])->click();
         expect($menu)->toBeHidden();
+    }
+
+    public function testContextMenuExamples(): void
+    {
+        $page = $this->visitComponent('context-menu');
+
+        // The same actions in the context menu of the card and in its menu button.
+        $card = $page->getByRole('region', ['name' => 'Using with Menu']);
+        $card->getByText('Station Hofplein')->click(['button' => 'right']);
+        expect($page->getByRole('menuitem', ['name' => 'Copy link']))->toBeVisible();
+        $page->keyboard()->press('Escape');
+        $button = $card->getByRole('button', ['name' => 'Image actions']);
+        expect($button->locator('svg'))->toHaveCount(1);
+        $button->click();
+        expect($page->getByRole('menuitem', ['name' => 'Delete']))->toBeVisible();
+        $page->keyboard()->press('Escape');
+
+        // The submenu of a context menu.
+        $page->getByRole('region', ['name' => 'Nested menu'])->getByText('Right click here')->click(['button' => 'right']);
+        $page->getByRole('menuitem', ['name' => 'Add to Playlist'])->hover();
+        expect($page->getByRole('menuitem', ['name' => 'New playlist…']))->toBeVisible();
     }
 
     public function testMenubarMovesBetweenTheMenus(): void

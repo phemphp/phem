@@ -112,13 +112,15 @@ class MenuSubmenu extends Menu
 }
 
 /**
- * The button that opens the menu. It has a caret. In a Menubar, it has the look of the bar and no
- * caret. In a Toolbar, it is an item of the toolbar, with the look of a ToolbarButton.
+ * The button that opens the menu. It has a caret, unless `caret` is false. In a Menubar, it has the
+ * look of the bar and no caret. In a Toolbar, it is an item of the toolbar, with the look of a
+ * ToolbarButton.
  */
 #[Component]
-function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, #[Context] ?Toolbar $toolbar = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, #[Context] ?Toolbar $toolbar = null, bool $disabled = false, bool $caret = true, ?Html $children = null, mixed ...$rest): Node
 {
     $disabled = $disabled || $menu->disabled;
+    $caret = $caret && null === $menubar;
     $target = $menu->target('trigger');
     $item = null !== $toolbar && null === $menubar ? 'item' : null;
     $base = null !== $item ? Style::TOOLBAR_BUTTON : (null !== $menubar
@@ -136,7 +138,7 @@ function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null,
             {{ ...rest }}
         >
             {{ children }}
-            {{ menubar ? '' : <CaretDownIcon /> }}
+            {{ caret ? <CaretDownIcon /> : '' }}
         </button>
     );
 }

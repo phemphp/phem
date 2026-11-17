@@ -2,10 +2,10 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Page, State};
+use Phem\Attribute\{Component, Page, State};
 use Phem\{Event, Node};
 
-use function App\Ui\{DemoPage, Hero};
+use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{FieldControl, FieldError, FieldLabel, Form};
 use Phem\Ui\Base\{Button, Field};
 
@@ -54,7 +54,130 @@ final class FormPage
                         <Button type="submit">Submit</Button>
                     </Form>
                 </Hero>
+                <Examples>
+                    <Example title="Submit with a Server Function">
+                        <Example.description>
+                            <p>The <code>onSubmit</code> handler of a <code>Form</code> runs on the server, as a Server Function. It gets the values of the form in <code>$e-&gt;form</code>, and its errors show in the <code>FieldError</code> of each field.</p>
+                        </Example.description>
+                        <FormServerFunctionDemo />
+                    </Example>
+                    <Example title="Submit form values as a JavaScript object">
+                        <Example.description>
+                            <p>The handler gets the values of the form as an array in <code>$e-&gt;form</code>, or as an object with <code>#[MapForm]</code>. This is useful when you need to transform the values before submission, or integrate with 3rd party APIs.</p>
+                            <p>The browser does not send the form: the submit is an event of the page.</p>
+                        </Example.description>
+                        <FormValuesDemo />
+                    </Example>
+                    <Example title="Using with Zod">
+                        <Example.description>
+                            <p>Zod validates the values in the browser. In phem, the handler validates them on the server (with Symfony Validator constraints and <code>#[MapForm]</code>, or with your own checks), and the errors map to each field’s <code>name</code>.</p>
+                        </Example.description>
+                        <FormValidationDemo />
+                    </Example>
+                </Examples>
             </DemoPage>
+        );
+    }
+}
+
+// The Server Function of the Base UI demo: the server answers after 1 second. "admin" is reserved,
+// and another name is unavailable one time out of two.
+#[Component]
+final class FormServerFunctionDemo
+{
+    #[State] public string $username = 'admin';
+    #[State] public ?string $error = null;
+
+    public function submit(Event $e): void
+    {
+        $this->username = (string) ($e->form['username'] ?? '');
+        sleep(1);
+
+        $this->error = match (true) {
+            'admin' === $this->username => "'admin' is reserved for system use",
+            1 === random_int(0, 1) => $this->username.' is unavailable',
+            default => null,
+        };
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Form onSubmit={{ submit }} className="[&_button[aria-disabled=true]]:pointer-events-none [&_button[aria-disabled=true]]:border-neutral-500 [&_button[aria-disabled=true]]:text-neutral-500 dark:[&_button[aria-disabled=true]]:border-neutral-400 dark:[&_button[aria-disabled=true]]:text-neutral-400">
+                <Field id="username">
+                    <FieldLabel>Username</FieldLabel>
+                    <FieldControl type="text" name="username" autocomplete="username" required defaultValue={{ username }} placeholder="e.g. alice132" aria-invalid={{ error ? 'true' : null }} aria-describedby={{ error ? 'username-error' : null }} />
+                    <FieldError>{{ error }}</FieldError>
+                </Field>
+                <Button type="submit">Submit</Button>
+            </Form>
+        );
+    }
+}
+
+// The values of the form as an array: the handler makes the payload of an API.
+#[Component]
+final class FormValuesDemo
+{
+    #[State] public ?string $payload = null;
+
+    public function submit(Event $e): void
+    {
+        $this->payload = json_encode(['product_id' => (string) ($e->form['id'] ?? ''), 'order_quantity' => (int) ($e->form['quantity'] ?? 0)], \JSON_PRETTY_PRINT);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Form onSubmit={{ submit }}>
+                <Field id="product">
+                    <FieldLabel>Product ID</FieldLabel>
+                    <FieldControl name="id" defaultValue="sku-42" required />
+                </Field>
+                <Field id="quantity">
+                    <FieldLabel>Quantity</FieldLabel>
+                    <FieldControl name="quantity" type="number" defaultValue="1" min="1" required />
+                </Field>
+                <Button type="submit">Submit</Button>
+                {% if payload %}<pre aria-label="Payload" className="m-0 bg-neutral-100 p-2 text-xs dark:bg-neutral-800">{{ payload }}</pre>{% endif %}
+            </Form>
+        );
+    }
+}
+
+// The checks of the Zod schema of the Base UI demo, on the server: each error goes to its field.
+#[Component]
+final class FormValidationDemo
+{
+    /** @var array<string, string> */
+    #[State] public array $errors = [];
+
+    public function submit(Event $e): void
+    {
+        $name = trim((string) ($e->form['name'] ?? ''));
+        $age = trim((string) ($e->form['age'] ?? ''));
+
+        $this->errors = array_filter([
+            'name' => '' === $name ? 'Name is required' : null,
+            'age' => !is_numeric($age) ? 'Age must be a number' : ((float) $age <= 0 ? 'Age must be a positive number' : null),
+        ]);
+    }
+
+    public function render(): Node
+    {
+        $fields = ['name' => ['Name', 'Enter name'], 'age' => ['Age', 'Enter age']];
+
+        return (
+            <Form onSubmit={{ submit }}>
+                {% for field, info in fields %}
+                    <Field key={{ field }} id={{ field }}>
+                        <FieldLabel>{{ info[0] }}</FieldLabel>
+                        <FieldControl name={{ field }} placeholder={{ info[1] }} aria-invalid={{ errors[field] is defined ? 'true' : null }} aria-describedby={{ errors[field] is defined ? field ~ '-error' : null }} />
+                        <FieldError>{{ errors[field] ?? '' }}</FieldError>
+                    </Field>
+                {% endfor %}
+                <Button type="submit">Submit</Button>
+            </Form>
         );
     }
 }

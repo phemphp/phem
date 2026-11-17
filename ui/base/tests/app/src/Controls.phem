@@ -38,6 +38,12 @@ function CheckboxDemo(): Node
 }
 
 #[Component]
+function MenuTriggerWithNoCaretDemo(): Node
+{
+    return <Menu><MenuTrigger caret={{ false }} aria-label="Actions">…</MenuTrigger><MenuPopup><MenuItem>Item</MenuItem></MenuPopup></Menu>;
+}
+
+#[Component]
 function ToolbarTriggersDemo(): Node
 {
     return (

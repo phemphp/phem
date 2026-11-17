@@ -2088,6 +2088,11 @@ A `label` part (`data-phem-select-target="label"`) names the trigger, with `aria
 
 The `value` part shows the label of the selected item: its `data-label` attribute, the text of its `itemText` part, or its text. With `multiple`, it shows the labels separated by a comma (`Gala, Fuji`). With no value, it shows its `placeholder` attribute, and it gets `data-placeholder`. The controller writes the text of the `value` part: put no other content in it.
 
+Two attributes of the `value` part change what it shows:
+
+- `data-phem-select-template`: the text for two values or more. `{first}` is the first label, `{others}` the number of the other values, `{count}` the number of values and `{labels}` the labels. With `data-phem-select-template="{first} (+{others} more)"`, the part shows `Gala (+2 more)`.
+- `data-phem-select-markup`: the part shows a copy of the markup of the `itemText` part of the selected item, with no ids, for an item with more than a text (a name and a price, for example).
+
 | Value | Default | Description |
 | :-- | :-- | :-- |
 | `value` | | The selected value, or a JSON array with `multiple`. |

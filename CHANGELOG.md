@@ -8,6 +8,9 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The `value` part of `phem-select` takes a `data-phem-select-template` for two values or more
+  (`{first} (+{others} more)`), and `data-phem-select-markup` to show a copy of the markup of the
+  selected item, as the `children` function of a Base UI `Select.Value`. See docs/controllers.md.
 - `phem-otp-field` has a `normalize` value (`uppercase` or `lowercase`) that changes the
   accepted characters before the state, as the `normalizeValue` prop of a Base UI OTP field.
 - A fallback of `phem-avatar` with `data-phem-avatar-delay` uses its own delay, as the `delay`

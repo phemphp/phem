@@ -25,7 +25,7 @@ function SelectDemo(?string $value = null): Node
     return (
         <Select id="apple" name="apple" defaultValue={{ value }}>
             <SelectLabel>Apple</SelectLabel>
-            <SelectTrigger><SelectValue placeholder="Select apple" /><SelectIcon /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select apple" template="{first} (+{others} more)" markup /><SelectIcon /></SelectTrigger>
             <SelectPopup>
                 <SelectList>
                     <SelectItem value="gala"><SelectItemIndicator /><SelectItemText>Gala</SelectItemText></SelectItem>

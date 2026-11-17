@@ -41,6 +41,13 @@ final class ControlsTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-toggle-target="indicator"][hidden]');
     }
 
+    public function testAMenuTriggerCanHaveNoCaret(): void
+    {
+        $this->mount(self::APP.'MenuTriggerWithNoCaretDemo')
+            ->assertSelectorExists('button[data-phem-menu-target="trigger"][aria-label="Actions"]')
+            ->assertSelectorNotExists('button[data-phem-menu-target="trigger"] svg');
+    }
+
     public function testTheTriggersInAToolbarAreItemsOfTheToolbar(): void
     {
         $this->mount(self::APP.'ToolbarTriggersDemo')

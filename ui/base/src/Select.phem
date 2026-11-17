@@ -112,15 +112,21 @@ function SelectTrigger(#[Context] Select $select, ?Html $children = null, mixed 
     );
 }
 
-/** The label of the selected item, or the `placeholder`. The controller writes its text. */
+/**
+ * The label of the selected item, or the `placeholder`. The controller writes its text. `template`
+ * gives the text of two values or more (`{first} (+{others} more)`), and `markup` shows a copy of
+ * the markup of the item text.
+ */
 #[Component]
-function SelectValue(#[Context] Select $select, ?string $placeholder = null, mixed ...$rest): Node
+function SelectValue(#[Context] Select $select, ?string $placeholder = null, ?string $template = null, bool $markup = false, mixed ...$rest): Node
 {
     $empty = [] === $select->selected();
 
     return (
         <span
             placeholder={{ placeholder }}
+            data-phem-select-template={{ template }}
+            data-phem-select-markup={{ markup ? '' : null }}
             data-placeholder={{ empty ? '' : null }}
             data-phem-select-target="value"
             className={{ classes('data-placeholder:text-neutral-500 dark:data-placeholder:text-neutral-400') }}

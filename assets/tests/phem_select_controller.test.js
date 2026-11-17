@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemSelectController from "../dist/phem_select_controller.js"
-import { click, hover, mount, nextDone, respond } from "./support.js"
+import { click, hover, mount, nextDone, respond, settle } from "./support.js"
 
 let application
 
@@ -105,6 +105,23 @@ describe("phem-select", () => {
     expect(el("indicator-gala").hidden).toBe(true)
     expect(el("up").hidden).toBe(true)
     expect(el("up").getAttribute("data-direction")).toBe("up")
+  })
+
+  it("shows two values or more with the template of the value target", async () => {
+    await mount(select(`data-phem-select-multiple-value="true" data-phem-select-value-value='["gala"]'`).replace('<span id="value" ', '<span id="value" data-phem-select-template="{first} (+{others} more)" '))
+
+    expect(el("value").textContent).toBe("Gala")
+
+    el("select").setAttribute("data-phem-select-value-value", '["gala","fuji","granny"]')
+    await settle()
+    expect(el("value").textContent).toBe("Gala (+2 more)")
+  })
+
+  it("shows a copy of the markup of the selected item with the markup attribute", async () => {
+    await mount(select('data-phem-select-value-value="fuji"').replace('<span id="value" ', '<span id="value" data-phem-select-markup ').replace(">Fuji<", "><b id=\"fuji-name\">Fuji</b> <i>Japan</i><"))
+
+    expect(el("value").innerHTML).toBe("<b>Fuji</b> <i>Japan</i>")
+    expect(el("value").querySelector("[id]")).toBe(null)
   })
 
   it("names the trigger with the label target, and focuses the trigger on a click on the label", async () => {

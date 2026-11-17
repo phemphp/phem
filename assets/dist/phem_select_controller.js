@@ -55,7 +55,11 @@ const TOLERANCE = 1
 // server render with a new value sets it. The `value` target shows the label of the selected item
 // (its `data-label`, the text of its `itemText` target, or its text), or with `multiple` the
 // labels separated by a comma. With no value, it shows its `placeholder` attribute, and gets
-// `data-placeholder`.
+// `data-placeholder`. With two values or more, a `data-phem-select-template` attribute on the
+// `value` target gives the text: `{first}` (the first label), `{others}` (the number of the other
+// values), `{count}` and `{labels}`, for example `{first} (+{others} more)`. With a
+// `data-phem-select-markup` attribute, the `value` target shows a copy of the markup of the
+// `itemText` of the selected item, for an item with more than a text.
 //
 // A press on the trigger opens the popup. A release of the pointer on an item after a drag from the
 // trigger selects the item. A click on an item selects it, and closes the popup; with `multiple`, a
@@ -764,11 +768,19 @@ export default class PhemSelectController extends Controller {
       given(trigger, "aria-required", this.requiredValue, "true")
     }
 
-    const text = selected.map(labelOf).join(", ")
+    const labels = selected.map(labelOf)
     for (const el of this.valueTargets) {
-      const shown = placeholder ? (el.getAttribute("placeholder") ?? "") : text
-      if (el.textContent !== shown) el.textContent = shown
       el.toggleAttribute("data-placeholder", placeholder)
+
+      if (!placeholder && el.hasAttribute("data-phem-select-markup")) {
+        const markup = markupOf(selected[0])
+        if (el.innerHTML !== markup) el.innerHTML = markup
+
+        continue
+      }
+
+      const shown = placeholder ? (el.getAttribute("placeholder") ?? "") : textOf(labels, el.getAttribute("data-phem-select-template"))
+      if (el.textContent !== shown) el.textContent = shown
     }
 
     for (const el of this.iconTargets) el.toggleAttribute("data-popup-open", open)
@@ -974,6 +986,29 @@ export default class PhemSelectController extends Controller {
   #scrollArrowOf(el) {
     return el instanceof Node ? this.#scrollArrows.find((arrow) => arrow.contains(el)) : undefined
   }
+}
+
+// The text of the `value` target: the labels separated by a comma, or with two labels or more the
+// template (`{first}`, `{others}`, `{count}`, `{labels}`).
+function textOf(labels, template) {
+  if (!template || labels.length < 2) return labels.join(", ")
+
+  const parts = { first: labels[0], others: String(labels.length - 1), count: String(labels.length), labels: labels.join(", ") }
+
+  return template.replace(/\{(first|others|count|labels)\}/g, (_, name) => parts[name])
+}
+
+// The markup of the `itemText` part of an item (or of the item), with no id and no target, so the
+// copy is not a part of the select.
+function markupOf(item) {
+  const source = item.querySelector("[data-phem-select-target~='itemText']") ?? item
+  const copy = source.cloneNode(true)
+  for (const el of [copy, ...copy.querySelectorAll("*")]) {
+    el.removeAttribute("id")
+    el.removeAttribute("data-phem-select-target")
+  }
+
+  return copy.innerHTML.trim()
 }
 
 // The label of an item: its `data-label`, the text of its `itemText` part, or its text.

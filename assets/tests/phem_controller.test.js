@@ -1430,8 +1430,9 @@ describe("the onPoll event", () => {
   })
 
   it("sends the event at the interval of phem:poll", async () => {
+    // The last answer stops the poll: a next poll would have no answer.
     respond(status("Running"))
-    respond(status("Done"))
+    respond(status("Done", 0))
     await mount(status("Waiting"))
     await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
 

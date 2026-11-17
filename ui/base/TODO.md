@@ -42,12 +42,12 @@ These differences need no phem change. The hero demos show the first one, and do
 | Checkbox Group | `ControlsTest` | The group value stays when an item changes, native buttons, the parent checkbox and its mixed state, a nested parent | — |
 | Collapsible | `DisclosureTest` | Open and close with a click, `hiddenUntilFound` (`beforematch`) | Keyboard (Enter and Space), the `--collapsible-panel-height` variable |
 | Combobox | `PickersTest` | Client filter, arrow keys and Enter select, the empty state | The clear button, the trigger button, Escape |
-| Context Menu | `MenusTest` | A right click opens it, a click on an item closes it | Keyboard, the menu position at the pointer |
+| Context Menu | `MenusTest` | A right click opens it, a click on an item closes it, the card with a menu button, a submenu | Keyboard, the menu position at the pointer |
 | Dialog | `OverlaysTest` | Open, close with a button and Escape, focus back to the trigger | Focus trap, a click on the backdrop closes it |
 | Drawer | `OverlaysTest` | Open and close, `data-swipe-direction` | A swipe to dismiss (pointer drag) |
 | Field | `FormsTest` | `data-focused`, `data-touched`, `data-dirty`, `data-filled`, no error on blur | The error and `aria-describedby` after a submit |
 | Fieldset | `BasicsTest` | The legend names the group | `disabled` on all the fields |
-| Form | `FormsTest` | The error of the server after a submit, an empty value focuses the field, a valid submit removes the error | The `typeMismatch`/`patternMismatch` messages |
+| Form | `FormsTest` | The error of the server after a submit, an empty value focuses the field, a valid submit removes the error, the errors of a handler on each field, the values of the form in the handler | The `typeMismatch`/`patternMismatch` messages |
 | Input | `BasicsTest` | Fill a value | `phem:bind` with a server event |
 | Menu | `MenusTest` | Open, ArrowDown and End highlight, typeahead, the scroll lock of the modal menu, Escape, a click on an item closes. On the `menu-check-items` page: hover opens the submenu, ArrowLeft closes it, the checkbox items (browser state and server state), the radio items | Home, the disabled item |
 | Menubar | `MenusTest` | Hover moves between open menus, ArrowRight, Escape, a disabled trigger | ArrowLeft, the submenus |
@@ -60,7 +60,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Progress | `BasicsTest` | `data-progressing`, the value grows each second | `data-complete` at 100 |
 | Radio Group | `ControlsTest` | A click checks, the arrow keys check and focus, native buttons with sibling labels, the hidden input in a Field | — |
 | Scroll Area | `PickersTest` | `data-has-overflow-y`, the `tabindex` of a viewport that scrolls, the overflow edges after a scroll, both scrollbars and the corner, the overflow variables of the fade, a tab list in a viewport | Thumb drag, a click on the track, `data-scrolling` |
-| Select | `PickersTest` | Select with a click, the hidden input, the keyboard opens on the selected item, a popup under a pointer that does not move | Typeahead, the scroll arrows |
+| Select | `PickersTest` | Select with a click, the hidden input, the keyboard opens on the selected item, a popup under a pointer that does not move, the label, the placeholder, the template of `multiple`, the markup of an item, the groups | Typeahead, the scroll arrows |
 | Separator | `BasicsTest` | `aria-orientation` | — |
 | Slider | `FormsTest` | ArrowRight, End, Home, a range, `step` and `largeStep`, `thumbAlignment="edge"`, vertical, `name` | Pointer drag on the track, `data-dragging` |
 | Switch | `ControlsTest` | Initial state, the accessible name, a click on the label, Space, a native button, the hidden input in a Field | — |

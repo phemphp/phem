@@ -96,6 +96,42 @@ final class PickersTest extends DemoTestCase
         expect($trigger)->toContainText('Granny Smith');
     }
 
+    public function testSelectExamples(): void
+    {
+        $page = $this->visitComponent('select');
+
+        // The value shows the label of the item, and the label focuses the trigger.
+        $formatted = $page->getByRole('region', ['name' => 'Formatting the value']);
+        expect($formatted->getByRole('combobox', ['name' => 'Theme']))->toHaveText('System default');
+        $labeled = $page->getByRole('region', ['name' => 'Labeling a select']);
+        $labeled->getByText('Theme')->click();
+        expect($labeled->getByRole('combobox', ['name' => 'Theme']))->toBeFocused();
+        expect($page->getByRole('listbox'))->toBeHidden();
+
+        // The placeholder.
+        expect($page->getByRole('region', ['name' => 'Placeholder values'])->getByRole('combobox', ['name' => 'Theme']))->toHaveAttribute('data-placeholder', '');
+
+        // Multiple: the template gives the text of two values or more.
+        $languages = $page->getByRole('combobox', ['name' => 'Languages']);
+        expect($languages)->toHaveText('JavaScript (+1 more)');
+        $languages->click();
+        $page->getByRole('option', ['name' => 'Python'])->click();
+        expect($languages)->toHaveText('JavaScript (+2 more)');
+        $page->keyboard()->press('Escape');
+
+        // Object values: the value shows the markup of the item.
+        $shipping = $page->getByRole('combobox', ['name' => 'Shipping method']);
+        expect($shipping->locator('.text-xs'))->toHaveText('Delivers in 4-6 business days ($4.99)');
+        $shipping->click();
+        $page->getByRole('option', ['name' => 'Express Delivers in 2-3 business days ($9.99)'])->click();
+        expect($shipping->locator('.text-sm')->first())->toHaveText('Express');
+
+        // Grouped: the group labels name their groups.
+        $page->getByRole('combobox', ['name' => 'Produce'])->click();
+        expect($page->getByRole('group', ['name' => 'Vegetables']))->toBeVisible();
+        expect($page->getByRole('option', ['name' => 'Kale']))->toBeVisible();
+    }
+
     /**
      * In Base UI, only a move of the pointer highlights an item. A popup that opens under a pointer
      * that does not move keeps the highlight of the keyboard.
