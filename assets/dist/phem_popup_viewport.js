@@ -1,10 +1,13 @@
 import { hide, show } from "./phem_transition.js"
 
-// The `viewport` part of a popup that several triggers share (`phem-tooltip`), as the Viewport of
-// Base UI: it shows the payload of the active trigger, and animates the change of the content.
+// The `viewport` part of a popup that several triggers share (`phem-tooltip`, `phem-popover`), as
+// the Viewport of Base UI: it shows the payload of the active trigger, and animates the change of
+// the content.
 //
-// The payload is the text of the `data-<identifier>-payload` attribute of the trigger. A trigger
-// with no payload shows the content of the server render. The content is in a `div` with
+// The payload is the `data-<identifier>-payload` attribute of the trigger. When the viewport has a
+// `<template data-payload>` with this value, the content is a copy of the template. Else the
+// content is the payload as text. A trigger with no payload shows the content of the server
+// render, with no template. The content is in a `div` with
 // `data-current`. When the active trigger changes while the popup is open, the old content stays
 // in a `div` with `data-previous` and `data-ending-style` until its animations end, and the new
 // content gets `data-starting-style` for its first frame. The viewport gets
@@ -14,8 +17,9 @@ import { hide, show } from "./phem_transition.js"
 export class PopupViewport {
   #viewport
   #payload
-  // The content of the server render.
+  // The content of the server render, and its templates.
   #server = []
+  #templates = []
 
   // `viewport` gives the element, or null. `payload` gives the payload of a trigger, or null.
   constructor({ viewport, payload }) {
@@ -28,7 +32,9 @@ export class PopupViewport {
     const viewport = this.#viewport()
     if (!viewport || [...viewport.children].some((el) => el.matches("[data-current], [data-previous]"))) return
 
-    this.#server = [...viewport.childNodes].map((node) => node.cloneNode(true))
+    const nodes = [...viewport.childNodes]
+    this.#templates = nodes.filter((node) => node instanceof HTMLTemplateElement && node.hasAttribute("data-payload"))
+    this.#server = nodes.filter((node) => !this.#templates.includes(node)).map((node) => node.cloneNode(true))
   }
 
   // Shows the content of `trigger` at once.
@@ -39,7 +45,7 @@ export class PopupViewport {
     viewport.removeAttribute("data-activation-direction")
     if (this.#payload(trigger) === null && !viewport.querySelector(":scope > [data-current]")) return
 
-    viewport.replaceChildren(this.#content(trigger))
+    viewport.replaceChildren(...this.#templates, this.#content(trigger))
   }
 
   // Shows the content of `trigger` after the content of `from`, with the animations.
@@ -57,7 +63,7 @@ export class PopupViewport {
 
     const next = this.#content(trigger)
     if (!current) {
-      viewport.replaceChildren(next)
+      viewport.replaceChildren(...this.#templates, next)
 
       return
     }
@@ -78,7 +84,9 @@ export class PopupViewport {
     content.setAttribute("data-current", "")
 
     const payload = this.#payload(trigger)
-    if (payload === null) content.append(...this.#server.map((node) => node.cloneNode(true)))
+    const template = payload === null ? null : this.#templates.find((el) => el.getAttribute("data-payload") === payload)
+    if (template) content.append(template.content.cloneNode(true))
+    else if (payload === null) content.append(...this.#server.map((node) => node.cloneNode(true)))
     else content.textContent = payload
 
     return content

@@ -11,10 +11,18 @@ use Phem\{Html, Node};
  * The props of the Base UI Positioner (`side`, `align`, `sideOffset`, `alignOffset`,
  * `collisionPadding`) are props of the root. The popup goes in the top layer
  * (`popover="manual"`), so it needs no Portal.
+ *
+ * A `handle` links the root to detached triggers: a PopoverTrigger with the same `handle`, anywhere
+ * in the page, opens this popover. The root then gets the handle as its `id`. One popover can have
+ * several triggers, and the PopoverViewport shows the `payload` of the trigger that opened it.
+ * `defaultOpen` and `triggerId` are the state: a render with new values opens the popover next to
+ * the trigger with that `id`.
  */
 #[Component]
 function Popover(
+    ?string $handle = null,
     bool $defaultOpen = false,
+    ?string $triggerId = null,
     bool $openOnHover = false,
     int $delay = 300,
     int $closeDelay = 0,
@@ -28,8 +36,10 @@ function Popover(
 ): Node {
     return (
         <div
+            id={{ handle }}
             data-controller="phem-popover"
             data-phem-popover-open-value={{ defaultOpen ? 'true' : null }}
+            data-phem-popover-trigger-id-value={{ triggerId }}
             data-phem-popover-open-on-hover-value={{ openOnHover ? 'true' : null }}
             data-phem-popover-delay-value={{ 300 == delay ? null : delay }}
             data-phem-popover-close-delay-value={{ 0 == closeDelay ? null : closeDelay }}
@@ -46,10 +56,22 @@ function Popover(
     );
 }
 
+/**
+ * The button that opens the popover. With a `handle`, it is a detached trigger of the Popover with
+ * the same `handle`: it can be anywhere in the page. The `payload` is the name of a PopoverPayload
+ * (or a text) that the PopoverViewport shows while this trigger is active.
+ */
 #[Component]
-function PopoverTrigger(#[Context] ?Toolbar $toolbar = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
-{
+function PopoverTrigger(
+    ?string $handle = null,
+    ?string $payload = null,
+    #[Context] ?Toolbar $toolbar = null,
+    bool $disabled = false,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
     $item = null !== $toolbar ? 'item' : null;
+    $target = null === $handle ? 'trigger' : null;
     $base = null !== $toolbar ? Style::TOOLBAR_BUTTON : Style::BUTTON;
 
     return (
@@ -57,7 +79,9 @@ function PopoverTrigger(#[Context] ?Toolbar $toolbar = null, bool $disabled = fa
             type="button"
             disabled={{ disabled }}
             data-disabled={{ disabled ? '' : null }}
-            data-phem-popover-target="trigger"
+            data-phem-popover-target={{ target }}
+            data-phem-popover-for={{ handle }}
+            data-phem-popover-payload={{ payload }}
             data-phem-toolbar-target={{ item }}
             className={{ classes(base, 'data-pressed:bg-neutral-100 dark:data-pressed:bg-neutral-800') }}
             {{ ...rest }}
@@ -111,4 +135,26 @@ function PopoverClose(?Html $children = null, mixed ...$rest): Node
     $base = Style::BUTTON;
 
     return <button type="button" data-phem-popover-target="close" className={{ classes(base) }} {{ ...rest }}>{{ children }}</button>;
+}
+
+/**
+ * The content of a popover with several triggers: the PopoverPayload of the active trigger, or its
+ * other children. When the active trigger changes, the old content gets `data-previous` and the
+ * new content `data-current`, and the viewport gets `data-activation-direction`, for an animation.
+ */
+#[Component]
+function PopoverViewport(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div data-phem-popover-target="viewport" {{ ...rest }}>
+            {{ children }}
+        </div>
+    );
+}
+
+/** The content that the PopoverViewport shows for the triggers with this `payload`. */
+#[Component]
+function PopoverPayload(string $name, ?Html $children = null): Node
+{
+    return <template data-payload={{ name }}>{{ children }}</template>;
 }

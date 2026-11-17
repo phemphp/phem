@@ -8,6 +8,12 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-popover` has several triggers, as `phem-tooltip`: the `trigger` parts and the detached
+  triggers with `data-phem-popover-for`. A click on another trigger moves the open popup. The
+  `viewport` part shows a copy of the `<template data-payload>` of the `data-phem-popover-payload`
+  of the trigger, so a payload can have markup (also in a tooltip). The `trigger-id` value is the
+  state of the active trigger, and the `open` action takes a `triggerId` param. Each trigger gets
+  its own `aria-expanded`. See docs/controllers.md.
 - `phem-tooltip` has several triggers, as the detached triggers of a Base UI tooltip: the
   `trigger` parts, and the elements anywhere in the page with `data-phem-tooltip-for` and the `id`
   of the controller element. The popup moves to the trigger under the pointer or with the focus,

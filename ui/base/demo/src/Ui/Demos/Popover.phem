@@ -2,11 +2,14 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
-use function App\Ui\{DemoPage, Hero};
-use function Phem\Ui\Base\{Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger};
+use function App\Ui\{DemoPage, Example, Examples, Hero};
+use function Phem\Ui\Base\{Avatar, AvatarImage, Popover, PopoverArrow, PopoverDescription, PopoverPayload, PopoverPopup, PopoverTitle, PopoverTrigger, PopoverViewport};
+
+// The link of the profile panel, as in the example of base-ui.com.
+const POPOVER_LINK = 'text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
 
 #[Page('/components/popover')]
 function PopoverPage(): Node
@@ -23,6 +26,164 @@ function PopoverPage(): Node
                     </PopoverPopup>
                 </Popover>
             </Hero>
+            <Examples>
+                <Example title="Opening on hover">
+                    <Example.description>
+                        <p>This example shows how you can configure the popover to open on hover using the <code>openOnHover</code> prop.</p>
+                        <p>You can use the <code>delay</code> prop to specify how long to wait (in milliseconds) before the popover opens on hover.</p>
+                    </Example.description>
+                    <Popover openOnHover sideOffset={{ 8 }}>
+                        <PopoverTrigger>Notifications</PopoverTrigger>
+                        <PopoverPopup>
+                            <PopoverArrow />
+                            <PopoverTitle>Notifications</PopoverTitle>
+                            <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
+                        </PopoverPopup>
+                    </Popover>
+                </Example>
+                <Example title="Detached triggers">
+                    <Example.description>
+                        <p>A popover can be controlled by a trigger located either inside or outside the <code>Popover</code> component. For simple, one-off interactions, place the <code>PopoverTrigger</code> inside <code>Popover</code>, as shown in the example at the top of this page.</p>
+                        <p>However, if defining the popover's content next to its trigger is not practical, you can use a detached trigger. This involves placing the <code>PopoverTrigger</code> outside of <code>Popover</code> and linking them with the same <code>handle</code>. The root gets the handle as its <code>id</code>, and the trigger gets <code>data-phem-popover-for</code>.</p>
+                    </Example.description>
+                    <PopoverDetachedDemo />
+                </Example>
+                <Example title="Multiple triggers">
+                    <Example.description>
+                        <p>A single popover can be opened by multiple trigger elements. You can achieve this by using the same <code>handle</code> for several detached triggers, or by placing multiple <code>PopoverTrigger</code> components inside a single <code>Popover</code>.</p>
+                        <p>The popover can render different content depending on which trigger opened it. Give each trigger a <code>payload</code>, and put a <code>PopoverPayload</code> with the same <code>name</code> in the <code>PopoverViewport</code>: the server renders each content in a <code>template</code>, and the viewport shows a copy of the content of the active trigger.</p>
+                    </Example.description>
+                    <PopoverMultipleDemo />
+                </Example>
+                <Example title="Controlled mode with multiple triggers">
+                    <Example.description>
+                        <p>You can control the popover's open state with the <code>defaultOpen</code> and <code>triggerId</code> props of <code>Popover</code>: a render with new values opens the popover next to the trigger with that <code>id</code>. The controller keeps the values of the browser in <code>data-phem-popover-open-value</code> and <code>data-phem-popover-trigger-id-value</code>.</p>
+                        <p>Here, the button is in the root, and opens the popover without a request with the <code>phem-popover#open</code> action and a <code>triggerId</code> param.</p>
+                    </Example.description>
+                    <PopoverControlledDemo />
+                </Example>
+                <Example title="Animating the Popover">
+                    <Example.description>
+                        <p>You can animate a popover as it moves between different trigger elements. This includes animating its position, size, and content.</p>
+                        <p>To animate the popover's position, apply CSS transitions to the <code>top</code> and <code>left</code> properties of the <code>PopoverPopup</code>. To animate its size, transition its <code>width</code> and <code>height</code> to <code>var(--popup-width)</code> and <code>var(--popup-height)</code>.</p>
+                        <p>To enable content animations, wrap the content in the <code>PopoverViewport</code> part. It gets a <code>data-activation-direction</code> attribute that indicates the new trigger's position relative to the previous one: up to two tokens, <code>left</code> or <code>right</code> and <code>up</code> or <code>down</code>. Match a single token with the <code>~=</code> attribute selector. Inside the viewport, the content is wrapped in <code>div</code>s with <code>data-current</code> (the incoming content) and <code>data-previous</code> (the outgoing content).</p>
+                    </Example.description>
+                    <PopoverAnimatedDemo />
+                </Example>
+            </Examples>
         </DemoPage>
+    );
+}
+
+/** Detached triggers: the trigger is outside the root, with the same handle. */
+#[Component]
+function PopoverDetachedDemo(): Node
+{
+    return (
+        <div>
+            <PopoverTrigger handle="detached-popover">Notifications</PopoverTrigger>
+            <Popover handle="detached-popover" sideOffset={{ 8 }}>
+                <PopoverPopup>
+                    <PopoverArrow />
+                    <PopoverTitle>Notifications</PopoverTitle>
+                    <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
+                </PopoverPopup>
+            </Popover>
+        </div>
+    );
+}
+
+/** Multiple triggers: two detached triggers of one popover, with a payload each. */
+#[Component]
+function PopoverMultipleDemo(): Node
+{
+    return (
+        <div className="flex gap-2">
+            <PopoverTrigger handle="multiple-popover" payload="trigger-1">Trigger 1</PopoverTrigger>
+            <PopoverTrigger handle="multiple-popover" payload="trigger-2">Trigger 2</PopoverTrigger>
+            <Popover handle="multiple-popover" sideOffset={{ 8 }}>
+                <PopoverPopup>
+                    <PopoverArrow />
+                    <PopoverViewport>
+                        {% for name in ['Trigger 1', 'Trigger 2'] %}
+                            <PopoverPayload key={{ loop.index }} name={{ 'trigger-' ~ loop.index }}>
+                                <div className="flex flex-col gap-1">
+                                    <PopoverTitle>Popover</PopoverTitle>
+                                    <PopoverDescription>This has been opened by {{ name }}</PopoverDescription>
+                                </div>
+                            </PopoverPayload>
+                        {% endfor %}
+                    </PopoverViewport>
+                </PopoverPopup>
+            </Popover>
+        </div>
+    );
+}
+
+/** Controlled mode: three triggers in the root, and a button that opens the popover on the second one. */
+#[Component]
+function PopoverControlledDemo(): Node
+{
+    return (
+        <Popover sideOffset={{ 8 }}>
+            <div className="flex flex-wrap justify-center gap-2">
+                <PopoverTrigger id="popover-trigger-1">Trigger 1</PopoverTrigger>
+                <PopoverTrigger id="popover-trigger-2">Trigger 2</PopoverTrigger>
+                <PopoverTrigger id="popover-trigger-3">Trigger 3</PopoverTrigger>
+                <button type="button" data-action="phem-popover#open" data-phem-popover-trigger-id-param="popover-trigger-2" className="flex h-8 items-center justify-center border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 px-3 text-sm font-normal whitespace-nowrap text-neutral-950 dark:text-white select-none hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Open programmatically</button>
+            </div>
+            <PopoverPopup className="max-w-[var(--available-width)]">
+                <PopoverArrow />
+                <PopoverTitle>Notifications</PopoverTitle>
+                <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
+            </PopoverPopup>
+        </Popover>
+    );
+}
+
+/** Animating the Popover: three panels, and the popup moves from one trigger to the next. */
+#[Component]
+function PopoverAnimatedDemo(): Node
+{
+    $link = POPOVER_LINK;
+
+    return (
+        <div className="flex gap-2">
+            <PopoverTrigger handle="animated-popover" payload="notifications">Notifications</PopoverTrigger>
+            <PopoverTrigger handle="animated-popover" payload="activity">Activity</PopoverTrigger>
+            <PopoverTrigger handle="animated-popover" payload="profile">Profile</PopoverTrigger>
+            <Popover handle="animated-popover" sideOffset={{ 8 }}>
+                <PopoverPopup className="max-w-[min(31.25rem,var(--available-width))] gap-0 p-0 transition-[top,left,width,height,opacity,scale] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:scale-90 data-starting-style:scale-90 data-instant:transition-none">
+                    <PopoverArrow className="transition-[left] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] data-instant:transition-none" />
+                    <PopoverViewport className="relative h-full w-full overflow-clip p-2 [&_[data-current]]:w-[calc(var(--popup-width)-1rem)] [&_[data-current]]:translate-x-0 [&_[data-current]]:opacity-100 [&_[data-current]]:transition-[translate,opacity] [&_[data-current]]:duration-[350ms,175ms] [&_[data-current]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:-translate-x-1/2 data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:translate-x-1/2 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:opacity-0 [&_[data-previous]]:w-[calc(var(--popup-width)-1rem)] [&_[data-previous]]:translate-x-0 [&_[data-previous]]:opacity-100 [&_[data-previous]]:transition-[translate,opacity] [&_[data-previous]]:duration-[350ms,175ms] [&_[data-previous]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:translate-x-1/2 data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:-translate-x-1/2 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:opacity-0">
+                        <PopoverPayload name="notifications">
+                            <div className="flex flex-col gap-1">
+                                <PopoverTitle>Notifications</PopoverTitle>
+                                <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
+                            </div>
+                        </PopoverPayload>
+                        <PopoverPayload name="activity">
+                            <div className="flex flex-col gap-1">
+                                <PopoverTitle>Activity</PopoverTitle>
+                                <PopoverDescription>Nothing interesting happened recently.</PopoverDescription>
+                            </div>
+                        </PopoverPayload>
+                        <PopoverPayload name="profile">
+                            <div className="grid w-max grid-cols-[auto_auto] gap-x-2">
+                                <PopoverTitle className="col-start-2 col-end-3 row-start-1 row-end-2">Jason Eventon</PopoverTitle>
+                                <Avatar className="col-start-1 col-end-2 row-start-1 row-end-3 size-12 rounded-none font-bold">
+                                    <AvatarImage src="https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1?w=128&h=128&dpr=2&q=80" width="48" height="48" />
+                                </Avatar>
+                                <span className="col-start-2 col-end-3 row-start-2 row-end-3 text-sm text-neutral-600 dark:text-neutral-400">Pro plan</span>
+                                <div className="col-start-1 col-end-3 row-start-3 row-end-4 flex flex-col gap-2 pt-2 text-sm">
+                                    <a href="#" className={{ link }}>Profile settings</a>
+                                    <a href="#" className={{ link }}>Log out</a>
+                                </div>
+                            </div>
+                        </PopoverPayload>
+                    </PopoverViewport>
+                </PopoverPopup>
+            </Popover>
+        </div>
     );
 }

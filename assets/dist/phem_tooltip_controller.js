@@ -78,7 +78,8 @@ export default class PhemTooltipController extends Controller {
       dismiss: () => this.#close({ instant: "dismiss" }),
       outside: () => false,
     })
-    this.size = new PopupSize({ popup: () => (this.hasPopupTarget ? this.popupTarget : null) })
+    // Only a popup with a viewport changes its size between triggers.
+    this.size = new PopupSize({ popup: () => (this.hasPopupTarget && this.hasViewportTarget ? this.popupTarget : null) })
     this.viewport = new PopupViewport({
       viewport: () => this.viewportTargets[0] ?? null,
       payload: (trigger) => trigger?.getAttribute("data-phem-tooltip-payload") ?? null,

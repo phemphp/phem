@@ -5,7 +5,7 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport};
+use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport};
 use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Menu, MenuRadioGroup, MenuSubmenu, Tabs};
 
 #[Component]
@@ -112,6 +112,23 @@ function TooltipDetachedDemo(): Node
             <Tooltip handle="tools" open triggerId="timer">
                 <TooltipPopup><TooltipViewport>Tools</TooltipViewport></TooltipPopup>
             </Tooltip>
+        </div>
+    );
+}
+
+#[Component]
+function PopoverDetachedDemo(): Node
+{
+    return (
+        <div>
+            <PopoverTrigger handle="panels" id="activity" payload="activity">Activity</PopoverTrigger>
+            <Popover handle="panels" triggerId="activity">
+                <PopoverPopup>
+                    <PopoverViewport>
+                        <PopoverPayload name="activity"><PopoverTitle>Activity</PopoverTitle></PopoverPayload>
+                    </PopoverViewport>
+                </PopoverPopup>
+            </Popover>
         </div>
     );
 }

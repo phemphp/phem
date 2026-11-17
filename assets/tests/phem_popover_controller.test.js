@@ -569,3 +569,108 @@ describe("phem-popover", () => {
     delete HTMLElement.prototype.hidePopover
   })
 })
+
+// Three detached triggers of one popover: two with a template payload, one with a text payload.
+function panels(attributes = "") {
+  return `<div id="bar">
+      <button id="t1" data-phem-popover-for="panels" data-phem-popover-payload="notifications">Notifications</button>
+      <button id="t2" data-phem-popover-for="panels" data-phem-popover-payload="activity">Activity</button>
+      <button id="t3" data-phem-popover-for="panels" data-phem-popover-payload="Plain text">Text</button>
+    </div>
+    <div id="panels" data-controller="phem-popover" ${attributes}>
+      <div id="panels-popup" data-phem-popover-target="popup" hidden>
+        <div id="vp" data-phem-popover-target="viewport">
+          <template data-payload="notifications"><h2 data-phem-popover-target="title">Notifications</h2></template>
+          <template data-payload="activity"><h2 data-phem-popover-target="title">Activity</h2><a id="link" href="#">Log</a></template>
+        </div>
+      </div>
+    </div>
+    <p id="outside">Outside</p>`
+}
+
+describe("phem-popover with several triggers", () => {
+  const $ = (id) => document.getElementById(id)
+  const current = () => $("vp").querySelector(":scope > [data-current]")
+
+  it("opens next to a detached trigger, with a copy of the template of its payload", async () => {
+    await mount(panels())
+    $("t2").click()
+
+    expect($("panels-popup").hidden).toBe(false)
+    expect(current().querySelector("h2").textContent).toBe("Activity")
+    expect($("t2").getAttribute("aria-expanded")).toBe("true")
+    expect($("t2").hasAttribute("data-popup-open")).toBe(true)
+    expect($("t1").getAttribute("aria-expanded")).toBe("false")
+    expect($("t1").getAttribute("aria-haspopup")).toBe("dialog")
+    expect($("panels").getAttribute("data-phem-popover-trigger-id-value")).toBe("t2")
+    // The templates stay in the viewport for the next trigger.
+    expect($("vp").querySelectorAll("template")).toHaveLength(2)
+    // The focus goes to the first element of the content.
+    expect(document.activeElement).toBe(current().querySelector("a"))
+  })
+
+  it("moves to another trigger at a click while it is open, and closes at a click on the same trigger", async () => {
+    await mount(panels())
+    $("t1").getBoundingClientRect = () => new DOMRect(0, 0, 80, 32)
+    $("t3").getBoundingClientRect = () => new DOMRect(160, 0, 80, 32)
+    $("t1").click()
+    $("t3").click()
+
+    expect($("panels-popup").hidden).toBe(false)
+    expect($("vp").getAttribute("data-activation-direction")).toBe("right")
+    expect(current().textContent).toBe("Plain text")
+    expect($("t3").getAttribute("aria-expanded")).toBe("true")
+    expect($("t1").getAttribute("aria-expanded")).toBe("false")
+
+    $("t3").click()
+    expect($("panels").getAttribute("data-phem-popover-open-value")).toBe("false")
+    expect($("t3").getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("closes at a click outside, but not at a click on a detached trigger", async () => {
+    await mount(panels())
+    $("t1").click()
+    click("#outside")
+
+    expect($("panels").getAttribute("data-phem-popover-open-value")).toBe("false")
+  })
+
+  it("opens next to the trigger of the triggerId value", async () => {
+    await mount(panels('data-phem-popover-open-value="true" data-phem-popover-trigger-id-value="t2"'))
+
+    expect($("panels-popup").hidden).toBe(false)
+    expect($("t2").getAttribute("aria-expanded")).toBe("true")
+
+    $("panels").setAttribute("data-phem-popover-trigger-id-value", "t1")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("t1").getAttribute("aria-expanded")).toBe("true")
+    expect(current().querySelector("h2").textContent).toBe("Notifications")
+  })
+
+  it("moves on hover to another trigger with openOnHover", async () => {
+    await mount(panels('data-phem-popover-open-on-hover-value="true" data-phem-popover-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const over = (el) => el.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+    over($("t1"))
+    vi.advanceTimersByTime(0)
+    expect($("t1").getAttribute("aria-expanded")).toBe("true")
+
+    over($("t2"))
+    expect($("t2").getAttribute("aria-expanded")).toBe("true")
+    expect(current().querySelector("h2").textContent).toBe("Activity")
+  })
+
+  it("opens with the open action and a triggerId param", async () => {
+    await mount(`<div data-controller="phem-popover">
+        <button id="a" data-phem-popover-target="trigger">A</button>
+        <button id="b" data-phem-popover-target="trigger">B</button>
+        <button id="go" data-action="phem-popover#open" data-phem-popover-trigger-id-param="b">Open</button>
+        <div id="p" data-phem-popover-target="popup" hidden>Popup</div>
+      </div>`)
+    $("go").click()
+
+    expect($("p").hidden).toBe(false)
+    expect($("b").getAttribute("aria-expanded")).toBe("true")
+    expect($("a").getAttribute("aria-expanded")).toBe("false")
+  })
+})

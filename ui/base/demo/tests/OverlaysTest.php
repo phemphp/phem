@@ -67,7 +67,7 @@ final class OverlaysTest extends DemoTestCase
     {
         $page = $this->visitComponent('popover');
 
-        $trigger = $page->getByRole('button', ['name' => 'Notifications']);
+        $trigger = $page->getByRole('region', ['name' => 'Demo'])->getByRole('button', ['name' => 'Notifications']);
         $popup = $page->getByRole('dialog');
 
         $trigger->click();
@@ -85,7 +85,7 @@ final class OverlaysTest extends DemoTestCase
     public function testThePopoverIsNamedByItsTitle(): void
     {
         $page = $this->visitComponent('popover');
-        $page->getByRole('button', ['name' => 'Notifications'])->click();
+        $page->getByRole('region', ['name' => 'Demo'])->getByRole('button', ['name' => 'Notifications'])->click();
         expect($page->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();
     }
 
@@ -138,7 +138,7 @@ final class OverlaysTest extends DemoTestCase
         expect($popup)->toBeHidden();
 
         // Multiple triggers: the payload of the trigger shows in the viewport.
-        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers']);
+        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true]);
         $popup = $page->locator('#multiple-tooltip [data-phem-tooltip-target="popup"]');
         $multiple->getByRole('button', ['name' => 'Trigger 2'])->hover();
         expect($popup)->toHaveText('Tooltip opened by Trigger 2');
@@ -180,5 +180,68 @@ final class OverlaysTest extends DemoTestCase
         $box = $timer->boundingBox();
         self::assertEqualsWithDelta($box['x'] + $box['width'] / 2, $to['x'] + $to['width'] / 2, 1.5);
         self::assertNotEqualsWithDelta($from['width'], $to['width'], 1);
+    }
+
+    public function testPopoverExamples(): void
+    {
+        $page = $this->visitComponent('popover');
+        $outside = fn () => $page->mouse()->click(5, 5);
+
+        // Opening on hover.
+        $hover = $page->getByRole('region', ['name' => 'Opening on hover']);
+        $trigger = $hover->getByRole('button', ['name' => 'Notifications']);
+        $trigger->hover();
+        expect($trigger)->toHaveAttribute('aria-expanded', 'true');
+        $page->mouse()->move(5, 5);
+        expect($trigger)->toHaveAttribute('aria-expanded', 'false');
+
+        // Detached triggers: the trigger is outside the root.
+        $trigger = $page->getByRole('region', ['name' => 'Detached triggers'])->getByRole('button', ['name' => 'Notifications']);
+        $trigger->click();
+        expect($page->locator('#detached-popover')->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();
+        expect($trigger)->toHaveAttribute('aria-expanded', 'true');
+        $outside();
+        expect($trigger)->toHaveAttribute('aria-expanded', 'false');
+
+        // Multiple triggers: a click on the other trigger moves the popover, with its payload.
+        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true]);
+        $dialog = $page->locator('#multiple-popover')->getByRole('dialog');
+        $multiple->getByRole('button', ['name' => 'Trigger 1'])->click();
+        expect($dialog)->toContainText('This has been opened by Trigger 1');
+        $second = $multiple->getByRole('button', ['name' => 'Trigger 2']);
+        $second->click();
+        expect($dialog->locator('[data-current]'))->toContainText('This has been opened by Trigger 2');
+        expect($second)->toHaveAttribute('aria-expanded', 'true');
+        expect($page->locator('#multiple-popover')->getByRole('dialog', ['name' => 'Popover']))->toBeVisible();
+        $second->click();
+        expect($second)->toHaveAttribute('aria-expanded', 'false');
+
+        // Controlled mode: the button opens the popover on the second trigger.
+        $controlled = $page->getByRole('region', ['name' => 'Controlled mode with multiple triggers']);
+        $controlled->getByRole('button', ['name' => 'Open programmatically'])->click();
+        expect($controlled->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();
+        expect($controlled->getByRole('button', ['name' => 'Trigger 2']))->toHaveAttribute('aria-expanded', 'true');
+        $outside();
+
+        // Animating: the popup moves to the next trigger with the new panel.
+        $animated = $page->getByRole('region', ['name' => 'Animating the Popover']);
+        $dialog = $page->locator('#animated-popover')->getByRole('dialog');
+        $animated->getByRole('button', ['name' => 'Notifications'])->click();
+        expect($page->locator('#animated-popover')->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();
+        usleep(400_000);
+        $from = $dialog->boundingBox();
+
+        $profile = $animated->getByRole('button', ['name' => 'Profile']);
+        $profile->click();
+        $viewport = $dialog->locator('[data-phem-popover-target="viewport"]');
+        expect($viewport)->toHaveAttribute('data-activation-direction', 'right');
+        expect($viewport->locator('[data-current]'))->toContainText('Jason Eventon');
+        expect($viewport->locator('[data-previous]'))->toHaveCount(0);
+        expect($page->locator('#animated-popover')->getByRole('dialog', ['name' => 'Jason Eventon']))->toBeVisible();
+        usleep(400_000);
+        $to = $dialog->boundingBox();
+        $box = $profile->boundingBox();
+        self::assertEqualsWithDelta($box['x'] + $box['width'] / 2, $to['x'] + $to['width'] / 2, 1.5);
+        self::assertNotEqualsWithDelta($from['height'], $to['height'], 1);
     }
 }

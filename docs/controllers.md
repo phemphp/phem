@@ -319,6 +319,52 @@ Open moves the focus into the popup: to its `[autofocus]` element, or else to th
 
 With `data-phem-popover-open-on-hover-value="true"`, the pointer on the trigger opens the popup after the `delay` value (300 ms), and the pointer out of the trigger and of the popup closes it after the `close-delay` value (0 ms: at once). The pointer can go from the trigger to the popup, also on a diagonal path: while it is in the space between them, the popup stays open. For example, with `data-phem-popover-side-offset-value="8"`, the pointer crosses the 8 px below the trigger, and the popup closes only when the pointer goes out of that space. A popover with `open-on-hover` is good for a preview card, because a touch screen and the keyboard can still open it.
 
+### Open one popover from several triggers
+
+One popover can have several triggers, as the tooltips of [Open one tooltip from several triggers](#open-one-tooltip-from-several-triggers). Each `trigger` part is a trigger, and an element anywhere in the page with `data-phem-popover-for` and the `id` of the controller element is a detached trigger. A click on a trigger opens the popover next to it. While the popover is open, a click on another trigger moves it there, and a click on the same trigger closes it. With `open-on-hover`, the pointer on another trigger moves it at once. A click on a detached trigger is not a click outside.
+
+The `viewport` part shows the content of the trigger: give the trigger a `data-phem-popover-payload`, and put a `<template data-payload>` with the same value in the viewport. The viewport shows a copy of the content of the template. A payload with no template shows as text.
+
+```html
+<button data-phem-popover-for="panels" data-phem-popover-payload="notifications">Notifications</button>
+<button data-phem-popover-for="panels" data-phem-popover-payload="profile">Profile</button>
+
+<div id="panels" data-controller="phem-popover">
+    <div data-phem-popover-target="popup" popover="manual" hidden>
+        <div data-phem-popover-target="viewport">
+            <template data-payload="notifications">
+                <h2 data-phem-popover-target="title">Notifications</h2>
+                <p data-phem-popover-target="description">You are all caught up.</p>
+            </template>
+            <template data-payload="profile">
+                <h2 data-phem-popover-target="title">Jason Eventon</h2>
+                <a href="/settings">Profile settings</a>
+            </template>
+        </div>
+    </div>
+</div>
+```
+
+After a click on **Profile**, the browser shows:
+
+```html
+<button data-phem-popover-for="panels" data-phem-popover-payload="profile" aria-haspopup="dialog" aria-expanded="true" data-popup-open data-pressed>Profile</button>
+<div id="panels" data-controller="phem-popover" data-phem-popover-open-value="true" data-phem-popover-trigger-id-value="">
+    <div data-phem-popover-target="popup" role="dialog" aria-labelledby="" data-open ...>
+        <div data-phem-popover-target="viewport">
+            <template data-payload="notifications">...</template>
+            <template data-payload="profile">...</template>
+            <div data-current data-open>
+                <h2 data-phem-popover-target="title">Jason Eventon</h2>
+                <a href="/settings">Profile settings</a>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+The popup gets the name of the `title` part of the content. The other triggers get `aria-expanded="false"`. The animations of the move, of the size and of the content, `data-activation-direction`, and the `trigger-id` value are the same as for a tooltip. The `open` action takes a `trigger-id` param: `<button data-action="phem-popover#open" data-phem-popover-trigger-id-param="profile">`.
+
 ### Show a preview card of a link
 
 A popover with `open-on-hover` and a link trigger (`<a href>`) is a preview card, as the PreviewCard of Base UI. Base UI waits 600 ms to open it and 300 ms to close it:
@@ -396,7 +442,7 @@ One tooltip can have several triggers. Each `trigger` part in the controller ele
 </span>
 ```
 
-While the tooltip is open, the pointer or the keyboard focus on another trigger moves it at once, with no delay. The trigger of the tooltip gets `data-popup-open`. A trigger with no payload shows the content of the server render of the viewport. When the pointer goes from **Listen to audio preview** to **Set a timer**, the browser shows:
+While the tooltip is open, the pointer or the keyboard focus on another trigger moves it at once, with no delay. The trigger of the tooltip gets `data-popup-open`. A trigger with no payload shows the content of the server render of the viewport. A payload can also name a `<template data-payload>` in the viewport, for a content with markup (see [Open one popover from several triggers](#open-one-popover-from-several-triggers)). When the pointer goes from **Listen to audio preview** to **Set a timer**, the browser shows:
 
 ```html
 <span data-phem-tooltip-target="viewport" data-activation-direction="right">

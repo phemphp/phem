@@ -55,7 +55,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Navigation Menu | `MenusTest` | A click opens the content, hover changes it, Escape closes it, a nested menu (click, Escape, pointer), a nested inline menu, a large menu in a Scroll Area | The arrow keys between the triggers, `data-activation-direction`, `--popup-width` |
 | Number Field | `FormsTest` | The buttons, ArrowUp, Shift+ArrowUp | Press and hold, the scrub area, the wheel, `min`/`max` |
 | OTP Field | `FormsTest` | Typing moves to the next slot, a letter is refused, Backspace, the hidden input, `data-complete`, the slot labels, a Field, `alphanumeric`, the separator, `normalize`, `mask` | Paste fills all the slots |
-| Popover | `OverlaysTest` | Open with a click, `aria-expanded`, `data-side`, the title names it, a click outside closes it | Escape |
+| Popover | `OverlaysTest` | Open with a click, `aria-expanded`, `data-side`, the title names it, a click outside closes it; open on hover, a detached trigger, the payloads of two triggers, the `open` action on the second trigger, the move, the size and the name of the new panel | Escape |
 | Preview Card | `OverlaysTest` | Hover opens it, leaving closes it | The `delay` and `closeDelay` values |
 | Progress | `BasicsTest` | `data-progressing`, the value grows each second | `data-complete` at 100 |
 | Radio Group | `ControlsTest` | A click checks, the arrow keys check and focus, native buttons with sibling labels, the hidden input in a Field | — |
