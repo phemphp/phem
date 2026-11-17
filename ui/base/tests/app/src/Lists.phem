@@ -51,7 +51,7 @@ function MenubarDemo(): Node
 function NavigationMenuDemo(): Node
 {
     return (
-        <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
+        <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }} alignOffset={{ -8 }}>
             <NavigationMenuList>
                 <NavigationMenuItem value="overview">
                     <NavigationMenuTrigger>Overview <NavigationMenuIcon /></NavigationMenuTrigger>

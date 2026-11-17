@@ -23,6 +23,7 @@ class NavigationMenu
     #[Prop] public Side $side = Side::Bottom;
     #[Prop] public Align $align = Align::Center;
     #[Prop] public int $sideOffset = 10;
+    #[Prop] public int $alignOffset = 0;
     #[Prop] public int $collisionPadding = 5;
     /** The space to keep from the left and the right edges, when it is not `collisionPadding`. */
     #[Prop] public ?int $collisionPaddingInline = null;
@@ -43,6 +44,7 @@ class NavigationMenu
                 data-phem-navigation-menu-side-value={{ side.value }}
                 data-phem-navigation-menu-align-value={{ align.value }}
                 data-phem-navigation-menu-side-offset-value={{ sideOffset }}
+                data-phem-navigation-menu-align-offset-value={{ alignOffset ?: null }}
                 data-phem-navigation-menu-collision-padding-value={{ 5 == collisionPadding ? null : collisionPadding }}
                 data-phem-navigation-menu-collision-padding-inline-value={{ collisionPaddingInline }}
                 data-phem-navigation-menu-flip-value={{ flip ? null : 'false' }}

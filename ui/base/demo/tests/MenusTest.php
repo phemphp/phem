@@ -165,17 +165,87 @@ final class MenusTest extends DemoTestCase
     public function testNavigationMenuOpensItsContentInTheViewport(): void
     {
         $page = $this->visitComponent('navigation-menu');
+        $hero = $page->getByRole('region', ['name' => 'Demo']);
 
-        $overview = $page->getByRole('button', ['name' => 'Overview']);
+        $overview = $hero->getByRole('button', ['name' => 'Overview']);
         $overview->click();
         expect($overview)->toHaveAttribute('aria-expanded', 'true');
         expect($page->getByRole('link', ['name' => 'Quick Start']))->toBeVisible();
 
-        $page->getByRole('button', ['name' => 'Handbook'])->hover();
+        $hero->getByRole('button', ['name' => 'Handbook'])->hover();
         expect($page->getByRole('link', ['name' => 'Styling']))->toBeVisible();
         expect($page->getByRole('link', ['name' => 'Quick Start']))->toBeHidden();
 
         $page->keyboard()->press('Escape');
         expect($page->getByRole('link', ['name' => 'Styling']))->toBeHidden();
+    }
+
+    public function testNavigationMenuNestedSubmenus(): void
+    {
+        $page = $this->visitComponent('navigation-menu');
+        $example = $page->getByRole('region', ['name' => 'Nested submenus']);
+
+        $overview = $example->getByRole('button', ['name' => 'Overview']);
+        $overview->click();
+        expect($page->getByRole('link', ['name' => 'Accessibility Learn how we build accessible components.']))->toBeVisible();
+
+        // The trigger of the inner menu opens its content next to it, and the outer menu stays open.
+        $handbook = $page->getByRole('button', ['name' => 'Handbook How to use Base UI effectively.']);
+        $handbook->click();
+        expect($handbook)->toHaveAttribute('aria-expanded', 'true');
+        expect($page->getByRole('link', ['name' => 'Animation Base UI components can be animated with CSS transitions, CSS animations, or JavaScript libraries.']))->toBeVisible();
+        expect($overview)->toHaveAttribute('aria-expanded', 'true');
+
+        // Escape closes the inner menu first, then the outer menu.
+        $page->keyboard()->press('Escape');
+        expect($handbook)->toHaveAttribute('aria-expanded', 'false');
+        expect($overview)->toHaveAttribute('aria-expanded', 'true');
+        $page->keyboard()->press('Escape');
+        expect($overview)->toHaveAttribute('aria-expanded', 'false');
+
+        // With the pointer: hover opens the two menus, and the pointer in the inner popup keeps
+        // both of them open.
+        $overview->hover();
+        expect($handbook)->toBeVisible();
+        $handbook->hover();
+        $animation = $page->getByRole('link', ['name' => 'Animation Base UI components can be animated with CSS transitions, CSS animations, or JavaScript libraries.']);
+        expect($animation)->toBeVisible();
+        $animation->hover();
+        usleep(300_000);
+        expect($animation)->toBeVisible();
+        expect($overview)->toHaveAttribute('aria-expanded', 'true');
+    }
+
+    public function testNavigationMenuNestedInlineSubmenus(): void
+    {
+        $page = $this->visitComponent('navigation-menu');
+        $example = $page->getByRole('region', ['name' => 'Nested inline submenus']);
+
+        // The inner menu shows its default item in the panel of the outer menu.
+        $product = $example->getByRole('button', ['name' => 'Product']);
+        $product->click();
+        expect($page->getByRole('heading', ['name' => 'Build product UI without giving up control']))->toBeVisible();
+
+        // Another item of the inner menu changes the panel, and the outer menu stays open.
+        $systems = $page->getByRole('button', ['name' => 'Design Systems Keep patterns aligned across teams.']);
+        $systems->click();
+        expect($page->getByRole('heading', ['name' => 'Turn shared standards into working components']))->toBeVisible();
+        expect($page->getByRole('heading', ['name' => 'Build product UI without giving up control']))->toBeHidden();
+        expect($product)->toHaveAttribute('aria-expanded', 'true');
+
+        // The pointer on another item of the inner menu changes the panel too.
+        $page->getByRole('button', ['name' => 'Developers Go from idea to UI faster.'])->hover();
+        expect($page->getByRole('heading', ['name' => 'Build product UI without giving up control']))->toBeVisible();
+        expect($product)->toHaveAttribute('aria-expanded', 'true');
+    }
+
+    public function testNavigationMenuLargeMenu(): void
+    {
+        $page = $this->visitComponent('navigation-menu');
+        $example = $page->getByRole('region', ['name' => 'Large menus']);
+
+        $example->getByRole('button', ['name' => 'Components'])->click();
+        expect($example->getByRole('link', ['name' => 'Accordion']))->toBeVisible();
+        expect($example->locator('[data-controller~="phem-scroll-area"]'))->toHaveAttribute('data-has-overflow-y', '');
     }
 }

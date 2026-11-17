@@ -52,7 +52,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Menu | `MenusTest` | Open, ArrowDown and End highlight, typeahead, the scroll lock of the modal menu, Escape, a click on an item closes. On the `menu-check-items` page: hover opens the submenu, ArrowLeft closes it, the checkbox items (browser state and server state), the radio items | Home, the disabled item |
 | Menubar | `MenusTest` | Hover moves between open menus, ArrowRight, Escape, a disabled trigger | ArrowLeft, the submenus |
 | Meter | `BasicsTest` | `aria-valuenow`, the value text | — |
-| Navigation Menu | `MenusTest` | A click opens the content, hover changes it, Escape closes it | The arrow keys between the triggers, `data-activation-direction`, `--popup-width` |
+| Navigation Menu | `MenusTest` | A click opens the content, hover changes it, Escape closes it, a nested menu (click, Escape, pointer), a nested inline menu, a large menu in a Scroll Area | The arrow keys between the triggers, `data-activation-direction`, `--popup-width` |
 | Number Field | `FormsTest` | The buttons, ArrowUp, Shift+ArrowUp | Press and hold, the scrub area, the wheel, `min`/`max` |
 | OTP Field | `FormsTest` | Typing moves to the next slot, a letter is refused, Backspace, the hidden input, `data-complete`, the slot labels, a Field, `alphanumeric`, the separator, `normalize`, `mask` | Paste fills all the slots |
 | Popover | `OverlaysTest` | Open with a click, `aria-expanded`, `data-side`, the title names it, a click outside closes it | Escape |

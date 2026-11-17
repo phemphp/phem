@@ -64,7 +64,7 @@ final class ListsTest extends KernelTestCase
     public function testTheNavigationMenuHasItsParts(): void
     {
         $this->mount(self::APP.'NavigationMenuDemo')
-            ->assertSelectorExists('nav[data-phem-navigation-menu-collision-padding-inline-value="20"][data-phem-navigation-menu-flip-value="false"]:not([data-phem-navigation-menu-collision-padding-value])')
+            ->assertSelectorExists('nav[data-phem-navigation-menu-collision-padding-inline-value="20"][data-phem-navigation-menu-flip-value="false"]:not([data-phem-navigation-menu-collision-padding-value])[data-phem-navigation-menu-align-offset-value="-8"]')
             ->assertSelectorExists('nav[data-controller="phem-navigation-menu"] ul[data-phem-navigation-menu-target="list"] li[data-value="overview"] button[data-phem-navigation-menu-target="trigger"] [data-phem-navigation-menu-target="icon"]')
             ->assertSelectorExists('[data-phem-navigation-menu-target="content"][hidden] a[data-phem-navigation-menu-target="link"]')
             ->assertSelectorExists('[data-phem-navigation-menu-target="positioner"][hidden] [data-phem-navigation-menu-target="popup"] [data-phem-navigation-menu-target="viewport"]');
