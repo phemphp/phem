@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { PhemStorage } from "./phem_storage.js"
-import { hide, measure, render, show } from "./phem_transition.js"
+import { fit, hide, measure, render, settle, show } from "./phem_transition.js"
 
 // The triggers whose `aria-controls` the controller set.
 const controlled = new WeakSet()
@@ -24,8 +24,8 @@ const controlled = new WeakSet()
 // see phem_transition.js for the animations. A trigger gets `aria-expanded`,
 // `aria-controls` and `data-panel-open`. A panel with no `id` gets no id: the trigger points to the
 // panels with element references (`ariaControlsElements`). A panel gets the `--collapsible-panel-height` and
-// `--collapsible-panel-width` CSS variables (the size of its content), for a transition of its
-// height:
+// `--collapsible-panel-width` CSS variables, for a transition of its height: the size of its
+// content in px during the open and the close, and `auto` when the panel is open:
 //
 //     .panel { height: var(--collapsible-panel-height); overflow: hidden; transition: height .2s }
 //     .panel[data-starting-style], .panel[data-ending-style] { height: 0 }
@@ -46,7 +46,7 @@ export default class PhemCollapsibleController extends Controller {
     this.state = new ClientState(this, {
       value: "open",
       owns: (el, name) => this.#owns(el, name),
-      morphed: () => this.#renderParts(),
+      morphed: () => this.#morphed(),
     })
     this.state.connect()
 
@@ -101,6 +101,7 @@ export default class PhemCollapsibleController extends Controller {
     if (this.rendered === undefined) return
 
     render(el, this.openValue, { hidden: this.#hidden })
+    this.#fit([el])
     this.#renderParts()
   }
 
@@ -139,8 +140,11 @@ export default class PhemCollapsibleController extends Controller {
       if (this.openValue) {
         show(panel)
         measure(panel, "collapsible")
+        settle(panel, "collapsible")
       } else {
+        // A transition does not start from `auto`: the close starts from the size in px.
         measure(panel, "collapsible")
+        void panel.offsetHeight
         closing.push(hide(panel, { hidden: this.#hidden }))
       }
     }
@@ -175,7 +179,21 @@ export default class PhemCollapsibleController extends Controller {
   #render() {
     this.rendered = this.openValue
     for (const panel of this.panelTargets) render(panel, this.openValue, { hidden: this.#hidden })
+    this.#fit()
     this.#renderParts()
+  }
+
+  // The morph can remove the `style` attribute of a panel: the open panel gets its size again.
+  #morphed() {
+    this.#fit()
+    this.#renderParts()
+  }
+
+  // The size of the open panels with no animation.
+  #fit(panels = this.panelTargets) {
+    if (!this.openValue) return
+
+    for (const panel of panels) fit(panel, "collapsible")
   }
 
   #renderParts() {
@@ -183,8 +201,6 @@ export default class PhemCollapsibleController extends Controller {
     render(this.element, open, { hidden: false })
 
     const panels = this.panelTargets
-    for (const panel of panels) if (open) measure(panel, "collapsible")
-
     for (const trigger of this.triggerTargets) {
       // The server render can give its own `aria-controls`.
       if (panels.length > 0 && (!trigger.hasAttribute("aria-controls") || controlled.has(trigger)) && controls(trigger, panels)) controlled.add(trigger)

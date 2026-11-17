@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { hide, settle, show } from "../dist/phem_transition.js"
+import { fit, hide, measure, settle, show } from "../dist/phem_transition.js"
 
 let part
 
@@ -183,5 +183,61 @@ describe("settle()", () => {
     await settle(part, "collapsible")
 
     expect(part.style.getPropertyValue("--collapsible-panel-height")).toBe("auto")
+  })
+})
+
+describe("fit()", () => {
+  beforeEach(() => {
+    Object.defineProperty(part, "scrollHeight", { value: 120 })
+    Object.defineProperty(part, "scrollWidth", { value: 300 })
+  })
+
+  const size = () => [part.style.getPropertyValue("--collapsible-panel-height"), part.style.getPropertyValue("--collapsible-panel-width")]
+
+  it("gives the auto size to an open panel with no animation", () => {
+    part.hidden = false
+    part.setAttribute("data-open", "")
+
+    fit(part, "collapsible")
+
+    expect(size()).toEqual(["auto", "auto"])
+  })
+
+  it("keeps the size in px during an open animation", async () => {
+    animate(part)
+    show(part)
+    measure(part, "collapsible")
+    settle(part, "collapsible")
+
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+    fit(part, "collapsible")
+
+    expect(size()).toEqual(["120px", "300px"])
+  })
+
+  it("gives the auto size after the end of the open animation", async () => {
+    const finish = animate(part)
+    show(part)
+    measure(part, "collapsible")
+    const settled = settle(part, "collapsible")
+
+    finish()
+    await settled
+    fit(part, "collapsible")
+
+    expect(size()).toEqual(["auto", "auto"])
+  })
+
+  it("gives the auto size after a hide() stops the open", async () => {
+    animate(part)
+    show(part)
+    measure(part, "collapsible")
+    settle(part, "collapsible")
+    hide(part)
+
+    part.setAttribute("data-open", "")
+    fit(part, "collapsible")
+
+    expect(size()).toEqual(["auto", "auto"])
   })
 })

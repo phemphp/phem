@@ -229,3 +229,145 @@ describe("phem-accordion: the attributes of Base UI", () => {
     for (const id of ["gifts", "gifts-header", "gifts-trigger", "gifts-panel"]) expect($(id).hasAttribute("data-disabled")).toBe(false)
   })
 })
+
+describe("phem-accordion: the state of the header", () => {
+  const $ = (id) => document.getElementById(id)
+  const withHeader = () => accordion().replace(`<button id="shipping-trigger"`, `<h3 id="shipping-header" data-phem-accordion-target="header"></h3><button id="shipping-trigger"`)
+
+  it("gives the header of a closed item data-closed", async () => {
+    await mount(withHeader())
+
+    expect($("shipping-header").hasAttribute("data-closed")).toBe(true)
+    expect($("shipping-header").hasAttribute("data-open")).toBe(false)
+
+    click("#shipping-trigger")
+    expect($("shipping-header").hasAttribute("data-closed")).toBe(false)
+    expect($("shipping-header").hasAttribute("data-open")).toBe(true)
+
+    click("#shipping-trigger")
+    expect($("shipping-header").hasAttribute("data-closed")).toBe(true)
+  })
+
+  it("keeps data-closed on the header after the morph of an event", async () => {
+    await mount(withHeader())
+
+    respond(withHeader())
+    const done = nextDone()
+    click("#star")
+    await done
+
+    expect($("shipping-header").hasAttribute("data-closed")).toBe(true)
+  })
+})
+
+describe("phem-accordion: the size of an open panel", () => {
+  const panel = () => document.getElementById("shipping-panel")
+  const size = () => [panel().style.getPropertyValue("--accordion-panel-height"), panel().style.getPropertyValue("--accordion-panel-width")]
+  const frame = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+
+  it("gives the panel the auto size at the end of the open, so content that grows is not cut", async () => {
+    await mount(accordion())
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    Object.defineProperty(panel(), "scrollWidth", { value: 300 })
+    click("#shipping-trigger")
+
+    // The open animation goes from 0 to the size of the content.
+    expect(size()).toEqual(["120px", "300px"])
+
+    await frame()
+    expect(size()).toEqual(["auto", "auto"])
+  })
+
+  it("gives the auto size at the end of the animations of the open", async () => {
+    await mount(accordion())
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    let finish
+    const finished = new Promise((resolve) => (finish = resolve))
+    panel().getAnimations = () => [{ finished }]
+    click("#shipping-trigger")
+
+    await frame()
+    expect(size()[0]).toBe("120px")
+
+    finish()
+    await frame()
+    expect(size()[0]).toBe("auto")
+  })
+
+  it("gives an open panel of the server render the auto size at once", async () => {
+    await mount(accordion(`data-phem-accordion-open-value='["shipping"]'`))
+
+    expect(size()).toEqual(["auto", "auto"])
+  })
+
+  it("starts the close from the size of the content in px", async () => {
+    await mount(accordion(`data-phem-accordion-open-value='["shipping"]'`))
+    expect(size()[0]).toBe("auto")
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    panel().getAnimations = () => [{ finished: new Promise(() => {}) }]
+    click("#shipping-trigger")
+
+    expect(panel().hasAttribute("data-ending-style")).toBe(true)
+    expect(size()[0]).toBe("120px")
+  })
+
+  it("starts the close of the other item from its size in px when an item opens", async () => {
+    await mount(accordion(`data-phem-accordion-open-value='["shipping"]'`))
+    expect(size()[0]).toBe("auto")
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    panel().getAnimations = () => [{ finished: new Promise(() => {}) }]
+
+    click("#returns-trigger")
+
+    expect(panel().hasAttribute("data-ending-style")).toBe(true)
+    expect(size()[0]).toBe("120px")
+  })
+
+  it("does not give the auto size to a panel that closes before the end of the open", async () => {
+    await mount(accordion())
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    let finish
+    const finished = new Promise((resolve) => (finish = resolve))
+    panel().getAnimations = () => [{ finished }]
+    click("#shipping-trigger")
+    click("#shipping-trigger")
+
+    finish()
+    await frame()
+
+    expect(panel().hasAttribute("data-open")).toBe(false)
+    expect(size()[0]).toBe("120px")
+  })
+
+  it("keeps the auto size after the morph of an event", async () => {
+    await mount(accordion())
+    click("#shipping-trigger")
+    await frame()
+    expect(size()[0]).toBe("auto")
+
+    // The server render has no style attribute.
+    respond(accordion())
+    const done = nextDone()
+    click("#star")
+    await done
+    await settle()
+
+    expect(size()).toEqual(["auto", "auto"])
+  })
+
+  it("keeps the size in px after a morph during the open animation", async () => {
+    await mount(accordion())
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    panel().getAnimations = () => [{ finished: new Promise(() => {}) }]
+    click("#shipping-trigger")
+    await frame()
+
+    respond(accordion())
+    const done = nextDone()
+    click("#star")
+    await done
+    await settle()
+
+    expect(size()[0]).toBe("120px")
+  })
+})

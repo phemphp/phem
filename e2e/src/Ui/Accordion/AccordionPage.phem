@@ -1,0 +1,36 @@
+<?phem
+
+namespace App\Ui\Accordion;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// An accordion with a header in each item, and a transition of the height of its panels.
+#[Page('/accordion')]
+final class AccordionPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document title="Accordion">
+                <style>{{ ".panel { height: var(--accordion-panel-height); overflow: hidden; transition: height .1s } .panel[data-starting-style] { height: 0 } .panel[data-ending-style] { height: 0; transition-duration: 2s }" }}</style>
+                <div id="accordion" data-controller="phem-accordion">
+                    <div id="shipping" data-value="shipping" data-phem-accordion-target="item">
+                        <h3 id="shipping-header" data-phem-accordion-target="header"><button id="shipping-trigger" data-phem-accordion-target="trigger">Shipping</button></h3>
+                        <div id="shipping-panel" class="panel" data-phem-accordion-target="panel" hidden>
+                            <p>Two days.</p>
+                        </div>
+                    </div>
+                    <div id="returns" data-value="returns" data-phem-accordion-target="item">
+                        <h3 id="returns-header" data-phem-accordion-target="header"><button id="returns-trigger" data-phem-accordion-target="trigger">Returns</button></h3>
+                        <div id="returns-panel" class="panel" data-phem-accordion-target="panel" hidden>
+                            <p>Thirty days.</p>
+                        </div>
+                    </div>
+                </div>
+            </Document>
+        );
+    }
+}

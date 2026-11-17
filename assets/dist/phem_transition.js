@@ -18,6 +18,9 @@
 // part => the AbortController of its open or close.
 const running = new WeakMap()
 
+// panel => the signal of the open that settle() waits for.
+const settling = new WeakMap()
+
 // The properties that move the content of a panel in it.
 const ALIGNMENTS = ["justify-content", "align-items", "align-content", "justify-items"]
 
@@ -109,6 +112,9 @@ export function render(part, open, { hidden = true } = {}) {
 // The size is the scroll size of the panel with no alignment of its content, as in Base UI: the
 // content of a panel with `justify-content: flex-end` overflows to the top while the height is 0,
 // and the scroll size does not count an overflow to the top or to the start.
+//
+// settle() and fit() give an open panel the `auto` size. A close must call measure() first,
+// because a CSS transition does not start from `auto`.
 export function measure(panel, name) {
   const style = panel.style
   const before = ALIGNMENTS.map((property) => [property, style.getPropertyValue(property), style.getPropertyPriority(property)])
@@ -128,22 +134,31 @@ export function measure(panel, name) {
 
 // After the animations of `panel`: `--<name>-panel-height` and `--<name>-panel-width` get `auto`
 // when the panel is still open, so the content can change its size (Base UI
-// `useCollapsiblePanel`). A new show() or hide() stops it.
+// `useCollapsiblePanel`). Call it after measure() and show(): the open animation goes from 0 to
+// the size in px. A new show() or hide() stops it, and a closed panel keeps its size in px.
 //
 // It waits for the next frame, so a call just after show() sees the transition from the
 // `[data-starting-style]` size. It waits only for the finite animations of the panel itself: an
 // animation in the content (a spinner) does not keep the size.
 export function settle(panel, name) {
   const signal = running.get(panel)?.signal
+  settling.set(panel, signal)
 
   return new Promise((resolve) => requestAnimationFrame(resolve))
     .then(() => Promise.allSettled(sizeAnimationsOf(panel).map((animation) => animation.finished)))
     .then(() => {
+      if (settling.get(panel) === signal) settling.delete(panel)
       if (signal?.aborted || !panel.hasAttribute("data-open")) return
 
-      panel.style.setProperty(`--${name}-panel-height`, "auto")
-      panel.style.setProperty(`--${name}-panel-width`, "auto")
+      autoSize(panel, name)
     })
+}
+
+// The size of an open panel with no animation: for the first render, and after the morph. A panel
+// in its open animation keeps its size in px until settle() ends.
+export function fit(panel, name) {
+  if (settling.get(panel)?.aborted === false) measure(panel, name)
+  else autoSize(panel, name)
 }
 
 function restart(part) {
@@ -157,6 +172,11 @@ function restart(part) {
 function instantly(part, instant) {
   if (instant) part.setAttribute("data-instant", typeof instant === "string" ? instant : "")
   else part.removeAttribute("data-instant")
+}
+
+function autoSize(panel, name) {
+  panel.style.setProperty(`--${name}-panel-height`, "auto")
+  panel.style.setProperty(`--${name}-panel-width`, "auto")
 }
 
 // `hidden: false` keeps the part in the page: a `<dialog>` closes with close().

@@ -420,3 +420,123 @@ describe("phem-collapsible: the animation state of the element", () => {
     expect(root().hidden).toBe(false)
   })
 })
+
+describe("phem-collapsible: the size of an open panel", () => {
+  const panel = () => document.getElementById("panel")
+  const size = () => [panel().style.getPropertyValue("--collapsible-panel-height"), panel().style.getPropertyValue("--collapsible-panel-width")]
+  const frame = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+
+  it("gives the panel the auto size at the end of the open, so content that grows is not cut", async () => {
+    await mount(section())
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    Object.defineProperty(panel(), "scrollWidth", { value: 300 })
+    click("#open")
+
+    // The open animation goes from 0 to the size of the content.
+    expect(size()).toEqual(["120px", "300px"])
+
+    await frame()
+    expect(size()).toEqual(["auto", "auto"])
+  })
+
+  it("gives the auto size at the end of the animations of the open", async () => {
+    await mount(section())
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    let finish
+    const finished = new Promise((resolve) => (finish = resolve))
+    panel().getAnimations = () => [{ finished }]
+    click("#open")
+
+    await frame()
+    expect(size()[0]).toBe("120px")
+
+    finish()
+    await frame()
+    expect(size()[0]).toBe("auto")
+  })
+
+  it("gives an open panel of the server render the auto size at once", async () => {
+    await mount(section('data-phem-collapsible-open-value="true"'))
+
+    expect(size()).toEqual(["auto", "auto"])
+  })
+
+  it("keeps the auto size after the morph of an event", async () => {
+    await mount(section('data-phem-collapsible-open-value="true"'))
+
+    respond(section('data-phem-collapsible-open-value="true"'))
+    const done = nextDone()
+    click("#star")
+    await done
+
+    expect(isOpen()).toBe(true)
+    expect(size()).toEqual(["auto", "auto"])
+  })
+
+  it("starts the close from the size of the content in px", async () => {
+    await mount(section('data-phem-collapsible-open-value="true"'))
+    expect(size()[0]).toBe("auto")
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    panel().getAnimations = () => [{ finished: new Promise(() => {}) }]
+    click("#open")
+
+    expect(panel().hasAttribute("data-ending-style")).toBe(true)
+    expect(size()[0]).toBe("120px")
+  })
+
+  it("does not give the auto size to a panel that closes before the end of the open", async () => {
+    await mount(section())
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    let finish
+    const finished = new Promise((resolve) => (finish = resolve))
+    panel().getAnimations = () => [{ finished }]
+    click("#open")
+    click("#open")
+
+    finish()
+    await frame()
+    expect(isOpen()).toBe(false)
+    expect(size()[0]).toBe("120px")
+  })
+
+  it("keeps the size in px after a morph during the open animation", async () => {
+    await mount(section())
+    Object.defineProperty(panel(), "scrollHeight", { value: 120 })
+    panel().getAnimations = () => [{ finished: new Promise(() => {}) }]
+    click("#open")
+    await frame()
+
+    respond(section())
+    const done = nextDone()
+    click("#star")
+    await done
+
+    expect(isOpen()).toBe(true)
+    expect(size()[0]).toBe("120px")
+  })
+
+  it("gives the auto size to an open panel that the morph adds", async () => {
+    await mount(section('data-phem-collapsible-open-value="true"'))
+
+    const extra = `<div id="extra" data-phem-collapsible-target="panel" hidden>More</div>`
+    respond(section('data-phem-collapsible-open-value="true"', extra))
+    const done = nextDone()
+    click("#star")
+    await done
+    await frame()
+
+    const added = document.getElementById("extra")
+    expect(added.hidden).toBe(false)
+    expect(added.style.getPropertyValue("--collapsible-panel-height")).toBe("auto")
+  })
+
+  it("gives the auto size after an open of the search of the browser", async () => {
+    await mount(section('data-phem-collapsible-hidden-until-found-value="true"'))
+
+    panel().dispatchEvent(new Event("beforematch", { bubbles: true }))
+    await frame()
+
+    expect(isOpen()).toBe(true)
+    expect(size()).toEqual(["auto", "auto"])
+  })
+})

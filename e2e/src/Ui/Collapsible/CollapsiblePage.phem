@@ -7,7 +7,8 @@ use Phem\Node;
 
 use function App\Ui\Layout\Document;
 
-// A collapsible with a panel that has no id, and a button that sends an event.
+// A collapsible with a panel that has no id, a collapsible with a transition of its height, and a
+// button that sends an event.
 #[Page('/collapsible')]
 final class CollapsiblePage
 {
@@ -22,9 +23,16 @@ final class CollapsiblePage
     {
         return (
             <Document title="Collapsible">
+                <style>{{ ".grow-panel { height: var(--collapsible-panel-height); overflow: hidden; transition: height .1s } .grow-panel[data-starting-style] { height: 0 } .grow-panel[data-ending-style] { height: 0; transition-duration: 2s }" }}</style>
                 <div id="details" data-controller="phem-collapsible">
                     <button id="trigger" data-phem-collapsible-target="trigger">Details</button>
                     <div class="panel" data-phem-collapsible-target="panel" hidden>Details panel</div>
+                </div>
+                <div id="grow" data-controller="phem-collapsible">
+                    <button id="grow-trigger" data-phem-collapsible-target="trigger">More</button>
+                    <div id="grow-panel" class="grow-panel" data-phem-collapsible-target="panel" hidden>
+                        <p>First line</p>
+                    </div>
                 </div>
                 <button id="save" onClick={{ save }}>Save</button>
                 <output id="saves">{{ saves }}</output>

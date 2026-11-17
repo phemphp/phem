@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { isDisabled, nextItem } from "./phem_roving.js"
-import { hide, measure, render, show } from "./phem_transition.js"
+import { fit, hide, measure, render, settle, show } from "./phem_transition.js"
 
 // The `phem-accordion` controller: a list of items that open and close, with one open item at a
 // time.
@@ -22,8 +22,9 @@ import { hide, measure, render, show } from "./phem_transition.js"
 // ArrowLeft with the `horizontal` orientation, and from the last trigger to the first one with the
 // `loopFocus` value). A disabled trigger (`disabled` or `aria-disabled="true"`) does not open: its
 // item, its header, the trigger and its panel get `data-disabled`. A `header` target (the heading
-// around a trigger) gets `data-open`, and each part of an item gets `data-index`. The controller
-// element and each panel get `data-orientation` (the `orientation` value).
+// around a trigger) gets `data-open` or `data-closed`, and each part of an item gets
+// `data-index`. The controller element and each panel get `data-orientation` (the `orientation`
+// value).
 //
 // The `open` value is the state: the list of the open items. An item is its `data-value`
 // attribute, its key (`data-phem-key`), or its index. The server render gives its first value, and
@@ -32,7 +33,8 @@ import { hide, measure, render, show } from "./phem_transition.js"
 // An item and its panel get `data-open` or `data-closed`; see phem_transition.js for the
 // animations. A trigger gets `aria-expanded` and `data-panel-open`. A panel gets `role="region"`,
 // and the `--accordion-panel-height` and `--accordion-panel-width` CSS variables, for a transition
-// of its height. When the trigger and the panel have an id, the trigger gets `aria-controls` and
+// of its height: the size of its content in px during the open and the close, and `auto` when the
+// panel is open. When the trigger and the panel have an id, the trigger gets `aria-controls` and
 // the panel gets `aria-labelledby`. The controller gives them no id: the morph does not match an
 // element with an id that the server render does not have, and replaces it. With the
 // `hiddenUntilFound` value, a closed panel has `hidden="until-found"`: the search of the browser
@@ -151,8 +153,11 @@ export default class PhemAccordionController extends Controller {
       if (isOpen) {
         show(panel)
         measure(panel, "accordion")
+        settle(panel, "accordion")
       } else {
+        // A transition does not start from `auto`: the close starts from the size in px.
         measure(panel, "accordion")
+        void panel.offsetHeight
         hide(panel, { hidden: this.#hidden })
       }
     }
@@ -168,7 +173,11 @@ export default class PhemAccordionController extends Controller {
     this.rendered = open
 
     for (const { value, panel } of parts) {
-      if (panel) render(panel, open.includes(value), { hidden: this.#hidden })
+      if (!panel) continue
+
+      const isOpen = open.includes(value)
+      render(panel, isOpen, { hidden: this.#hidden })
+      if (isOpen) fit(panel, "accordion")
     }
 
     this.#renderParts(open, parts)
@@ -185,6 +194,7 @@ export default class PhemAccordionController extends Controller {
       // The header of the item has its state, and each part has the index of its item.
       const header = this.headerTargets.find((el) => item.contains(el))
       header?.toggleAttribute("data-open", isOpen)
+      header?.toggleAttribute("data-closed", !isOpen)
       const disabled = trigger ? isDisabled(trigger) : false
       for (const part of [item, header, trigger, panel]) {
         part?.setAttribute("data-index", String(index))
@@ -198,10 +208,7 @@ export default class PhemAccordionController extends Controller {
         trigger.toggleAttribute("data-panel-open", isOpen)
       }
 
-      if (panel) {
-        if (!panel.hasAttribute("role")) panel.setAttribute("role", "region")
-        if (isOpen) measure(panel, "accordion")
-      }
+      if (panel && !panel.hasAttribute("role")) panel.setAttribute("role", "region")
 
       // A temporary id of the morph (phem_ids.js) is no id.
       const triggerId = trigger ? realId(trigger) : ""
@@ -248,12 +255,12 @@ export default class PhemAccordionController extends Controller {
     return this.hiddenUntilFoundValue ? "until-found" : true
   }
 
-  // The attributes of the state: the open state of an item and of a panel, and the ARIA
-  // attributes of a trigger and of a panel.
+  // The attributes of the state: the open state of an item, of its header and of a panel, and
+  // the ARIA attributes of a trigger and of a panel.
   #owns(el, name) {
     if (el === this.element) return name === "data-orientation"
     if (this.itemTargets.includes(el)) return name === "data-open" || name === "data-closed" || name === "data-index" || name === "data-disabled"
-    if (this.headerTargets.includes(el)) return name === "data-open" || name === "data-index" || name === "data-disabled"
+    if (this.headerTargets.includes(el)) return name === "data-open" || name === "data-closed" || name === "data-index" || name === "data-disabled"
     if (this.panelTargets.includes(el)) return OPEN_ATTRIBUTES.has(name) || name === "role" || name === "aria-labelledby" || name === "data-index" || name === "data-disabled" || name === "data-orientation"
     if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "aria-controls" || name === "data-panel-open" || name === "data-index" || name === "data-disabled"
 

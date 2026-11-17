@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** An open panel of `phem-collapsible` and `phem-accordion` has the `auto` size in
+  `--collapsible-panel-height` and `--collapsible-panel-width` (`--accordion-panel-height` and
+  `--accordion-panel-width`) at the end of its open animation, and on load. Before, the size
+  stayed in px, so content that grew after the open was cut. A close measures the panel again, so
+  the close starts from the real height. CSS that uses the variables in `calc()`, in `max-height`
+  or in a keyframe of an open panel must change: use them only in `height` (or `width`), and put
+  the closed size on `[data-starting-style]` and `[data-ending-style]`.
+- The header of a closed `phem-accordion` item gets `data-closed`, also after the morph of an
+  event. Before, it got only `data-open` when its item was open.
 - **Breaking**: `phem-toast` puts a new toast first in the DOM, as Base UI. Tab goes to the newest
   toast first, and `--toast-index` is 0 for the first toast. `phem.css` shows the stack with
   `flex-direction: column-reverse`, so the newest toast stays at the bottom. A stack style of an

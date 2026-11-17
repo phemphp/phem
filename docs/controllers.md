@@ -168,13 +168,13 @@ The state of a controller belongs to the client. The morph after an event does n
 </div>
 ```
 
-A click on a trigger opens and closes the panel. The `toggle`, `open` and `close` actions do the same from another element. After a click, the browser shows:
+A click on a trigger opens and closes the panel. The `toggle`, `open` and `close` actions do the same from another element. After a click, at the end of the open animation, the browser shows:
 
 ```html
 <div data-controller="phem-collapsible" data-phem-collapsible-open-value="true" data-open>
     <button data-phem-collapsible-target="trigger" aria-controls="" aria-expanded="true" data-panel-open>Details</button>
     <div data-phem-collapsible-target="panel" data-open
-         style="--collapsible-panel-height: 48px; --collapsible-panel-width: 320px;">...</div>
+         style="--collapsible-panel-height: auto; --collapsible-panel-width: auto;">...</div>
 </div>
 ```
 
@@ -182,12 +182,14 @@ The panel has no `id`, so the trigger points to it with an element reference (`a
 
 The controller element and the panel get `data-open` or `data-closed`. During an open and a close, they also get `data-starting-style` and `data-ending-style` (see [Animations](#animations)), as the root of a Base UI Collapsible. So a style of the element can change with the panel, for example the icon of the trigger: `.section[data-ending-style] .icon { rotate: 0deg; }`. The `data-ending-style` of the element stays until the end of the animations of the panel.
 
-The panel gets the size of its content in `--collapsible-panel-height` and `--collapsible-panel-width`, for a transition of its height. The controller measures the content with no alignment (`justify-content`, `align-items`, `align-content` and `justify-items`), so a panel that puts its content at its end (`justify-content: flex-end`) gets the correct size:
+The panel gets the size of its content in `--collapsible-panel-height` and `--collapsible-panel-width`, for a transition of its height. During the open, the size is in px, so the transition goes from 0 to the height of the content. At the end of the open animations, the two variables become `auto`, so content that grows after the open (an image that loads, a morph that adds a line) is not cut. A panel that is open on load gets `auto` at once. After the morph, an open panel also gets `auto`, unless its open animation still runs: then it keeps the size in px until the end of the animation. A close measures the panel again in px, so the close starts from its real height. The controller measures the content with no alignment (`justify-content`, `align-items`, `align-content` and `justify-items`), so a panel that puts its content at its end (`justify-content: flex-end`) gets the correct size:
 
 ```css
 .panel { height: var(--collapsible-panel-height); overflow: hidden; transition: height 200ms; }
 .panel[data-starting-style], .panel[data-ending-style] { height: 0; }
 ```
+
+An open panel has `auto` in the variables, and `auto` is not a length. So do not use the variables in `calc()`, in `max-height`, or in a keyframe of an open panel. Use them only in `height` (or `width`), and put the closed size on `[data-starting-style]` and `[data-ending-style]`, as in the example. For example, change `max-height: calc(var(--collapsible-panel-height) + 1rem)` to `height: var(--collapsible-panel-height)` with a `padding-block` of `0.5rem` on the panel.
 
 Set `data-phem-collapsible-open-value="true"` to open it on load. With `data-phem-collapsible-hidden-until-found-value="true"`, a closed panel has `hidden="until-found"`: the search of the browser (Ctrl+F) finds its text and opens it. A collapsible does not close on Escape or on a click outside. For a dropdown, use `phem-popover` or `phem-menu`.
 
@@ -219,31 +221,33 @@ The server renders the banner open, so a dismissed banner shows until the contro
 ```html
 <div data-controller="phem-accordion">
     <div data-value="shipping" data-phem-accordion-target="item">
-        <h3><button id="shipping-trigger" data-phem-accordion-target="trigger">Shipping</button></h3>
+        <h3 data-phem-accordion-target="header"><button id="shipping-trigger" data-phem-accordion-target="trigger">Shipping</button></h3>
         <div id="shipping-panel" data-phem-accordion-target="panel" hidden>Two days.</div>
     </div>
     <div data-value="returns" data-phem-accordion-target="item">
-        <h3><button id="returns-trigger" data-phem-accordion-target="trigger">Returns</button></h3>
+        <h3 data-phem-accordion-target="header"><button id="returns-trigger" data-phem-accordion-target="trigger">Returns</button></h3>
         <div id="returns-panel" data-phem-accordion-target="panel" hidden>Thirty days.</div>
     </div>
 </div>
 ```
 
-Each `item` has one `trigger` and one `panel`. A click on a trigger opens and closes its item. Tab moves the focus between the triggers, as the accordion pattern of the ARIA Authoring Practices says now. With `data-phem-accordion-roving-focus-value="true"`, ArrowDown, ArrowUp, Home and End also move the focus between the triggers. Then, with `data-phem-accordion-orientation-value="horizontal"`, ArrowRight and ArrowLeft move it, and from the last trigger ArrowDown goes to the first one, unless `data-phem-accordion-loop-focus-value="false"`. A `header` part (the heading around a trigger) gets `data-open`, and each part of an item gets `data-index` (the position of the item, from 0). A disabled trigger (`disabled` or `aria-disabled="true"`) does not open, and does not get the focus: its item, its header, the trigger and its panel get `data-disabled`, also when the morph of an event changes the trigger. The controller element and each panel get `data-orientation` (`vertical`, or the `orientation` value). After a click on **Returns**, the browser shows:
+Each `item` has one `trigger` and one `panel`. A click on a trigger opens and closes its item. Tab moves the focus between the triggers, as the accordion pattern of the ARIA Authoring Practices says now. With `data-phem-accordion-roving-focus-value="true"`, ArrowDown, ArrowUp, Home and End also move the focus between the triggers. Then, with `data-phem-accordion-orientation-value="horizontal"`, ArrowRight and ArrowLeft move it, and from the last trigger ArrowDown goes to the first one, unless `data-phem-accordion-loop-focus-value="false"`. A `header` part (the heading around a trigger) gets `data-open` or `data-closed`, and each part of an item gets `data-index` (the position of the item, from 0). A disabled trigger (`disabled` or `aria-disabled="true"`) does not open, and does not get the focus: its item, its header, the trigger and its panel get `data-disabled`, also when the morph of an event changes the trigger. The controller element and each panel get `data-orientation` (`vertical`, or the `orientation` value). After a click on **Returns**, at the end of the open animation, the browser shows:
 
 ```html
-<div data-value="returns" data-phem-accordion-target="item" data-open>
-    <h3><button id="returns-trigger" data-phem-accordion-target="trigger" aria-expanded="true"
-                aria-controls="returns-panel" data-panel-open>Returns</button></h3>
+<div data-value="returns" data-phem-accordion-target="item" data-open data-index="1">
+    <h3 data-phem-accordion-target="header" data-open data-index="1">
+        <button id="returns-trigger" data-phem-accordion-target="trigger" aria-expanded="true"
+                aria-controls="returns-panel" data-panel-open data-index="1">Returns</button>
+    </h3>
     <div id="returns-panel" data-phem-accordion-target="panel" role="region"
-         aria-labelledby="returns-trigger" data-open
-         style="--accordion-panel-height: 20px; --accordion-panel-width: 320px;">Thirty days.</div>
+         aria-labelledby="returns-trigger" data-open data-index="1" data-orientation="vertical"
+         style="--accordion-panel-height: auto; --accordion-panel-width: auto;">Thirty days.</div>
 </div>
 ```
 
 Give each trigger and each panel an `id`, for example `id={{ 'faq-' ~ key ~ '-panel' }}` in a loop. The controller links a trigger and its panel with `aria-controls` and `aria-labelledby` only when both have an id. It gives them no id itself: the morph of an event does not match an element whose id the server render does not have, and replaces it, with the state of its content.
 
-Set `data-phem-accordion-multiple-value="true"` to let more than one item open. The `open` value is the list of the open items. An item is its `data-value` attribute, its `key`, or its index. The server opens an item with `data-phem-accordion-open-value={{ ['returns'] }}`. A panel gets `--accordion-panel-height` and `--accordion-panel-width`, for a transition of its height, as a panel of `phem-collapsible`. With `data-phem-accordion-hidden-until-found-value="true"`, the search of the browser (Ctrl+F) opens the item that has the text.
+Set `data-phem-accordion-multiple-value="true"` to let more than one item open. The `open` value is the list of the open items. An item is its `data-value` attribute, its `key`, or its index. The server opens an item with `data-phem-accordion-open-value={{ ['returns'] }}`. A panel gets `--accordion-panel-height` and `--accordion-panel-width`, for a transition of its height, with the same px and `auto` values as a panel of `phem-collapsible`. With `data-phem-accordion-hidden-until-found-value="true"`, the search of the browser (Ctrl+F) opens the item that has the text.
 
 ## Show a section from the value of a field
 
