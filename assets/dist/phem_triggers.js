@@ -15,6 +15,7 @@ export class Triggers {
   #controller
   #self
   #active = null
+  #all = null
 
   constructor(controller, { self = false } = {}) {
     this.#controller = controller
@@ -26,12 +27,19 @@ export class Triggers {
     return `data-${this.#controller.identifier}-for`
   }
 
-  // All the triggers, in the order of the page.
+  // All the triggers, in the order of the page. The list stays for the time of one task: a morph
+  // and the events read it many times.
   get all() {
-    const triggers = [...this.#controller.triggerTargets, ...this.#detached()]
-    if (triggers.length === 0 && this.#self) return [this.#controller.element]
+    if (this.#all) return this.#all
 
-    return triggers.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+    let triggers = [...this.#controller.triggerTargets, ...this.#detached()]
+    if (triggers.length === 0 && this.#self) triggers = [this.#controller.element]
+    else triggers.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+
+    this.#all = triggers
+    queueMicrotask(() => (this.#all = null))
+
+    return triggers
   }
 
   // The trigger that opened the popup, or else the first trigger.

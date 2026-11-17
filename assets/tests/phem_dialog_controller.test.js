@@ -1045,6 +1045,21 @@ describe("phem-dialog: several triggers, a close confirmation and the final focu
     expect($("t2").getAttribute("aria-expanded")).toBe("true")
   })
 
+  it("shows the payload of the trigger of the triggerId value when the open value changes", async () => {
+    await mount(`<button id="t1" data-phem-dialog-for="shared" data-phem-dialog-payload="Dialog 1">Open 1</button>
+      <button id="t2" data-phem-dialog-for="shared" data-phem-dialog-payload="Dialog 2">Open 2</button>
+      <div id="shared" data-controller="phem-dialog">
+        <dialog id="dialog" data-phem-dialog-target="popup"><span id="payload" data-phem-dialog-target="payload"></span></dialog>
+      </div>`)
+    $("shared").setAttribute("data-phem-dialog-trigger-id-value", "t2")
+    $("shared").setAttribute("data-phem-dialog-open-value", "true")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(dialog().open).toBe(true)
+    expect($("payload").textContent).toBe("Dialog 2")
+    expect($("t2").getAttribute("aria-expanded")).toBe("true")
+  })
+
   // A dialog with a text field, and its confirmation dialog in its popup.
   const tweet = () => `<div id="tweet" data-controller="phem-dialog" data-phem-dialog-confirm-close-value="discard">
       <button id="open" data-phem-dialog-target="trigger">Tweet</button>

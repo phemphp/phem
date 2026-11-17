@@ -351,7 +351,7 @@ describe("phem-tooltip with several triggers", () => {
     expect($("shared-tip").hidden).toBe(false)
     expect($("t2").hasAttribute("data-popup-open")).toBe(true)
     expect($("t1").hasAttribute("data-popup-open")).toBe(false)
-    expect($("vp").innerHTML).toBe('<div data-current="">Set a timer</div>')
+    expect($("vp").innerHTML).toBe('<span data-current="">Set a timer</span>')
     expect($("shared").getAttribute("data-phem-tooltip-open-value")).toBe("true")
     expect($("shared").getAttribute("data-phem-tooltip-trigger-id-value")).toBe("t2")
 
@@ -457,5 +457,19 @@ describe("phem-tooltip with several triggers", () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect($("vp").querySelector("[data-current]")?.textContent).toBe("Set a timer")
+  })
+
+  it("keeps the trigger id and the state of the detached trigger through the morph of an event", async () => {
+    await mount(`<button id="send" data-phem-on-click="c1.send">Send</button>${detached()}`)
+    respond(`<button id="send" data-phem-on-click="c1.send">Send</button>${detached()}`)
+    tabTo($("t2"))
+    const done = nextDone()
+    $("send").click()
+    await done
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect($("shared").getAttribute("data-phem-tooltip-open-value")).toBe("true")
+    expect($("shared").getAttribute("data-phem-tooltip-trigger-id-value")).toBe("t2")
+    expect($("t2").hasAttribute("data-popup-open")).toBe(true)
   })
 })

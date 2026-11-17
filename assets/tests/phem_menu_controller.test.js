@@ -1357,6 +1357,38 @@ describe("phem-menu: a filter", () => {
     expect($("new").hasAttribute("data-highlighted")).toBe(true)
   })
 
+  it("keeps an item hidden that the server hides, after the query is empty again", async () => {
+    await mount(markup())
+    $("move").hidden = true
+    open()
+
+    type("save")
+    expect(shown()).toEqual(["save", "save-as"])
+
+    type("")
+    expect(shown()).toEqual(["new", "save", "save-as", "delete"])
+    expect($("move").hidden).toBe(true)
+  })
+
+  it("sends an input event when it resets the query, so that a server filter gets the empty query", async () => {
+    await mount(markup())
+    open()
+    type("save")
+
+    const input = vi.fn()
+    $("input").addEventListener("input", input)
+    press("Escape")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("input").value).toBe("")
+    expect(input).toHaveBeenCalledOnce()
+
+    // An empty query sends no event.
+    open()
+    press("Escape")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(input).toHaveBeenCalledOnce()
+  })
+
   it("hides nothing with the filter value false: the server renders the items of the query", async () => {
     await mount(markup('data-phem-menu-filter-value="false"'))
     open()

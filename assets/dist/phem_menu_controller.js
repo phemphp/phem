@@ -8,6 +8,7 @@ import { PopupViewport } from "./phem_popup_viewport.js"
 import { ReleaseClick } from "./phem_release.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, movesFocus, nextItem, Typeahead } from "./phem_roving.js"
+import { textMatcher } from "./phem_match.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
 import { Triggers, activationDirection } from "./phem_triggers.js"
 
@@ -32,12 +33,10 @@ const RELEASE_DELAY = 200
 // in Base UI.
 const skipped = (el) => el.matches(":disabled") || el.hidden
 
-// The text of an item for the filter: no case, no accents, no punctuation.
-const normalize = (text) =>
+// The text of an item or of the query for the filter, with no punctuation: the match ignores the
+// punctuation, and the case and the accents (phem_match.js), as in Base UI.
+const searchable = (text) =>
   text
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
     .replace(/[\p{P}\p{S}]/gu, "")
     .replace(/\s+/g, " ")
     .trim()
@@ -186,6 +185,8 @@ export default class PhemMenuController extends Controller {
     // The checked state of each checkbox item and radio item: the last `aria-checked` of a server
     // render, and the time of the last change by the client. An item connects before the menu.
     this.checks = new WeakMap()
+    // The items and the groups that the filter hid: it shows again only these.
+    this.filtered = new WeakSet()
     this.typeahead = new Typeahead()
     this.triggers = new Triggers(this)
     this.popup = new Popup({
@@ -227,8 +228,9 @@ export default class PhemMenuController extends Controller {
 
   connect() {
     this.state = new ClientState(this, {
-      value: "open",
+      value: ["open", "triggerId"],
       owns: (el, name) => this.#owns(el, name),
+      outside: (el) => this.triggers.detached(el),
       morphed: () => {
         this.viewport.capture()
         if (this.rendered) this.viewport.render(this.#trigger)
@@ -861,12 +863,13 @@ export default class PhemMenuController extends Controller {
     const input = this.#filterInput
     if (!input) return
 
-    const query = normalize(input.value)
+    const query = searchable(input.value)
     const items = this.#items.filter((el) => !this.hasListTarget || this.listTarget.contains(el))
 
     if (this.filterValue) {
-      for (const item of items) item.hidden = query !== "" && !normalize(item.getAttribute("data-label") ?? item.textContent).includes(query)
-      for (const group of this.groupTargets) group.hidden = query !== "" && !items.some((el) => group.contains(el) && !el.hidden)
+      const matches = textMatcher()
+      for (const item of items) this.#hideFiltered(item, query !== "" && !matches(searchable(item.getAttribute("data-label") ?? item.textContent), query))
+      for (const group of this.groupTargets) this.#hideFiltered(group, query !== "" && !items.some((el) => group.contains(el) && !el.hidden))
     }
 
     const shown = items.filter((el) => !el.hidden)
@@ -875,6 +878,28 @@ export default class PhemMenuController extends Controller {
     const current = shown.find((el) => el.hasAttribute("data-highlighted")) ?? null
     const auto = this.autoHighlightValue === "always" || (this.autoHighlightValue === "input" && query !== "")
     this.#highlight(current ?? (auto ? (nextItem(shown, null, "Home", { skip: skipped }) ?? null) : null))
+  }
+
+  // Hides a part, or shows it again: the filter shows again only the parts that it hid, so a part
+  // that the server rendered with `hidden` stays hidden.
+  #hideFiltered(el, hide) {
+    if (hide) {
+      if (!el.hidden) this.filtered.add(el)
+      el.hidden = true
+    } else if (this.filtered.has(el)) {
+      this.filtered.delete(el)
+      el.hidden = false
+    }
+  }
+
+  // The query resets: an `input` event tells it to the filter and to an `onInput` handler of the
+  // server (the `filter` value false).
+  #resetQuery() {
+    const input = this.#filterInput
+    if (!input || input.value === "") return
+
+    input.value = ""
+    input.dispatchEvent(new Event("input", { bubbles: true }))
   }
 
   // Escape closes the menu with the focus on the trigger. A press outside closes it at the press,
@@ -1003,10 +1028,7 @@ export default class PhemMenuController extends Controller {
     } else {
       // The query resets after the close animation.
       Promise.resolve(this.popup.hide({ instant })).then(() => {
-        if (this.openValue || !this.#filterInput) return
-
-        this.#filterInput.value = ""
-        this.#filter()
+        if (!this.openValue) this.#resetQuery()
       })
     }
 
@@ -1037,10 +1059,7 @@ export default class PhemMenuController extends Controller {
     this.size.change(size)
     this.popup.reanchor()
     this.#renderParts()
-    if (this.#filterInput) {
-      this.#filterInput.value = ""
-      this.#filter()
-    }
+    this.#resetQuery()
   }
 
   // A modal menu locks the page while it is open. A submenu is in the popup of its menu. A menu
@@ -1123,7 +1142,7 @@ export default class PhemMenuController extends Controller {
     if (this.triggers.all.includes(el) && (name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed")) return true
     if (name === "data-activation-direction" && this.viewportTargets.includes(el)) return true
     // The filter hides the items, the groups and the empty part (see #filter()).
-    if (name === "hidden" && this.#filterInput && (this.#items.includes(el) || this.groupTargets.includes(el) || this.emptyTargets.includes(el))) return true
+    if (name === "hidden" && this.#filterInput && (this.filtered.has(el) || this.emptyTargets.includes(el))) return true
     if (this.#filterInput === el && (name === "data-highlighted" || name === "aria-activedescendant")) return true
     if (!this.#items.includes(el)) return false
     if (name === "data-highlighted" || name === "tabindex") return true

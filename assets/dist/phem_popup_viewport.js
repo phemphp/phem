@@ -8,7 +8,7 @@ import { hide, show } from "./phem_transition.js"
 // `<template data-payload>` with this value, the content is a copy of the template. Else the
 // content is the payload as text. A trigger with no payload shows the content of the server
 // render, with no template. The content is in a `div` with
-// `data-current`. When the active trigger changes while the popup is open, the old content stays
+// `data-current` (a `span` in a `span` viewport, so a payload in a sentence stays on its line). When the active trigger changes while the popup is open, the old content stays
 // in a `div` with `data-previous` and `data-ending-style` until its animations end, and the new
 // content gets `data-starting-style` for its first frame. The viewport gets
 // `data-activation-direction`: the direction of the new trigger from the old one (`left` or
@@ -80,7 +80,7 @@ export class PopupViewport {
   }
 
   #content(trigger) {
-    const content = document.createElement("div")
+    const content = document.createElement(this.#viewport()?.localName === "span" ? "span" : "div")
     content.setAttribute("data-current", "")
 
     const payload = this.#payload(trigger)

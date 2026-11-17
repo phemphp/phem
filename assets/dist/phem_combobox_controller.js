@@ -1,13 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
+import { textMatcher } from "./phem_match.js"
 import { ClientState } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, leaveList, nextItem } from "./phem_roving.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
-
-// The collators of the client filter, by locale.
-const collators = new Map()
 
 // The `phem-combobox` controller: a text field with a list of suggestions that the server gives,
 // for a search, a city or a user. The list stays open after the morph of an event.
@@ -712,18 +710,7 @@ export default class PhemComboboxController extends Controller {
   }
 
   #matcher() {
-    const locale = this.localeValue || document.documentElement.lang || ""
-    if (!collators.has(locale)) collators.set(locale, new Intl.Collator(locale || undefined, { usage: "search", sensitivity: "base" }))
-    const collator = collators.get(locale)
-    const same = (a, b) => collator.compare(a, b) === 0
-
-    if (this.filterValue === "starts-with") return (text, query) => same(text.slice(0, query.length), query)
-
-    return (text, query) => {
-      for (let at = 0; at + query.length <= text.length; at++) if (same(text.slice(at, at + query.length), query)) return true
-
-      return false
-    }
+    return textMatcher({ locale: this.localeValue, mode: this.filterValue === "starts-with" ? "starts-with" : "contains" })
   }
 
   // The selected item of a popup that opens, when the user did not type: it gets the highlight.

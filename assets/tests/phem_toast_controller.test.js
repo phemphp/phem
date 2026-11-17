@@ -1093,6 +1093,25 @@ describe("phem-toast: the options of a toast", () => {
     expect(toasts()).toHaveLength(2)
   })
 
+  it("adds the parts of the update that the first toast did not have", async () => {
+    await viewport()
+
+    toast({ message: "Saving…", type: "loading", id: "job", duration: 0 })
+    expect(toasts()[0].querySelector("[data-phem-toast-title]")).toBeNull()
+    expect(toasts()[0].querySelector("[data-phem-toast-action]")).toBeNull()
+
+    toast({ message: "Saved", id: "job", title: "Done", action: "Undo" })
+    expect(toasts()).toHaveLength(1)
+    expect(toasts()[0].querySelector("[data-phem-toast-title]").textContent).toBe("Done")
+    expect(toasts()[0].querySelector("[data-phem-toast-action]").textContent).toBe("Undo")
+    expect(messages()).toEqual(["Saved"])
+
+    // An update with fewer options removes the old parts.
+    toast({ message: "Saved again", id: "job" })
+    expect(toasts()[0].querySelector("[data-phem-toast-title]")).toBeNull()
+    expect(toasts()[0].querySelector("[data-phem-toast-action]")).toBeNull()
+  })
+
   it("shows the action, and a click on it calls the onCall handler with the detail and closes the toast", async () => {
     await viewport()
     const calls = []
@@ -1139,6 +1158,20 @@ describe("phem-toast: the options of a toast", () => {
     expect(el.hasAttribute("data-anchored")).toBe(true)
     expect(el.getAttribute("data-side")).toBe("top")
     expect(el.style.position).toBe("fixed")
+  })
+
+  it("measures a toast with an anchor while it is shown, so that its size is not zero", async () => {
+    await viewport()
+    const shown = []
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function () {
+      if (this.hasAttribute("data-phem-toast")) shown.push(!this.hidden && this.isConnected)
+
+      return 0
+    })
+
+    toast({ message: "Copied", anchor: "copy" })
+    expect(shown.length).toBeGreaterThan(0)
+    expect(shown.every(Boolean)).toBe(true)
   })
 
   it("shows the toast of a data-phem-toast-show element at the click", async () => {

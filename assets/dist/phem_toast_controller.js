@@ -458,11 +458,8 @@ export default class PhemToastController extends Controller {
       ? live.find((el) => el.dataset.phemToastId === id)
       : live.find((el) => !el.dataset.phemToastId && (el.getAttribute("data-type") ?? "") === type && this.#message(el) === message && this.#title(el) === title)
     if (same) {
-      if (id) {
-        this.#fill(same, { message, type, title, action, data })
-        this.#updated(same)
-        this.#stack()
-      }
+      if (id) this.#update(same, { message, type, title, action, data })
+
       same.dataset.phemToastDuration = String(duration)
       this.#schedule(same)
 
@@ -489,8 +486,9 @@ export default class PhemToastController extends Controller {
     if (first) first.before(el)
     else this.element.append(el)
 
-    this.#anchor(el, anchor)
+    // The toast shows before its place: the place needs its size.
     show(el)
+    this.#anchor(el, anchor)
     this.#stack()
     this.#renderExpanded(el)
     this.#schedule(el)
@@ -535,13 +533,24 @@ export default class PhemToastController extends Controller {
     el.dataset.phemToastData = JSON.stringify(data)
     for (const part of el.querySelectorAll("[data-phem-toast-data]")) {
       const value = data[part.getAttribute("data-phem-toast-data")]
-      if (value === undefined || value === null) part.remove()
+      if (value === undefined || value === null || typeof value === "object") part.remove()
       else part.textContent = String(value)
     }
   }
 
-  // An update of a toast with an id: `data-update-key` counts the updates, and `data-updated`
-  // comes again, so its CSS animation plays again.
+  // An update of a toast with an id. Its parts come again from the template, so the update can
+  // have a title, an action or data that the first toast did not have.
+  #update(el, options) {
+    el.replaceChildren(...this.#make().childNodes)
+    this.#fill(el, options)
+    heights.delete(el)
+    this.#updated(el)
+    this.#renderExpanded(el)
+    this.#stack()
+  }
+
+  // `data-update-key` counts the updates, and `data-updated` comes again, so its CSS animation
+  // plays again.
   #updated(el) {
     el.setAttribute("data-update-key", String(Number(el.getAttribute("data-update-key") ?? 0) + 1))
     el.removeAttribute("data-updated")

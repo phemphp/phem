@@ -109,7 +109,9 @@ final class Event
      * @param string|null $anchor   the `id` of an element: the toast shows next to it
      * @param string|null $viewport the `name` of the `phem-toast` element that shows the toast
      *
-     * @throws \InvalidArgumentException for an empty message, an empty title or a duration out of range
+     * @throws \InvalidArgumentException for an empty message, an empty title (id, action, anchor,
+     *                                   viewport), data that is not a map of scalars, or a
+     *                                   duration out of range
      */
     public function toast(
         string $message,

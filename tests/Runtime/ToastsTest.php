@@ -98,6 +98,22 @@ final class ToastsTest extends TestCase
         new Toasts(new BrowserEventDispatcher())->show('Saved', action: ' ');
     }
 
+    public function testShowRejectsDataThatIsNotAMapOfScalars(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The data of a toast is an array of names and texts, numbers, booleans or null');
+
+        new Toasts(new BrowserEventDispatcher())->show('Saved', data: ['user' => ['id' => 7]]);
+    }
+
+    public function testShowRejectsAListAsData(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The data of a toast is an array of names and texts, numbers, booleans or null');
+
+        new Toasts(new BrowserEventDispatcher())->show('Saved', data: ['a', 'b']);
+    }
+
     public function testShowRejectsAnEmptyTitle(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -166,6 +182,8 @@ final class ToastsTest extends TestCase
         self::assertEquals($toast, Toast::fromDetail($toast->detail()));
         // An option that is empty or not a text is no option, and data that is not an array is no data.
         self::assertEquals(new Toast('Saved'), Toast::fromDetail(['message' => 'Saved', 'id' => ' ', 'action' => ['a'], 'data' => 'x', 'anchor' => true, 'viewport' => '']));
+        // The data keeps only the names with a scalar value or null.
+        self::assertEquals(new Toast('Saved', data: ['item' => 7, 'note' => null]), Toast::fromDetail(['message' => 'Saved', 'data' => ['item' => 7, 'note' => null, 'user' => ['id' => 1], 0 => 'a']]));
     }
 
     public function testFromDetailGivesNullWhenTheControllerShowsNoToast(): void

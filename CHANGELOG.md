@@ -8,6 +8,22 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Fixes of the popups, the menu and the toasts:
+  - The morph of an event keeps the `trigger-id` value of `phem-popover`, `phem-menu`,
+    `phem-tooltip` and `phem-dialog`, and the attributes of a detached trigger
+    (`data-popup-open`, `aria-expanded`). Before, the popup lost its active trigger.
+  - The payload of a `<span>` viewport is in a `<span>`: before, a `<div>` put the text on a new
+    line.
+  - A `phem-dialog` that opens with its `open` value shows the payload of the trigger of its
+    `trigger-id` value.
+  - The filter of `phem-menu` shows again only the items that it hid: an item that the server
+    hides stays hidden. The reset of the query at the close dispatches an `input` event.
+  - The update of a toast with its id makes its parts again from the template: it can add a
+    title or an action. A toast with an anchor gets its place after it shows, so its size is not
+    zero.
+  - `Toasts::show()` and `$e->toast()` throw an `InvalidArgumentException` for `data` that is a
+    list or that has an array or an object as a value. `Toast::fromDetail()` keeps only the
+    names with a scalar value or `null`.
 - A toast has the options of `toastManager.add()` of Base UI: `$e->toast()` and `Toasts::show()`
   take an `id` (a toast with the same id updates the toast on the screen, with `data-update-key`
   and `data-updated`), an `action` (a `[data-phem-toast-action]` button that calls the `onCall`

@@ -51,7 +51,7 @@ final class Toast
      * or an array with `message`, and an optional `type`, `duration`, `title`, `id`, `action`,
      * `data`, `anchor` and `viewport`. A missing type, or a type that the controller does not know,
      * is no type, and a title (an id, an action, an anchor, a viewport) that is empty or not a text
-     * is no title. Data that is not an array is no data.
+     * is no title. Data keeps only the names with a scalar value (or null).
      *
      * @return self|null null when the controller shows no toast (no message, or an empty one)
      */
@@ -77,10 +77,25 @@ final class Toast
             self::text($detail['title'] ?? null),
             self::text($detail['id'] ?? null),
             self::text($detail['action'] ?? null),
-            \is_array($data) ? $data : [],
+            self::data($data),
             self::text($detail['anchor'] ?? null),
             self::text($detail['viewport'] ?? null),
         );
+    }
+
+    /**
+     * The data of the detail, as the controller reads it: the names with a scalar value or null.
+     * A list or another value is no data.
+     *
+     * @return array<string, scalar|null>
+     */
+    private static function data(mixed $data): array
+    {
+        if (!\is_array($data)) {
+            return [];
+        }
+
+        return array_filter($data, static fn (mixed $value, int|string $key): bool => \is_string($key) && (null === $value || \is_scalar($value)), \ARRAY_FILTER_USE_BOTH);
     }
 
     /** A text of the detail: a string or a number that is not empty, or else null. */

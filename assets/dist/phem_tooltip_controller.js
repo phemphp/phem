@@ -88,8 +88,9 @@ export default class PhemTooltipController extends Controller {
 
   connect() {
     this.state = new ClientState(this, {
-      value: "open",
+      value: ["open", "triggerId"],
       owns: (el, name) => this.#owns(el, name),
+      outside: (el) => this.triggers.detached(el),
       morphed: () => {
         this.viewport.capture()
         if (this.rendered) this.viewport.render(this.triggers.active)

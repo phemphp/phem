@@ -465,10 +465,12 @@ While the tooltip is open, the pointer or the keyboard focus on another trigger 
 
 ```html
 <span data-phem-tooltip-target="viewport" data-activation-direction="right">
-    <div data-previous data-closed data-ending-style style="position: absolute; top: 4px; left: 8px; width: 149px;">Listen to audio preview</div>
-    <div data-current data-open data-starting-style>Set a timer</div>
+    <span data-previous data-closed data-ending-style style="position: absolute; top: 4px; left: 8px; width: 149px;">Listen to audio preview</span>
+    <span data-current data-open data-starting-style>Set a timer</span>
 </span>
 ```
+
+The content is in a `<span>` when the viewport is a `<span>`, and in a `<div>` for another viewport. A `<div>` in a `<span>` is not valid HTML, and its text goes on a new line.
 
 The new content gets `data-starting-style` for its first frame. The old content keeps its place with `position: absolute`, gets `data-ending-style`, and goes when its animations end. `data-activation-direction` is the direction of the new trigger from the old one: up to two words, `left` or `right`, and `up` or `down`. Match one word with `~=`, as `[data-activation-direction~="right"]`. The popup gets the size of its content in `--popup-width` and `--popup-height`: they are `auto` at rest, and px values during a change (see [Build a navigation menu](#build-a-navigation-menu)). Animate the move, the size and the content with CSS:
 
@@ -672,7 +674,7 @@ The other triggers get `aria-expanded="false"`. The animations of the move, of t
 
 ### Filter the items
 
-An `input` part filters the items of the `list` part, as the FilterProvider of Base UI. Its text hides the items (and the triggers of the submenus) whose text does not contain it, with no case, no accents and no punctuation. The `data-label` attribute of an item replaces its text. A `group` part with no item to show gets `hidden`, and the `empty` part shows only when no item matches. A click on the `clear` part empties the input. The query resets when the menu closes.
+An `input` part filters the items of the `list` part, as the FilterProvider of Base UI. Its text hides the items (and the triggers of the submenus) whose text does not contain it, with no case, no accents and no punctuation. The `data-label` attribute of an item replaces its text. A `group` part with no item to show gets `hidden`, and the `empty` part shows only when no item matches. A click on the `clear` part empties the input. The query resets when the menu closes: the input dispatches an `input` event, so that a server filter also gets the empty query. The filter shows again only the items that it hid: an item that the server render hides stays hidden.
 
 ```html
 <div data-controller="phem-menu" data-phem-menu-auto-highlight-value="input">
@@ -2843,7 +2845,7 @@ A shorter swipe removes `data-swipe-direction`, gives the toast its place again,
 
 ### Update a toast with its id
 
-Give a toast an `id`. A toast with the id of a toast on the screen updates it: its message, its title, its type, its action and its data change, and its full time starts again. This is the `id` of `toastManager.add()` of Base UI:
+Give a toast an `id`. A toast with the id of a toast on the screen updates it: its message, its title, its type, its action and its data change, and its full time starts again. The controller makes the parts again from the template, so an update can add a title or an action that the first toast did not have, and an update with no title removes the title. This is the `id` of `toastManager.add()` of Base UI:
 
 ```php
 $e->toast('Click again while it is visible to replay the pulse.', title: 'Draft saved', id: 'save-status');
@@ -2913,7 +2915,7 @@ The browser dispatches `phem:call` with this detail: `{"action": "Undo", "id": "
 
 ### Show data in a toast
 
-The `data` option is an array of values, as the `data` of Base UI. Each `[data-phem-toast-data="name"]` part of the template shows the value of its `name`. The controller removes a part with no value:
+The `data` option is an array of names and values, as the `data` of Base UI. A value is a text, a number, a boolean or `null`: `Toasts::show()` and `$e->toast()` throw an `InvalidArgumentException` for a list or for a value that is an array or an object. Each `[data-phem-toast-data="name"]` part of the template shows the value of its `name`. The controller removes a part with no value:
 
 ```php
 $e->toast('Toast with custom data', data: ['userId' => '123']);

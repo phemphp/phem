@@ -58,7 +58,8 @@ final class Toasts
      *                              null for the element with no name
      *
      * @throws \InvalidArgumentException for an empty message, an empty title (id, action, anchor,
-     *                                   viewport) or a duration out of range
+     *                                   viewport), data that is not a map of scalars, or a
+     *                                   duration out of range
      */
     public function show(
         string $message,
@@ -86,6 +87,12 @@ final class Toasts
         foreach (['id' => $id, 'action' => $action, 'anchor' => $anchor, 'viewport' => $viewport] as $name => $value) {
             if (null !== $value && '' === trim($value)) {
                 throw new \InvalidArgumentException(\sprintf('The %s of a toast cannot be empty. Give null for a toast with no %1$s.', $name));
+            }
+        }
+
+        foreach ($data as $key => $value) {
+            if (!\is_string($key) || (null !== $value && !\is_scalar($value))) {
+                throw new \InvalidArgumentException('The data of a toast is an array of names and texts, numbers, booleans or null: the template shows each one in its `[data-phem-toast-data]` part.');
             }
         }
 

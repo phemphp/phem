@@ -135,8 +135,9 @@ export default class PhemDialogController extends Controller {
 
   connect() {
     this.state = new ClientState(this, {
-      value: "open",
+      value: ["open", "triggerId"],
       owns: (el, name) => this.#owns(el, name),
+      outside: (el) => this.triggers.detached(el),
       morphed: () => {
         // A dialog that the morph moved is out of the top layer: show it again.
         for (const el of this.#dialogs) this.#render(el)
@@ -196,7 +197,11 @@ export default class PhemDialogController extends Controller {
   openValueChanged() {
     if (this.rendered === undefined || this.rendered === this.openValue) return
 
-    if (this.openValue) this.#activate(this.triggers.byId(this.triggerIdValue))
+    if (this.openValue) {
+      this.#activate(this.triggers.byId(this.triggerIdValue))
+      this.payload.render(this.triggers.active)
+    }
+
     this.#apply()
   }
 
@@ -499,8 +504,11 @@ export default class PhemDialogController extends Controller {
   }
 
   // The swipe of a drawer: the viewport and the backdrop get `--drawer-swipe-progress`, for the
-  // `::backdrop` of the viewport and the opacity of the backdrop. 0 removes it.
+  // `::backdrop` of the viewport and the opacity of the backdrop. 0 removes it. A dialog that is
+  // not a drawer does nothing.
   #renderProgress(progress) {
+    if (!AXES[this.swipeDirectionValue]) return
+
     const parts = [...this.viewportTargets, ...this.backdropTargets]
     for (const el of parts) {
       if (progress > 0) el.style.setProperty("--drawer-swipe-progress", String(progress))
