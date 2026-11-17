@@ -2,12 +2,215 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
-use Phem\Node;
+use Phem\Attribute\{Component, Page, State};
+use Phem\{Event, Node};
 
-use function App\Ui\{DemoPage, Hero};
-use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxTrigger};
-use Phem\Ui\Base\Combobox;
+use function App\Ui\{DemoPage, Example, Examples, Hero};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxIcon, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxStatus, ComboboxTrigger, ComboboxValue, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle};
+use Phem\Ui\Base\{Align, Button, Combobox};
+
+// The people of the Async search demos of Base UI.
+const PEOPLE = [
+    ['id' => 'leslie-alexander', 'name' => 'Leslie Alexander', 'username' => 'leslie', 'email' => 'leslie.alexander@example.com', 'title' => 'Product Manager'],
+    ['id' => 'kathryn-murphy', 'name' => 'Kathryn Murphy', 'username' => 'kathryn', 'email' => 'kathryn.murphy@example.com', 'title' => 'Marketing Lead'],
+    ['id' => 'courtney-henry', 'name' => 'Courtney Henry', 'username' => 'courtney', 'email' => 'courtney.henry@example.com', 'title' => 'Design Systems'],
+    ['id' => 'michael-foster', 'name' => 'Michael Foster', 'username' => 'michael', 'email' => 'michael.foster@example.com', 'title' => 'Engineering Manager'],
+    ['id' => 'lindsay-walton', 'name' => 'Lindsay Walton', 'username' => 'lindsay', 'email' => 'lindsay.walton@example.com', 'title' => 'Product Designer'],
+    ['id' => 'tom-cook', 'name' => 'Tom Cook', 'username' => 'tom', 'email' => 'tom.cook@example.com', 'title' => 'Frontend Engineer'],
+    ['id' => 'whitney-francis', 'name' => 'Whitney Francis', 'username' => 'whitney', 'email' => 'whitney.francis@example.com', 'title' => 'Customer Success'],
+    ['id' => 'jacob-jones', 'name' => 'Jacob Jones', 'username' => 'jacob', 'email' => 'jacob.jones@example.com', 'title' => 'Security Engineer'],
+    ['id' => 'arlene-mccoy', 'name' => 'Arlene McCoy', 'username' => 'arlene', 'email' => 'arlene.mccoy@example.com', 'title' => 'Data Analyst'],
+    ['id' => 'marvin-mckinney', 'name' => 'Marvin McKinney', 'username' => 'marvin', 'email' => 'marvin.mckinney@example.com', 'title' => 'QA Specialist'],
+    ['id' => 'eleanor-pena', 'name' => 'Eleanor Pena', 'username' => 'eleanor', 'email' => 'eleanor.pena@example.com', 'title' => 'Operations'],
+    ['id' => 'jerome-bell', 'name' => 'Jerome Bell', 'username' => 'jerome', 'email' => 'jerome.bell@example.com', 'title' => 'DevOps Engineer'],
+];
+
+// The 183 countries of the Input inside popup demo of Base UI.
+const COUNTRIES = [
+    'af' => 'Afghanistan',
+    'al' => 'Albania',
+    'dz' => 'Algeria',
+    'ad' => 'Andorra',
+    'ao' => 'Angola',
+    'ar' => 'Argentina',
+    'am' => 'Armenia',
+    'au' => 'Australia',
+    'at' => 'Austria',
+    'az' => 'Azerbaijan',
+    'bs' => 'Bahamas',
+    'bh' => 'Bahrain',
+    'bd' => 'Bangladesh',
+    'bb' => 'Barbados',
+    'by' => 'Belarus',
+    'be' => 'Belgium',
+    'bz' => 'Belize',
+    'bj' => 'Benin',
+    'bt' => 'Bhutan',
+    'bo' => 'Bolivia',
+    'bw' => 'Botswana',
+    'br' => 'Brazil',
+    'bn' => 'Brunei',
+    'bg' => 'Bulgaria',
+    'bf' => 'Burkina Faso',
+    'bi' => 'Burundi',
+    'kh' => 'Cambodia',
+    'cm' => 'Cameroon',
+    'ca' => 'Canada',
+    'cv' => 'Cape Verde',
+    'td' => 'Chad',
+    'cl' => 'Chile',
+    'cn' => 'China',
+    'co' => 'Colombia',
+    'km' => 'Comoros',
+    'cg' => 'Congo',
+    'cr' => 'Costa Rica',
+    'hr' => 'Croatia',
+    'cu' => 'Cuba',
+    'cy' => 'Cyprus',
+    'cz' => 'Czech Republic',
+    'dk' => 'Denmark',
+    'dj' => 'Djibouti',
+    'dm' => 'Dominica',
+    'ec' => 'Ecuador',
+    'eg' => 'Egypt',
+    'sv' => 'El Salvador',
+    'gq' => 'Equatorial Guinea',
+    'er' => 'Eritrea',
+    'ee' => 'Estonia',
+    'et' => 'Ethiopia',
+    'fj' => 'Fiji',
+    'fi' => 'Finland',
+    'fr' => 'France',
+    'ga' => 'Gabon',
+    'gm' => 'Gambia',
+    'ge' => 'Georgia',
+    'de' => 'Germany',
+    'gh' => 'Ghana',
+    'gr' => 'Greece',
+    'gd' => 'Grenada',
+    'gt' => 'Guatemala',
+    'gn' => 'Guinea',
+    'gw' => 'Guinea-Bissau',
+    'gy' => 'Guyana',
+    'ht' => 'Haiti',
+    'hn' => 'Honduras',
+    'hu' => 'Hungary',
+    'is' => 'Iceland',
+    'in' => 'India',
+    'id' => 'Indonesia',
+    'ir' => 'Iran',
+    'iq' => 'Iraq',
+    'ie' => 'Ireland',
+    'il' => 'Israel',
+    'it' => 'Italy',
+    'jm' => 'Jamaica',
+    'jp' => 'Japan',
+    'jo' => 'Jordan',
+    'kz' => 'Kazakhstan',
+    'ke' => 'Kenya',
+    'kw' => 'Kuwait',
+    'kg' => 'Kyrgyzstan',
+    'la' => 'Laos',
+    'lv' => 'Latvia',
+    'lb' => 'Lebanon',
+    'ls' => 'Lesotho',
+    'lr' => 'Liberia',
+    'ly' => 'Libya',
+    'li' => 'Liechtenstein',
+    'lt' => 'Lithuania',
+    'lu' => 'Luxembourg',
+    'mg' => 'Madagascar',
+    'mw' => 'Malawi',
+    'my' => 'Malaysia',
+    'mv' => 'Maldives',
+    'ml' => 'Mali',
+    'mt' => 'Malta',
+    'mh' => 'Marshall Islands',
+    'mr' => 'Mauritania',
+    'mu' => 'Mauritius',
+    'mx' => 'Mexico',
+    'fm' => 'Micronesia',
+    'md' => 'Moldova',
+    'mc' => 'Monaco',
+    'mn' => 'Mongolia',
+    'me' => 'Montenegro',
+    'ma' => 'Morocco',
+    'mz' => 'Mozambique',
+    'mm' => 'Myanmar',
+    'na' => 'Namibia',
+    'nr' => 'Nauru',
+    'np' => 'Nepal',
+    'nl' => 'Netherlands',
+    'nz' => 'New Zealand',
+    'ni' => 'Nicaragua',
+    'ne' => 'Niger',
+    'ng' => 'Nigeria',
+    'kp' => 'North Korea',
+    'mk' => 'North Macedonia',
+    'no' => 'Norway',
+    'om' => 'Oman',
+    'pk' => 'Pakistan',
+    'pw' => 'Palau',
+    'ps' => 'Palestine',
+    'pa' => 'Panama',
+    'pg' => 'Papua New Guinea',
+    'py' => 'Paraguay',
+    'pe' => 'Peru',
+    'ph' => 'Philippines',
+    'pl' => 'Poland',
+    'pt' => 'Portugal',
+    'qa' => 'Qatar',
+    'ro' => 'Romania',
+    'ru' => 'Russia',
+    'rw' => 'Rwanda',
+    'ws' => 'Samoa',
+    'sm' => 'San Marino',
+    'sa' => 'Saudi Arabia',
+    'sn' => 'Senegal',
+    'rs' => 'Serbia',
+    'sc' => 'Seychelles',
+    'sl' => 'Sierra Leone',
+    'sg' => 'Singapore',
+    'sk' => 'Slovakia',
+    'si' => 'Slovenia',
+    'sb' => 'Solomon Islands',
+    'so' => 'Somalia',
+    'za' => 'South Africa',
+    'kr' => 'South Korea',
+    'ss' => 'South Sudan',
+    'es' => 'Spain',
+    'lk' => 'Sri Lanka',
+    'sd' => 'Sudan',
+    'sr' => 'Suriname',
+    'se' => 'Sweden',
+    'ch' => 'Switzerland',
+    'sy' => 'Syria',
+    'tw' => 'Taiwan',
+    'tj' => 'Tajikistan',
+    'tz' => 'Tanzania',
+    'th' => 'Thailand',
+    'tl' => 'Timor-Leste',
+    'tg' => 'Togo',
+    'to' => 'Tonga',
+    'tn' => 'Tunisia',
+    'tr' => 'Turkey',
+    'tm' => 'Turkmenistan',
+    'tv' => 'Tuvalu',
+    'ug' => 'Uganda',
+    'ua' => 'Ukraine',
+    'ae' => 'United Arab Emirates',
+    'gb' => 'United Kingdom',
+    'us' => 'United States',
+    'uy' => 'Uruguay',
+    'uz' => 'Uzbekistan',
+    'vu' => 'Vanuatu',
+    'va' => 'Vatican City',
+    've' => 'Venezuela',
+    'vn' => 'Vietnam',
+    'ye' => 'Yemen',
+    'zm' => 'Zambia',
+    'zw' => 'Zimbabwe',
+];
 
 // The 25 fruits of the Base UI combobox demo.
 const FRUITS = [
@@ -68,6 +271,523 @@ function ComboboxPage(): Node
                     </ComboboxPopup>
                 </Combobox>
             </Hero>
+            <Examples>
+                <Example title="Typed wrapper component">
+                    <Example.description>
+                        <p>Wrap the Combobox component in a component of your application to give it its props and its parts once. A <code>Bound</code> prop passes a state of the page with <code>phem:bind</code>.</p>
+                    </Example.description>
+                </Example>
+                <Example title="Value selection with IDs">
+                    <Example.description>
+                        <p>When your app stores IDs rather than labels, give each <code>ComboboxItem</code> the ID as its <code>value</code>, and the label as its content. With <code>selectionMode="single"</code>, the input shows the label, and the form gets the ID.</p>
+                        <p>The label is also used for filtering and typeahead.</p>
+                    </Example.description>
+                    <ComboboxIdsDemo />
+                </Example>
+                <Example title="Multiple select">
+                    <Example.description>
+                        <p>The combobox can allow multiple selections by adding the <code>multiple</code> prop to <code>Combobox</code>. Selection chips are rendered with <code>ComboboxChip</code> inside the input that can be removed.</p>
+                        <p>In order for screen readers to announce how to reach and remove the chips, add <code>aria-description</code> to <code>ComboboxChip</code> and <code>ComboboxInput</code>, alongside the <code>aria-label</code> on <code>ComboboxChips</code> and <code>ComboboxChipRemove</code>. Translate them together with the rest of your interface.</p>
+                    </Example.description>
+                    <ComboboxMultipleDemo />
+                </Example>
+                <Example title="Input inside popup">
+                    <Example.description>
+                        <p><code>ComboboxInput</code> can be rendered inside <code>ComboboxPopup</code> to create a searchable select popup. The trigger shows the value with <code>ComboboxValue</code>.</p>
+                    </Example.description>
+                    <ComboboxInputInsidePopupDemo />
+                </Example>
+                <Example title="Async search (single)">
+                    <Example.description>
+                        <p>Load items from the server on input changes: bind the input with <code>phem:bind</code>, and render the results of the query. Keep the selected item in the list so it remains available while new results come in.</p>
+                    </Example.description>
+                    <ComboboxAsyncSingleDemo />
+                </Example>
+                <Example title="Async search (multiple)">
+                    <Example.description>
+                        <p>Load items from the server on input changes while supporting multiple selections. Selected items remain available in the list while new matches come in. This pattern avoids needing to load items upfront.</p>
+                    </Example.description>
+                    <ComboboxAsyncMultipleDemo />
+                </Example>
+                <Example title="Creatable">
+                    <Example.description>
+                        <p>Create a new item when the filter matches no items, opening a creation <a href="/components/dialog" className="underline">Dialog</a>.</p>
+                    </Example.description>
+                    <ComboboxCreatableDemo />
+                </Example>
+                <Example title="Virtualized">
+                    <Example.description>
+                        <p>A virtualization library renders only the visible rows of a large dataset in the browser. In phem, the server searches the dataset, and renders only the first matches with a status of the total.</p>
+                    </Example.description>
+                    <ComboboxVirtualizedDemo />
+                </Example>
+                <Example title="Grouped">
+                    <Example.description>
+                        <p>Organize related options with <code>ComboboxGroup</code> and <code>ComboboxGroupLabel</code> to add section headings inside the popup.</p>
+                    </Example.description>
+                    <ComboboxGroupedDemo />
+                </Example>
+            </Examples>
         </DemoPage>
     );
+}
+
+#[Component]
+function ComboboxIdsDemo(): Node
+{
+    $fruits = FRUITS;
+
+    return (
+        <Combobox id="fruit-ids" filter="contains" selectionMode="single" defaultValue="banana" name="fruit">
+            <ComboboxLabel>Choose a fruit</ComboboxLabel>
+            <ComboboxInputGroup>
+                <ComboboxInput placeholder="e.g. Apple" />
+                <ComboboxActions>
+                    <ComboboxClear aria-label="Clear selection" />
+                    <ComboboxTrigger aria-label="Open popup" />
+                </ComboboxActions>
+            </ComboboxInputGroup>
+            <ComboboxPopup>
+                <ComboboxEmpty>No fruits found.</ComboboxEmpty>
+                <ComboboxList>
+                    {% for value, label in fruits %}
+                        <ComboboxItem key={{ value }} value={{ value }}>
+                            <ComboboxItemIndicator />
+                            <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                        </ComboboxItem>
+                    {% endfor %}
+                </ComboboxList>
+            </ComboboxPopup>
+        </Combobox>
+    );
+}
+
+// The chosen languages are a state of the server: a click on an item adds or removes it, and a
+// chip removes its language.
+#[Component]
+final class ComboboxMultipleDemo
+{
+    public const array LANGUAGES = ['js' => 'JavaScript', 'ts' => 'TypeScript', 'py' => 'Python', 'java' => 'Java', 'cpp' => 'C++', 'cs' => 'C#', 'php' => 'PHP', 'ruby' => 'Ruby', 'go' => 'Go', 'rust' => 'Rust', 'swift' => 'Swift'];
+
+    /** @var list<string> */
+    #[State] public array $selected = [];
+
+    public function toggle(string $id): void
+    {
+        $this->selected = \in_array($id, $this->selected, true)
+            ? array_values(array_diff($this->selected, [$id]))
+            : [...$this->selected, $id];
+    }
+
+    public function remove(string $id): void
+    {
+        $this->selected = array_values(array_diff($this->selected, [$id]));
+    }
+
+    public function render(): Node
+    {
+        $languages = self::LANGUAGES;
+        $count = \count($this->selected);
+
+        return (
+            <Combobox id="languages" multiple filter="contains">
+                <ComboboxLabel>Programming languages</ComboboxLabel>
+                <ComboboxChips aria-label={{ count > 0 ? 'Selected languages' : null }}>
+                    {% for id in selected %}
+                        <ComboboxChip key={{ id }} aria-label={{ languages[id] }}>
+                            {{ languages[id] }}
+                            <ComboboxChipRemove aria-label="Remove {{ languages[id] }}" onClick={{ remove(id) }} />
+                        </ComboboxChip>
+                    {% endfor %}
+                    <ComboboxInput placeholder={{ count > 0 ? '' : 'e.g. TypeScript' }} aria-description={{ count > 0 ? count ~ ' selected. From the start of the input, press Left Arrow to focus the selected items' : null }} className="h-6 min-w-12 flex-1 border-0 px-1.5 focus:outline-none" />
+                </ComboboxChips>
+                <ComboboxPopup>
+                    <ComboboxEmpty>No languages found.</ComboboxEmpty>
+                    <ComboboxList>
+                        {% for id, label in languages %}
+                            <ComboboxItem key={{ id }} value={{ id }} selected={{ id in selected }} onClick={{ toggle(id) }}>
+                                <ComboboxItemIndicator />
+                                <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                            </ComboboxItem>
+                        {% endfor %}
+                    </ComboboxList>
+                </ComboboxPopup>
+            </Combobox>
+        );
+    }
+}
+
+#[Component]
+function ComboboxGroupedDemo(): Node
+{
+    $groups = [
+        'Fruits' => ['Apple', 'Banana', 'Mango', 'Kiwi', 'Grape', 'Orange', 'Strawberry', 'Watermelon'],
+        'Vegetables' => ['Broccoli', 'Carrot', 'Cauliflower', 'Cucumber', 'Kale', 'Bell pepper', 'Spinach', 'Zucchini'],
+    ];
+
+    return (
+        <Combobox id="produce" filter="contains">
+            <ComboboxLabel>Select produce</ComboboxLabel>
+            <ComboboxInputGroup>
+                <ComboboxInput placeholder="e.g. Mango" />
+                <ComboboxActions>
+                    <ComboboxClear aria-label="Clear selection" />
+                    <ComboboxTrigger aria-label="Open popup" />
+                </ComboboxActions>
+            </ComboboxInputGroup>
+            <ComboboxPopup>
+                <ComboboxEmpty>No produce found.</ComboboxEmpty>
+                <ComboboxList>
+                    {% for name, items in groups %}
+                        <ComboboxGroup key={{ name }}>
+                            <ComboboxGroupLabel>{{ name }}</ComboboxGroupLabel>
+                            {% for label in items %}
+                                <ComboboxItem key={{ label }} value={{ label|lower|replace({' ': '-'}) }}>
+                                    <ComboboxItemIndicator />
+                                    <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                                </ComboboxItem>
+                            {% endfor %}
+                        </ComboboxGroup>
+                    {% endfor %}
+                </ComboboxList>
+            </ComboboxPopup>
+        </Combobox>
+    );
+}
+
+#[Component]
+function ComboboxInputInsidePopupDemo(): Node
+{
+    $countries = COUNTRIES;
+    $alignStart = Align::Start;
+
+    return (
+        <Combobox id="country" filter="contains" selectionMode="single" align={{ alignStart }} className="flex flex-col items-start gap-1">
+            <ComboboxLabel id="country-label" className="cursor-default text-sm leading-5 font-bold text-neutral-950 dark:text-white">Country</ComboboxLabel>
+            <ComboboxTrigger tabindex="0" aria-labelledby="country-label" className="flex h-8 min-w-40 cursor-default items-center justify-between gap-3 border border-neutral-950 bg-white pl-2 pr-1 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:bg-neutral-100 active:bg-neutral-200 data-pressed:bg-neutral-100 data-placeholder:text-neutral-500 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:data-placeholder:text-neutral-400 dark:focus-visible:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 dark:data-pressed:bg-neutral-800">
+                <ComboboxValue placeholder="Select country" />
+                <ComboboxIcon />
+            </ComboboxTrigger>
+            <ComboboxPopup aria-label="Select country" className="[--input-container-height:2rem] max-h-[24.5rem] max-w-[var(--available-width)] origin-[var(--transform-origin)] bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0_rgb(0_0_0_/_12%)] transition-[scale,opacity] duration-150 data-starting-style:scale-90 data-starting-style:opacity-0 data-ending-style:scale-90 data-ending-style:opacity-0  dark:bg-neutral-950 dark:text-white dark:shadow-none">
+                <ComboboxInput placeholder="e.g. United Kingdom" className="h-8 w-full min-w-80 border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-2 focus:outline-neutral-950 any-pointer-coarse:text-base dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:border-white dark:focus:outline-white" />
+                <div className="border-x border-b border-neutral-950 dark:border-white">
+                    <ComboboxEmpty className="py-4 pr-4 pl-2 text-sm leading-4 text-neutral-500 dark:text-neutral-400">No countries found.</ComboboxEmpty>
+                    <ComboboxList className="max-h-[min(calc(24.5rem-var(--input-container-height)-2px),calc(var(--available-height)-var(--input-container-height)-2px))] overflow-auto overscroll-contain py-1 scroll-py-1 empty:p-0">
+                        {% for code, label in countries %}
+                            <ComboboxItem key={{ code }} value={{ code }}>
+                                <ComboboxItemIndicator />
+                                <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                            </ComboboxItem>
+                        {% endfor %}
+                    </ComboboxList>
+                </div>
+            </ComboboxPopup>
+        </Combobox>
+    );
+}
+
+// The search runs on the server at each change of the input. A choice keeps the person, and the
+// input shows their name.
+#[Component]
+final class ComboboxAsyncSingleDemo
+{
+    #[State] public string $query = '';
+    #[State] public ?string $selected = null;
+
+    public function choose(string $id): void
+    {
+        $this->selected = $id;
+        $this->query = self::person($id)['name'];
+    }
+
+    /** @return array{id: string, name: string, username: string, email: string, title: string} */
+    public static function person(string $id): array
+    {
+        return array_values(array_filter(PEOPLE, static fn (array $p): bool => $p['id'] === $id))[0];
+    }
+
+    /** @return list<array{id: string, name: string, username: string, email: string, title: string}> */
+    public static function search(string $query): array
+    {
+        $query = mb_strtolower(trim($query));
+
+        return '' === $query ? [] : array_values(array_filter(PEOPLE, static fn (array $p): bool => [] !== array_filter([$p['name'], $p['username'], $p['email'], $p['title']], static fn (string $v): bool => str_contains(mb_strtolower($v), $query))));
+    }
+
+    public function render(): Node
+    {
+        $chosen = null === $this->selected ? null : self::person($this->selected);
+        $searching = null !== $chosen && $this->query === $chosen['name'] ? '' : trim($this->query);
+        $results = self::search($searching);
+        if (null !== $chosen && !\in_array($chosen, $results, true)) {
+            $results[] = $chosen;
+        }
+        $status = match (true) {
+            '' === $searching => null === $chosen ? 'Start typing to search people…' : null,
+            [] === self::search($searching) => 'No matches for "'.$searching.'".',
+            default => null,
+        };
+
+        return (
+            <Combobox id="reviewer">
+                <ComboboxLabel className="flex flex-col gap-1 text-sm leading-5 font-bold">Assign reviewer</ComboboxLabel>
+                <ComboboxInputGroup>
+                    <ComboboxInput phem:bind={{ query }} placeholder="e.g. Michael" />
+                    <ComboboxActions>
+                        <ComboboxClear aria-label="Clear selection" />
+                        <ComboboxTrigger aria-label="Open popup" />
+                    </ComboboxActions>
+                </ComboboxInputGroup>
+                <ComboboxPopup>
+                    <ComboboxStatus className="flex items-center gap-2 py-1 pr-5 pl-2 text-sm leading-5 text-neutral-500 empty:hidden dark:text-neutral-400">{{ status }}</ComboboxStatus>
+                    <ComboboxList>
+                        {% for person in results %}
+                            <ComboboxItem key={{ person.id }} value={{ person.id }} selected={{ person.id == selected }} onClick={{ choose(person.id) }} className="items-start leading-[1.2rem]">
+                                <ComboboxItemIndicator className="mt-1" />
+                                <span className="col-start-2 flex flex-col gap-1">
+                                    <span className="text-sm leading-5 font-bold">{{ person.name }}</span>
+                                    <span className="text-xs">{{ person.email }}</span>
+                                    <span className="flex flex-wrap gap-2 text-xs opacity-70"><span>@{{ person.username }}</span><span>{{ person.title }}</span></span>
+                                </span>
+                            </ComboboxItem>
+                        {% endfor %}
+                    </ComboboxList>
+                </ComboboxPopup>
+            </Combobox>
+        );
+    }
+}
+
+// The search of the server with more than one choice: the chips keep the chosen people.
+#[Component]
+final class ComboboxAsyncMultipleDemo
+{
+    #[State] public string $query = '';
+    /** @var list<string> */
+    #[State] public array $selected = [];
+
+    public function toggle(string $id): void
+    {
+        $this->selected = \in_array($id, $this->selected, true) ? array_values(array_diff($this->selected, [$id])) : [...$this->selected, $id];
+        $this->query = '';
+    }
+
+    public function remove(string $id): void
+    {
+        $this->selected = array_values(array_diff($this->selected, [$id]));
+    }
+
+    public function render(): Node
+    {
+        $chosen = array_map(ComboboxAsyncSingleDemo::person(...), $this->selected);
+        $results = ComboboxAsyncSingleDemo::search($this->query);
+        foreach ($chosen as $person) {
+            if (!\in_array($person, $results, true)) {
+                $results[] = $person;
+            }
+        }
+        $trimmed = trim($this->query);
+        $status = match (true) {
+            '' === $trimmed => [] === $chosen ? 'Start typing to search people…' : null,
+            [] === ComboboxAsyncSingleDemo::search($trimmed) => 'No matches for "'.$trimmed.'".',
+            default => null,
+        };
+        $count = \count($chosen);
+
+        return (
+            <Combobox id="reviewers" multiple>
+                <ComboboxLabel>Assign reviewers</ComboboxLabel>
+                <ComboboxChips aria-label={{ count > 0 ? 'Selected reviewers' : null }}>
+                    {% for person in chosen %}
+                        <ComboboxChip key={{ person.id }} aria-label={{ person.name }}>
+                            {{ person.name }}
+                            <ComboboxChipRemove aria-label="Remove {{ person.name }}" onClick={{ remove(person.id) }} />
+                        </ComboboxChip>
+                    {% endfor %}
+                    <ComboboxInput phem:bind={{ query }} placeholder={{ count > 0 ? '' : 'e.g. Michael' }} className="h-6 min-w-12 flex-1 border-0 px-1.5 focus:outline-none" />
+                </ComboboxChips>
+                <ComboboxPopup>
+                    <ComboboxStatus className="flex items-center gap-2 py-1 pr-5 pl-2 text-sm leading-5 text-neutral-500 empty:hidden dark:text-neutral-400">{{ status }}</ComboboxStatus>
+                    <ComboboxList>
+                        {% for person in results %}
+                            <ComboboxItem key={{ person.id }} value={{ person.id }} selected={{ person.id in selected }} onClick={{ toggle(person.id) }} className="items-start leading-[1.2rem]">
+                                <ComboboxItemIndicator className="mt-1" />
+                                <span className="col-start-2 flex flex-col gap-1">
+                                    <span className="text-sm leading-5 font-bold">{{ person.name }}</span>
+                                    <span className="text-xs">{{ person.email }}</span>
+                                </span>
+                            </ComboboxItem>
+                        {% endfor %}
+                    </ComboboxList>
+                </ComboboxPopup>
+            </Combobox>
+        );
+    }
+}
+
+// The labels of the Creatable demo of Base UI. A text that matches no label shows a "Create"
+// item, which opens a dialog to name the new label.
+#[Component]
+final class ComboboxCreatableDemo
+{
+    /** @var array<string, string> */
+    #[State] public array $labels = ['bug' => 'bug', 'docs' => 'documentation', 'enhancement' => 'enhancement', 'help-wanted' => 'help wanted', 'good-first-issue' => 'good first issue'];
+    /** @var list<string> */
+    #[State] public array $selected = [];
+    #[State] public string $query = '';
+    #[State] public ?string $creating = null;
+
+    public function toggle(string $id): void
+    {
+        $this->selected = \in_array($id, $this->selected, true) ? array_values(array_diff($this->selected, [$id])) : [...$this->selected, $id];
+        $this->query = '';
+    }
+
+    public function remove(string $id): void
+    {
+        $this->selected = array_values(array_diff($this->selected, [$id]));
+    }
+
+    public function startCreate(): void
+    {
+        $this->creating = trim($this->query);
+    }
+
+    public function create(Event $e): void
+    {
+        $value = trim((string) ($e->form['label'] ?? ''));
+        $this->creating = null;
+        $this->query = '';
+        if ('' === $value) {
+            return;
+        }
+
+        $existing = array_search(mb_strtolower($value), array_map(mb_strtolower(...), $this->labels), true);
+        if (false !== $existing) {
+            $this->selected = array_values(array_unique([...$this->selected, (string) $existing]));
+
+            return;
+        }
+
+        $id = $base = preg_replace('/\s+/', '-', mb_strtolower($value));
+        for ($i = 2; isset($this->labels[$id]); ++$i) {
+            $id = $base.'-'.$i;
+        }
+        $this->labels[$id] = $value;
+        $this->selected[] = $id;
+    }
+
+    public function render(): Node
+    {
+        $trimmed = trim($this->query);
+        $exists = \in_array(mb_strtolower($trimmed), array_map(mb_strtolower(...), $this->labels), true);
+        $creatable = '' !== $trimmed && !$exists;
+        $count = \count($this->selected);
+        $open = null !== $this->creating;
+
+        return (
+            <div className="contents">
+                <Combobox id="labels" multiple filter="contains">
+                    <ComboboxLabel>Labels</ComboboxLabel>
+                    <ComboboxChips aria-label={{ count > 0 ? 'Selected labels' : null }}>
+                        {% for id in selected %}
+                            <ComboboxChip key={{ id }} aria-label={{ labels[id] }}>
+                                {{ labels[id] }}
+                                <ComboboxChipRemove aria-label="Remove {{ labels[id] }}" onClick={{ remove(id) }} />
+                            </ComboboxChip>
+                        {% endfor %}
+                        <ComboboxInput phem:bind={{ query }} placeholder={{ count > 0 ? '' : 'e.g. bug' }} className="h-6 min-w-12 flex-1 border-0 px-1.5 focus:outline-none" />
+                    </ComboboxChips>
+                    <ComboboxPopup>
+                        <ComboboxEmpty>No labels found.</ComboboxEmpty>
+                        <ComboboxList>
+                            {% for id, label in labels %}
+                                <ComboboxItem key={{ id }} value={{ id }} selected={{ id in selected }} onClick={{ toggle(id) }}>
+                                    <ComboboxItemIndicator />
+                                    <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                                </ComboboxItem>
+                            {% endfor %}
+                            {% if creatable %}
+                                <ComboboxItem key="create" value="create" data-label={{ trimmed }} onClick={{ startCreate }}>
+                                    <span className="col-start-2">Create "{{ trimmed }}"</span>
+                                </ComboboxItem>
+                            {% endif %}
+                        </ComboboxList>
+                    </ComboboxPopup>
+                </Combobox>
+                <Dialog defaultOpen={{ open }}>
+                    <DialogPopup>
+                        <DialogTitle>Create new label</DialogTitle>
+                        <DialogDescription>Add a new label to select.</DialogDescription>
+                        <form onSubmit={{ create }} className="flex flex-col gap-4">
+                            <input name="label" aria-label="Label name" placeholder="Label name" value={{ creating }} autofocus className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm dark:border-white dark:bg-neutral-950" />
+                            <div className="flex justify-end gap-3">
+                                <DialogClose>Cancel</DialogClose>
+                                <Button type="submit">Create</Button>
+                            </div>
+                        </form>
+                    </DialogPopup>
+                </Dialog>
+            </div>
+        );
+    }
+}
+
+// 10,000 items: the server finds the matches, and renders the first 50 of them.
+#[Component]
+final class ComboboxVirtualizedDemo
+{
+    #[State] public string $query = '';
+
+    /** @return array{array<string, string>, int} the first 50 matches, and the number of matches */
+    public static function search(string $query): array
+    {
+        $needle = mb_strtolower(trim($query));
+        $matches = [];
+        $total = 0;
+        for ($i = 1; $i <= 10000; ++$i) {
+            $name = 'Item '.str_pad((string) $i, 4, '0', \STR_PAD_LEFT);
+            if ('' !== $needle && !str_contains(mb_strtolower($name), $needle)) {
+                continue;
+            }
+
+            ++$total;
+            if (\count($matches) < 50) {
+                $matches[(string) $i] = $name;
+            }
+        }
+
+        return [$matches, $total];
+    }
+
+    public function render(): Node
+    {
+        [$matches, $total] = self::search($this->query);
+        $status = $total > 50 ? 'Showing 50 of '.number_format($total).' items. Type to refine.' : null;
+
+        return (
+            <Combobox id="items">
+                <ComboboxLabel>Search 10,000 items</ComboboxLabel>
+                <ComboboxInputGroup>
+                    <ComboboxInput phem:bind={{ query }} placeholder="e.g. Item 0042" />
+                    <ComboboxActions>
+                        <ComboboxClear aria-label="Clear selection" />
+                        <ComboboxTrigger aria-label="Open popup" />
+                    </ComboboxActions>
+                </ComboboxInputGroup>
+                <ComboboxPopup>
+                    <ComboboxEmpty>No items found.</ComboboxEmpty>
+                    <ComboboxList>
+                        {% for id, name in matches %}
+                            <ComboboxItem key={{ id }} value={{ '' ~ id }}>
+                                <ComboboxItemIndicator />
+                                <ComboboxItemLabel>{{ name }}</ComboboxItemLabel>
+                            </ComboboxItem>
+                        {% endfor %}
+                    </ComboboxList>
+                    <ComboboxStatus className="py-1 pr-5 pl-2 text-sm leading-5 text-neutral-500 empty:hidden dark:text-neutral-400">{{ status }}</ComboboxStatus>
+                </ComboboxPopup>
+            </Combobox>
+        );
+    }
 }

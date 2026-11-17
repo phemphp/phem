@@ -41,7 +41,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Checkbox | `ControlsTest` | Initial state, the accessible name, a click unchecks it, an enclosing label, a native button with a sibling label and Space, the hidden input in a Field | — |
 | Checkbox Group | `ControlsTest` | The group value stays when an item changes, native buttons, the parent checkbox and its mixed state, a nested parent | — |
 | Collapsible | `DisclosureTest` | Open and close with a click, `hiddenUntilFound` (`beforematch`) | Keyboard (Enter and Space), the `--collapsible-panel-height` variable |
-| Combobox | `PickersTest` | Client filter, arrow keys and Enter select, the empty state | The clear button, the trigger button, Escape |
+| Combobox | `PickersTest` | Client filter, arrow keys and Enter select, the empty state, IDs as values, multiple with chips and Backspace, the input in the popup, async search (single and multiple), creatable with a dialog, 10,000 items on the server, the named groups | The clear button, the trigger button, Escape |
 | Context Menu | `MenusTest` | A right click opens it, a click on an item closes it, the card with a menu button, a submenu | Keyboard, the menu position at the pointer |
 | Dialog | `OverlaysTest` | Open, close with a button and Escape, focus back to the trigger | Focus trap, a click on the backdrop closes it |
 | Drawer | `OverlaysTest` | Open and close, `data-swipe-direction` | A swipe to dismiss (pointer drag) |

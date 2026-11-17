@@ -810,6 +810,20 @@ The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when 
 
 To choose an item is a click on it: its handler runs (here `choose`), or its link opens. The handler sets the state, and the morph shows the new text in the input. Then the popup closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail. A click on a `clear` part clears the input and sends its `input` event, as when the user deletes the text. The popup stays closed when it was closed. A click on a `trigger` part opens or closes the popup. A click outside and the focus out of the combobox close the popup. A `trigger` part gets `aria-haspopup="listbox"`, `aria-expanded` and `data-popup-open`, and `aria-controls` only while the popup is open. An `inputGroup` part gets `role="group"` and `data-popup-open`. The input gets `aria-haspopup="listbox"`, and `data-list-empty` when the list has no visible item.
 
+The input can be in the popup, as a search. A `trigger` button opens the popup, and a `value` part in it that is not an input shows the label of the selection, or its `placeholder` (with `data-placeholder`):
+
+```html
+<div data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="single">
+    <button type="button" data-phem-combobox-target="trigger"><span data-phem-combobox-target="value" placeholder="Select country"></span></button>
+    <div data-phem-combobox-target="popup" hidden>
+        <input data-phem-combobox-target="input" aria-label="Country" />
+        <ul data-phem-combobox-target="list">...</ul>
+    </div>
+</div>
+```
+
+The popup goes against the trigger, and the input gets the focus at the open. A choice, Escape and a click outside give the focus back to the trigger, and the input has no text at the next open.
+
 The list has no `id`, so the input points to it with an element reference (`ariaControlsElements`). An item with no `id` gets no id: the input points to the highlighted item with `ariaActiveDescendantElement`, and the browser shows `aria-activedescendant=""`. The highlight stays on the same item through the morph of another event. When the morph replaces the item, the highlight stays only on an item with the same `id`, so give each item a stable `id` in a list that changes. A move of the pointer on an item highlights it. An item that comes under a pointer that does not move, for example when the list changes, does not get the highlight. When the pointer goes out of the items, the highlight goes (a highlight of the keyboard stays). With `both` and `inline`, the input gets the text of the user again. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight. The popup and the list get `data-empty` when there is no visible item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
 
 ### Choose more than one value
@@ -996,7 +1010,7 @@ final class FruitField
 }
 ```
 
-An item that does not match the text of the input gets `hidden`. The match ignores the case and the accents: "ecl" finds "Éclair". It uses `Intl.Collator` with the language of the page, or with `data-phem-combobox-locale-value`. The label of an item is its text, or its `data-label` attribute. Put the items in `group` parts (for example with a heading): a group with no visible item gets `hidden` too. `data-phem-combobox-limit-value="10"` shows only the first 10 matches. When the user types "ecl", the browser shows:
+An item that does not match the text of the input gets `hidden`. The match ignores the case and the accents: "ecl" finds "Éclair". It uses `Intl.Collator` with the language of the page, or with `data-phem-combobox-locale-value`. The label of an item is its text, or its `data-label` attribute. Put the items in `group` parts, with a heading in a `groupLabel` part: the group gets `role="group"` and the name of its label, and a group with no visible item gets `hidden` too. `data-phem-combobox-limit-value="10"` shows only the first 10 matches. When the user types "ecl", the browser shows:
 
 ```html
 <input data-phem-combobox-target="input" role="combobox" aria-autocomplete="list" aria-expanded="true" ... value="ecl">

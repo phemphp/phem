@@ -184,6 +184,20 @@ function ComboboxTrigger(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** The label of the selected item, or the `placeholder`, in a trigger: for a combobox with its input in the popup. */
+#[Component]
+function ComboboxValue(?string $placeholder = null, mixed ...$rest): Node
+{
+    return <span data-phem-combobox-target="value" placeholder={{ placeholder }} data-placeholder={{ placeholder ? '' : null }} className={{ classes('data-placeholder:text-neutral-500 dark:data-placeholder:text-neutral-400') }} {{ ...rest }}>{{ placeholder }}</span>;
+}
+
+/** The icon of a trigger that shows the value. */
+#[Component]
+function ComboboxIcon(?Html $children = null, mixed ...$rest): Node
+{
+    return <span aria-hidden="true" className={{ classes('flex') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
+}
+
 /** The button that clears the input. Give it an `aria-label`. */
 #[Component]
 function ComboboxClear(?Html $children = null, mixed ...$rest): Node
@@ -303,7 +317,7 @@ function ComboboxGroup(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function ComboboxGroupLabel(?Html $children = null, mixed ...$rest): Node
 {
-    return <div className={{ classes('px-2 py-2 text-sm leading-4 font-normal text-neutral-500 select-none dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
+    return <div data-phem-combobox-target="groupLabel" className={{ classes('px-2 py-2 text-sm leading-4 font-normal text-neutral-500 select-none dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 #[Component]

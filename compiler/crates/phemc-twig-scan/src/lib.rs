@@ -373,7 +373,11 @@ fn is_operator(toks: &[(Tok, usize)], i: usize) -> bool {
         _ => false,
     };
 
-    matches!(&toks[i].0, Tok::Name(n) if OPERATORS.contains(&n.as_str())) || pair(i, i + 1) || (i > 0 && pair(i - 1, i))
+    // A binary word operator follows an operand. In the place of an operand (`for x in matches`,
+    // `(in)`), the word is a name, as for the parser of Twig. `not` is a prefix operator.
+    let word = matches!(&toks[i].0, Tok::Name(n) if OPERATORS.contains(&n.as_str()) && (n == "not" || (i > 0 && after_operand(toks, i))));
+
+    word || pair(i, i + 1) || (i > 0 && pair(i - 1, i))
 }
 
 fn is_word(toks: &[(Tok, usize)], i: usize, word: &str) -> bool {
@@ -632,6 +636,14 @@ mod tests {
         assert_eq!(names("user.name"), ["user"]);
         assert_eq!(names("'Photo of ' ~ user.name"), ["user"]);
         assert_eq!(names("count + 1"), ["count"]);
+    }
+
+    #[test]
+    fn a_word_operator_in_the_place_of_an_operand_is_a_name() {
+        assert_eq!(names("matches|length"), ["matches"]);
+        assert_eq!(names("count(matches) > 0 and (in or x)"), ["matches", "in", "x"]);
+        assert_eq!(names("code matches '/^[0-9]+$/'"), ["code"]);
+        assert_eq!(names("not ready and xor"), ["ready", "xor"]);
     }
 
     #[test]

@@ -52,7 +52,8 @@ const collators = new Map()
 // (`ariaControlsElements`, `ariaActiveDescendantElement`). The input also gets
 // `aria-haspopup="listbox"`, and `data-list-empty` when there is no item. A `trigger` gets
 // `aria-haspopup="listbox"`, `aria-expanded`, `data-popup-open`, and `aria-controls` while the
-// popup is open. An `inputGroup` gets `role="group"` and `data-popup-open`. The popup and the list
+// popup is open. An `inputGroup` gets `role="group"` and `data-popup-open`. A `group` of items gets
+// `role="group"` and the name of its `groupLabel` target. The popup and the list
 // get `data-empty` when there is no item. An `empty` target is a live region (`role="status"`,
 // `aria-live="polite"`, `aria-atomic="true"`) that stays in the page, as the Empty part of Base UI:
 // it has its content only when there is no item, so a screen reader reads it then, and `:empty`
@@ -95,6 +96,11 @@ const collators = new Map()
 // `single` selection mode, a chip with the `multiple` value, and else a text in the input. A
 // hidden `clear` target has `hidden`.
 //
+// The input can be in the popup, as a search: a `trigger` (a button with a `value` target that is not
+// an input, which shows the label of the selection or its `placeholder`) opens the popup, the popup
+// goes against the trigger, and the input gets the focus. A choice and a dismiss give the focus
+// back to the trigger, and the input has no text at the next open.
+//
 // With the `openOnInputClick` value, a click on the input opens the popup. With an `inputGroup`
 // target (the box around the input and its buttons), the popup is positioned against it.
 //
@@ -104,7 +110,7 @@ const collators = new Map()
 const FIELDS = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
 
 export default class PhemComboboxController extends Controller {
-  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "item", "group", "empty", "status", "chip", "chipRemove"]
+  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "item", "group", "groupLabel", "empty", "status", "chip", "chipRemove"]
   static values = {
     autoHighlight: Boolean,
     multiple: Boolean,
@@ -144,7 +150,7 @@ export default class PhemComboboxController extends Controller {
     // The item that the pointer highlighted. A highlight of the keyboard is another item.
     this.pointerItem = null
     this.popup = new Popup({
-      anchor: () => this.inputGroupTargets[0] ?? (this.hasInputTarget ? this.inputTarget : null),
+      anchor: () => (this.#inPopup ? this.triggerTargets[0] : null) ?? this.inputGroupTargets[0] ?? (this.hasInputTarget ? this.inputTarget : null),
       popup: () => (this.hasPopupTarget ? this.popupTarget : null),
       options: () => positionOptions(this),
       inside: () => [this.element, ...this.popupTargets],
@@ -332,11 +338,13 @@ export default class PhemComboboxController extends Controller {
         this.typed = null
         if (this.#input) delete this.#input.phemValue
         if (this.#selecting) this.#select(item)
-        if (this.#clientList) this.#fill(this.#labelOf(item))
+        if (this.#clientList) this.#fill(this.#inPopup ? "" : this.#labelOf(item))
       }
 
       this.#render()
-      this.#input?.focus({ preventScroll: true })
+      // With the input in the popup, a choice gives the focus back to the trigger.
+      const focus = this.#inPopup && !this.multipleValue ? this.triggerTargets[0] : this.#input
+      focus?.focus({ preventScroll: true })
       this.dispatch("select", { detail: { item } })
 
       return
@@ -499,19 +507,32 @@ export default class PhemComboboxController extends Controller {
   #dismiss() {
     if (!this.wanted && !this.popup.open) return
 
+    // With the input in the popup, a focus in the popup goes back to the trigger.
+    const refocus = this.#inPopup && this.popupTargets.some((el) => el.contains(document.activeElement))
+
     this.wanted = false
     this.queryChanged = false
     this.highlighted = null
     this.#complete(null)
     this.#restore()
     this.#render()
+    if (refocus) this.triggerTargets[0]?.focus({ preventScroll: true })
   }
 
   // The `single` selection mode has no free text: the input gets the label of the selected item
   // again, or no text.
   #restore() {
     const input = this.#input
-    if (!input || !this.#selecting) return
+    if (!input) return
+
+    // An input in the popup is a search: it starts with no text at the next open.
+    if (this.#inPopup) {
+      if (input.value !== "") this.#fill("")
+
+      return
+    }
+
+    if (!this.#selecting) return
 
     const label = this.#selectedItem ? this.#labelOf(this.#selectedItem) : ""
     if (input.value !== label) this.#fill(label)
@@ -523,7 +544,7 @@ export default class PhemComboboxController extends Controller {
     const value = item?.getAttribute("data-value") ?? ""
 
     for (const el of this.valueTargets) {
-      if (el.value === value) continue
+      if (!(el instanceof HTMLInputElement) || el.value === value) continue
 
       el.value = value
       el.dispatchEvent(new Event("change", { bubbles: true }))
@@ -689,7 +710,7 @@ export default class PhemComboboxController extends Controller {
     if (input && input.value === "") input.value = this.#labelOf(this.selected)
 
     const value = this.selected.getAttribute("data-value") ?? ""
-    for (const el of this.valueTargets) if (el.value === "") el.value = value
+    for (const el of this.valueTargets) if (el instanceof HTMLInputElement && el.value === "") el.value = value
   }
 
   // The state: the open popup, the highlight and the ARIA attributes.
@@ -710,6 +731,16 @@ export default class PhemComboboxController extends Controller {
     if (list) {
       if (!list.hasAttribute("role")) list.setAttribute("role", "listbox")
       if (this.multipleValue) list.setAttribute("aria-multiselectable", "true")
+    }
+
+    // A `value` target that is not an input shows the label of the selection, or its `placeholder`.
+    const label = this.#selectedItem ? this.#labelOf(this.#selectedItem) : null
+    for (const el of this.valueTargets) {
+      if (el instanceof HTMLInputElement) continue
+
+      const text = label ?? el.getAttribute("placeholder") ?? ""
+      if (el.textContent !== text) el.textContent = text
+      el.toggleAttribute("data-placeholder", label === null)
     }
 
     for (const chip of this.chipTargets) chip.tabIndex = -1
@@ -801,6 +832,14 @@ export default class PhemComboboxController extends Controller {
       group.toggleAttribute("data-popup-open", open)
     }
 
+    // A group of items gets the name of its `groupLabel`, as the GroupLabel of Base UI.
+    for (const group of this.groupTargets) {
+      if (!group.hasAttribute("role")) group.setAttribute("role", "group")
+
+      const label = this.groupLabelTargets.find((el) => group.contains(el))
+      if (label) link(group, "aria-labelledby", "ariaLabelledByElements", label)
+    }
+
     if (open !== this.popup.open) open ? this.popup.show() : this.popup.hide()
     // The selected item of a popup that opens is in view.
     if (opening && active && active === this.#selection(items)) active.scrollIntoView?.({ block: "nearest" })
@@ -858,6 +897,14 @@ export default class PhemComboboxController extends Controller {
 
   #labelOf(item) {
     return (item.getAttribute("data-label") ?? item.textContent).trim()
+  }
+
+  // The input is in the popup: a search of the popup that a `trigger` opens, as the Input inside the
+  // Popup of a Base UI combobox.
+  get #inPopup() {
+    const input = this.hasInputTarget ? this.inputTarget : null
+
+    return input !== null && this.popupTargets.some((el) => el.contains(input))
   }
 
   get #input() {

@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phemc` passes a variable with the name of a Twig word operator (`matches`, `in`, `and`…) to
+  its template when it is in the place of an operand: `{% for id, name in matches %}`. Before, it
+  read the word as the operator, and the template had no variable.
+- The input of `phem-combobox` can be in the popup, as the Input inside the Popup of a Base UI
+  combobox: a `trigger` opens the popup with the focus in the input, a `value` part that is not an
+  input shows the label of the selection or its `placeholder`, and a choice gives the focus back
+  to the trigger. See docs/controllers.md.
+- A `group` of `phem-combobox` gets the name of its new `groupLabel` part (`aria-labelledby`), as
+  the GroupLabel of a Base UI combobox. Before, a group had no name.
 - The `value` part of `phem-select` takes a `data-phem-select-template` for two values or more
   (`{first} (+{others} more)`), and `data-phem-select-markup` to show a copy of the markup of the
   selected item, as the `children` function of a Base UI `Select.Value`. See docs/controllers.md.

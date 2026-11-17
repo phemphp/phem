@@ -11,9 +11,10 @@ final class PickersTest extends DemoTestCase
     public function testComboboxFiltersTheItemsInTheBrowser(): void
     {
         $page = $this->visitComponent('combobox');
+        $hero = $page->getByRole('region', ['name' => 'Demo']);
 
-        $input = $page->getByRole('combobox', ['name' => 'Choose a fruit']);
-        $clear = $page->getByRole('button', ['name' => 'Clear selection']);
+        $input = $hero->getByRole('combobox', ['name' => 'Choose a fruit']);
+        $clear = $hero->getByRole('button', ['name' => 'Clear selection']);
         expect($clear)->toBeHidden();
 
         // A click on the input opens the popup with the 25 fruits.
@@ -28,7 +29,7 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('ArrowDown');
         $page->keyboard()->press('Enter');
         expect($input)->toHaveValue('Strawberry');
-        expect($page->locator('[role="option"][data-selected]'))->toHaveCount(1);
+        expect($hero->locator('[role="option"][data-selected]'))->toHaveCount(1);
         expect($clear)->toBeVisible();
 
         // The popup opens again with all the fruits, and the check on the selected one.
@@ -47,6 +48,103 @@ final class PickersTest extends DemoTestCase
         $clear->click();
         expect($input)->toHaveValue('');
         expect($clear)->toBeHidden();
+    }
+
+    public function testComboboxExamples(): void
+    {
+        $page = $this->visitComponent('combobox');
+
+        // IDs: the input shows the label of the default value, and the form gets the ID.
+        $ids = $page->getByRole('region', ['name' => 'Value selection with IDs']);
+        $fruit = $ids->getByRole('combobox', ['name' => 'Choose a fruit']);
+        expect($fruit)->toHaveValue('Banana');
+        expect($ids->locator('input[name="fruit"]'))->toHaveValue('banana');
+        $fruit->fill('man');
+        $page->getByRole('option', ['name' => 'Mango'])->click();
+        expect($fruit)->toHaveValue('Mango');
+        expect($ids->locator('input[name="fruit"]'))->toHaveValue('mango');
+
+        // Multiple: a click on an item adds a chip, and the popup stays open.
+        $multiple = $page->getByRole('region', ['name' => 'Multiple select']);
+        $languages = $multiple->getByRole('combobox', ['name' => 'Programming languages']);
+        $languages->click();
+        $page->getByRole('option', ['name' => 'TypeScript'])->click();
+        expect($multiple->getByRole('button', ['name' => 'Remove TypeScript']))->toBeVisible();
+        expect($page->getByRole('option', ['name' => 'TypeScript']))->toHaveAttribute('aria-selected', 'true');
+        $page->getByRole('option', ['name' => 'Go'])->click();
+        expect($multiple->getByRole('button', ['name' => 'Remove Go']))->toBeVisible();
+
+        // Backspace in the empty input removes the last chip.
+        $languages->focus();
+        $page->keyboard()->press('Backspace');
+        expect($multiple->getByRole('button', ['name' => 'Remove Go']))->toHaveCount(0);
+        expect($multiple->getByRole('button', ['name' => 'Remove TypeScript']))->toBeVisible();
+        $page->keyboard()->press('Escape');
+
+        // The input in the popup: the trigger opens it with the focus in the input, and a choice
+        // shows the label on the trigger.
+        $inside = $page->getByRole('region', ['name' => 'Input inside popup']);
+        $country = $inside->getByRole('button', ['name' => 'Country']);
+        expect($country)->toContainText('Select country');
+        $country->click();
+        $search = $inside->getByRole('combobox', ['name' => 'Country']);
+        expect($search)->toBeFocused();
+        $search->fill('nor');
+        $page->getByRole('option', ['name' => 'Norway'])->click();
+        expect($country)->toContainText('Norway');
+        expect($country)->toBeFocused();
+        $page->keyboard()->press('Escape');
+
+        // Async search: the server gives the results of the query.
+        $async = $page->getByRole('region', ['name' => 'Async search (single)']);
+        $reviewer = $async->getByRole('combobox', ['name' => 'Assign reviewer']);
+        $reviewer->click();
+        $page->keyboard()->press('ArrowDown');
+        expect($async->locator('text=Start typing to search people…'))->toBeVisible();
+        $reviewer->fill('designer');
+        $lindsay = $async->getByRole('option', ['name' => 'Lindsay Walton']);
+        $lindsay->click();
+        expect($reviewer)->toHaveValue('Lindsay Walton');
+        $reviewer->fill('zzz');
+        expect($async->locator('text=No matches for "zzz".'))->toBeVisible();
+        $page->keyboard()->press('Escape');
+
+        // Async search with chips.
+        $multiple = $page->getByRole('region', ['name' => 'Async search (multiple)']);
+        $reviewers = $multiple->getByRole('combobox', ['name' => 'Assign reviewers']);
+        $reviewers->fill('lindsay');
+        $multiple->getByRole('option', ['name' => 'Lindsay Walton'])->click();
+        expect($multiple->getByRole('button', ['name' => 'Remove Lindsay Walton']))->toBeVisible();
+        $page->keyboard()->press('Escape');
+
+        // Creatable: a new text shows a Create item, which opens a dialog with the text.
+        $creatable = $page->getByRole('region', ['name' => 'Creatable']);
+        $labels = $creatable->getByRole('combobox', ['name' => 'Labels']);
+        $labels->fill('urgent');
+        $creatable->getByRole('option', ['name' => 'Create "urgent"'])->click();
+        $dialog = $page->getByRole('dialog', ['name' => 'Create new label']);
+        expect($dialog)->toBeVisible();
+        expect($dialog->getByRole('textbox', ['name' => 'Label name']))->toHaveValue('urgent');
+        $dialog->getByRole('button', ['name' => 'Create'])->click();
+        expect($dialog)->toBeHidden();
+        expect($creatable->getByRole('button', ['name' => 'Remove urgent']))->toBeVisible();
+
+        // Virtualized: the server renders the first 50 matches, and the status gives the total.
+        $virtual = $page->getByRole('region', ['name' => 'Virtualized']);
+        $items = $virtual->getByRole('combobox', ['name' => 'Search 10,000 items']);
+        $items->fill('1');
+        expect($virtual->locator('[data-phem-combobox-target="item"]'))->toHaveCount(50);
+        expect($virtual->locator('text=Showing 50 of'))->toBeVisible();
+        $items->fill('Item 0042');
+        expect($virtual->getByRole('option', ['name' => 'Item 0042']))->toBeVisible();
+        $page->keyboard()->press('Escape');
+
+        // Grouped: the filter hides a group with no match.
+        $produce = $page->getByRole('region', ['name' => 'Grouped'])->getByRole('combobox', ['name' => 'Select produce']);
+        $produce->fill('ka');
+        expect($page->getByRole('group', ['name' => 'Vegetables']))->toBeVisible();
+        expect($page->getByRole('group', ['name' => 'Fruits']))->toBeHidden();
+        expect($page->getByRole('option', ['name' => 'Kale']))->toBeVisible();
     }
 
     public function testAutocompleteFiltersTheTagsInTheBrowser(): void

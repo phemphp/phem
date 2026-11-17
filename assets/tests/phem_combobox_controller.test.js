@@ -617,6 +617,62 @@ describe("phem-combobox", () => {
 
     const visible = () => [...document.querySelectorAll("[data-phem-combobox-target=item]")].filter((el) => !el.hidden).map((el) => el.id)
 
+    describe("with the input in the popup", () => {
+      const markup = `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="single">
+          <button id="trigger" type="button" data-phem-combobox-target="trigger"><span id="value" data-phem-combobox-target="value" placeholder="Select country"></span></button>
+          <div id="popup" data-phem-combobox-target="popup" hidden>
+            <input id="input" data-phem-combobox-target="input" aria-label="Country" />
+            <ul id="list" data-phem-combobox-target="list">
+              <li id="fr" data-value="fr" data-phem-combobox-target="item">France</li>
+              <li id="de" data-value="de" data-phem-combobox-target="item">Germany</li>
+            </ul>
+          </div>
+        </div>`
+
+      it("shows the placeholder, and opens with the focus in the input", async () => {
+        await mount(markup)
+        expect($("value").textContent).toBe("Select country")
+        expect($("value").hasAttribute("data-placeholder")).toBe(true)
+
+        click("#trigger")
+        expect($("popup").hidden).toBe(false)
+        expect(document.activeElement).toBe($("input"))
+      })
+
+      it("shows the label of the choice on the trigger, and gives the focus back to it", async () => {
+        await mount(markup)
+        click("#trigger")
+        typeText("ger")
+        click("#de")
+
+        expect($("popup").hidden).toBe(true)
+        expect($("value").textContent).toBe("Germany")
+        expect($("value").hasAttribute("data-placeholder")).toBe(false)
+        expect(document.activeElement).toBe($("trigger"))
+
+        // The input is a search: it has no text at the next open, and all the items show.
+        click("#trigger")
+        expect($("input").value).toBe("")
+        expect($("fr").hidden).toBe(false)
+      })
+
+      it("gives the focus back to the trigger on Escape", async () => {
+        await mount(markup)
+        click("#trigger")
+        $("input").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))
+
+        expect($("popup").hidden).toBe(true)
+        expect(document.activeElement).toBe($("trigger"))
+      })
+    })
+
+    it("names a group with its group label", async () => {
+      await mount(fruits().replace('<li id="red" data-phem-combobox-target="group"><ul>', '<li id="red" data-phem-combobox-target="group"><div id="red-label" data-phem-combobox-target="groupLabel">Red</div><ul>'))
+
+      expect($("red").getAttribute("role")).toBe("group")
+      expect($("red").getAttribute("aria-labelledby")).toBe("red-label")
+    })
+
     it("keeps the empty target in the page, with its content only when no item matches", async () => {
       await mount(fruits())
       expect($("empty").getAttribute("role")).toBe("status")

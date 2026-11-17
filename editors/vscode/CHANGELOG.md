@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1
+
+- A variable named after a Twig word operator (`matches`, `in`, `and`…) in the place of an
+  operand, such as `{% for id in matches %}`, is a variable: no false error for an unknown
+  variable.
+
 ## 0.8.0
 
 - A field with an optional `Bound` prop can have its own `value` or `checked` next to
