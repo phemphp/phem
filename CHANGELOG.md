@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A drawer of `phem-dialog` opens with a swipe from the edge of the screen: the new `swipeArea`
+  part. The new `virtual-keyboard` value gives the popup the height of the keyboard of the device
+  in `--drawer-keyboard-inset`. The new `phem-drawer-provider` controller gives the page an indent
+  while a drawer in it is open (`data-active` and `--drawer-swipe-progress`). `phem-dialog`
+  dispatches `phem-dialog:open`, `phem-dialog:close` and `phem-dialog:swipe`, and the `viewport`
+  and `backdrop` parts get `--drawer-swipe-progress` during a swipe. A drawer that opens scrolls
+  its viewport and its content back to the top: before, the first focus of the browser scrolled
+  them to the last button. A swipe that the close confirmation stops gives the drawer its place
+  again. See docs/controllers.md.
 - `phem-menu` has several triggers, as `phem-popover`: the `trigger` parts and the detached
   triggers with `data-phem-menu-for`. While a menu that is not modal is open, a press on another
   trigger moves it there. The `viewport` part shows a copy of the `<template data-payload>` of the

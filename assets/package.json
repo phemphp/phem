@@ -245,6 +245,12 @@
                 "main": "dist/phem_navigation_menu_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "drawer-provider": {
+                "name": "phem-drawer-provider",
+                "main": "dist/phem_drawer_provider_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {

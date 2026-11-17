@@ -132,6 +132,10 @@
                 "enabled": true,
                 "fetch": "lazy"
             },
+            "drawer-provider": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
             "dialog": {
                 "enabled": true,
                 "fetch": "lazy"

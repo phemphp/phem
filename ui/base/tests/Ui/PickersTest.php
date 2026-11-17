@@ -67,6 +67,17 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorCount(1, '[data-phem-combobox-target="popup"]:not([class*="transition-"]):not([class*="data-starting-style:"]):not([class*="data-ending-style:"])');
     }
 
+    public function testTheDrawerHasItsParts(): void
+    {
+        $this->mount(self::APP.'DrawerPartsDemo')
+            ->assertSelectorExists('[data-controller="phem-drawer-provider"] > [data-phem-drawer-provider-target="background"] + [data-phem-drawer-provider-target="indent"]')
+            ->assertSelectorExists('button[data-phem-dialog-for="settings-drawer"][data-phem-dialog-payload="Settings"]:not([data-phem-dialog-target])')
+            ->assertSelectorExists('#settings-drawer[data-controller="phem-dialog"][data-phem-dialog-swipe-direction-value="left"][data-phem-dialog-modal-value="false"][data-phem-dialog-disable-pointer-dismissal-value="true"][data-phem-dialog-virtual-keyboard-value="true"][data-phem-dialog-confirm-close-value="discard"][data-phem-dialog-final-focus-value="#done"]')
+            ->assertSelectorExists('#settings-drawer > div[data-phem-dialog-target="swipeArea"]')
+            ->assertSelectorExists('#settings-drawer > div[data-phem-dialog-target="backdrop"][hidden]')
+            ->assertSelectorExists('#settings-drawer > dialog[data-phem-dialog-target="viewport"][class~="justify-start"] > div[data-phem-dialog-target="popup"][class~="-ms-12"] h2 span[data-phem-dialog-target="payload"]');
+    }
+
     public function testTheDrawerIsADialogWithASwipe(): void
     {
         $html = $this->mount(self::APP.'DrawerDemo')

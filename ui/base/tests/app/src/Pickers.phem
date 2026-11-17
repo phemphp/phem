@@ -5,8 +5,8 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxTrigger, DrawerClose, DrawerContent, DrawerDescription, DrawerPopup, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastViewport};
-use Phem\Ui\Base\{Autocomplete, Combobox, Drawer};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastViewport};
+use Phem\Ui\Base\{Autocomplete, Combobox, Drawer, DrawerViewport};
 
 // A Combobox with a list of the browser has one selected item, and an Autocomplete has none.
 #[Component]
@@ -89,6 +89,28 @@ function DrawerDemo(): Node
                 </DrawerContent>
             </DrawerPopup>
         </Drawer>
+    );
+}
+
+#[Component]
+function DrawerPartsDemo(): Node
+{
+    return (
+        <DrawerProvider>
+            <DrawerIndentBackground />
+            <DrawerIndent>
+                <DrawerTrigger handle="settings-drawer" payload="Settings">Settings</DrawerTrigger>
+                <Drawer handle="settings-drawer" swipeDirection="left" modal={{ false }} disablePointerDismissal virtualKeyboard confirmClose="discard" finalFocus="#done">
+                    <DrawerSwipeArea />
+                    <DrawerBackdrop />
+                    <DrawerViewport>
+                        <DrawerPopup>
+                            <DrawerTitle><DrawerPayload /></DrawerTitle>
+                        </DrawerPopup>
+                    </DrawerViewport>
+                </Drawer>
+            </DrawerIndent>
+        </DrawerProvider>
     );
 }
 

@@ -1104,3 +1104,100 @@ describe("phem-dialog: several triggers, a close confirmation and the final focu
     expect(document.activeElement).toBe($("after"))
   })
 })
+
+describe("phem-dialog: a swipe area, the events and the keyboard of a drawer", () => {
+  let time = 0
+  const $ = (id) => document.getElementById(id)
+
+  function pointer(type, x, y, target = document) {
+    const event = new PointerEvent(type, { bubbles: true, cancelable: true, isPrimary: true, button: 0, pointerId: 1, clientX: x, clientY: y })
+    Object.defineProperty(event, "timeStamp", { value: (time += 1000) })
+    target.dispatchEvent(event)
+
+    return event
+  }
+
+  // A drawer on the right edge, 300 px wide, with a swipe area.
+  async function drawer(attributes = "", content = "") {
+    await mount(edit(`data-phem-dialog-swipe-direction-value="right" ${attributes}`, content).replace("</dialog>", '</dialog><div id="area" data-phem-dialog-target="swipeArea"></div>'))
+    Object.defineProperty($("dialog"), "offsetWidth", { configurable: true, value: 300 })
+    $("dialog").getBoundingClientRect = () => ({ left: 500, top: 0, right: 800, bottom: 600, width: 300, height: 600 })
+  }
+
+  it("opens with a swipe from the swipe area, and the popup follows the pointer", async () => {
+    await drawer()
+    const swipes = []
+    $("edit").addEventListener("phem-dialog:swipe", (event) => swipes.push(event.detail.progress))
+
+    pointer("pointerdown", 790, 300, $("area"))
+    pointer("pointermove", 690, 300)
+    expect($("dialog").open).toBe(true)
+    expect($("dialog").hasAttribute("data-swiping")).toBe(true)
+    expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-x")).toBe("200px")
+    expect(swipes.at(-1)).toBeCloseTo(2 / 3)
+
+    pointer("pointermove", 590, 300)
+    pointer("pointerup", 590, 300)
+    expect($("edit").getAttribute("data-phem-dialog-open-value")).toBe("true")
+    expect($("dialog").hasAttribute("data-swiping")).toBe(false)
+    expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-x")).toBe("")
+    expect(swipes.at(-1)).toBe(0)
+  })
+
+  it("closes again after a short swipe from the swipe area", async () => {
+    await drawer()
+
+    pointer("pointerdown", 790, 300, $("area"))
+    pointer("pointermove", 750, 300)
+    pointer("pointermove", 740, 300)
+    pointer("pointerup", 740, 300)
+    expect($("edit").getAttribute("data-phem-dialog-open-value")).toBe("false")
+    expect($("dialog").open).toBe(false)
+  })
+
+  it("dispatches phem-dialog:open and phem-dialog:close", async () => {
+    await drawer()
+    const events = []
+    $("edit").addEventListener("phem-dialog:open", () => events.push("open"))
+    $("edit").addEventListener("phem-dialog:close", () => events.push("close"))
+
+    click("#open")
+    click("#close")
+    expect(events).toEqual(["open", "close"])
+  })
+
+  it("goes back to its place when the close confirmation stops the close of a swipe", async () => {
+    await mount(`${edit('data-phem-dialog-swipe-direction-value="right" data-phem-dialog-confirm-close-value="confirm"', '<textarea id="text"></textarea><div id="confirm" data-controller="phem-dialog"><dialog id="confirm-popup" data-phem-dialog-target="popup"><button data-phem-dialog-target="close">Go back</button></dialog></div>')}`)
+    $("dialog").getBoundingClientRect = () => ({ left: 500, top: 0, right: 800, bottom: 600, width: 300, height: 600 })
+    click("#open")
+    $("text").value = "Hello"
+
+    pointer("pointerdown", 600, 300, $("title"))
+    pointer("pointermove", 800, 300)
+    pointer("pointerup", 800, 300)
+    expect($("edit").getAttribute("data-phem-dialog-open-value")).toBe("true")
+    expect($("confirm").getAttribute("data-phem-dialog-open-value")).toBe("true")
+    expect($("dialog").hasAttribute("data-swipe-dismiss")).toBe(false)
+    expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-x")).toBe("")
+  })
+
+  it("gives the popup the height of the keyboard with the virtualKeyboard value", async () => {
+    const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+    vi.stubGlobal("visualViewport", viewport)
+    vi.stubGlobal("innerHeight", 800)
+    await drawer('data-phem-dialog-virtual-keyboard-value="true"', '<input id="field">')
+    click("#open")
+
+    const scrolled = vi.fn()
+    $("field").scrollIntoView = scrolled
+    $("field").focus()
+    viewport.height = 500
+    viewport.dispatchEvent(new Event("resize"))
+    expect($("dialog").style.getPropertyValue("--drawer-keyboard-inset")).toBe("300px")
+    expect(scrolled).toHaveBeenCalled()
+
+    viewport.height = 800
+    viewport.dispatchEvent(new Event("resize"))
+    expect($("dialog").style.getPropertyValue("--drawer-keyboard-inset")).toBe("")
+  })
+})

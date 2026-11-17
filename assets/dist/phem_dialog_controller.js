@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { onBackdropTap } from "./phem_backdrop.js"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { dismissable } from "./phem_dismiss.js"
-import { SWIPE_ATTRIBUTES, snapPointSize, swipeable, unswipe } from "./phem_swipe.js"
+import { SWIPE_ATTRIBUTES, snapPointSize, swipeOpenable, swipeable, unswipe } from "./phem_swipe.js"
 import { hide, render, show } from "./phem_transition.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
 import { edgeTabbable, nextTabbable } from "./phem_focus.js"
@@ -91,8 +91,18 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // `--drawer-snap-point-offset` (the distance from its full height), `--drawer-height`, and
 // `data-expanded` at its full height. With `snapToSequentialPoints`, a fast swipe does not skip a
 // snap point. A new snap point dispatches `phem-dialog:snap` with the `snapPoint` in the detail.
+// A `swipeArea` target (an element at the edge of the screen) opens the drawer with a swipe away
+// from the edge: the popup follows the pointer (see swipeOpenable() in phem_swipe.js). During a
+// swipe, the controller dispatches `phem-dialog:swipe` with the `progress` in the detail (0 when
+// open, 1 when closed), for an indent of the page (phem_drawer_provider_controller.js).
+//
+// With the `virtualKeyboard` value, the popup of an open drawer gets `--drawer-keyboard-inset`
+// while the keyboard of the device covers the bottom of the screen: the height of the keyboard
+// (window.visualViewport). The field with the focus scrolls into view when the keyboard opens.
+//
+// The dialog dispatches `phem-dialog:open` when it opens and `phem-dialog:close` when it closes.
 export default class PhemDialogController extends Controller {
-  static targets = ["trigger", "popup", "viewport", "backdrop", "close", "title", "description", "content", "payload"]
+  static targets = ["trigger", "popup", "viewport", "backdrop", "close", "title", "description", "content", "payload", "swipeArea"]
   static values = {
     open: Boolean,
     triggerId: String,
@@ -105,10 +115,13 @@ export default class PhemDialogController extends Controller {
     snapPoints: Array,
     snapPoint: String,
     snapToSequentialPoints: Boolean,
+    virtualKeyboard: Boolean,
   }
 
   // dialog => the AbortController of its listeners.
   #listening = new Map()
+  // swipe area => the AbortController of its listeners.
+  #areas = new Map()
   // dialog => the function that removes its dismiss layer (a dialog that is not a modal).
   #layers = new Map()
 
@@ -131,6 +144,7 @@ export default class PhemDialogController extends Controller {
         this.payload.capture()
         if (this.openValue) this.payload.render(this.triggers.active)
         this.#renderAria()
+        this.#alignKeyboard()
       },
     })
     this.state.connect()
@@ -154,6 +168,9 @@ export default class PhemDialogController extends Controller {
     this.element.removeEventListener("keydown", this.onKeydown)
     document.removeEventListener("click", this.onDocumentClick)
     window.removeEventListener("resize", this.onResize)
+    this.#watchKeyboard(false)
+    for (const listening of this.#areas.values()) listening.abort()
+    this.#areas.clear()
     for (const off of this.#layers.values()) off()
     this.#layers.clear()
     this.unlockScroll?.()
@@ -206,6 +223,26 @@ export default class PhemDialogController extends Controller {
 
   viewportTargetDisconnected(el) {
     this.#disconnectDialog(el)
+  }
+
+  swipeAreaTargetConnected(el) {
+    this.#areas.get(el)?.abort()
+    const listening = new AbortController()
+    this.#areas.set(el, listening)
+
+    swipeOpenable(el, {
+      direction: () => this.swipeDirectionValue,
+      isOpen: () => this.openValue,
+      open: () => this.#set(true),
+      close: () => this.#set(false),
+      popup: () => (this.#dialogs[0] ? this.#popupOf(this.#dialogs[0]) : null),
+      progress: (progress) => this.#renderProgress(progress),
+    }, listening.signal)
+  }
+
+  swipeAreaTargetDisconnected(el) {
+    this.#areas.get(el)?.abort()
+    this.#areas.delete(el)
   }
 
   backdropTargetConnected(el) {
@@ -361,10 +398,18 @@ export default class PhemDialogController extends Controller {
     swipeable(popup, {
       direction: () => this.swipeDirectionValue,
       open: () => el.open,
-      close: () => this.close(),
+      close: () => {
+        this.close()
+        // The close confirmation keeps the drawer open: it goes back to its place.
+        if (this.openValue) {
+          unswipe(popup, { strength: true })
+          this.#renderProgress(0)
+        }
+      },
       snap: this.#snap(popup),
       content: () => this.contentTargets,
       swiping: (active) => this.#renderNestedSwiping(el, active),
+      progress: (progress) => this.#renderProgress(progress),
     }, listening.signal)
 
     this.#render(el)
@@ -414,6 +459,7 @@ export default class PhemDialogController extends Controller {
 
       if (this.openValue) {
         unswipe(popup)
+        this.#renderProgress(0)
         // The dialog opens after its parts have `data-starting-style`, so the open animation of
         // the popup and of the `::backdrop` runs. The dialog is the first part, and the last to show.
         const [dialog, ...parts] = this.#parts(el)
@@ -440,6 +486,7 @@ export default class PhemDialogController extends Controller {
           if (this.openValue) return
 
           unswipe(popup)
+          this.#renderProgress(0)
           if (el.open) el.close()
           this.#renderScrollLock()
         },
@@ -447,6 +494,61 @@ export default class PhemDialogController extends Controller {
     }
 
     if (!this.openValue && closing === 0) this.#renderScrollLock()
+    this.#watchKeyboard(this.openValue)
+    this.dispatch(this.openValue ? "open" : "close")
+  }
+
+  // The swipe of a drawer: the viewport and the backdrop get `--drawer-swipe-progress`, for the
+  // `::backdrop` of the viewport and the opacity of the backdrop. 0 removes it.
+  #renderProgress(progress) {
+    const parts = [...this.viewportTargets, ...this.backdropTargets]
+    for (const el of parts) {
+      if (progress > 0) el.style.setProperty("--drawer-swipe-progress", String(progress))
+      else el.style.removeProperty("--drawer-swipe-progress")
+      if (el.getAttribute("style") === "") el.removeAttribute("style")
+    }
+
+    this.dispatch("swipe", { detail: { progress } })
+  }
+
+  // The keyboard of the device while a drawer with the `virtualKeyboard` value is open.
+  #watchKeyboard(on) {
+    const viewport = window.visualViewport
+    on = on && this.virtualKeyboardValue && viewport !== undefined && viewport !== null
+
+    if (on && !this.keyboard) {
+      this.keyboard = new AbortController()
+      const options = { signal: this.keyboard.signal }
+      viewport.addEventListener("resize", this.#alignKeyboard, options)
+      viewport.addEventListener("scroll", this.#alignKeyboard, options)
+      this.element.addEventListener("focusin", this.#alignKeyboard, options)
+      this.#alignKeyboard()
+    } else if (!on && this.keyboard) {
+      this.keyboard.abort()
+      this.keyboard = null
+      this.keyboardInset = 0
+      for (const el of this.#dialogs) this.#popupOf(el).style.removeProperty("--drawer-keyboard-inset")
+    }
+  }
+
+  // The popup gets the height of the keyboard in `--drawer-keyboard-inset`, and the field with the
+  // focus scrolls into view.
+  #alignKeyboard = () => {
+    const viewport = window.visualViewport
+    if (!this.keyboard || !viewport) return
+
+    const inset = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
+    this.keyboardInset = inset
+    for (const el of this.#dialogs) {
+      const popup = this.#popupOf(el)
+      if (inset > 0) popup.style.setProperty("--drawer-keyboard-inset", `${inset}px`)
+      else popup.style.removeProperty("--drawer-keyboard-inset")
+    }
+
+    const field = document.activeElement
+    if (inset > 0 && field?.matches?.("input, textarea, select, [contenteditable]") && this.#dialogs.some((el) => el.contains(field))) {
+      field.scrollIntoView?.({ block: "nearest" })
+    }
   }
 
   // The state with no animation. An open dialog in another mode (the server render gave `open`,
@@ -503,6 +605,15 @@ export default class PhemDialogController extends Controller {
   #focusPopup(el) {
     const drawer = Boolean(AXES[this.swipeDirectionValue]) && !el.querySelector("[autofocus]")
     if (!this.touch && !drawer) return
+
+    // The first focus of the browser scrolled the dialog (a viewport) and the content of the popup
+    // to its element. A drawer gives the focus to its popup: its content starts at the top.
+    if (drawer) {
+      for (let node = document.activeElement; node && el.contains(node); node = node.parentElement) {
+        node.scrollTop = 0
+        node.scrollLeft = 0
+      }
+    }
 
     const popup = this.#popupOf(el)
     if (!popup.hasAttribute("tabindex")) {
@@ -692,7 +803,7 @@ export default class PhemDialogController extends Controller {
 
     // The `style` of a swipe: the popup stays at its place. The variables of a snap point and of
     // the nesting render again after the morph (see `morphed`), so the style of the server applies.
-    if (name === "style") return [...SWIPE_ATTRIBUTES].some((attribute) => el.hasAttribute(attribute))
+    if (name === "style") return [...SWIPE_ATTRIBUTES].some((attribute) => el.hasAttribute(attribute)) || this.keyboardInset > 0
 
     return name === "open" || OPEN_ATTRIBUTES.has(name) || name === "data-nested" || SWIPE_ATTRIBUTES.has(name) || DRAWER_ATTRIBUTES.has(name)
   }

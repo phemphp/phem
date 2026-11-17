@@ -13,14 +13,34 @@ enum SwipeDirection: string
     case Left = 'left';
     case Right = 'right';
 
-    /** The classes of the popup on this edge: its place, its border and its slide. */
-    public function classes(): string
+    /**
+     * The classes of the popup on this edge: its place, its border and its slide. The popup goes
+     * 3rem (the bleed) past the edge, with the same padding in it, so a swipe away from the edge
+     * shows no gap. A bottom sheet with snap points has no bleed: its snap points are heights of
+     * its box.
+     */
+    public function classes(bool $bleed = true): string
+    {
+        if (self::Down === $this && !$bleed) {
+            return 'mt-auto w-full max-w-none max-h-[calc(100dvh-3rem)] border-t [transform:translateY(calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))] data-starting-style:[transform:translateY(100%)] data-ending-style:[transform:translateY(calc(100%+2px))]';
+        }
+
+        return match ($this) {
+            self::Right => 'ms-auto -me-12 h-dvh max-h-none w-[23rem] max-w-[100vw] border-l pe-[4.5rem] [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(calc(100%-3rem+2px))] data-ending-style:[transform:translateX(calc(100%-3rem+2px))]',
+            self::Left => '-ms-12 me-auto h-dvh max-h-none w-[23rem] max-w-[100vw] border-r ps-[4.5rem] [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(calc(-100%+3rem-2px))] data-ending-style:[transform:translateX(calc(-100%+3rem-2px))]',
+            self::Down => 'mt-auto -mb-12 w-full max-w-none max-h-[calc(100dvh-3rem+3rem)] border-t pb-[calc(1.5rem+env(safe-area-inset-bottom,0px)+3rem)] [transform:translateY(calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))] data-starting-style:[transform:translateY(calc(100%-3rem+2px))] data-ending-style:[transform:translateY(calc(100%-3rem+2px))]',
+            self::Up => '-mt-12 mb-auto w-full max-w-none max-h-[calc(100dvh-3rem+3rem)] border-b pt-[4.5rem] [transform:translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:[transform:translateY(calc(-100%+3rem-2px))] data-ending-style:[transform:translateY(calc(-100%+3rem-2px))]',
+        };
+    }
+
+    /** The place of the popup in a DrawerViewport: the flex alignment of this edge. */
+    public function viewportClasses(): string
     {
         return match ($this) {
-            self::Right => 'ms-auto h-dvh max-h-none w-[20rem] max-w-[calc(100vw-3rem)] border-l [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(100%)] data-ending-style:[transform:translateX(calc(100%+2px))]',
-            self::Left => 'me-auto h-dvh max-h-none w-[20rem] max-w-[calc(100vw-3rem)] border-r [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(-100%)] data-ending-style:[transform:translateX(calc(-100%-2px))]',
-            self::Down => 'mt-auto w-full max-w-none max-h-[calc(100dvh-3rem)] border-t [transform:translateY(calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))] data-starting-style:[transform:translateY(100%)] data-ending-style:[transform:translateY(calc(100%+2px))]',
-            self::Up => 'mb-auto w-full max-w-none max-h-[calc(100dvh-3rem)] border-b [transform:translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:[transform:translateY(-100%)] data-ending-style:[transform:translateY(calc(-100%-2px))]',
+            self::Right => 'items-stretch justify-end',
+            self::Left => 'items-stretch justify-start',
+            self::Down => 'items-end justify-center',
+            self::Up => 'items-start justify-center',
         };
     }
 }
@@ -28,13 +48,28 @@ enum SwipeDirection: string
 /**
  * A panel that slides in from an edge of the viewport, and closes with a swipe: Base UI
  * Drawer.Root, on the `phem-dialog` controller with a `swipe-direction`.
+ *
+ * The props of Dialog work the same: `handle` links detached triggers (a DrawerTrigger with the
+ * same `handle`), `triggerId` is the `id` of the trigger that opened it, `confirmClose` is the
+ * `handle` of an AlertDialog that asks before the close, and `finalFocus` is the selector of the
+ * element that gets the focus after the close. With `modal={{ false }}`, the page stays active and
+ * the focus is not trapped. With `disablePointerDismissal`, a press outside does not close it.
+ * With `virtualKeyboard` (Base UI Drawer.VirtualKeyboardProvider), the popup gets
+ * `--drawer-keyboard-inset` while the keyboard of the device is open.
  */
 #[Component, Provide]
 class Drawer
 {
     #[Prop] public SwipeDirection $swipeDirection = SwipeDirection::Down;
+    #[Prop] public ?string $handle = null;
     #[Prop] public bool $defaultOpen = false;
+    #[Prop] public ?string $triggerId = null;
     #[Prop] public bool $dismissible = true;
+    #[Prop] public bool $disablePointerDismissal = false;
+    #[Prop] public bool $modal = true;
+    #[Prop] public ?string $confirmClose = null;
+    #[Prop] public ?string $finalFocus = null;
+    #[Prop] public bool $virtualKeyboard = false;
     /** @var list<float|int|string> the heights where a bottom sheet stops: a part of the viewport (0 to 1), px, or a string with `px` or `rem` */
     #[Prop] public array $snapPoints = [];
     #[Prop] public bool $snapToSequentialPoints = false;
@@ -45,10 +80,17 @@ class Drawer
     {
         return (
             <div
+                id={{ handle }}
                 data-controller="phem-dialog"
                 data-phem-dialog-swipe-direction-value={{ swipeDirection.value }}
                 data-phem-dialog-open-value={{ defaultOpen ? 'true' : null }}
+                data-phem-dialog-trigger-id-value={{ triggerId }}
                 data-phem-dialog-dismiss-value={{ dismissible ? null : 'false' }}
+                data-phem-dialog-disable-pointer-dismissal-value={{ disablePointerDismissal ? 'true' : null }}
+                data-phem-dialog-modal-value={{ modal ? null : 'false' }}
+                data-phem-dialog-confirm-close-value={{ confirmClose }}
+                data-phem-dialog-final-focus-value={{ finalFocus }}
+                data-phem-dialog-virtual-keyboard-value={{ virtualKeyboard ? 'true' : null }}
                 data-phem-dialog-snap-points-value={{ snapPoints ? snapPoints|json_encode : null }}
                 data-phem-dialog-snap-to-sequential-points-value={{ snapToSequentialPoints ? 'true' : null }}
                 className={{ classes('contents') }}
@@ -60,22 +102,34 @@ class Drawer
     }
 }
 
+/**
+ * The button that opens the drawer. With a `handle`, it is a detached trigger of the Drawer with
+ * the same `handle`, and its `payload` is the text of the DrawerPayload.
+ */
 #[Component]
 function DrawerTrigger(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogTrigger {{ ...rest }}>{{ children }}</DialogTrigger>;
 }
 
-/** The panel. Its `::backdrop` is the Backdrop of Base UI: it fades with the swipe. */
+/**
+ * The panel. Its `::backdrop` is the Backdrop of Base UI: it fades with the swipe. In a
+ * DrawerViewport, it is a `div`, and the viewport has the `::backdrop`.
+ */
 #[Component]
-function DrawerPopup(#[Context] Drawer $drawer, ?Html $children = null, mixed ...$rest): Node
+function DrawerPopup(#[Context] Drawer $drawer, #[Context] ?DrawerViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
 {
-    $edge = $drawer->swipeDirection->classes();
+    $edge = $drawer->swipeDirection->classes([] === $drawer->snapPoints);
+    $panel = 'h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none';
+
+    if (null !== $viewport && $viewport->drawer === $drawer) {
+        return <div data-phem-dialog-target="popup" className={{ classes(panel, edge) }} {{ ...rest }}>{{ children }}</div>;
+    }
 
     return (
         <dialog
             data-phem-dialog-target="popup"
-            className={{ classes('m-0 inset-0 h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
+            className={{ classes('fixed m-0 inset-0 h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
             {{ ...rest }}
         >
             {{ children }}
@@ -106,4 +160,82 @@ function DrawerDescription(?Html $children = null, mixed ...$rest): Node
 function DrawerClose(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogClose {{ ...rest }}>{{ children }}</DialogClose>;
+}
+
+/** The text of the `payload` of the trigger that opened the drawer, or its children. */
+#[Component]
+function DrawerPayload(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogPayload {{ ...rest }}>{{ children }}</DialogPayload>;
+}
+
+/**
+ * The container that places the popup, as the Viewport of Base UI: a `<dialog>` that fills the
+ * screen, with the popup on the edge of the `swipeDirection`. Its `::backdrop` is the Backdrop: it
+ * fades with the swipe. A tap on it outside the popup closes the drawer.
+ */
+#[Component, Provide]
+class DrawerViewport
+{
+    /** The drawer of the viewport. */
+    #[Context] public ?Drawer $drawer = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        $place = $this->drawer?->swipeDirection->viewportClasses() ?? 'items-end justify-center';
+
+        return (
+            <dialog
+                data-phem-dialog-target="viewport"
+                className={{ classes('fixed m-0 p-0 inset-0 size-full max-w-none max-h-none border-0 bg-transparent overflow-hidden open:flex backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', place) }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </dialog>
+        );
+    }
+}
+
+/**
+ * The Backdrop of Base UI, as an element: for a drawer that is not modal (it has no `::backdrop`),
+ * or in a container of the page. It fades with the swipe.
+ */
+#[Component]
+function DrawerBackdrop(mixed ...$rest): Node
+{
+    return <div data-phem-dialog-target="backdrop" hidden className={{ classes('fixed inset-0 min-h-dvh bg-black opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] transition-opacity duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)]') }} {{ ...rest }} />;
+}
+
+/** An area at the edge of the screen: a swipe away from the edge opens the drawer. */
+#[Component]
+function DrawerSwipeArea(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-phem-dialog-target="swipeArea" className={{ classes('touch-none select-none') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/**
+ * The part of the page that the drawers indent, as the Provider of Base UI: put the
+ * DrawerIndentBackground and the DrawerIndent in it. While a drawer in it is open, the two parts
+ * get `data-active`, and `--drawer-swipe-progress` during its swipe.
+ */
+#[Component]
+function DrawerProvider(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-controller="phem-drawer-provider" {{ ...rest }}>{{ children }}</div>;
+}
+
+/** The background behind the DrawerIndent: it shows while the indent is smaller. */
+#[Component]
+function DrawerIndentBackground(mixed ...$rest): Node
+{
+    return <div data-phem-drawer-provider-target="background" {{ ...rest }} />;
+}
+
+/** The page that gets smaller while a drawer is open: style it with `data-active`. */
+#[Component]
+function DrawerIndent(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-phem-drawer-provider-target="indent" {{ ...rest }}>{{ children }}</div>;
 }

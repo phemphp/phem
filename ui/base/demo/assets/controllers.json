@@ -112,6 +112,10 @@
                 "enabled": true,
                 "fetch": "eager"
             },
+            "drawer-provider": {
+                "enabled": true,
+                "fetch": "eager"
+            },
             "button": {
                 "enabled": true,
                 "fetch": "eager"

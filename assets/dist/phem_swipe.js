@@ -191,8 +191,9 @@ const OPPOSITE = { up: "down", down: "up", left: "right", right: "left" }
 
 // The listeners stop when `signal` aborts.
 // A mouse press in an element of `content()` selects its text: it does not start a swipe.
-// `swiping(active)` runs when a swipe starts and when it ends.
-export function swipeable(popup, { direction, open = () => popup.open, close, snap = null, content = () => [], swiping = () => {} }, signal) {
+// `swiping(active)` runs when a swipe starts and when it ends. `progress(value)` runs with each
+// `--drawer-swipe-progress`, and with 0 or 1 at the release.
+export function swipeable(popup, { direction, open = () => popup.open, close, snap = null, content = () => [], swiping = () => {}, progress = () => {} }, signal) {
   popup.addEventListener("pointerdown", (event) => {
     const name = direction()
     if (!AXES[name] || !event.isPrimary || event.button !== 0 || !open()) return
@@ -229,9 +230,11 @@ export function swipeable(popup, { direction, open = () => popup.open, close, sn
         // A snap drawer opens to its full size, then resists.
         if (at < 0 && opens) at = -Math.sqrt(-at)
 
+        const value = size > from ? Math.max(0, Math.min(1, (at - from) / (size - from))) : 0
         popup.setAttribute("data-swiping", "")
         popup.style.setProperty(`--drawer-swipe-movement-${axis}`, `${Math.round((at - from) * sign)}px`)
-        popup.style.setProperty("--drawer-swipe-progress", String(size > from ? Math.max(0, Math.min(1, (at - from) / (size - from))) : 0))
+        popup.style.setProperty("--drawer-swipe-progress", String(value))
+        progress(value)
       },
       release: ({ movement, speed }) => {
         const distance = movement[axis] * sign
@@ -242,15 +245,87 @@ export function swipeable(popup, { direction, open = () => popup.open, close, sn
         const to = offsets.length > 0 ? snapTarget(offsets, size, from, at, distance, speed, snap.sequential?.() ?? false) : (distance >= size / 2 || speed >= SPEED ? size : 0)
         if (to >= size) {
           popup.setAttribute("data-swipe-dismiss", "")
+          progress(1)
           close()
 
           return
         }
 
         unswipe(popup, { strength: true })
+        progress(0)
         if (offsets.length > 0) snap.set(to)
       },
-      cancel: () => unswipe(popup),
+      cancel: () => {
+        unswipe(popup)
+        progress(0)
+      },
+    })
+  }, { signal })
+}
+
+// --- The swipe area: a swipe from the edge of the screen opens the drawer. ---
+//
+// A press on `area` and a move away from the edge (the opposite of the direction of the drawer)
+// open the drawer, and the popup follows the pointer: it gets `data-swiping`, the distance to its
+// open place in `--drawer-swipe-movement-x` or `--drawer-swipe-movement-y`, and
+// `--drawer-swipe-progress` (1 at the edge, 0 when it is open). A release after half the size of
+// the popup, or after a fast swipe, leaves it open. A shorter swipe closes it again.
+//
+//     swipeOpenable(area, { direction: () => "right", isOpen: () => …, open: () => …, close: () => …, popup: () => … }, signal)
+export function swipeOpenable(area, { direction, isOpen, open, close, popup, progress = () => {} }, signal) {
+  area.addEventListener("pointerdown", (event) => {
+    const name = direction()
+    if (!AXES[name] || !event.isPrimary || event.button !== 0 || isOpen()) return
+
+    const [axis, sign] = AXES[name]
+    let el = null
+    let size = 0
+
+    const place = (distance) => {
+      const rest = Math.max(0, size - Math.max(0, distance))
+      const value = size > 0 ? rest / size : 0
+      el.setAttribute("data-swiping", "")
+      el.style.setProperty(`--drawer-swipe-movement-${axis}`, `${Math.round(rest * sign)}px`)
+      el.style.setProperty("--drawer-swipe-progress", String(value))
+      progress(value)
+    }
+
+    swipe(event, [OPPOSITE[name]], {
+      // The movement away from the edge is the distance of the open.
+      move: (movement) => {
+        if (!el) {
+          open()
+          el = popup()
+          if (!el) return
+
+          size = axis === "x" ? el.offsetWidth : el.offsetHeight
+        }
+
+        place(-movement[axis] * sign)
+      },
+      release: ({ distance, speed }) => {
+        if (!el) return
+
+        el.removeAttribute("data-swiping")
+        el.style.setProperty("--drawer-swipe-strength", String(Math.max(0.1, Math.min(1, 1 - Math.abs(speed) / 4))))
+        if (distance >= size / 2 || speed >= SPEED) {
+          unswipe(el, { strength: true })
+          progress(0)
+
+          return
+        }
+
+        el.setAttribute("data-swipe-dismiss", "")
+        progress(1)
+        close()
+      },
+      cancel: () => {
+        if (!el) return
+
+        el.setAttribute("data-swipe-dismiss", "")
+        progress(1)
+        close()
+      },
     })
   }, { signal })
 }

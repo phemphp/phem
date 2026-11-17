@@ -46,7 +46,8 @@ The controllers are off by default. Enable each one that you use in `assets/cont
     "scroll-area": { "enabled": true, "fetch": "lazy" },
     "select": { "enabled": true, "fetch": "lazy" },
     "menubar": { "enabled": true, "fetch": "lazy" },
-    "navigation-menu": { "enabled": true, "fetch": "lazy" }
+    "navigation-menu": { "enabled": true, "fetch": "lazy" },
+    "drawer-provider": { "enabled": true, "fetch": "lazy" }
 }
 ```
 
@@ -1515,6 +1516,57 @@ A swipe moves the drawer up and down from its snap point. The release stops it a
             style="--drawer-height: 400px; --drawer-snap-point-offset: 0px;">...</dialog>
 </div>
 ```
+
+### Open a drawer with a swipe from the edge
+
+A `swipeArea` part is an area at the edge of the screen: a swipe away from the edge opens the drawer, and the popup follows the pointer.
+
+```html
+<div data-controller="phem-dialog" data-phem-dialog-swipe-direction-value="right" data-phem-dialog-modal-value="false">
+    <div class="swipe-area" data-phem-dialog-target="swipeArea"></div>
+    <dialog class="drawer" data-phem-dialog-target="popup">...</dialog>
+</div>
+```
+
+A press on the area and a move of 5 px away from the edge (to the left for a drawer on the right) open the drawer. During the swipe, the popup gets `data-swiping`, the distance to its open place in `--drawer-swipe-movement-x` or `--drawer-swipe-movement-y`, and `--drawer-swipe-progress` (1 at the edge, 0 when it is open). A release after half the size of the popup, or after a fast swipe, leaves it open. A shorter swipe closes it again. The same CSS as for a swipe that closes the drawer animates it.
+
+During a swipe, the controller dispatches `phem-dialog:swipe` with the `progress` in the detail. The `viewport` and the `backdrop` parts also get `--drawer-swipe-progress`, so the `::backdrop` of a viewport can fade with the swipe. The controller dispatches `phem-dialog:open` when the dialog opens and `phem-dialog:close` when it closes.
+
+### Indent the page behind a drawer
+
+`phem-drawer-provider` makes the page smaller while a drawer in it is open, as the Provider, the Indent and the IndentBackground of the Base UI drawer:
+
+```html
+<div data-controller="phem-drawer-provider">
+    <div class="indent-background" data-phem-drawer-provider-target="background"></div>
+    <div class="indent" data-phem-drawer-provider-target="indent">
+        <!-- the page, with drawers -->
+    </div>
+</div>
+```
+
+While a drawer (a `phem-dialog` with a `swipe-direction` value) in the element is open, the `indent` and `background` parts get `data-active`, else `data-inactive`. They get `--drawer-swipe-progress`: 0, and during the swipe of a drawer the part of the way to its close (from 0 to 1). A dialog that is not a drawer does not change them. After a click on a trigger, the browser shows:
+
+```html
+<div class="indent" data-phem-drawer-provider-target="indent" data-active style="--drawer-swipe-progress: 0;">...</div>
+```
+
+Use them in the CSS:
+
+```css
+.indent { transition: transform 0.4s; transform-origin: center top; }
+.indent[data-active] { transform: scale(calc(0.98 + 0.02 * var(--drawer-swipe-progress))) translateY(calc(0.5rem * (1 - var(--drawer-swipe-progress)))); }
+```
+
+### Lift the fields above the keyboard of a phone
+
+Set `data-phem-dialog-virtual-keyboard-value="true"` on a bottom sheet with fields, as the VirtualKeyboardProvider of the Base UI drawer. While the dialog is open and the keyboard of the device covers the bottom of the screen (`window.visualViewport`), its popup gets the height of the keyboard in `--drawer-keyboard-inset`, and the field with the focus scrolls into view. The variable goes when the keyboard closes, so always give it a fallback:
+
+```css
+.footer:focus-within { padding-bottom: calc(1rem + var(--drawer-keyboard-inset, 0px)); }
+```
+
+When a drawer opens, the browser gives the first focus to an element of the drawer, and scrolls the viewport and the content to it. A drawer then gives the focus to its popup, and scrolls them back to the top, so a long bottom sheet opens at its start.
 
 ## Switch between tabs
 

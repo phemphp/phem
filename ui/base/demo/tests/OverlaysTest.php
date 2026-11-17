@@ -114,13 +114,146 @@ final class OverlaysTest extends DemoTestCase
     {
         $page = $this->visitComponent('drawer');
 
-        $page->getByRole('button', ['name' => 'Open drawer'])->click();
-        $drawer = $page->getByRole('dialog', ['name' => 'Drawer']);
+        $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->getByRole('button', ['name' => 'Open drawer'])->click();
+        $drawer = $page->getByRole('dialog', ['name' => 'Drawer', 'exact' => true]);
         expect($drawer)->toBeVisible();
         expect($drawer)->toHaveAttribute('data-swipe-direction', 'right');
 
-        $drawer->getByRole('button', ['name' => 'Close'])->click();
+        // The popup goes past the right edge (the bleed): a swipe away from the edge shows no gap.
+        $this->settle($drawer);
+        self::assertTrue($drawer->evaluate('el => el.getBoundingClientRect().right > innerWidth + 40'));
+
+        // A swipe to the right closes it. A mouse press on the content selects its text, so the
+        // swipe starts below it.
+        $box = $drawer->boundingBox();
+        $page->mouse()->move($box['x'] + 10, $box['y'] + $box['height'] * 0.8);
+        $page->mouse()->down();
+        $page->mouse()->move($box['x'] + 300, $box['y'] + $box['height'] * 0.8, ['steps' => 10]);
+        $page->mouse()->up();
         expect($drawer)->toBeHidden();
+    }
+
+    public function testDrawerExamples(): void
+    {
+        $page = $this->visitComponent('drawer');
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+        $dialog = fn (string $name) => $page->getByRole('dialog', ['name' => $name, 'exact' => true]);
+
+        // State and Position: a bottom sheet, also in a viewport.
+        $region('State')->getByRole('button', ['name' => 'Open'])->click();
+        expect($dialog('Example drawer'))->toHaveAttribute('data-swipe-direction', 'down');
+        $dialog('Example drawer')->getByRole('button', ['name' => 'Close'])->click();
+        expect($dialog('Example drawer'))->toBeHidden();
+        $region('Position')->getByRole('button', ['name' => 'Open bottom drawer'])->click();
+        $notifications = $dialog('Notifications');
+        expect($notifications)->toBeVisible();
+        $notifications->getByRole('button', ['name' => 'Close'])->click();
+        expect($notifications)->toBeHidden();
+
+        // Nested drawers: the drawers behind the front one know that a drawer is open in them.
+        $region('Nested drawers')->getByRole('button', ['name' => 'Open drawer stack'])->click();
+        $dialog('Account')->getByRole('button', ['name' => 'Security settings'])->click();
+        $dialog('Security')->getByRole('button', ['name' => 'Advanced options'])->click();
+        expect($dialog('Advanced')->getByRole('textbox', ['name' => 'Device name']))->toHaveValue('Personal laptop');
+        expect($dialog('Account'))->toHaveAttribute('data-nested-drawer-open', '');
+        expect($dialog('Security'))->toHaveAttribute('data-nested-drawer-open', '');
+        $dialog('Advanced')->getByRole('button', ['name' => 'Done'])->click();
+        expect($dialog('Advanced'))->toBeHidden();
+        $page->keyboard()->press('Escape');
+        expect($dialog('Security'))->toBeHidden();
+        $page->keyboard()->press('Escape');
+        expect($dialog('Account'))->toBeHidden();
+
+        // Snap points: the sheet opens at its first snap point, and a swipe up gives its full height.
+        $region('Snap points')->getByRole('button', ['name' => 'Open snap drawer'])->click();
+        $snap = $page->locator('dialog[open] [data-phem-dialog-target="popup"]');
+        expect($snap)->toHaveAttribute('data-swipe-direction', 'down');
+        $this->settle($snap);
+        self::assertFalse($snap->evaluate('el => el.hasAttribute("data-expanded")'));
+        $box = $dialog('Snap points')->getByRole('heading', ['name' => 'Snap points'])->boundingBox();
+        $page->mouse()->move($box['x'] + 5, $box['y'] + 5);
+        $page->mouse()->down();
+        $page->mouse()->move($box['x'] + 5, 0, ['steps' => 10]);
+        $page->mouse()->up();
+        expect($snap)->toHaveAttribute('data-expanded', '');
+        $page->keyboard()->press('Escape');
+        expect($dialog('Snap points'))->toBeHidden();
+
+        // Virtual keyboard aware: the fields of the sheet.
+        $region('Virtual keyboard aware')->getByRole('button', ['name' => 'Open keyboard-aware drawer'])->click();
+        $delivery = $dialog('Delivery details');
+        expect($delivery->getByPlaceholder('Add a note for the driver'))->toBeVisible();
+        $delivery->getByRole('button', ['name' => 'Save'])->click();
+        expect($delivery)->toBeHidden();
+
+        // Indent effect: the page gets smaller while the drawer is open.
+        $indent = $region('Indent effect')->locator('[data-phem-drawer-provider-target="indent"]');
+        expect($indent)->toHaveAttribute('data-inactive', '');
+        $region('Indent effect')->getByRole('button', ['name' => 'Open drawer'])->click();
+        expect($indent)->toHaveAttribute('data-active', '');
+        $region('Indent effect')->getByRole('button', ['name' => 'Close'])->click();
+        expect($indent)->toHaveAttribute('data-inactive', '');
+
+        // Non-modal: a click on the page does not close it, and the page stays active.
+        $region('Non-modal')->getByRole('button', ['name' => 'Open non-modal drawer'])->click();
+        $nonModal = $dialog('Non-modal drawer');
+        expect($nonModal)->toBeVisible();
+        $page->getByRole('heading', ['name' => 'Drawer', 'level' => 1])->click();
+        expect($nonModal)->toBeVisible();
+        $nonModal->getByRole('button', ['name' => 'Close'])->click();
+        expect($nonModal)->toBeHidden();
+
+        // Mobile navigation: a long list of links.
+        $region('Mobile navigation')->getByRole('button', ['name' => 'Open mobile menu'])->click();
+        $menu = $dialog('Menu');
+        expect($menu->getByRole('link', ['name' => 'Dialog', 'exact' => true]))->toHaveAttribute('href', '/components/dialog');
+        $menu->getByRole('button', ['name' => 'Close menu'])->click();
+        expect($menu)->toBeHidden();
+
+        // Swipe to open: a swipe from the right edge of the box opens the drawer.
+        $area = $region('Swipe to open')->locator('[data-phem-dialog-target="swipeArea"]');
+        $area->scrollIntoViewIfNeeded();
+        $box = $area->boundingBox();
+        $page->mouse()->move($box['x'] + 20, $box['y'] + 100);
+        $page->mouse()->down();
+        $page->mouse()->move($box['x'] - 380, $box['y'] + 100, ['steps' => 10]);
+        $page->mouse()->up();
+        $library = $dialog('Library');
+        expect($library)->toBeVisible();
+        $this->settle($library->locator('[data-phem-dialog-target="popup"]'));
+        $library->getByRole('button', ['name' => 'Close'])->click();
+        expect($library)->toBeHidden();
+
+        // Close confirmation: a close with a text asks first.
+        $region('Close confirmation')->getByRole('button', ['name' => 'Tweet'])->click();
+        $tweet = $dialog('New tweet');
+        $tweet->getByRole('textbox')->fill('Hello');
+        $page->keyboard()->press('Escape');
+        $confirm = $page->getByRole('alertdialog', ['name' => 'Discard tweet?', 'exact' => true]);
+        expect($confirm)->toBeVisible();
+        $confirm->getByRole('button', ['name' => 'Discard'])->click();
+        expect($tweet)->toBeHidden();
+
+        // Action sheet: an action closes it.
+        $region('Action sheet with separate destructive action')->getByRole('button', ['name' => 'Open action sheet'])->click();
+        $sheet = $dialog('Profile actions');
+        expect($sheet->getByRole('button', ['name' => 'Block User']))->toBeVisible();
+        $sheet->getByRole('button', ['name' => 'Mute'])->click();
+        expect($sheet)->toBeHidden();
+
+        // Detached triggers: the title is the payload of the trigger.
+        $region('Detached triggers')->getByRole('button', ['name' => 'Settings'])->click();
+        $settings = $dialog('Settings');
+        expect($settings)->toBeVisible();
+        $settings->getByRole('button', ['name' => 'Close'])->click();
+        expect($settings)->toBeHidden();
+    }
+
+    // Waits for the end of the transitions of the element. The open transition starts in the frame
+    // after the open, when the element loses `data-starting-style`.
+    private function settle(\Playwright\Locator\LocatorInterface $locator): void
+    {
+        $locator->evaluate('el => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))).then(() => Promise.all(el.getAnimations().map((animation) => animation.finished)))');
     }
 
     public function testPopover(): void
