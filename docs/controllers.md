@@ -624,6 +624,90 @@ Set `data-phem-menu-modal-value="true"` for a modal menu. While it is open, the 
 
 A menu that the pointer opened (`data-phem-menu-open-on-hover-value="true"`) does not lock the page, as in Base UI: the lock would take the pointer from the trigger, and the menu would close. The same menu locks the page when a click or a key opens it.
 
+### Open one menu from several triggers
+
+One menu can have several triggers, as a popover (see [Open one popover from several triggers](#open-one-popover-from-several-triggers)). Each `trigger` part is a trigger, and an element anywhere in the page with `data-phem-menu-for` and the `id` of the controller element is a detached trigger. A submenu has only its own trigger. The menu opens next to the trigger that opened it, and Escape gives the focus back to this trigger. While a menu that is not modal is open, a press on another trigger moves it there (with `open-on-hover`, the pointer does it). A modal menu closes at a press on another trigger, as in Base UI: the lock of the page takes the pointer from the other triggers.
+
+The `viewport` part shows the content of the trigger: give the trigger a `data-phem-menu-payload`, and put a `<template data-payload>` with the same value in the viewport. The items of the copy are items of the menu.
+
+```html
+<button data-phem-menu-for="file-menu" data-phem-menu-payload="file">File</button>
+<button data-phem-menu-for="file-menu" data-phem-menu-payload="edit">Edit</button>
+
+<div id="file-menu" data-controller="phem-menu">
+    <div data-phem-menu-target="popup" popover="manual" hidden>
+        <div data-phem-menu-target="viewport">
+            <template data-payload="file">
+                <button data-phem-menu-target="item" onClick={{ newFile }}>New</button>
+            </template>
+            <template data-payload="edit">
+                <button data-phem-menu-target="item" onClick={{ undo }}>Undo</button>
+                <button data-phem-menu-target="item" onClick={{ redo }}>Redo</button>
+            </template>
+        </div>
+    </div>
+</div>
+```
+
+After a click on **Edit**, the browser shows:
+
+```html
+<button data-phem-menu-for="file-menu" data-phem-menu-payload="edit" aria-haspopup="menu" aria-expanded="true" data-popup-open data-pressed>Edit</button>
+<div id="file-menu" data-controller="phem-menu" data-phem-menu-open-value="true">
+    <div data-phem-menu-target="popup" role="menu" tabindex="-1" data-open ...>
+        <div data-phem-menu-target="viewport">
+            <template data-payload="file">...</template>
+            <template data-payload="edit">...</template>
+            <div data-current>
+                <button data-phem-menu-target="item" role="menuitem" tabindex="-1">Undo</button>
+                <button data-phem-menu-target="item" role="menuitem" tabindex="-1">Redo</button>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+The other triggers get `aria-expanded="false"`. The animations of the move, of the size (`--popup-width` and `--popup-height`) and of the content, `data-activation-direction`, and the `trigger-id` value are the same as for a tooltip. The `open` action takes a `trigger-id` param: `<button data-action="phem-menu#open" data-phem-menu-trigger-id-param="edit-trigger">`.
+
+### Filter the items
+
+An `input` part filters the items of the `list` part, as the FilterProvider of Base UI. Its text hides the items (and the triggers of the submenus) whose text does not contain it, with no case, no accents and no punctuation. The `data-label` attribute of an item replaces its text. A `group` part with no item to show gets `hidden`, and the `empty` part shows only when no item matches. A click on the `clear` part empties the input. The query resets when the menu closes.
+
+```html
+<div data-controller="phem-menu" data-phem-menu-auto-highlight-value="input">
+    <button data-phem-menu-target="trigger">Actions</button>
+    <div data-phem-menu-target="popup" popover="manual" hidden>
+        <input data-phem-menu-target="input" aria-label="Filter actions">
+        <button data-phem-menu-target="clear" aria-label="Clear">×</button>
+        <div data-phem-menu-target="empty" hidden>No actions found.</div>
+        <div data-phem-menu-target="list">
+            <button data-phem-menu-target="item" onClick={{ save }}>Save</button>
+            <button data-phem-menu-target="item" onClick={{ saveAs }}>Save as…</button>
+            <button data-phem-menu-target="item" data-label="Move to folder" onClick={{ move }}>Move</button>
+        </div>
+    </div>
+</div>
+```
+
+After a click on **Actions** and the text `as`, the browser shows:
+
+```html
+<div data-phem-menu-target="popup" role="dialog" tabindex="-1" data-open ...>
+    <input data-phem-menu-target="input" aria-label="Filter actions" role="searchbox" aria-controls="..." aria-activedescendant="...">
+    <button data-phem-menu-target="clear" aria-label="Clear">×</button>
+    <div data-phem-menu-target="empty" hidden>No actions found.</div>
+    <div data-phem-menu-target="list" role="menu">
+        <button data-phem-menu-target="item" role="menuitem" hidden>Save</button>
+        <button data-phem-menu-target="item" role="menuitem" data-highlighted>Save as…</button>
+        <button data-phem-menu-target="item" role="menuitem" data-label="Move to folder" hidden>Move</button>
+    </div>
+</div>
+```
+
+The popup is a `dialog` with the `searchbox` and the `menu`. An open with a click or the keyboard gives the focus to the input. An open on hover or with a touch gives it to the popup, so the keyboard of the device does not show. The arrow keys move the highlight while the input keeps the focus (`aria-activedescendant`), and Enter clicks the item with the highlight. The input gets `data-highlighted` when no item has the highlight. With the `auto-highlight` value `input`, the first match gets the highlight while the query is not empty, and with `always` also when it is empty. Tab closes the menu, and Shift+Tab gives the focus to the trigger. A submenu filters its items only with its own `input` part.
+
+With `data-phem-menu-filter-value="false"`, the controller hides no item: the server renders the items of the query, for example with an `onInput` handler on the input. The `empty` part and the highlight still follow the items.
+
 ## Build a menu bar
 
 `phem-menubar` is a bar of menus, as the menu bar of an application. Each menu of the bar is a `phem-menu` in the menubar element:

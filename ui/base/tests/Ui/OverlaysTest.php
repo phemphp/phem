@@ -155,6 +155,17 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorNotExists('[data-phem-menu-target="popup"][class*="data-instant"]');
     }
 
+    public function testAMenuHasDetachedTriggersAViewportAndAFilter(): void
+    {
+        $this->mount(self::APP.'MenuDetachedDemo')
+            ->assertSelectorExists('button#file-trigger[data-phem-menu-for="file-menu"][data-phem-menu-payload="file"]:not([data-phem-menu-target])')
+            ->assertSelectorExists('#file-menu[data-controller="phem-menu"][data-phem-menu-trigger-id-value="file-trigger"][data-phem-menu-auto-highlight-value="always"][data-phem-menu-filter-value="false"]')
+            ->assertSelectorExists('#file-menu input[role="searchbox"][data-phem-menu-target="input"][aria-label="Filter"]')
+            ->assertSelectorExists('#file-menu button[data-phem-menu-target="clear"]')
+            ->assertSelectorExists('#file-menu div[data-phem-menu-target="empty"][hidden]')
+            ->assertSelectorExists('#file-menu [data-phem-menu-target="list"] [data-phem-menu-target="viewport"] template[data-payload="file"]');
+    }
+
     public function testAMenuIsModalUnlessThePointerOpensIt(): void
     {
         $this->mount(self::APP.'MenuOptionsDemo')

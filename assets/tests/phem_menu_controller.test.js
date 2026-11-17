@@ -1177,3 +1177,192 @@ describe("phem-menu: the behavior of Base UI", () => {
     })
   })
 })
+
+describe("phem-menu: several triggers", () => {
+  // Two detached triggers with a payload each, and a viewport with a template for each payload.
+  const markup = `
+    <button id="t1" data-phem-menu-for="menu" data-phem-menu-payload="file">File</button>
+    <button id="t2" data-phem-menu-for="menu" data-phem-menu-payload="edit">Edit</button>
+    <div id="menu" data-controller="phem-menu">
+      <div id="popup" data-phem-menu-target="popup" hidden>
+        <div id="viewport" data-phem-menu-target="viewport">
+          <template data-payload="file"><button data-phem-menu-target="item">New</button></template>
+          <template data-payload="edit"><button data-phem-menu-target="item">Undo</button><button data-phem-menu-target="item">Redo</button></template>
+        </div>
+      </div>
+      <button id="t3" data-phem-menu-target="trigger">Open</button>
+      <button id="open-edit" data-action="phem-menu#open" data-phem-menu-trigger-id-param="t2">Open edit</button>
+    </div>`
+  const items = () => [...document.querySelectorAll("#viewport [data-current] [role=menuitem]")].map((el) => el.textContent)
+
+  it("opens next to the detached trigger with its payload, and moves to another trigger", async () => {
+    await mount(markup)
+
+    $("t1").click()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("popup").hidden).toBe(false)
+    expect(items()).toEqual(["New"])
+    expect($("t1").getAttribute("aria-expanded")).toBe("true")
+    expect($("t2").getAttribute("aria-expanded")).toBe("false")
+    expect($("t1").getAttribute("aria-haspopup")).toBe("menu")
+    expect($("menu").getAttribute("data-phem-menu-trigger-id-value")).toBe("t1")
+
+    $("t2").click()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("popup").hidden).toBe(false)
+    expect(items()).toEqual(["Undo", "Redo"])
+    expect($("t1").getAttribute("aria-expanded")).toBe("false")
+    expect($("t2").getAttribute("aria-expanded")).toBe("true")
+    expect($("t2").hasAttribute("data-popup-open")).toBe(true)
+
+    // Escape gives the focus back to the active trigger.
+    $("popup").focus()
+    press("Escape")
+    expect($("popup").hidden).toBe(true)
+    expect(document.activeElement).toBe($("t2"))
+  })
+
+  it("opens next to the trigger of the triggerId param of the open action", async () => {
+    await mount(markup)
+
+    $("open-edit").click()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("popup").hidden).toBe(false)
+    expect($("t2").getAttribute("aria-expanded")).toBe("true")
+    expect(items()).toEqual(["Undo", "Redo"])
+  })
+
+  it("keeps the menu open when the focus goes from the popup to another trigger", async () => {
+    await mount(markup)
+
+    $("t1").click()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    $("popup").focus()
+    $("t2").focus()
+    expect($("popup").hidden).toBe(false)
+  })
+})
+
+describe("phem-menu: a filter", () => {
+  const markup = (attributes = "") => `
+    <div id="menu" data-controller="phem-menu" ${attributes}>
+      <button id="trigger" data-phem-menu-target="trigger">Actions</button>
+      <div id="popup" data-phem-menu-target="popup" hidden>
+        <input id="input" data-phem-menu-target="input" aria-label="Filter actions">
+        <button id="clear" data-phem-menu-target="clear">Clear</button>
+        <div id="empty" data-phem-menu-target="empty" hidden>No actions found.</div>
+        <div id="list" data-phem-menu-target="list">
+          <div id="file" data-phem-menu-target="group">
+            <button id="new" data-phem-menu-target="item">New file</button>
+            <button id="save" data-phem-menu-target="item">Save</button>
+            <button id="save-as" data-phem-menu-target="item">Save as…</button>
+          </div>
+          <div id="organize" data-phem-menu-target="group">
+            <button id="move" data-phem-menu-target="item" data-label="Move to folder">Move</button>
+            <button id="delete" data-phem-menu-target="item">Délete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button id="outside">Outside</button>`
+  const type = (text) => {
+    $("input").value = text
+    $("input").dispatchEvent(new Event("input", { bubbles: true }))
+  }
+  // A click of the mouse: a click of the keyboard also highlights the first item.
+  const open = () => $("trigger").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+  const shown = () => [...document.querySelectorAll("#list [role=menuitem]")].filter((el) => !el.hidden).map((el) => el.id)
+
+  it("is a dialog with a searchbox and a menu, and the input gets the focus", async () => {
+    await mount(markup())
+
+    expect($("popup").getAttribute("role")).toBe("dialog")
+    expect($("list").getAttribute("role")).toBe("menu")
+    expect($("input").getAttribute("role")).toBe("searchbox")
+    expect($("input").getAttribute("aria-controls")).toBe("list")
+
+    open()
+    expect(document.activeElement).toBe($("input"))
+    expect($("input").hasAttribute("data-highlighted")).toBe(true)
+  })
+
+  it("hides the items and the groups that do not match, with no case, accents and punctuation", async () => {
+    await mount(markup())
+    open()
+
+    type("SAVE AS")
+    expect(shown()).toEqual(["save-as"])
+    expect($("organize").hidden).toBe(true)
+    expect($("file").hidden).toBe(false)
+    expect($("empty").hidden).toBe(true)
+
+    type("delete")
+    expect(shown()).toEqual(["delete"])
+
+    // The label of an item replaces its text.
+    type("folder")
+    expect(shown()).toEqual(["move"])
+
+    type("zzz")
+    expect(shown()).toEqual([])
+    expect($("empty").hidden).toBe(false)
+
+    // The clear part empties the query.
+    $("clear").click()
+    expect($("input").value).toBe("")
+    expect(shown()).toEqual(["new", "save", "save-as", "move", "delete"])
+    expect(document.activeElement).toBe($("input"))
+  })
+
+  it("moves the highlight with the arrow keys while the input keeps the focus, and Enter clicks the item", async () => {
+    await mount(markup())
+    open()
+    type("save")
+
+    press("ArrowDown")
+    expect(document.activeElement).toBe($("input"))
+    expect($("save").hasAttribute("data-highlighted")).toBe(true)
+    expect($("input").getAttribute("aria-activedescendant")).toBe("save")
+    expect($("input").hasAttribute("data-highlighted")).toBe(false)
+
+    press("ArrowDown")
+    expect($("save-as").hasAttribute("data-highlighted")).toBe(true)
+
+    const clicked = vi.fn()
+    $("save-as").addEventListener("click", clicked)
+    press("Enter")
+    expect(clicked).toHaveBeenCalledOnce()
+    expect($("popup").hidden).toBe(true)
+  })
+
+  it("highlights the first match with autoHighlight, and resets the query after the close", async () => {
+    await mount(markup('data-phem-menu-auto-highlight-value="input"'))
+    open()
+
+    expect(document.querySelector("[role=menuitem][data-highlighted]")).toBeNull()
+    type("as")
+    expect($("save-as").hasAttribute("data-highlighted")).toBe(true)
+
+    press("Escape")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("input").value).toBe("")
+    expect(shown()).toEqual(["new", "save", "save-as", "move", "delete"])
+  })
+
+  it("highlights the first item after an open with the keyboard", async () => {
+    await mount(markup())
+
+    $("trigger").click()
+    expect(document.activeElement).toBe($("input"))
+    expect($("new").hasAttribute("data-highlighted")).toBe(true)
+  })
+
+  it("hides nothing with the filter value false: the server renders the items of the query", async () => {
+    await mount(markup('data-phem-menu-filter-value="false"'))
+    open()
+
+    type("zzz")
+    expect(shown()).toEqual(["new", "save", "save-as", "move", "delete"])
+    expect($("empty").hidden).toBe(true)
+  })
+})

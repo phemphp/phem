@@ -12,7 +12,7 @@ final class MenusTest extends DemoTestCase
     {
         $page = $this->visitComponent('menu');
 
-        $trigger = $page->getByRole('button', ['name' => 'Song']);
+        $trigger = $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->getByRole('button', ['name' => 'Song']);
         $trigger->click();
         expect($page->getByRole('menu'))->toBeVisible();
         expect($trigger)->toHaveAttribute('aria-expanded', 'true');
@@ -42,14 +42,61 @@ final class MenusTest extends DemoTestCase
         expect($page->getByRole('menu'))->toHaveCount(0);
     }
 
-    public function testSubmenuCheckboxItemsAndRadioItems(): void
+    public function testMenuExamples(): void
     {
         $page = $this->visitComponent('menu');
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+        $menu = $page->getByRole('menu');
+        $texts = function ($locator, array $texts): void {
+            expect($locator)->toHaveCount(\count($texts));
+            self::assertSame($texts, $locator->evaluateAll('els => els.map((el) => el.textContent.trim())'));
+        };
 
-        $trigger = $page->getByRole('button', ['name' => 'Workspace']);
+        // Open on hover: the pointer opens the menu.
+        $region('Open on hover')->getByRole('button', ['name' => 'Add to playlist'])->hover();
+        expect($page->getByRole('menuitem', ['name' => 'Night Beats']))->toBeVisible();
+        $page->mouse()->move(5, 5);
+        expect($menu)->toHaveCount(0);
+
+        // Checkbox items: the server keeps the state, and the menu stays open.
+        $trigger = $region('Checkbox items')->getByRole('button', ['name' => 'Workspace']);
         $trigger->click();
+        $minimap = $page->getByRole('menuitemcheckbox', ['name' => 'Minimap']);
+        $sidebar = $page->getByRole('menuitemcheckbox', ['name' => 'Sidebar']);
+        expect($minimap)->toHaveAttribute('aria-checked', 'true');
+        $minimap->click();
+        expect($minimap)->toHaveAttribute('aria-checked', 'false');
+        expect($minimap)->toHaveAttribute('data-unchecked', '');
+        $sidebar->click();
+        expect($sidebar)->toHaveAttribute('aria-checked', 'true');
+        expect($trigger)->toHaveAttribute('aria-expanded', 'true');
+        $page->keyboard()->press('Escape');
 
-        // The pointer opens the submenu, and ArrowLeft closes it.
+        // Radio items: a radio item unchecks the other items of its group.
+        $region('Radio items')->getByRole('button', ['name' => 'Sort'])->click();
+        $date = $page->getByRole('menuitemradio', ['name' => 'Date']);
+        $type = $page->getByRole('menuitemradio', ['name' => 'Type']);
+        expect($date)->toHaveAttribute('aria-checked', 'true');
+        $type->click();
+        expect($type)->toHaveAttribute('aria-checked', 'true');
+        expect($date)->toHaveAttribute('aria-checked', 'false');
+        $page->keyboard()->press('Escape');
+
+        // Close on click: the item keeps the menu open, and the checkbox item closes it.
+        $region('Close on click')->getByRole('button', ['name' => 'Format'])->click();
+        $page->getByRole('menuitem', ['name' => 'Keep open'])->click();
+        expect($menu)->toBeVisible();
+        $page->getByRole('menuitemcheckbox', ['name' => 'Bold'])->click();
+        expect($menu)->toHaveCount(0);
+
+        // Group labels: the groups have the name of their label.
+        $region('Group labels')->getByRole('button', ['name' => 'View'])->click();
+        expect($page->getByRole('group', ['name' => 'Sort']))->toBeVisible();
+        expect($page->getByRole('group', ['name' => 'Workspace'])->getByRole('menuitemcheckbox'))->toHaveCount(3);
+        $page->keyboard()->press('Escape');
+
+        // Nested menu: the pointer opens the submenu, and ArrowLeft closes it.
+        $region('Nested menu')->getByRole('button', ['name' => 'Song'])->click();
         $playlist = $page->getByRole('menuitem', ['name' => 'Add to Playlist']);
         $playlist->hover();
         expect($page->getByRole('menuitem', ['name' => 'Night Beats']))->toBeVisible();
@@ -57,42 +104,99 @@ final class MenusTest extends DemoTestCase
         $page->keyboard()->press('ArrowLeft');
         expect($page->getByRole('menuitem', ['name' => 'Night Beats']))->toBeHidden();
         expect($playlist)->toBeFocused();
-
-        // A checkbox item with `defaultChecked` is checked. A click unchecks it, with no event.
-        $minimap = $page->getByRole('menuitemcheckbox', ['name' => 'Minimap']);
-        $sidebar = $page->getByRole('menuitemcheckbox', ['name' => 'Sidebar']);
-        expect($minimap)->toHaveAttribute('aria-checked', 'true');
-        expect($sidebar)->toHaveAttribute('aria-checked', 'false');
-        $minimap->click();
-        $sidebar->click();
-        expect($minimap)->toHaveAttribute('aria-checked', 'false');
-        expect($minimap)->toHaveAttribute('data-unchecked', '');
-        expect($sidebar)->toHaveAttribute('data-checked', '');
-
-        // A radio item unchecks the other items of its group.
-        $date = $page->getByRole('menuitemradio', ['name' => 'Date']);
-        $type = $page->getByRole('menuitemradio', ['name' => 'Type']);
-        expect($date)->toHaveAttribute('aria-checked', 'true');
-        $type->click();
-        expect($type)->toHaveAttribute('aria-checked', 'true');
-        expect($date)->toHaveAttribute('aria-checked', 'false');
-        expect($page->getByRole('menuitemradio', ['name' => 'Name']))->toHaveAttribute('aria-checked', 'false');
-
-        // A checkbox item with a handler takes its state from the server. The state of the
-        // browser of the other items stays after the morph, and the menu stays open.
-        $autosave = $page->getByRole('menuitemcheckbox', ['name' => 'Autosave']);
-        expect($autosave)->toHaveAttribute('aria-checked', 'true');
-        $autosave->click();
-        expect($autosave)->toHaveAttribute('aria-checked', 'false');
-        expect($sidebar)->toHaveAttribute('aria-checked', 'true');
-        expect($type)->toHaveAttribute('aria-checked', 'true');
-        expect($trigger)->toHaveAttribute('aria-expanded', 'true');
-
-        // The state stays when the menu opens again.
         $page->keyboard()->press('Escape');
-        $trigger->click();
-        expect($sidebar)->toHaveAttribute('aria-checked', 'true');
-        expect($type)->toHaveAttribute('aria-checked', 'true');
+
+        // Navigate to another page: the items are links.
+        $region('Navigate to another page')->getByRole('button', ['name' => 'Components'])->click();
+        expect($page->getByRole('menuitem', ['name' => 'Go to Dialog']))->toHaveAttribute('href', '/components/dialog');
+        $page->keyboard()->press('Escape');
+
+        // Open a dialog: the item closes the menu and opens the dialog.
+        $region('Open a dialog')->getByRole('button', ['name' => 'Open menu'])->click();
+        $page->getByRole('menuitem', ['name' => 'Open dialog'])->click();
+        $dialog = $page->getByRole('dialog', ['name' => 'Dialog from a menu', 'exact' => true]);
+        expect($dialog)->toBeVisible();
+        expect($menu)->toHaveCount(0);
+        $dialog->getByRole('button', ['name' => 'Close'])->click();
+        expect($dialog)->toBeHidden();
+
+        // Detached triggers: the trigger outside the root opens the menu, and gets the focus back.
+        $actions = $region('Detached triggers')->getByRole('button', ['name' => 'Project actions']);
+        $actions->click();
+        expect($page->getByRole('menuitem', ['name' => 'Move to folder']))->toBeVisible();
+        expect($actions)->toHaveAttribute('aria-expanded', 'true');
+        $page->keyboard()->press('Escape');
+        expect($menu)->toHaveCount(0);
+        expect($actions)->toBeFocused();
+
+        // Multiple triggers: the content of the payload of each trigger. The menu is modal: a press
+        // on the other trigger closes it, as in Base UI.
+        $file = $region('Multiple triggers')->getByRole('button', ['name' => 'File']);
+        $edit = $region('Multiple triggers')->getByRole('button', ['name' => 'Edit']);
+        $file->click();
+        $texts($menu->getByRole('menuitem'), ['New', 'Open', 'Save']);
+        $page->keyboard()->press('Escape');
+        $edit->click();
+        $texts($menu->getByRole('menuitem'), ['Undo', 'Redo', 'Cut', 'Copy', 'Paste']);
+        expect($edit)->toHaveAttribute('aria-expanded', 'true');
+        expect($file)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('Escape');
+        expect($menu)->toHaveCount(0);
+
+        // Controlled mode: the button opens the menu next to the second trigger.
+        $controlled = $region('Controlled mode with multiple triggers');
+        $controlled->getByRole('button', ['name' => 'Open playback (controlled)'])->click();
+        $texts($menu->getByRole('menuitem'), ['Play', 'Add to queue']);
+        expect($controlled->getByRole('button', ['name' => 'Playback', 'exact' => true]))->toHaveAttribute('aria-expanded', 'true');
+        $page->keyboard()->press('Escape');
+
+        // Arrow: the arrow is on the side of the trigger.
+        $region('Arrow')->getByRole('button', ['name' => 'Song'])->click();
+        expect($menu->locator('[data-phem-menu-target="arrow"]'))->toHaveAttribute('data-side', 'bottom');
+        $page->keyboard()->press('Escape');
+
+        // Animating the Menu: a menu that is not modal moves to the other trigger, and the popup
+        // gets the size variables of its content.
+        $animated = $region('Animating the Menu');
+        $animated->getByRole('button', ['name' => 'Library'])->click();
+        expect($page->getByRole('group', ['name' => 'Library']))->toBeVisible();
+        $animated->getByRole('button', ['name' => 'Share'])->click();
+        expect($page->getByRole('group', ['name' => 'Share']))->toBeVisible();
+        expect($animated->getByRole('button', ['name' => 'Share']))->toHaveAttribute('aria-expanded', 'true');
+        self::assertStringContainsString('--popup-width', (string) $menu->getAttribute('style'));
+        expect($menu->locator('[data-phem-menu-target="viewport"]'))->toHaveAttribute('data-activation-direction', 'right');
+        $page->keyboard()->press('Escape');
+        expect($menu)->toHaveCount(0);
+
+        // Filtering: the input keeps the focus, and the arrow keys move the highlight.
+        $region('Filtering')->getByRole('button', ['name' => 'Actions'])->click();
+        $filter = $page->getByRole('dialog')->getByRole('searchbox', ['name' => 'Filter actions']);
+        expect($filter)->toBeFocused();
+        $filter->fill('save');
+        $texts($menu->getByRole('menuitem'), ['Save', 'Save as']);
+        expect($page->getByRole('group', ['name' => 'Organize']))->toBeHidden();
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('ArrowDown');
+        expect($page->getByRole('menuitem', ['name' => 'Save as']))->toHaveAttribute('data-highlighted', '');
+        expect($filter)->toBeFocused();
+        $filter->fill('zzz');
+        expect($page->getByText('No actions found.'))->toBeVisible();
+        $page->getByRole('button', ['name' => 'Clear'])->first()->click();
+        expect($filter)->toHaveValue('');
+        expect($filter)->toBeFocused();
+
+        // A submenu has its own filter.
+        $filter->fill('move');
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('Enter');
+        $folders = $page->getByRole('searchbox', ['name' => 'Filter folders']);
+        expect($folders)->toBeFocused();
+        $folders->fill('proj');
+        expect($page->getByRole('menuitem', ['name' => 'Projects']))->toBeVisible();
+        expect($page->getByRole('menuitem', ['name' => 'Desktop']))->toBeHidden();
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('Enter');
+        expect($page->getByRole('dialog'))->toHaveCount(0);
     }
 
     public function testContextMenuOpensOnRightClick(): void

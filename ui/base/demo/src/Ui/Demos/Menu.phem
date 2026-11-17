@@ -6,8 +6,38 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger};
-use Phem\Ui\Base\{Menu, MenuRadioGroup, MenuSubmenu};
+use function Phem\Ui\Base\{DialogClose, DialogDescription, DialogPopup, DialogTitle, MenuArrow, MenuCheckboxItem, MenuClear, MenuEmpty, MenuGroup, MenuGroupLabel, MenuInput, MenuItem, MenuItemIndicator, MenuItemLabel, MenuLinkItem, MenuList, MenuPayload, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, MenuViewport};
+use Phem\Ui\Base\{Align, Dialog, Menu, MenuRadioGroup, MenuSubmenu};
+
+// The label of a group of items with an indicator: it starts at the text of the items.
+const MENU_INDICATOR_LABEL = 'py-2 pr-8 pl-[2.125rem]';
+
+// The content of a menu that changes with the trigger: it slides in from the side of the new
+// trigger, and the old content slides out to the other side.
+const MENU_ANIMATED_VIEWPORT = "relative h-full w-full overflow-clip p-0 [&_[data-current]]:w-[var(--popup-width)] [&_[data-current]]:translate-x-0 [&_[data-current]]:opacity-100 [&_[data-current]]:transition-[translate,opacity] [&_[data-current]]:duration-[350ms,175ms] [&_[data-current]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:-translate-x-1/2 data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:translate-x-1/2 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:opacity-0 [&_[data-previous]]:w-[var(--popup-width)] [&_[data-previous]]:translate-x-0 [&_[data-previous]]:opacity-100 [&_[data-previous]]:transition-[translate,opacity] [&_[data-previous]]:duration-[350ms,175ms] [&_[data-previous]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:translate-x-1/2 data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:-translate-x-1/2 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:opacity-0";
+
+const MENU_ANIMATED = [
+    'library' => ['Library', [['Add to library', 'Add to favorites'], ['Create playlist', 'Create station']]],
+    'playback' => ['Playback', [['Play now', 'Add to queue'], ['Play next', 'Play last', 'Sleep timer']]],
+    'share' => ['Share', [['Copy link', 'Copy embed code'], ['Share to contacts', 'Share to social']]],
+];
+
+const MENU_CONTROLLED = [
+    'library' => ['Add to library', 'Add to favorites'],
+    'playback' => ['Play', 'Add to queue'],
+    'share' => ['Share', 'Copy link'],
+];
+
+// The filter example: the input and its clear button, the popup and the items.
+const MENU_FILTER_POPUP = 'min-w-[max(14rem,var(--anchor-width))] overflow-hidden py-0';
+const MENU_FILTER_INPUT_BOX = 'flex items-center border-b border-neutral-300 has-data-highlighted:border-neutral-950 has-data-highlighted:ring-1 has-data-highlighted:ring-neutral-950 has-data-highlighted:ring-inset dark:border-neutral-700 dark:has-data-highlighted:border-white dark:has-data-highlighted:ring-white';
+const MENU_FILTER_LIST = 'max-h-[min(22rem,var(--available-height))] not-has-[>:not([hidden])]:py-0 [&>[data-filter-section]:not([hidden])~[data-filter-section]:not([hidden])>[data-filter-separator]]:block';
+const MENU_FILTER_SUBMENU_LIST = 'max-h-[min(28rem,var(--available-height))] not-has-[>:not([hidden])]:py-0';
+const MENU_FILTER_GROUP_LABEL = 'pt-1.5 pr-8 pb-1 pl-4 text-xs font-medium';
+const MENU_FILTER_SEPARATOR = 'hidden bg-neutral-300 dark:bg-neutral-700';
+const MENU_FILTER_SHARE = ['Email', 'Messages', 'AirDrop', 'Copy link', 'Invite collaborators', 'Publish to web', 'Send a copy'];
+const MENU_FILTER_FOLDERS = ['Desktop', 'Documents', 'Downloads', 'Projects', 'Archive', 'Shared', 'Trash'];
+const MENU_FILTER_EXPORTS = ['PDF document', 'Word document', 'Plain text', 'Rich text', 'Markdown', 'HTML page', 'Image'];
 
 #[Page('/components/menu')]
 function MenuPage(): Node
@@ -30,28 +60,135 @@ function MenuPage(): Node
                 </Menu>
             </Hero>
             <Examples>
-                <Example title="Submenu, checkbox items and radio items">
+                <Example title="Open on hover">
                     <Example.description>
-                        <p>A submenu, checkbox items and radio items. The browser keeps the state of the items with no handler. Autosave has a handler: the server keeps its state.</p>
+                        <p>To create a menu that opens on hover, add the <code>openOnHover</code> prop to <code>Menu</code>. You can additionally configure how quickly the menu opens on hover using the <code>delay</code> prop.</p>
                     </Example.description>
-                    <MenuCheckItemsDemo />
+                    <MenuHoverDemo />
+                </Example>
+                <Example title="Checkbox items">
+                    <Example.description>
+                        <p>Use the <code>MenuCheckboxItem</code> part to create a menu item that can toggle a setting on or off. Here, the server keeps the state: each item has <code>checked</code> and an <code>onClick</code> handler. With <code>defaultChecked</code> and no handler, the browser keeps it.</p>
+                    </Example.description>
+                    <MenuCheckboxDemo />
+                </Example>
+                <Example title="Radio items">
+                    <Example.description>
+                        <p>Use the <code>MenuRadioGroup</code> and <code>MenuRadioItem</code> parts to create menu items that work like radio buttons.</p>
+                    </Example.description>
+                    <MenuRadioDemo />
+                </Example>
+                <Example title="Close on click">
+                    <Example.description>
+                        <p>Use the <code>closeOnClick</code> prop to change whether the menu closes when an item is clicked. Here, the checkbox item closes the menu, and the first item keeps it open.</p>
+                    </Example.description>
+                    <MenuCloseOnClickDemo />
+                </Example>
+                <Example title="Group labels">
+                    <Example.description>
+                        <p>Use the <code>MenuGroupLabel</code> part to add a label to a <code>MenuGroup</code> or <code>MenuRadioGroup</code>.</p>
+                    </Example.description>
+                    <MenuGroupLabelsDemo />
+                </Example>
+                <Example title="Nested menu">
+                    <Example.description>
+                        <p>To create a submenu, nest a <code>MenuSubmenu</code> inside the popup of the parent menu. Use the <code>MenuSubmenuTrigger</code> part for the menu item that opens the nested menu.</p>
+                    </Example.description>
+                    <MenuSubmenuDemo />
+                </Example>
+                <Example title="Navigate to another page">
+                    <Example.description>
+                        <p>Use the <code>MenuLinkItem</code> part to create a link. Turbo follows it as a link of the page.</p>
+                    </Example.description>
+                    <MenuLinksDemo />
+                </Example>
+                <Example title="Open a dialog">
+                    <Example.description>
+                        <p>In order to open a dialog using a menu, make the menu item a detached trigger of the dialog: give it <code>data-phem-dialog-for</code> with the <code>handle</code> of the dialog. The click closes the menu and opens the dialog.</p>
+                    </Example.description>
+                    <MenuDialogDemo />
+                </Example>
+                <Example title="Detached triggers">
+                    <Example.description>
+                        <p>A menu can be opened by a trigger that lives either inside or outside the <code>Menu</code>. Keep the trigger inside <code>Menu</code> for simple, tightly coupled layouts like the hero demo at the top of this page. When the trigger and menu content need to live in different parts of the tree, give the same <code>handle</code> to the trigger and to the root. The root gets the handle as its <code>id</code>, and the trigger gets <code>data-phem-menu-for</code>.</p>
+                        <p>Note that only top-level menus can have detached triggers. Submenus must have their triggers defined within the <code>MenuSubmenu</code> part.</p>
+                    </Example.description>
+                    <MenuDetachedDemo />
+                </Example>
+                <Example title="Multiple triggers">
+                    <Example.description>
+                        <p>One menu can be opened by several triggers. You can either render multiple <code>MenuTrigger</code> components inside the same <code>Menu</code>, or attach several detached triggers to the same <code>handle</code>.</p>
+                        <p>Menus can render different content depending on which trigger opened them. Give each trigger a <code>payload</code>, and put a <code>MenuPayload</code> with the same <code>name</code> in the <code>MenuViewport</code>: the server renders each content in a <code>template</code>, and the viewport shows a copy of the content of the active trigger.</p>
+                    </Example.description>
+                    <MenuMultipleDemo />
+                </Example>
+                <Example title="Controlled mode with multiple triggers">
+                    <Example.description>
+                        <p>You can control the menu's open state with the <code>defaultOpen</code> and <code>triggerId</code> props of <code>Menu</code>: a render with new values opens the menu next to the trigger with that <code>id</code>. The controller keeps the values of the browser in <code>data-phem-menu-open-value</code> and <code>data-phem-menu-trigger-id-value</code>.</p>
+                        <p>Here, the button is in the root, and opens the menu without a request with the <code>phem-menu#open</code> action and a <code>triggerId</code> param.</p>
+                    </Example.description>
+                    <MenuControlledDemo />
+                </Example>
+                <Example title="Arrow">
+                    <Example.description>
+                        <p>Use the <code>MenuArrow</code> part inside the popup to visually connect the menu to its trigger.</p>
+                    </Example.description>
+                    <MenuArrowDemo />
+                </Example>
+                <Example title="Animating the Menu">
+                    <Example.description>
+                        <p>When one menu is opened by multiple detached triggers, you can animate the menu as it moves between triggers. This includes animating position, size, and content.</p>
+                        <p>To animate the menu's position, apply CSS transitions to the <code>top</code> and <code>left</code> properties of the <code>MenuPopup</code>. To animate its size, transition its <code>width</code> and <code>height</code> to <code>var(--popup-width)</code> and <code>var(--popup-height)</code>.</p>
+                        <p>To enable content animations, wrap the menu content in the <code>MenuViewport</code> part. It gets a <code>data-activation-direction</code> attribute with up to two space-separated tokens: a horizontal (<code>left</code> or <code>right</code>) and a vertical (<code>up</code> or <code>down</code>) value. Inside the viewport, content is wrapped in <code>div</code>s with <code>data-current</code> (the currently visible or the incoming content) and <code>data-previous</code> (the outgoing content).</p>
+                    </Example.description>
+                    <MenuAnimatedDemo />
+                </Example>
+                <Example title="Filtering">
+                    <Example.description>
+                        <p>Add <code>MenuInput</code> to the popup, and put the items inside <code>MenuList</code>. Label the input with <code>aria-label</code>, <code>aria-labelledby</code>, or a visible <code>&lt;label&gt;</code>. Type to narrow the actions, then use the arrow keys to move through matching items.</p>
+                        <p>Items match their text by default, ignoring case, accents, and punctuation. Use <code>label</code> to override it. Groups with no matching items get the <code>hidden</code> attribute and stay in the page, and <code>MenuEmpty</code> appears when no items match. <code>MenuClear</code> empties the query, and the query resets when the menu closes.</p>
+                        <p>Use <code>autoHighlight</code> to highlight the first match while filtering, or <code>autoHighlight="always"</code> to highlight it even when the query is empty. For server filtering, pass <code>filter={{ false }}</code> and render the results of an <code>onInput</code> handler on the input.</p>
+                        <p>Opening the menu with a click or the keyboard focuses the input. Opening it on hover or with a touch does not, so the on-screen keyboard stays hidden. The arrow keys move the highlight while the input keeps focus. <kbd>Tab</kbd> closes the menu, and <kbd>Shift</kbd>+<kbd>Tab</kbd> returns focus to the trigger. The popup is a <code>dialog</code> that holds the <code>searchbox</code> input and the <code>menu</code> list. Give each submenu its own <code>MenuInput</code>: submenus without one remain unfiltered.</p>
+                    </Example.description>
+                    <MenuFilterDemo />
                 </Example>
             </Examples>
         </DemoPage>
     );
 }
 
-// The other examples of the Base UI Menu docs: a submenu, checkbox items and radio items. The
-// browser keeps the state of the items with no handler. "Autosave" has a handler: the server
-// keeps its state.
+/** Open on hover: the pointer on the trigger opens the menu. */
 #[Component]
-final class MenuCheckItemsDemo
+function MenuHoverDemo(): Node
 {
-    #[State] public bool $autosave = true;
+    return (
+        <Menu openOnHover sideOffset={{ 8 }}>
+            <MenuTrigger>Add to playlist</MenuTrigger>
+            <MenuPopup>
+                <MenuItem>Get Up!</MenuItem>
+                <MenuItem>Inside Out</MenuItem>
+                <MenuItem>Night Beats</MenuItem>
+                <MenuItem>New playlist…</MenuItem>
+            </MenuPopup>
+        </Menu>
+    );
+}
 
-    public function toggleAutosave(): void
+/** Checkbox items: the server keeps the state of each item, and the menu stays open. */
+#[Component]
+final class MenuCheckboxDemo
+{
+    #[State] public bool $showMinimap = true;
+    #[State] public bool $showSearch = true;
+    #[State] public bool $showSidebar = false;
+
+    public function toggle(string $setting): void
     {
-        $this->autosave = !$this->autosave;
+        match ($setting) {
+            'minimap' => $this->showMinimap = !$this->showMinimap,
+            'search' => $this->showSearch = !$this->showSearch,
+            'sidebar' => $this->showSidebar = !$this->showSidebar,
+        };
     }
 
     public function render(): Node
@@ -60,48 +197,405 @@ final class MenuCheckItemsDemo
             <Menu sideOffset={{ 8 }}>
                 <MenuTrigger>Workspace</MenuTrigger>
                 <MenuPopup>
-                    <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
-                        <MenuSubmenuTrigger>Add to Playlist</MenuSubmenuTrigger>
-                        <MenuPopup>
-                            <MenuItem>Get Up!</MenuItem>
-                            <MenuItem>Inside Out</MenuItem>
-                            <MenuItem>Night Beats</MenuItem>
-                        </MenuPopup>
-                    </MenuSubmenu>
-                    <MenuSeparator />
-                    <MenuCheckboxItem defaultChecked>
-                        <MenuItemIndicator />
-                        <MenuItemLabel>Minimap</MenuItemLabel>
-                    </MenuCheckboxItem>
-                    <MenuCheckboxItem defaultChecked>
-                        <MenuItemIndicator />
-                        <MenuItemLabel>Search</MenuItemLabel>
-                    </MenuCheckboxItem>
-                    <MenuCheckboxItem>
-                        <MenuItemIndicator />
-                        <MenuItemLabel>Sidebar</MenuItemLabel>
-                    </MenuCheckboxItem>
-                    <MenuCheckboxItem checked={{ autosave }} onClick={{ toggleAutosave }}>
-                        <MenuItemIndicator />
-                        <MenuItemLabel>Autosave</MenuItemLabel>
-                    </MenuCheckboxItem>
-                    <MenuSeparator />
-                    <MenuRadioGroup defaultValue="date">
-                        <MenuRadioItem value="date">
-                            <MenuItemIndicator />
-                            <MenuItemLabel>Date</MenuItemLabel>
-                        </MenuRadioItem>
-                        <MenuRadioItem value="name">
-                            <MenuItemIndicator />
-                            <MenuItemLabel>Name</MenuItemLabel>
-                        </MenuRadioItem>
-                        <MenuRadioItem value="type">
-                            <MenuItemIndicator />
-                            <MenuItemLabel>Type</MenuItemLabel>
-                        </MenuRadioItem>
-                    </MenuRadioGroup>
+                    <MenuCheckboxItem checked={{ showMinimap }} onClick={{ toggle('minimap') }}><MenuItemIndicator /><MenuItemLabel>Minimap</MenuItemLabel></MenuCheckboxItem>
+                    <MenuCheckboxItem checked={{ showSearch }} onClick={{ toggle('search') }}><MenuItemIndicator /><MenuItemLabel>Search</MenuItemLabel></MenuCheckboxItem>
+                    <MenuCheckboxItem checked={{ showSidebar }} onClick={{ toggle('sidebar') }}><MenuItemIndicator /><MenuItemLabel>Sidebar</MenuItemLabel></MenuCheckboxItem>
                 </MenuPopup>
             </Menu>
         );
     }
+}
+
+/** Radio items: one value of the group is checked. */
+#[Component]
+function MenuRadioDemo(): Node
+{
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>Sort</MenuTrigger>
+            <MenuPopup>
+                <MenuRadioGroup defaultValue="date">
+                    <MenuRadioItem value="date"><MenuItemIndicator /><MenuItemLabel>Date</MenuItemLabel></MenuRadioItem>
+                    <MenuRadioItem value="name"><MenuItemIndicator /><MenuItemLabel>Name</MenuItemLabel></MenuRadioItem>
+                    <MenuRadioItem value="type"><MenuItemIndicator /><MenuItemLabel>Type</MenuItemLabel></MenuRadioItem>
+                </MenuRadioGroup>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+/** Close on click: a checkbox item that closes the menu, and an item that keeps it open. */
+#[Component]
+function MenuCloseOnClickDemo(): Node
+{
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>Format</MenuTrigger>
+            <MenuPopup>
+                <MenuItem closeOnClick={{ false }}>Keep open</MenuItem>
+                <MenuSeparator />
+                <MenuCheckboxItem closeOnClick><MenuItemIndicator /><MenuItemLabel>Bold</MenuItemLabel></MenuCheckboxItem>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+/** Group labels: a label for a radio group and for a group of checkbox items. */
+#[Component]
+function MenuGroupLabelsDemo(): Node
+{
+    $label = MENU_INDICATOR_LABEL;
+
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>View</MenuTrigger>
+            <MenuPopup>
+                <MenuRadioGroup defaultValue="date">
+                    <MenuGroupLabel className={{ label }}>Sort</MenuGroupLabel>
+                    <MenuRadioItem value="date"><MenuItemIndicator /><MenuItemLabel>Date</MenuItemLabel></MenuRadioItem>
+                    <MenuRadioItem value="name"><MenuItemIndicator /><MenuItemLabel>Name</MenuItemLabel></MenuRadioItem>
+                    <MenuRadioItem value="type"><MenuItemIndicator /><MenuItemLabel>Type</MenuItemLabel></MenuRadioItem>
+                </MenuRadioGroup>
+                <MenuSeparator />
+                <MenuGroup>
+                    <MenuGroupLabel className={{ label }}>Workspace</MenuGroupLabel>
+                    <MenuCheckboxItem defaultChecked><MenuItemIndicator /><MenuItemLabel>Minimap</MenuItemLabel></MenuCheckboxItem>
+                    <MenuCheckboxItem defaultChecked><MenuItemIndicator /><MenuItemLabel>Search</MenuItemLabel></MenuCheckboxItem>
+                    <MenuCheckboxItem><MenuItemIndicator /><MenuItemLabel>Sidebar</MenuItemLabel></MenuCheckboxItem>
+                </MenuGroup>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+/** Nested menu: "Add to Playlist" opens a submenu. */
+#[Component]
+function MenuSubmenuDemo(): Node
+{
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>Song</MenuTrigger>
+            <MenuPopup>
+                <MenuItem>Add to Library</MenuItem>
+                <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
+                    <MenuSubmenuTrigger>Add to Playlist</MenuSubmenuTrigger>
+                    <MenuPopup>
+                        <MenuItem>Get Up!</MenuItem>
+                        <MenuItem>Inside Out</MenuItem>
+                        <MenuItem>Night Beats</MenuItem>
+                        <MenuSeparator />
+                        <MenuItem>New playlist…</MenuItem>
+                    </MenuPopup>
+                </MenuSubmenu>
+                <MenuSeparator />
+                <MenuItem>Play Next</MenuItem>
+                <MenuItem>Play Last</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Favorite</MenuItem>
+                <MenuItem>Share</MenuItem>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+/** Navigate to another page: the items are links. */
+#[Component]
+function MenuLinksDemo(): Node
+{
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>Components</MenuTrigger>
+            <MenuPopup>
+                <MenuLinkItem href="/components/dialog">Go to Dialog</MenuLinkItem>
+                <MenuLinkItem href="/components/popover">Go to Popover</MenuLinkItem>
+                <MenuLinkItem href="/components/tooltip">Go to Tooltip</MenuLinkItem>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+/** Open a dialog: the item is a detached trigger of the dialog. */
+#[Component]
+function MenuDialogDemo(): Node
+{
+    return (
+        <div>
+            <Menu sideOffset={{ 8 }}>
+                <MenuTrigger>Open menu</MenuTrigger>
+                <MenuPopup>
+                    <MenuItem data-phem-dialog-for="menu-dialog">Open dialog</MenuItem>
+                </MenuPopup>
+            </Menu>
+            <Dialog handle="menu-dialog">
+                <DialogPopup>
+                    <div className="flex flex-col gap-1">
+                        <DialogTitle>Dialog from a menu</DialogTitle>
+                        <DialogDescription>The menu item opened this dialog.</DialogDescription>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <DialogClose>Close</DialogClose>
+                    </div>
+                </DialogPopup>
+            </Dialog>
+        </div>
+    );
+}
+
+#[Component]
+function EllipsisIcon(): Node
+{
+    return (
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="block">
+            <circle cx="3" cy="8" r="1" />
+            <circle cx="8" cy="8" r="1" />
+            <circle cx="13" cy="8" r="1" />
+        </svg>
+    );
+}
+
+/** Detached triggers: the trigger is outside the root, with the same handle. */
+#[Component]
+function MenuDetachedDemo(): Node
+{
+    return (
+        <div>
+            <MenuTrigger handle="project-actions" caret={{ false }} aria-label="Project actions" className="px-2"><EllipsisIcon /></MenuTrigger>
+            <Menu handle="project-actions" sideOffset={{ 8 }}>
+                <MenuPopup>
+                    <MenuItem>Rename</MenuItem>
+                    <MenuItem>Duplicate</MenuItem>
+                    <MenuItem>Move to folder</MenuItem>
+                    <MenuItem>Archive</MenuItem>
+                    <MenuItem className="text-red-600">Delete</MenuItem>
+                </MenuPopup>
+            </Menu>
+        </div>
+    );
+}
+
+/** Multiple triggers: two detached triggers, and a content for each payload. */
+#[Component]
+function MenuMultipleDemo(): Node
+{
+    return (
+        <div className="flex gap-2">
+            <MenuTrigger handle="multiple-menu" payload="file">File</MenuTrigger>
+            <MenuTrigger handle="multiple-menu" payload="edit">Edit</MenuTrigger>
+            <Menu handle="multiple-menu" sideOffset={{ 8 }}>
+                <MenuPopup>
+                    <MenuViewport>
+                        <MenuPayload name="file">
+                            <MenuItem>New</MenuItem>
+                            <MenuItem>Open</MenuItem>
+                            <MenuItem>Save</MenuItem>
+                        </MenuPayload>
+                        <MenuPayload name="edit">
+                            <MenuItem>Undo</MenuItem>
+                            <MenuItem>Redo</MenuItem>
+                            <MenuItem>Cut</MenuItem>
+                            <MenuItem>Copy</MenuItem>
+                            <MenuItem>Paste</MenuItem>
+                        </MenuPayload>
+                    </MenuViewport>
+                </MenuPopup>
+            </Menu>
+        </div>
+    );
+}
+
+/** Controlled mode: three triggers in the root, and a button that opens the menu for the second one. */
+#[Component]
+function MenuControlledDemo(): Node
+{
+    $menus = MENU_CONTROLLED;
+
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <div className="flex flex-wrap justify-center gap-2">
+                <MenuTrigger id="menu-trigger-1" payload="library" caret={{ false }} className="px-3">Library</MenuTrigger>
+                <MenuTrigger id="menu-trigger-2" payload="playback" caret={{ false }} className="px-3">Playback</MenuTrigger>
+                <MenuTrigger id="menu-trigger-3" payload="share" caret={{ false }} className="px-3">Share</MenuTrigger>
+                <button type="button" data-action="phem-menu#open" data-phem-menu-trigger-id-param="menu-trigger-2" className="flex h-8 items-center justify-center border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 px-3 text-sm text-neutral-950 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Open playback (controlled)</button>
+            </div>
+            <MenuPopup>
+                <MenuViewport>
+                    {% for name, items in menus %}
+                        <MenuPayload key={{ name }} name={{ name }}>
+                            {% for item in items %}
+                                <MenuItem key={{ item }}>{{ item }}</MenuItem>
+                            {% endfor %}
+                        </MenuPayload>
+                    {% endfor %}
+                </MenuViewport>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+/** Arrow: the popup points to its trigger. */
+#[Component]
+function MenuArrowDemo(): Node
+{
+    return (
+        <Menu sideOffset={{ 8 }} align={{ Align.Center }}>
+            <MenuTrigger>Song</MenuTrigger>
+            <MenuPopup>
+                <MenuArrow />
+                <MenuItem>Add to Library</MenuItem>
+                <MenuItem>Add to Playlist</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Play Next</MenuItem>
+                <MenuItem>Play Last</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Favorite</MenuItem>
+                <MenuItem>Share</MenuItem>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+/** Animating the Menu: the popup moves, changes its size and slides its content between triggers. */
+#[Component]
+function MenuAnimatedDemo(): Node
+{
+    $menus = MENU_ANIMATED;
+    $viewport = MENU_ANIMATED_VIEWPORT;
+
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <MenuTrigger handle="animated-menu" payload="library" caret={{ false }} className="px-3">Library</MenuTrigger>
+            <MenuTrigger handle="animated-menu" payload="playback" caret={{ false }} className="px-3">Playback</MenuTrigger>
+            <MenuTrigger handle="animated-menu" payload="share" caret={{ false }} className="px-3">Share</MenuTrigger>
+            <Menu handle="animated-menu" modal={{ false }} sideOffset={{ 8 }}>
+                <MenuPopup className="h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] max-w-[var(--available-width)] transition-[top,left,width,height,opacity,scale] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] data-starting-style:scale-90 data-ending-style:scale-90 data-instant:transition-none">
+                    <MenuViewport className={{ viewport }}>
+                        {% for name, menu in menus %}
+                            <MenuPayload key={{ name }} name={{ name }}>
+                                {% for group in menu[1] %}
+                                    <MenuGroup key={{ loop.index }}>
+                                        {% if loop.first %}
+                                            <MenuGroupLabel>{{ menu[0] }}</MenuGroupLabel>
+                                        {% endif %}
+                                        {% for item in group %}
+                                            <MenuItem key={{ item }}>{{ item }}</MenuItem>
+                                        {% endfor %}
+                                    </MenuGroup>
+                                    {% if not loop.last %}
+                                        <MenuSeparator />
+                                    {% endif %}
+                                {% endfor %}
+                            </MenuPayload>
+                        {% endfor %}
+                    </MenuViewport>
+                </MenuPopup>
+            </Menu>
+        </div>
+    );
+}
+
+#[Component]
+function MenuClearIcon(): Node
+{
+    return (
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block">
+            <path d="m3.5 3.5 9 9m0-9-9 9" />
+        </svg>
+    );
+}
+
+/** A submenu with its own filter. */
+#[Component]
+function MenuFilterSubmenu(string $label, string $inputLabel, string $placeholder, string $emptyText, array $options): Node
+{
+    $popup = MENU_FILTER_POPUP;
+    $box = MENU_FILTER_INPUT_BOX;
+    $list = MENU_FILTER_SUBMENU_LIST;
+
+    return (
+        <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
+            <MenuSubmenuTrigger>{{ label }}</MenuSubmenuTrigger>
+            <MenuPopup className={{ popup }}>
+                <div className={{ box }}>
+                    <MenuInput aria-label={{ inputLabel }} placeholder={{ placeholder }} />
+                    <MenuClear><MenuClearIcon /></MenuClear>
+                </div>
+                <MenuEmpty>{{ emptyText }}</MenuEmpty>
+                <MenuList className={{ list }}>
+                    {% for option in options %}
+                        <MenuItem key={{ option }}>{{ option }}</MenuItem>
+                    {% endfor %}
+                </MenuList>
+            </MenuPopup>
+        </MenuSubmenu>
+    );
+}
+
+/** Filtering: the input narrows the actions, with filterable submenus. */
+#[Component]
+function MenuFilterDemo(): Node
+{
+    $popup = MENU_FILTER_POPUP;
+    $box = MENU_FILTER_INPUT_BOX;
+    $list = MENU_FILTER_LIST;
+    $submenuList = MENU_FILTER_SUBMENU_LIST;
+    $groupLabel = MENU_FILTER_GROUP_LABEL;
+    $separator = MENU_FILTER_SEPARATOR;
+    $share = MENU_FILTER_SHARE;
+    $folders = MENU_FILTER_FOLDERS;
+    $exports = MENU_FILTER_EXPORTS;
+
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>Actions</MenuTrigger>
+            <MenuPopup className={{ popup }}>
+                <div className={{ box }}>
+                    <MenuInput aria-label="Filter actions" placeholder="e.g. Save" />
+                    <MenuClear><MenuClearIcon /></MenuClear>
+                </div>
+                <MenuEmpty>No actions found.</MenuEmpty>
+                <MenuList className={{ list }}>
+                    <MenuGroup data-filter-section>
+                        <MenuGroupLabel className={{ groupLabel }}>File</MenuGroupLabel>
+                        <MenuItem>New file</MenuItem>
+                        <MenuItem>Open file</MenuItem>
+                        <MenuItem>Save</MenuItem>
+                        <MenuItem>Save as</MenuItem>
+                        <MenuItem>Duplicate</MenuItem>
+                        <MenuItem>Rename</MenuItem>
+                    </MenuGroup>
+                    <MenuGroup data-filter-section>
+                        <MenuGroupLabel className={{ groupLabel }}>Organize</MenuGroupLabel>
+                        <MenuFilterSubmenu label="Move to folder" inputLabel="Filter folders" placeholder="e.g. Projects" emptyText="No folders found." options={{ folders }} />
+                        <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
+                            <MenuSubmenuTrigger>Share</MenuSubmenuTrigger>
+                            <MenuPopup className={{ popup }}>
+                                <MenuList className={{ submenuList }}>
+                                    {% for option in share %}
+                                        <MenuItem key={{ option }}>{{ option }}</MenuItem>
+                                    {% endfor %}
+                                </MenuList>
+                            </MenuPopup>
+                        </MenuSubmenu>
+                        <MenuFilterSubmenu label="Export" inputLabel="Filter export formats" placeholder="e.g. PDF" emptyText="No export formats found." options={{ exports }} />
+                        <MenuItem>Download a copy</MenuItem>
+                        <MenuItem>Delete</MenuItem>
+                    </MenuGroup>
+                    <MenuRadioGroup data-filter-section defaultValue="date">
+                        <MenuSeparator data-filter-separator className={{ separator }} />
+                        <MenuGroupLabel className={{ groupLabel }}>Sort by</MenuGroupLabel>
+                        <MenuRadioItem value="date"><MenuItemIndicator /><MenuItemLabel>Date modified</MenuItemLabel></MenuRadioItem>
+                        <MenuRadioItem value="name"><MenuItemIndicator /><MenuItemLabel>Name</MenuItemLabel></MenuRadioItem>
+                        <MenuRadioItem value="size"><MenuItemIndicator /><MenuItemLabel>Size</MenuItemLabel></MenuRadioItem>
+                    </MenuRadioGroup>
+                    <MenuGroup data-filter-section>
+                        <MenuSeparator data-filter-separator className={{ separator }} />
+                        <MenuGroupLabel className={{ groupLabel }}>View</MenuGroupLabel>
+                        <MenuCheckboxItem defaultChecked><MenuItemIndicator /><MenuItemLabel>Show details</MenuItemLabel></MenuCheckboxItem>
+                        <MenuCheckboxItem><MenuItemIndicator /><MenuItemLabel>Show sidebar</MenuItemLabel></MenuCheckboxItem>
+                        <MenuCheckboxItem><MenuItemIndicator /><MenuItemLabel>Keep available offline</MenuItemLabel></MenuCheckboxItem>
+                    </MenuGroup>
+                </MenuList>
+            </MenuPopup>
+        </Menu>
+    );
 }

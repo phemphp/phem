@@ -15,12 +15,25 @@ use Phem\{Html, Node};
  * As in Base UI, the menu is modal by default: the page does not scroll while it is open. A menu
  * with `openOnHover` and a menu in a Menubar are not modal. With `disabled`, the trigger does not
  * open it.
+ *
+ * A `handle` links the root to detached triggers: a MenuTrigger with the same `handle`, anywhere
+ * in the page, opens this menu. The MenuViewport shows the MenuPayload of the `payload` of the
+ * trigger that opened it, and `triggerId` is the `id` of this trigger.
+ *
+ * A MenuInput in the popup filters the items of the MenuList, as the FilterProvider of Base UI.
+ * `autoHighlight` highlights the first match while the query is not empty (`'always'`: also when
+ * it is empty). With `filter={{ false }}`, the browser hides no item: an `onInput` handler on the
+ * MenuInput renders the items of the query.
  */
 #[Component, Provide]
 class Menu
 {
+    #[Prop] public ?string $handle = null;
     #[Prop] public bool $defaultOpen = false;
+    #[Prop] public ?string $triggerId = null;
     #[Prop] public bool $disabled = false;
+    #[Prop] public bool|string $autoHighlight = false;
+    #[Prop] public bool $filter = true;
     #[Prop] public bool $modal = true;
     #[Prop] public bool $openOnHover = false;
     #[Prop] public int $delay = 100;
@@ -74,8 +87,12 @@ class Menu
         $prefix = 'data-'.$this->controller().'-';
 
         return [
+            'id' => $this->handle,
             'data-controller' => $this->controller(),
             $prefix.'open-value' => $this->defaultOpen ? 'true' : null,
+            $prefix.'trigger-id-value' => $this->triggerId,
+            $prefix.'auto-highlight-value' => true === $this->autoHighlight ? 'input' : (false === $this->autoHighlight ? null : $this->autoHighlight),
+            $prefix.'filter-value' => $this->filter ? null : 'false',
             // A Menubar locks the page for its menus.
             // No lock for a menu that the pointer opens: the lock takes the pointer from its trigger.
             $prefix.'modal-value' => $this->modal && !$this->openOnHover && null === $this->menubar ? 'true' : null,
@@ -115,13 +132,28 @@ class MenuSubmenu extends Menu
  * The button that opens the menu. It has a caret, unless `caret` is false. In a Menubar, it has the
  * look of the bar and no caret. In a Toolbar, it is an item of the toolbar, with the look of a
  * ToolbarButton.
+ *
+ * With a `handle`, it is a detached trigger of the Menu with the same `handle`: it can be anywhere
+ * in the page. The `payload` selects the MenuPayload that the MenuViewport shows while this
+ * trigger opened the menu.
  */
 #[Component]
-function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, #[Context] ?Toolbar $toolbar = null, bool $disabled = false, bool $caret = true, ?Html $children = null, mixed ...$rest): Node
-{
-    $disabled = $disabled || $menu->disabled;
+function MenuTrigger(
+    #[Context] ?Menu $menu = null,
+    #[Context] ?Menubar $menubar = null,
+    #[Context] ?Toolbar $toolbar = null,
+    ?string $handle = null,
+    ?string $payload = null,
+    bool $disabled = false,
+    bool $caret = true,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
+    $disabled = $disabled || true === $menu?->disabled;
     $caret = $caret && null === $menubar;
-    $target = $menu->target('trigger');
+    $controller = $menu?->controller() ?? 'phem-menu';
+    $target = null === $handle ? ['data-'.$controller.'-target' => 'trigger'] : ['data-'.$controller.'-for' => $handle];
+    $target['data-'.$controller.'-payload'] = $payload;
     $item = null !== $toolbar && null === $menubar ? 'item' : null;
     $base = null !== $item ? Style::TOOLBAR_BUTTON : (null !== $menubar
         ? 'h-8 border-0 bg-transparent px-3 font-[inherit] text-sm font-normal text-neutral-950 select-none data-pressed:bg-neutral-100 data-disabled:text-neutral-500 dark:text-white dark:focus-visible:bg-neutral-800 dark:data-pressed:bg-neutral-800 dark:data-disabled:text-neutral-400 focus-visible:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 focus-visible:relative dark:focus-visible:outline-white'
@@ -186,10 +218,11 @@ function MenuArrow(#[Context] Menu $menu, mixed ...$rest): Node
 
 /**
  * An action of the menu. A click runs its handler (`onClick`) and closes the menu. With
- * `closeOnClick={{ false }}`, the menu stays open.
+ * `closeOnClick={{ false }}`, the menu stays open. The `label` replaces the text of the item for
+ * the filter of a MenuInput.
  */
 #[Component]
-function MenuItem(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, bool $disabled = false, bool $closeOnClick = true, ?Html $children = null, mixed ...$rest): Node
+function MenuItem(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, bool $disabled = false, bool $closeOnClick = true, ?string $label = null, ?Html $children = null, mixed ...$rest): Node
 {
     $target = $menu->target('item');
     $close = $closeOnClick ? null : 'false';
@@ -201,6 +234,7 @@ function MenuItem(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, bo
             type="button"
             aria-disabled={{ disabled ? 'true' : null }}
             data-disabled={{ disabled ? '' : null }}
+            data-label={{ label }}
             className={{ classes(base) }}
             {{ ...target }}
             {{ ...{(closeAttr): close} }}
@@ -322,4 +356,81 @@ function MenuRadioItem(#[Context] Menu $menu, #[Context] ?MenuRadioGroup $group 
     $base = null !== $menu->menubar ? Style::MENUBAR_CHECK_ITEM : Style::MENU_CHECK_ITEM;
 
     return <button type="button" className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
+}
+
+/**
+ * The content of the popup that changes with the trigger, as the Viewport of Base UI. It shows the
+ * MenuPayload of the `payload` of the active trigger, and animates the change: the content is in
+ * a `div` with `data-current`, the old content in a `div` with `data-previous`, and the viewport
+ * gets `data-activation-direction`.
+ */
+#[Component]
+function MenuViewport(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('viewport');
+
+    return <div {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/** The content that the MenuViewport shows for the triggers with this `payload`. */
+#[Component]
+function MenuPayload(string $name, ?Html $children = null): Node
+{
+    return <template data-payload={{ name }}>{{ children }}</template>;
+}
+
+/** The input of the filter: its text hides the items of the MenuList that do not match it. */
+#[Component]
+function MenuInput(#[Context] Menu $menu, mixed ...$rest): Node
+{
+    $target = $menu->target('input');
+
+    return (
+        <input
+            type="text"
+            role="searchbox"
+            autocomplete="off"
+            spellcheck="false"
+            className={{ classes('min-h-8 w-0 flex-1 bg-transparent px-2.5 text-sm any-pointer-coarse:text-base leading-none outline-hidden placeholder:text-neutral-500 dark:placeholder:text-neutral-400') }}
+            {{ ...target }}
+            {{ ...rest }}
+        />
+    );
+}
+
+/** A button that empties the MenuInput. */
+#[Component]
+function MenuClear(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('clear');
+
+    return (
+        <button
+            type="button"
+            aria-label="Clear"
+            className={{ classes('flex size-8 items-center justify-center bg-transparent text-neutral-950 dark:text-white outline-hidden focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
+            {{ ...target }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+/** The text that shows when no item matches the query of the MenuInput. */
+#[Component]
+function MenuEmpty(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('empty');
+
+    return <div hidden className={{ classes('p-3 text-sm text-neutral-500 dark:text-neutral-400') }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/** The items that the MenuInput filters: the `menu` of a popup with a filter. */
+#[Component]
+function MenuList(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('list');
+
+    return <div className={{ classes('overflow-y-auto py-1 outline-hidden scroll-py-1') }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
 }

@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-menu` has several triggers, as `phem-popover`: the `trigger` parts and the detached
+  triggers with `data-phem-menu-for`. While a menu that is not modal is open, a press on another
+  trigger moves it there. The `viewport` part shows a copy of the `<template data-payload>` of the
+  `data-phem-menu-payload` of the trigger, the `trigger-id` value is the `id` of the active
+  trigger, and the `open` action takes a `triggerId` param. Each trigger gets its own
+  `aria-expanded`. A menu with an `input` part filters the items of its `list` part, with the new
+  `empty` and `clear` parts, the `data-label` attribute of an item, and the new `auto-highlight`
+  and `filter` values. The arrow keys move the highlight while the input keeps the focus. See
+  docs/controllers.md.
 - `phem-dialog` has several triggers, as `phem-popover`: the `trigger` parts and the detached
   triggers with `data-phem-dialog-for`, for example an item of a menu. Each trigger gets its own
   `aria-expanded`, the `payload` part shows the `data-phem-dialog-payload` of the trigger, the

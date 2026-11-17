@@ -3,10 +3,13 @@ import { ClientState } from "./phem_client_state.js"
 import { Hover } from "./phem_hover.js"
 import { modal } from "./phem_modal.js"
 import { Popup } from "./phem_popup.js"
+import { PopupSize } from "./phem_popup_size.js"
+import { PopupViewport } from "./phem_popup_viewport.js"
 import { ReleaseClick } from "./phem_release.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, movesFocus, nextItem, Typeahead } from "./phem_roving.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
+import { Triggers, activationDirection } from "./phem_triggers.js"
 
 // The controllers of a menu: a submenu is a menu in the popup of one of them.
 const IDENTIFIERS = ["phem-menu", "phem-context-menu"]
@@ -24,9 +27,20 @@ const SUBMENU_GRACE = 150
 // UI: a quick click on the trigger does not run the item that opens under the pointer.
 const RELEASE_DELAY = 200
 
-// An item that the keys and the pointer skip: only an item with `disabled`, which cannot get the
-// focus. An item with `aria-disabled="true"` gets the focus, as in Base UI.
-const skipped = (el) => el.matches(":disabled")
+// An item that the keys and the pointer skip: an item with `disabled`, which cannot get the
+// focus, and an item that the filter hides. An item with `aria-disabled="true"` gets the focus, as
+// in Base UI.
+const skipped = (el) => el.matches(":disabled") || el.hidden
+
+// The text of an item for the filter: no case, no accents, no punctuation.
+const normalize = (text) =>
+  text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[\p{P}\p{S}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
 
 // The roles of an item that the user checks: a checkbox item and a radio item.
 const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
@@ -121,14 +135,43 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 // and a disabled item gets `data-disabled`. The popup of a submenu gets `data-nested`. The popup is
 // positioned as a `phem-popover` (phem_position.js).
 //
+// One menu can have several triggers: `trigger` targets, and elements anywhere in the page with
+// `data-phem-menu-for` and the `id` of the controller element (phem_triggers.js). A submenu has
+// only its own trigger. The popup goes next to the trigger that opened it: the active trigger. A
+// press on another trigger (or the pointer, with `openOnHover`) while the menu is open makes it the
+// active trigger: the popup moves (a CSS transition of `top` and `left`), its `viewport` part shows
+// the `data-phem-menu-payload` of the trigger (phem_popup_viewport.js), and it gets the size of its
+// content in `--popup-width` and `--popup-height` (phem_popup_size.js). Only the active trigger
+// gets `aria-expanded="true"`. The `triggerId` value is the `id` of the active trigger: a server
+// render with a new value moves the open menu. The `open` action takes a `triggerId` param.
+//
+// A menu with an `input` target filters its items, as the FilterProvider of Base UI. The text of
+// the input hides the items (and the triggers of the submenus) of the `list` target whose text
+// does not contain it, with no case, no accents and no punctuation. The `data-label` attribute of
+// an item replaces its text. A `group` target with no item to show gets `hidden`, and the `empty`
+// target shows only when no item matches. A click on the `clear` target empties the input. With
+// the `filter` value false, the controller hides nothing: the server renders the items of the
+// query (an `onInput` handler on the input). The query resets when the menu closes.
+//
+// An open with a click or the keyboard gives the focus to the input. An open on hover or with a
+// touch gives it to the popup, so the keyboard of the device does not show. The arrow keys move
+// the highlight while the input keeps the focus (`aria-activedescendant`), and Enter clicks the
+// item with the highlight. The input has the highlight (`data-highlighted`) when no item has it.
+// With the `autoHighlight` value `input`, the first match gets the highlight while the query is
+// not empty, and with `always` also when it is empty. The popup gets `role="dialog"`, the list
+// `role="menu"`, and the input `role="searchbox"`.
+//
 // `phem-context-menu` (phem_context_menu_controller.js) extends this class: it changes the
 // methods of the trigger (`anchor`, `triggerPressed()`, `triggerClicked()`, `triggerKeydown()`,
 // `renderTrigger()` and `restoreFocus()`), the position (`placementOptions()`) and the Tab key
 // (`tabCloses`).
 export default class PhemMenuController extends Controller {
-  static targets = ["trigger", "popup", "arrow", "item", "group", "groupLabel", "separator"]
+  static targets = ["trigger", "popup", "arrow", "item", "group", "groupLabel", "separator", "viewport", "input", "list", "empty", "clear"]
   static values = {
     open: Boolean,
+    triggerId: String,
+    filter: { type: Boolean, default: true },
+    autoHighlight: String,
     openOnHover: Boolean,
     delay: { type: Number, default: 100 },
     closeDelay: { type: Number, default: 0 },
@@ -144,26 +187,33 @@ export default class PhemMenuController extends Controller {
     // render, and the time of the last change by the client. An item connects before the menu.
     this.checks = new WeakMap()
     this.typeahead = new Typeahead()
+    this.triggers = new Triggers(this)
     this.popup = new Popup({
       anchor: () => this.anchor,
       popup: () => (this.hasPopupTarget ? this.popupTarget : null),
       arrow: () => this.arrowTargets[0] ?? null,
       options: () => this.placementOptions(),
-      inside: () => [this.element, ...this.popupTargets],
+      inside: () => [this.element, ...this.popupTargets, ...this.triggers.all],
       dismiss: (reason) => this.#dismiss(reason),
       event: () => "pointerdown",
     })
     this.hover = new Hover({
       enabled: () => this.#openOnHover && !(this.#trigger && isDisabled(this.#trigger)),
-      triggers: () => this.triggerTargets,
+      triggers: () => this.triggers.all,
       popups: () => this.popupTargets,
       isOpen: () => this.openValue,
-      open: () => this.#open(null, { focus: !this.isSubmenu, hover: true }),
+      open: () => this.#open(null, { focus: !this.isSubmenu, hover: true, trigger: this.hoverTrigger }),
       close: () => this.#close({ focus: false }),
       delay: () => this.delayValue,
       closeDelay: () => this.closeDelayValue,
       // A submenu that the pointer entered stays open in empty space (see onPointerMove).
       stayAfterLanding: () => this.isSubmenu,
+    })
+    // Only a popup with a viewport changes its size between triggers.
+    this.size = new PopupSize({ popup: () => (this.hasPopupTarget && this.hasViewportTarget ? this.popupTarget : null) })
+    this.viewport = new PopupViewport({
+      viewport: () => this.viewportTargets[0] ?? null,
+      payload: (trigger) => trigger?.getAttribute(`data-${this.identifier}-payload`) ?? null,
     })
     this.release = new ReleaseClick({
       itemOf: (target) => {
@@ -180,30 +230,43 @@ export default class PhemMenuController extends Controller {
       value: "open",
       owns: (el, name) => this.#owns(el, name),
       morphed: () => {
+        this.viewport.capture()
+        if (this.rendered) this.viewport.render(this.#trigger)
         this.#settleRadios()
         this.#renderParts()
+        this.#filter()
         this.popup.reposition()
       },
     })
     this.state.connect()
 
+    // The events of the element, and of the detached triggers.
     this.listening = new AbortController()
     const options = { signal: this.listening.signal }
-    this.element.addEventListener("pointerdown", this.onTriggerPointerDown, options)
-    this.element.addEventListener("click", this.onClick, options)
-    this.element.addEventListener("keydown", this.onKeydown, options)
+    for (const target of [this.element, document]) {
+      const own = target === this.element
+      const listen = (type, handler) => target.addEventListener(type, (event) => (own || (!this.element.contains(event.target) && this.triggers.detached(event.target))) && handler(event), options)
+      listen("pointerdown", this.onTriggerPointerDown)
+      listen("click", this.onClick)
+      listen("keydown", this.onKeydown)
+      listen("focusout", this.onFocusOut)
+      listen("pointerover", this.onPointerOver)
+      listen("pointerout", this.onPointerOut)
+    }
     this.element.addEventListener("focusin", this.onFocusIn, options)
-    this.element.addEventListener("focusout", this.onFocusOut, options)
-    this.element.addEventListener("pointerover", this.onPointerOver, options)
     this.element.addEventListener("pointermove", this.onPointerMove, options)
-    this.element.addEventListener("pointerout", this.onPointerOut, options)
+    this.element.addEventListener("input", this.onInput, options)
     this.element.addEventListener("turbo:before-morph-element", this.onBeforeMorph, options)
     document.addEventListener("turbo:before-cache", this.onBeforeCache, options)
 
+    if (this.openValue) this.triggers.activate(this.triggers.byId(this.triggerIdValue))
+    this.viewport.capture()
+    if (this.openValue) this.viewport.render(this.#trigger)
     this.rendered = this.openValue
     this.popup.render(this.openValue)
     this.#renderModal()
     this.#renderParts()
+    this.#filter()
   }
 
   disconnect() {
@@ -224,9 +287,10 @@ export default class PhemMenuController extends Controller {
   }
 
   // `to` is the item that gets the focus: "first" or "last". An action gives an event: the focus
-  // goes to the popup.
+  // goes to the popup, and the menu opens next to the trigger of its `triggerId` param.
   open(to = null) {
-    this.#open(typeof to === "string" ? to : null)
+    if (typeof to === "string") this.#open(to)
+    else this.#open(null, { trigger: this.triggers.byId(to?.params?.triggerId) })
   }
 
   close() {
@@ -237,7 +301,19 @@ export default class PhemMenuController extends Controller {
   openValueChanged() {
     if (this.rendered === undefined || this.rendered === this.openValue) return
 
+    if (this.openValue) this.#activate(this.triggers.byId(this.triggerIdValue))
     this.#apply()
+  }
+
+  // A server render with a new `triggerId` value: the open menu moves to that trigger.
+  triggerIdValueChanged() {
+    if (!this.rendered) return
+
+    this.#switch(this.triggers.byId(this.triggerIdValue))
+  }
+
+  inputTargetConnected() {
+    this.#renderParts()
   }
 
   itemTargetConnected() {
@@ -285,6 +361,15 @@ export default class PhemMenuController extends Controller {
     if (this.isSubmenu || this.#menubarOrientation !== null) return
 
     this.pressed = true
+    const trigger = this.#triggerOf(event.target)
+
+    // A press on another trigger moves the open menu to it.
+    if (this.openValue && trigger && trigger !== this.#trigger) {
+      this.#switch(trigger)
+      this.#focusPopupAfterPress()
+
+      return
+    }
 
     if (this.openValue) {
       this.#close({ focus: false })
@@ -292,15 +377,22 @@ export default class PhemMenuController extends Controller {
       return
     }
 
-    this.#open(null, { focus: false })
-
-    // The mousedown after the pointerdown focuses the trigger: the popup gets the focus after it.
-    requestAnimationFrame(() => {
-      const popup = this.popupTargets[0]
-      if (this.openValue && popup && !popup.contains(document.activeElement)) popup.focus({ preventScroll: true })
-    })
+    this.#open(null, { focus: false, trigger })
+    this.#focusPopupAfterPress()
 
     this.release.arm({ delay: RELEASE_DELAY, accepts: (e) => e.button === 0 })
+  }
+
+  // The mousedown after the pointerdown focuses the trigger: the popup (or the input of the
+  // filter) gets the focus after it.
+  #focusPopupAfterPress() {
+    requestAnimationFrame(() => {
+      const popup = this.popupTargets[0]
+      if (!this.openValue || !popup || popup.contains(document.activeElement)) return
+
+      if (this.#filterInput) this.#focusInput()
+      else popup.focus({ preventScroll: true })
+    })
   }
 
   // A click on a trigger: it opens and closes the menu. The click after a press of the mouse does
@@ -315,10 +407,13 @@ export default class PhemMenuController extends Controller {
     }
 
     const instant = event.detail === 0 ? "click" : null
+    const trigger = this.#triggerOf(event.target)
+    const touch = event.pointerType === "touch"
 
     if (this.isSubmenu) this.#open(event.detail === 0 ? "first" : null, { focus: event.detail === 0, instant })
+    else if (this.openValue && trigger && trigger !== this.#trigger) this.#switch(trigger)
     else if (this.openValue) this.#close({ focus: false, instant })
-    else this.#open(event.detail === 0 ? "first" : null, { instant })
+    else this.#open(event.detail === 0 ? "first" : null, { instant, touch, trigger })
   }
 
   // A key on a trigger: ArrowDown opens the menu (ArrowUp does nothing, as in Base UI). Enter,
@@ -337,15 +432,16 @@ export default class PhemMenuController extends Controller {
     const click = this.isSubmenu && (event.key === "Enter" || event.key === " ")
 
     event.preventDefault()
-    this.#open(to, { instant: click ? "click" : this.#group })
+    this.#open(to, { instant: click ? "click" : this.#group, trigger: this.#triggerOf(event.target) })
   }
 
   // The attributes of a trigger that are not the state stay when the server render gives them.
-  renderTrigger(trigger, popup) {
+  // `open` is the state of this trigger: only the active trigger is open.
+  renderTrigger(trigger, popup, open = this.openValue) {
     if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "menu")
-    controlWhileOpen(trigger, popup, this.openValue)
-    trigger.setAttribute("aria-expanded", String(this.openValue))
-    trigger.toggleAttribute("data-pressed", this.openValue && !this.isSubmenu)
+    controlWhileOpen(trigger, popup, open)
+    trigger.setAttribute("aria-expanded", String(open))
+    trigger.toggleAttribute("data-pressed", open && !this.isSubmenu)
 
     if (!this.isSubmenu) return
 
@@ -379,6 +475,12 @@ export default class PhemMenuController extends Controller {
 
   onClick = (event) => {
     if (event.defaultPrevented || this.#inSubmenu(event.target)) return
+
+    if (this.clearTargets.some((el) => el.contains(event.target))) {
+      this.#clearFilter()
+
+      return
+    }
 
     const item = this.#itemOf(event.target)
     if (item) {
@@ -422,6 +524,12 @@ export default class PhemMenuController extends Controller {
       return
     }
 
+    if (this.#filterInput && event.target === this.#filterInput) {
+      this.#inputKeydown(event)
+
+      return
+    }
+
     // The arrow back to the menu around a submenu closes it.
     if (this.isSubmenu && event.key === this.#closeKey) {
       event.preventDefault()
@@ -451,7 +559,8 @@ export default class PhemMenuController extends Controller {
   }
 
   onFocusIn = (event) => {
-    if (this.#inSubmenu(event.target)) return
+    // The input of the filter keeps the highlight of the arrow keys.
+    if (this.#inSubmenu(event.target) || event.target === this.#filterInput) return
 
     this.#highlight(this.#itemOf(event.target) ?? null)
   }
@@ -461,14 +570,18 @@ export default class PhemMenuController extends Controller {
     if (!(to instanceof Node) || !this.#itemOf(to)) this.#highlight(null)
 
     if (!this.openValue || !(to instanceof Node)) return
-    if (this.element.contains(to) || this.popupTargets.some((el) => el.contains(to))) return
+    if (this.element.contains(to) || this.popupTargets.some((el) => el.contains(to)) || this.#triggerOf(to)) return
 
     this.#close({ focus: false, instant: this.#group })
   }
 
+  // With `openOnHover`, the pointer on another trigger moves the open menu to it at once.
   onPointerOver = (event) => {
     if (event.pointerType === "touch") return
 
+    const trigger = this.#triggerOf(event.target)
+    if (trigger) this.hoverTrigger = trigger
+    if (this.#openOnHover && this.openValue && trigger && trigger !== this.#trigger) this.#switch(trigger)
     this.hover.over(event)
 
     // The pointer reached the submenu: the item that it crossed does not get the highlight, and
@@ -515,7 +628,11 @@ export default class PhemMenuController extends Controller {
     this.highlightingItem = item
     const highlight = () => {
       this.#cancelHighlight()
-      if (item.isConnected && this.openValue) item.focus({ preventScroll: true })
+      if (!item.isConnected || !this.openValue) return
+
+      // The input of the filter keeps the focus.
+      if (this.#filterInput) this.#highlight(item)
+      else item.focus({ preventScroll: true })
     }
     const open = this.#submenus.some((menu) => menu.openValue && menu.#trigger !== item)
     if (open) {
@@ -549,6 +666,12 @@ export default class PhemMenuController extends Controller {
 
     this.pointerItem = null
     this.#cancelHighlight()
+
+    if (this.#filterInput) {
+      this.#highlight(null)
+
+      return
+    }
 
     const popup = this.popupTargets[0]
     if (popup?.contains(document.activeElement)) popup.focus({ preventScroll: true })
@@ -674,6 +797,84 @@ export default class PhemMenuController extends Controller {
       el.toggleAttribute("data-highlighted", el === item)
       el.tabIndex = el === item ? 0 : -1
     }
+
+    const input = this.#filterInput
+    if (!input) return
+
+    input.toggleAttribute("data-highlighted", item === null && document.activeElement === input)
+    if (item?.id) input.setAttribute("aria-activedescendant", item.id)
+    else if ("ariaActiveDescendantElement" in input) input.ariaActiveDescendantElement = item
+    else input.removeAttribute("aria-activedescendant")
+  }
+
+  // The keys in the input of the filter: the arrow keys move the highlight, and Enter clicks the
+  // item with the highlight. The other keys write the query.
+  #inputKeydown(event) {
+    const items = this.#items.filter((el) => !el.hidden)
+    const current = items.find((el) => el.hasAttribute("data-highlighted")) ?? null
+
+    if (event.key === "Enter") {
+      if (!current) return
+
+      event.preventDefault()
+      current.click()
+
+      return
+    }
+
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return
+
+    event.preventDefault()
+    const next = current ? nextItem(items, current, event.key, { orientation: "vertical", loop: this.loopFocusValue, skip: skipped }) : nextItem(items, null, event.key === "ArrowDown" ? "Home" : "End", { skip: skipped })
+    if (next) {
+      this.#highlight(next)
+      next.scrollIntoView?.({ block: "nearest" })
+    }
+  }
+
+  onInput = (event) => {
+    if (event.target === this.#filterInput) this.#filter()
+  }
+
+  // The input of the filter of this menu: not the input of a submenu.
+  get #filterInput() {
+    return this.inputTargets[0] ?? null
+  }
+
+  #focusInput() {
+    this.#filterInput?.focus({ preventScroll: true })
+    this.#filter()
+  }
+
+  #clearFilter() {
+    const input = this.#filterInput
+    if (!input) return
+
+    input.value = ""
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+    this.#focusInput()
+  }
+
+  // Hides the items that do not match the query, the groups with no item to show, and the empty
+  // part when an item matches. The item with the highlight keeps it when it still shows.
+  #filter() {
+    const input = this.#filterInput
+    if (!input) return
+
+    const query = normalize(input.value)
+    const items = this.#items.filter((el) => !this.hasListTarget || this.listTarget.contains(el))
+
+    if (this.filterValue) {
+      for (const item of items) item.hidden = query !== "" && !normalize(item.getAttribute("data-label") ?? item.textContent).includes(query)
+      for (const group of this.groupTargets) group.hidden = query !== "" && !items.some((el) => group.contains(el) && !el.hidden)
+    }
+
+    const shown = items.filter((el) => !el.hidden)
+    for (const empty of this.emptyTargets) empty.hidden = shown.length > 0
+
+    const current = shown.find((el) => el.hasAttribute("data-highlighted")) ?? null
+    const auto = this.autoHighlightValue === "always" || (this.autoHighlightValue === "input" && query !== "")
+    this.#highlight(current ?? (auto ? (nextItem(shown, null, "Home", { skip: skipped }) ?? null) : null))
   }
 
   // Escape closes the menu with the focus on the trigger. A press outside closes it at the press,
@@ -721,10 +922,13 @@ export default class PhemMenuController extends Controller {
 
   // Opens the menu. `to` is the item that gets the focus: "first", "last", or none (the popup).
   // A submenu that the pointer opens keeps the focus on its trigger (`focus: false`).
-  #open(to, { focus = true, hover = false, instant = null } = {}) {
+  #open(to, { focus = true, hover = false, instant = null, touch = false, trigger = null } = {}) {
     this.hover.cancel()
 
+    if (this.openValue && trigger && trigger !== this.#trigger) this.#switch(trigger)
+
     if (!this.openValue) {
+      this.#activate(trigger)
       this.cause = instant
       // A menu that the pointer opened does not lock the page (see #renderModal()).
       this.hovered = hover
@@ -733,6 +937,14 @@ export default class PhemMenuController extends Controller {
     }
 
     if (!focus) return
+
+    // A menu with a filter gives the focus to its input, unless a touch or the pointer opened it.
+    if (this.#filterInput && !touch && !hover) {
+      this.#focusInput()
+      if (to === "first" && !this.#items.some((el) => el.hasAttribute("data-highlighted"))) this.#highlight(nextItem(this.#items, null, "Home", { skip: skipped }))
+
+      return
+    }
 
     const items = this.#items
     const item = to === "first" ? nextItem(items, null, "Home") : to === "last" ? nextItem(items, null, "End") : null
@@ -784,14 +996,51 @@ export default class PhemMenuController extends Controller {
     // from one menu to another sets `instant`, and a key or the focus opens or closes its menu).
     const instant = this.instant ?? this.cause ?? false
     this.cause = null
-    if (this.openValue) this.popup.show({ instant })
-    else this.popup.hide({ instant })
+    if (this.openValue) {
+      this.viewport.render(this.#trigger)
+      this.size.rest()
+      this.popup.show({ instant })
+    } else {
+      // The query resets after the close animation.
+      Promise.resolve(this.popup.hide({ instant })).then(() => {
+        if (this.openValue || !this.#filterInput) return
+
+        this.#filterInput.value = ""
+        this.#filter()
+      })
+    }
 
     // Also for a close by a server render: the next open is not an open by the pointer.
     if (!this.openValue) this.hovered = false
 
     this.#renderModal()
     this.dispatch(this.openValue ? "open" : "close")
+  }
+
+  // Makes `trigger` the active trigger of a menu that opens.
+  #activate(trigger) {
+    this.triggers.activate(trigger)
+    const id = this.#trigger?.id ?? ""
+    if (!this.isSubmenu && this.triggerIdValue !== id) this.triggerIdValue = id
+  }
+
+  // The open menu goes to another trigger: its position, its size and its content change with
+  // their animations.
+  #switch(trigger) {
+    const from = this.#trigger
+    if (!trigger || !this.openValue || trigger === from) return
+
+    const size = this.size.measure()
+    this.#activate(trigger)
+    this.popupTargets[0]?.removeAttribute("data-instant")
+    this.viewport.change(from, trigger, activationDirection(from, trigger))
+    this.size.change(size)
+    this.popup.reanchor()
+    this.#renderParts()
+    if (this.#filterInput) {
+      this.#filterInput.value = ""
+      this.#filter()
+    }
   }
 
   // A modal menu locks the page while it is open. A submenu is in the popup of its menu. A menu
@@ -812,16 +1061,32 @@ export default class PhemMenuController extends Controller {
   #renderParts() {
     const popup = this.popupTargets[0]
 
+    // With a filter, the popup is a dialog with the input and the list of the menu.
+    const input = this.#filterInput
+    const menu = input && this.hasListTarget ? this.listTarget : popup
+
     if (popup) {
-      if (!popup.hasAttribute("role")) popup.setAttribute("role", "menu")
+      const role = popup.getAttribute("role")
+      if (role === null || role === "menu" || role === "dialog") popup.setAttribute("role", input ? "dialog" : "menu")
       if (!popup.hasAttribute("tabindex")) popup.tabIndex = -1
-      if (this.orientationValue === "horizontal") popup.setAttribute("aria-orientation", "horizontal")
       popup.toggleAttribute("data-nested", this.isSubmenu)
     }
 
-    for (const trigger of this.triggerTargets) {
-      this.renderTrigger(trigger, popup)
-      trigger.toggleAttribute("data-popup-open", this.openValue)
+    if (menu) {
+      if (menu !== popup && !menu.hasAttribute("role")) menu.setAttribute("role", "menu")
+      if (this.orientationValue === "horizontal") menu.setAttribute("aria-orientation", "horizontal")
+    }
+
+    if (input) {
+      if (!input.hasAttribute("role")) input.setAttribute("role", "searchbox")
+      if (menu !== popup) link(input, "aria-controls", "ariaControlsElements", menu)
+    }
+
+    const active = this.#trigger
+    for (const trigger of this.triggers.all) {
+      const open = this.openValue && trigger === active
+      this.renderTrigger(trigger, popup, open)
+      trigger.toggleAttribute("data-popup-open", open)
     }
 
     for (const item of this.itemTargets) {
@@ -855,7 +1120,11 @@ export default class PhemMenuController extends Controller {
   // `aria-checked`.
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
-    if (this.triggerTargets.includes(el) && (name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed")) return true
+    if (this.triggers.all.includes(el) && (name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed")) return true
+    if (name === "data-activation-direction" && this.viewportTargets.includes(el)) return true
+    // The filter hides the items, the groups and the empty part (see #filter()).
+    if (name === "hidden" && this.#filterInput && (this.#items.includes(el) || this.groupTargets.includes(el) || this.emptyTargets.includes(el))) return true
+    if (this.#filterInput === el && (name === "data-highlighted" || name === "aria-activedescendant")) return true
     if (!this.#items.includes(el)) return false
     if (name === "data-highlighted" || name === "tabindex") return true
 
@@ -961,8 +1230,9 @@ export default class PhemMenuController extends Controller {
     return [...this.itemTargets, ...triggers].sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
   }
 
+  // The active trigger: the trigger that opened the menu, or else the first trigger.
   get #trigger() {
-    return this.triggerTargets[0] ?? null
+    return this.triggers.active
   }
 
   get #rtl() {
@@ -970,7 +1240,7 @@ export default class PhemMenuController extends Controller {
   }
 
   #triggerOf(el) {
-    return this.triggerTargets.find((trigger) => trigger.contains(el))
+    return this.triggers.of(el) ?? undefined
   }
 
   #itemOf(el) {

@@ -5,7 +5,7 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPayload, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, AlertDialogViewport, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport, PreviewCard, PreviewCardPayload, PreviewCardPopup, PreviewCardTrigger, PreviewCardViewport, DialogDiscard, DialogPayload};
+use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPayload, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, AlertDialogViewport, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuClear, MenuEmpty, MenuInput, MenuItem, MenuItemIndicator, MenuItemLabel, MenuList, MenuPayload, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, MenuViewport, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport, PreviewCard, PreviewCardPayload, PreviewCardPopup, PreviewCardTrigger, PreviewCardViewport, DialogDiscard, DialogPayload};
 use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Dialog, DialogViewport, Menu, MenuRadioGroup, MenuSubmenu, Tabs};
 
 #[Component]
@@ -231,6 +231,28 @@ function MenuDemo(): Node
                 </MenuRadioGroup>
             </MenuPopup>
         </Menu>
+    );
+}
+
+#[Component]
+function MenuDetachedDemo(): Node
+{
+    return (
+        <div>
+            <MenuTrigger handle="file-menu" id="file-trigger" payload="file">File</MenuTrigger>
+            <Menu handle="file-menu" triggerId="file-trigger" autoHighlight="always" filter={{ false }}>
+                <MenuPopup>
+                    <MenuInput aria-label="Filter" />
+                    <MenuClear>Clear</MenuClear>
+                    <MenuEmpty>No results.</MenuEmpty>
+                    <MenuList>
+                        <MenuViewport>
+                            <MenuPayload name="file"><MenuItem label="New file">New</MenuItem></MenuPayload>
+                        </MenuViewport>
+                    </MenuList>
+                </MenuPopup>
+            </Menu>
+        </div>
     );
 }
 
