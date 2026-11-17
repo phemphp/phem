@@ -65,8 +65,10 @@ definition, find references, hover and the outline of `.phem` files. These plugi
 
 - [VS Code](editors/vscode/README.md): install the `yceruto.phem` extension from the
   Marketplace. It includes the server, so you do not need `phemc`, PHP or Rust.
-- [PhpStorm](editors/phpstorm/README.md): build the plugin with `make phpstorm`. It runs the
-  bundled server with Node.js, or a native `phemc` binary.
+- [PhpStorm](editors/phpstorm/README.md): install the
+  [Phem plugin](https://plugins.jetbrains.com/plugin/36117-phem) from the JetBrains Marketplace
+  (Settings > Plugins > Marketplace, search for "Phem"). It runs the bundled server with
+  Node.js, or a native `phemc` binary.
 - [Claude Code](editors/claude-code/README.md): the plugin runs `vendor/bin/phemc lsp` of your
   app, so Claude gets the compiler errors after each edit of a `.phem` file.
 
