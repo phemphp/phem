@@ -244,32 +244,10 @@ const FRUITS = [
 #[Page('/components/combobox')]
 function ComboboxPage(): Node
 {
-    $fruits = FRUITS;
-
     return (
         <DemoPage slug="combobox">
-            <Hero>
-                <Combobox id="fruit" filter="contains">
-                    <ComboboxLabel>Choose a fruit</ComboboxLabel>
-                    <ComboboxInputGroup>
-                        <ComboboxInput placeholder="e.g. Apple" />
-                        <ComboboxActions>
-                            <ComboboxClear aria-label="Clear selection" />
-                            <ComboboxTrigger aria-label="Open popup" />
-                        </ComboboxActions>
-                    </ComboboxInputGroup>
-                    <ComboboxPopup>
-                        <ComboboxEmpty>No fruits found.</ComboboxEmpty>
-                        <ComboboxList>
-                            {% for value, label in fruits %}
-                                <ComboboxItem key={{ value }} value={{ value }}>
-                                    <ComboboxItemIndicator />
-                                    <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
-                                </ComboboxItem>
-                            {% endfor %}
-                        </ComboboxList>
-                    </ComboboxPopup>
-                </Combobox>
+            <Hero source="ComboboxHeroDemo">
+                <ComboboxHeroDemo />
             </Hero>
             <Examples>
                 <Example title="Typed wrapper component">
@@ -277,51 +255,51 @@ function ComboboxPage(): Node
                         <p>Wrap the Combobox component in a component of your application to give it its props and its parts once. A <code>Bound</code> prop passes a state of the page with <code>phem:bind</code>.</p>
                     </Example.description>
                 </Example>
-                <Example title="Value selection with IDs">
+                <Example title="Value selection with IDs" source="ComboboxIdsDemo">
                     <Example.description>
                         <p>When your app stores IDs rather than labels, give each <code>ComboboxItem</code> the ID as its <code>value</code>, and the label as its content. With <code>selectionMode="single"</code>, the input shows the label, and the form gets the ID.</p>
                         <p>The label is also used for filtering and typeahead.</p>
                     </Example.description>
                     <ComboboxIdsDemo />
                 </Example>
-                <Example title="Multiple select">
+                <Example title="Multiple select" source="ComboboxMultipleDemo">
                     <Example.description>
                         <p>The combobox can allow multiple selections by adding the <code>multiple</code> prop to <code>Combobox</code>. Selection chips are rendered with <code>ComboboxChip</code> inside the input that can be removed.</p>
                         <p>In order for screen readers to announce how to reach and remove the chips, add <code>aria-description</code> to <code>ComboboxChip</code> and <code>ComboboxInput</code>, alongside the <code>aria-label</code> on <code>ComboboxChips</code> and <code>ComboboxChipRemove</code>. Translate them together with the rest of your interface.</p>
                     </Example.description>
                     <ComboboxMultipleDemo />
                 </Example>
-                <Example title="Input inside popup">
+                <Example title="Input inside popup" source="ComboboxInputInsidePopupDemo">
                     <Example.description>
                         <p><code>ComboboxInput</code> can be rendered inside <code>ComboboxPopup</code> to create a searchable select popup. The trigger shows the value with <code>ComboboxValue</code>.</p>
                     </Example.description>
                     <ComboboxInputInsidePopupDemo />
                 </Example>
-                <Example title="Async search (single)">
+                <Example title="Async search (single)" source="ComboboxAsyncSingleDemo">
                     <Example.description>
                         <p>Load items from the server on input changes: bind the input with <code>phem:bind</code>, and render the results of the query. Keep the selected item in the list so it remains available while new results come in.</p>
                     </Example.description>
                     <ComboboxAsyncSingleDemo />
                 </Example>
-                <Example title="Async search (multiple)">
+                <Example title="Async search (multiple)" source="ComboboxAsyncMultipleDemo">
                     <Example.description>
                         <p>Load items from the server on input changes while supporting multiple selections. Selected items remain available in the list while new matches come in. This pattern avoids needing to load items upfront.</p>
                     </Example.description>
                     <ComboboxAsyncMultipleDemo />
                 </Example>
-                <Example title="Creatable">
+                <Example title="Creatable" source="ComboboxCreatableDemo">
                     <Example.description>
                         <p>Create a new item when the filter matches no items, opening a creation <a href="/components/dialog" className="underline">Dialog</a>.</p>
                     </Example.description>
                     <ComboboxCreatableDemo />
                 </Example>
-                <Example title="Virtualized">
+                <Example title="Virtualized" source="ComboboxVirtualizedDemo">
                     <Example.description>
                         <p>A virtualization library renders only the visible rows of a large dataset in the browser. In phem, the server searches the dataset, and renders only the first matches with a status of the total.</p>
                     </Example.description>
                     <ComboboxVirtualizedDemo />
                 </Example>
-                <Example title="Grouped">
+                <Example title="Grouped" source="ComboboxGroupedDemo">
                     <Example.description>
                         <p>Organize related options with <code>ComboboxGroup</code> and <code>ComboboxGroupLabel</code> to add section headings inside the popup.</p>
                     </Example.description>
@@ -329,6 +307,36 @@ function ComboboxPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function ComboboxHeroDemo(): Node
+{
+    $fruits = FRUITS;
+
+    return (
+        <Combobox id="fruit" filter="contains">
+            <ComboboxLabel>Choose a fruit</ComboboxLabel>
+            <ComboboxInputGroup>
+                <ComboboxInput placeholder="e.g. Apple" />
+                <ComboboxActions>
+                    <ComboboxClear aria-label="Clear selection" />
+                    <ComboboxTrigger aria-label="Open popup" />
+                </ComboboxActions>
+            </ComboboxInputGroup>
+            <ComboboxPopup>
+                <ComboboxEmpty>No fruits found.</ComboboxEmpty>
+                <ComboboxList>
+                    {% for value, label in fruits %}
+                        <ComboboxItem key={{ value }} value={{ value }}>
+                            <ComboboxItemIndicator />
+                            <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                        </ComboboxItem>
+                    {% endfor %}
+                </ComboboxList>
+            </ComboboxPopup>
+        </Combobox>
     );
 }
 

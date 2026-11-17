@@ -14,30 +14,18 @@ function TabsPage(): Node
 {
     return (
         <DemoPage slug="tabs">
-            <Hero>
-                <Tabs defaultValue="overview">
-                    <TabsList>
-                        <TabsTab value="overview">Overview</TabsTab>
-                        <TabsTab value="projects">Projects</TabsTab>
-                        <TabsTab value="account">Account</TabsTab>
-                        <TabsIndicator />
-                    </TabsList>
-                    <div className="grid w-full min-h-32 grid-cols-1 border border-neutral-950 dark:border-white">
-                        <TabsPanel value="overview"><p>Workspace stats and activity.</p></TabsPanel>
-                        <TabsPanel value="projects"><p>Milestones and deadlines.</p></TabsPanel>
-                        <TabsPanel value="account"><p>Profile and preferences.</p></TabsPanel>
-                    </div>
-                </Tabs>
+            <Hero source="TabsHeroDemo">
+                <TabsHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Animated panels">
+                <Example title="Animated panels" source="TabsAnimatedPanelsDemo">
                     <Example.description>
                         <p>Animate panels as they activate using the <code>data-starting-style</code> and <code>data-ending-style</code> attributes.</p>
                         <p>The <code>data-activation-direction</code> attribute indicates which direction the newly active tab is relative to the previously active one, letting panels slide in from the correct side.</p>
                     </Example.description>
                     <TabsAnimatedPanelsDemo />
                 </Example>
-                <Example title="Links">
+                <Example title="Links" source="TabsLinksDemo">
                     <Example.description>
                         <p>Give an <code>href</code> to <code>TabsTab</code> to render tabs as anchor elements. A click, <kbd>Enter</kbd> and <kbd>Space</kbd> select the tab and open its link.</p>
                     </Example.description>
@@ -45,6 +33,26 @@ function TabsPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function TabsHeroDemo(): Node
+{
+    return (
+        <Tabs defaultValue="overview">
+            <TabsList>
+                <TabsTab value="overview">Overview</TabsTab>
+                <TabsTab value="projects">Projects</TabsTab>
+                <TabsTab value="account">Account</TabsTab>
+                <TabsIndicator />
+            </TabsList>
+            <div className="grid w-full min-h-32 grid-cols-1 border border-neutral-950 dark:border-white">
+                <TabsPanel value="overview"><p>Workspace stats and activity.</p></TabsPanel>
+                <TabsPanel value="projects"><p>Milestones and deadlines.</p></TabsPanel>
+                <TabsPanel value="account"><p>Profile and preferences.</p></TabsPanel>
+            </div>
+        </Tabs>
     );
 }
 

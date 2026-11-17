@@ -2,7 +2,7 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
@@ -12,49 +12,79 @@ use Phem\Ui\Base\{Checkbox, Field};
 #[Page('/components/checkbox')]
 function CheckboxPage(): Node
 {
-    $label = 'flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white';
-
     return (
         <DemoPage slug="checkbox">
-            <Hero>
-                <label className={{ label }}>
-                    <Checkbox defaultChecked><CheckboxIndicator /></Checkbox>
-                    Enable notifications
-                </label>
+            <Hero source="CheckboxHeroDemo">
+                <CheckboxHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Labeling a checkbox">
+                <Example title="Labeling a checkbox" source="CheckboxLabelingDemo">
                     <Example.description>
                         <p>An enclosing <code>&lt;label&gt;</code> is the simplest labeling pattern:</p>
                     </Example.description>
-                    <label className={{ label }}>
-                        <Checkbox><CheckboxIndicator /></Checkbox>
-                        Accept terms and conditions
-                    </label>
+                    <CheckboxLabelingDemo />
                 </Example>
-                <Example title="Rendering as a native button">
+                <Example title="Rendering as a native button" source="CheckboxNativeButtonDemo">
                     <Example.description>
                         <p>By default, <code>Checkbox</code> renders a <code>&lt;span&gt;</code> element to support enclosing labels. Prefer rendering the checkbox as a native button with <code>nativeButton</code> when using sibling labels (<code>for</code>/<code>id</code>).</p>
                     </Example.description>
-                    <div className="flex items-center gap-2">
-                        <label htmlFor="notifications-checkbox" className="text-sm text-neutral-950 dark:text-white">Enable notifications</label>
-                        <Checkbox id="notifications-checkbox" nativeButton><CheckboxIndicator /></Checkbox>
-                    </div>
+                    <CheckboxNativeButtonDemo />
                 </Example>
-                <Example title="Form integration">
+                <Example title="Form integration" source="CheckboxFormDemo">
                     <Example.description>
                         <p>Use <a href="/components/field" className="underline">Field</a> to handle label associations and form integration:</p>
                     </Example.description>
-                    <Form>
-                        <Field>
-                            <FieldLabel className="flex items-center gap-2 font-normal">
-                                <Checkbox name="stayLoggedIn"><CheckboxIndicator /></Checkbox>
-                                Stay logged in for 7 days
-                            </FieldLabel>
-                        </Field>
-                    </Form>
+                    <CheckboxFormDemo />
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function CheckboxHeroDemo(): Node
+{
+    return (
+        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+            <Checkbox defaultChecked><CheckboxIndicator /></Checkbox>
+            Enable notifications
+        </label>
+    );
+}
+
+#[Component]
+function CheckboxLabelingDemo(): Node
+{
+    return (
+        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+            <Checkbox><CheckboxIndicator /></Checkbox>
+            Accept terms and conditions
+        </label>
+    );
+}
+
+#[Component]
+function CheckboxNativeButtonDemo(): Node
+{
+    return (
+        <div className="flex items-center gap-2">
+            <label htmlFor="notifications-checkbox" className="text-sm text-neutral-950 dark:text-white">Enable notifications</label>
+            <Checkbox id="notifications-checkbox" nativeButton><CheckboxIndicator /></Checkbox>
+        </div>
+    );
+}
+
+#[Component]
+function CheckboxFormDemo(): Node
+{
+    return (
+        <Form>
+            <Field>
+                <FieldLabel className="flex items-center gap-2 font-normal">
+                    <Checkbox name="stayLoggedIn"><CheckboxIndicator /></Checkbox>
+                    Stay logged in for 7 days
+                </FieldLabel>
+            </Field>
+        </Form>
     );
 }

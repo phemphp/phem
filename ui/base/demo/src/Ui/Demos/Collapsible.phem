@@ -14,20 +14,11 @@ function CollapsiblePage(): Node
 {
     return (
         <DemoPage slug="collapsible">
-            <Hero>
-                <Collapsible>
-                    <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
-                    <CollapsiblePanel>
-                        <div className="flex flex-col gap-2 px-3.5 py-2">
-                            <div>alien-bean-pasta</div>
-                            <div>wild-irish-burrito</div>
-                            <div>horse-battery-staple</div>
-                        </div>
-                    </CollapsiblePanel>
-                </Collapsible>
+            <Hero source="CollapsibleHeroDemo">
+                <CollapsibleHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Hidden until found">
+                <Example title="Hidden until found" source="CollapsibleHiddenUntilFoundDemo">
                     <Example.description>
                         <p>The <code>hiddenUntilFound</code> prop hides the closed panel with <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/hidden" className="underline"><code>hidden="until-found"</code></a> so the browser can search its contents with find-in-page—<kbd>Ctrl</kbd>+<kbd>F</kbd> (<kbd>Cmd</kbd>+<kbd>F</kbd> on macOS)—and reveal the panel when a match is found. The closed panel always remains in the DOM, which also makes its contents indexable by search engines.</p>
                         <p>Older browsers that don’t support <code>hidden="until-found"</code> keep the panel hidden until its trigger opens it, and find-in-page skips over the contents.</p>
@@ -36,6 +27,23 @@ function CollapsiblePage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function CollapsibleHeroDemo(): Node
+{
+    return (
+        <Collapsible>
+            <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
+            <CollapsiblePanel>
+                <div className="flex flex-col gap-2 px-3.5 py-2">
+                    <div>alien-bean-pasta</div>
+                    <div>wild-irish-burrito</div>
+                    <div>horse-battery-staple</div>
+                </div>
+            </CollapsiblePanel>
+        </Collapsible>
     );
 }
 

@@ -14,33 +14,19 @@ const ALERT_DIALOG_DANGER = 'text-red-700 dark:text-red-400';
 #[Page('/components/alert-dialog')]
 function AlertDialogPage(): Node
 {
-    $danger = ALERT_DIALOG_DANGER;
-
     return (
         <DemoPage slug="alert-dialog">
-            <Hero>
-                <AlertDialog>
-                    <AlertDialogTrigger className={{ danger }}>Discard draft</AlertDialogTrigger>
-                    <AlertDialogPopup>
-                        <div className="flex flex-col gap-1">
-                            <AlertDialogTitle>Discard draft?</AlertDialogTitle>
-                            <AlertDialogDescription>You can’t undo this action.</AlertDialogDescription>
-                        </div>
-                        <div className="flex justify-end gap-3">
-                            <AlertDialogClose>Cancel</AlertDialogClose>
-                            <AlertDialogClose className={{ danger }}>Discard</AlertDialogClose>
-                        </div>
-                    </AlertDialogPopup>
-                </AlertDialog>
+            <Hero source="AlertDialogHeroDemo">
+                <AlertDialogHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Open from a menu">
+                <Example title="Open from a menu" source="AlertDialogFromMenuDemo">
                     <Example.description>
                         <p>In order to open an alert dialog using a menu, make the menu item a detached trigger of the alert dialog: give it <code>data-phem-dialog-for</code> with the <code>handle</code> of the alert dialog. The click closes the menu and opens the alert dialog.</p>
                     </Example.description>
                     <AlertDialogFromMenuDemo />
                 </Example>
-                <Example title="Close confirmation">
+                <Example title="Close confirmation" source="DialogCloseConfirmationDemo">
                     <Example.description>
                         <p>This example shows a nested confirmation dialog that opens if the text entered in the parent dialog is going to be discarded.</p>
                         <p>To implement this, give the <code>confirmClose</code> prop of the parent <code>Dialog</code> the <code>handle</code> of an <code>AlertDialog</code> in its popup. When the user changed a field, a request to close opens the alert dialog: the confirmation is automatically shown when the user clicks the backdrop, presses the Esc key, or clicks a close button. Its <code>DialogDiscard</code> button closes the two dialogs.</p>
@@ -48,21 +34,21 @@ function AlertDialogPage(): Node
                     </Example.description>
                     <DialogCloseConfirmationDemo />
                 </Example>
-                <Example title="Detached triggers">
+                <Example title="Detached triggers" source="AlertDialogDetachedDemo">
                     <Example.description>
                         <p>An alert dialog can be controlled by a trigger located either inside or outside the <code>AlertDialog</code> component. For simple, one-off interactions, place the <code>AlertDialogTrigger</code> inside <code>AlertDialog</code>, as shown in the example at the top of this page.</p>
                         <p>However, if defining the alert dialog's content next to its trigger is not practical, you can use a detached trigger. This involves placing the <code>AlertDialogTrigger</code> outside of <code>AlertDialog</code> and linking them with the same <code>handle</code>. The root gets the handle as its <code>id</code>, and the trigger gets <code>data-phem-dialog-for</code>.</p>
                     </Example.description>
                     <AlertDialogDetachedDemo />
                 </Example>
-                <Example title="Multiple triggers">
+                <Example title="Multiple triggers" source="AlertDialogMultipleDemo">
                     <Example.description>
                         <p>A single alert dialog can be opened by multiple trigger elements. You can achieve this by using the same <code>handle</code> for several detached triggers, or by placing multiple <code>AlertDialogTrigger</code> components inside a single <code>AlertDialog</code>.</p>
                         <p>The alert dialog can render different content depending on which trigger opened it. Give each trigger a <code>payload</code>: the <code>AlertDialogPayload</code> part shows the payload of the trigger that opened the alert dialog.</p>
                     </Example.description>
                     <AlertDialogMultipleDemo />
                 </Example>
-                <Example title="Controlled mode with multiple triggers">
+                <Example title="Controlled mode with multiple triggers" source="AlertDialogControlledDemo">
                     <Example.description>
                         <p>You can control the alert dialog's open state with the <code>defaultOpen</code> and <code>triggerId</code> props of <code>AlertDialog</code>: a render with new values opens the alert dialog for the trigger with that <code>id</code>. The controller keeps the values of the browser in <code>data-phem-dialog-open-value</code> and <code>data-phem-dialog-trigger-id-value</code>.</p>
                         <p>Here, the button is in the root, and opens the alert dialog without a request with the <code>phem-dialog#open</code> action and a <code>triggerId</code> param. With no payload, <code>AlertDialogPayload</code> shows its children.</p>
@@ -71,6 +57,29 @@ function AlertDialogPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+/** The hero: an alert dialog with its trigger in the root. */
+#[Component]
+function AlertDialogHeroDemo(): Node
+{
+    $danger = ALERT_DIALOG_DANGER;
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger className={{ danger }}>Discard draft</AlertDialogTrigger>
+            <AlertDialogPopup>
+                <div className="flex flex-col gap-1">
+                    <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                    <AlertDialogDescription>You can’t undo this action.</AlertDialogDescription>
+                </div>
+                <div className="flex justify-end gap-3">
+                    <AlertDialogClose>Cancel</AlertDialogClose>
+                    <AlertDialogClose className={{ danger }}>Discard</AlertDialogClose>
+                </div>
+            </AlertDialogPopup>
+        </AlertDialog>
     );
 }
 

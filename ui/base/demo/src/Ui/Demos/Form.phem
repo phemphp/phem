@@ -9,11 +9,44 @@ use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{FieldControl, FieldError, FieldLabel, Form};
 use Phem\Ui\Base\{Button, Field};
 
+#[Page('/components/form')]
+function FormPage(): Node
+{
+    return (
+        <DemoPage slug="form">
+            <Hero source="FormHeroDemo">
+                <FormHeroDemo />
+            </Hero>
+            <Examples>
+                <Example title="Submit with a Server Function" source="FormServerFunctionDemo">
+                    <Example.description>
+                        <p>The <code>onSubmit</code> handler of a <code>Form</code> runs on the server, as a Server Function. It gets the values of the form in <code>$e-&gt;form</code>, and its errors show in the <code>FieldError</code> of each field.</p>
+                    </Example.description>
+                    <FormServerFunctionDemo />
+                </Example>
+                <Example title="Submit form values as a JavaScript object" source="FormValuesDemo">
+                    <Example.description>
+                        <p>The handler gets the values of the form as an array in <code>$e-&gt;form</code>, or as an object with <code>#[MapForm]</code>. This is useful when you need to transform the values before submission, or integrate with 3rd party APIs.</p>
+                        <p>The browser does not send the form: the submit is an event of the page.</p>
+                    </Example.description>
+                    <FormValuesDemo />
+                </Example>
+                <Example title="Using with Zod" source="FormValidationDemo">
+                    <Example.description>
+                        <p>Zod validates the values in the browser. In phem, the handler validates them on the server (with Symfony Validator constraints and <code>#[MapForm]</code>, or with your own checks), and the errors map to each field’s <code>name</code>.</p>
+                    </Example.description>
+                    <FormValidationDemo />
+                </Example>
+            </Examples>
+        </DemoPage>
+    );
+}
+
 // The submit of the Base UI demo: the server answers after 1 second, and refuses the example
 // domain. The error of the server shows in the Field.Error of the field. While the request runs,
 // phem locks the button with `aria-disabled="true"`, and the button has the disabled look.
-#[Page('/components/form')]
-final class FormPage
+#[Component]
+final class FormHeroDemo
 {
     #[State] public string $url = 'https://example.com';
     #[State] public ?string $error = null;
@@ -34,48 +67,23 @@ final class FormPage
     public function render(): Node
     {
         return (
-            <DemoPage slug="form">
-                <Hero>
-                    <Form onSubmit={{ submit }} className="[&_button[aria-disabled=true]]:pointer-events-none [&_button[aria-disabled=true]]:border-neutral-500 [&_button[aria-disabled=true]]:text-neutral-500 dark:[&_button[aria-disabled=true]]:border-neutral-400 dark:[&_button[aria-disabled=true]]:text-neutral-400">
-                        <Field id="url">
-                            <FieldLabel>Homepage</FieldLabel>
-                            <FieldControl
-                                type="url"
-                                name="url"
-                                required
-                                defaultValue={{ url }}
-                                placeholder="https://example.com"
-                                pattern="https?://.*"
-                                aria-invalid={{ error ? 'true' : null }}
-                                aria-describedby={{ error ? 'url-error' : null }}
-                            />
-                            <FieldError>{{ error }}</FieldError>
-                        </Field>
-                        <Button type="submit">Submit</Button>
-                    </Form>
-                </Hero>
-                <Examples>
-                    <Example title="Submit with a Server Function">
-                        <Example.description>
-                            <p>The <code>onSubmit</code> handler of a <code>Form</code> runs on the server, as a Server Function. It gets the values of the form in <code>$e-&gt;form</code>, and its errors show in the <code>FieldError</code> of each field.</p>
-                        </Example.description>
-                        <FormServerFunctionDemo />
-                    </Example>
-                    <Example title="Submit form values as a JavaScript object">
-                        <Example.description>
-                            <p>The handler gets the values of the form as an array in <code>$e-&gt;form</code>, or as an object with <code>#[MapForm]</code>. This is useful when you need to transform the values before submission, or integrate with 3rd party APIs.</p>
-                            <p>The browser does not send the form: the submit is an event of the page.</p>
-                        </Example.description>
-                        <FormValuesDemo />
-                    </Example>
-                    <Example title="Using with Zod">
-                        <Example.description>
-                            <p>Zod validates the values in the browser. In phem, the handler validates them on the server (with Symfony Validator constraints and <code>#[MapForm]</code>, or with your own checks), and the errors map to each field’s <code>name</code>.</p>
-                        </Example.description>
-                        <FormValidationDemo />
-                    </Example>
-                </Examples>
-            </DemoPage>
+            <Form onSubmit={{ submit }} className="[&_button[aria-disabled=true]]:pointer-events-none [&_button[aria-disabled=true]]:border-neutral-500 [&_button[aria-disabled=true]]:text-neutral-500 dark:[&_button[aria-disabled=true]]:border-neutral-400 dark:[&_button[aria-disabled=true]]:text-neutral-400">
+                <Field id="url">
+                    <FieldLabel>Homepage</FieldLabel>
+                    <FieldControl
+                        type="url"
+                        name="url"
+                        required
+                        defaultValue={{ url }}
+                        placeholder="https://example.com"
+                        pattern="https?://.*"
+                        aria-invalid={{ error ? 'true' : null }}
+                        aria-describedby={{ error ? 'url-error' : null }}
+                    />
+                    <FieldError>{{ error }}</FieldError>
+                </Field>
+                <Button type="submit">Submit</Button>
+            </Form>
         );
     }
 }

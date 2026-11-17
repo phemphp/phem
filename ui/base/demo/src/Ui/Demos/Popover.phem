@@ -16,53 +16,39 @@ function PopoverPage(): Node
 {
     return (
         <DemoPage slug="popover">
-            <Hero>
-                <Popover sideOffset={{ 8 }}>
-                    <PopoverTrigger>Notifications</PopoverTrigger>
-                    <PopoverPopup>
-                        <PopoverArrow />
-                        <PopoverTitle>Notifications</PopoverTitle>
-                        <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
-                    </PopoverPopup>
-                </Popover>
+            <Hero source="PopoverHeroDemo">
+                <PopoverHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Opening on hover">
+                <Example title="Opening on hover" source="PopoverHoverDemo">
                     <Example.description>
                         <p>This example shows how you can configure the popover to open on hover using the <code>openOnHover</code> prop.</p>
                         <p>You can use the <code>delay</code> prop to specify how long to wait (in milliseconds) before the popover opens on hover.</p>
                     </Example.description>
-                    <Popover openOnHover sideOffset={{ 8 }}>
-                        <PopoverTrigger>Notifications</PopoverTrigger>
-                        <PopoverPopup>
-                            <PopoverArrow />
-                            <PopoverTitle>Notifications</PopoverTitle>
-                            <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
-                        </PopoverPopup>
-                    </Popover>
+                    <PopoverHoverDemo />
                 </Example>
-                <Example title="Detached triggers">
+                <Example title="Detached triggers" source="PopoverDetachedDemo">
                     <Example.description>
                         <p>A popover can be controlled by a trigger located either inside or outside the <code>Popover</code> component. For simple, one-off interactions, place the <code>PopoverTrigger</code> inside <code>Popover</code>, as shown in the example at the top of this page.</p>
                         <p>However, if defining the popover's content next to its trigger is not practical, you can use a detached trigger. This involves placing the <code>PopoverTrigger</code> outside of <code>Popover</code> and linking them with the same <code>handle</code>. The root gets the handle as its <code>id</code>, and the trigger gets <code>data-phem-popover-for</code>.</p>
                     </Example.description>
                     <PopoverDetachedDemo />
                 </Example>
-                <Example title="Multiple triggers">
+                <Example title="Multiple triggers" source="PopoverMultipleDemo">
                     <Example.description>
                         <p>A single popover can be opened by multiple trigger elements. You can achieve this by using the same <code>handle</code> for several detached triggers, or by placing multiple <code>PopoverTrigger</code> components inside a single <code>Popover</code>.</p>
                         <p>The popover can render different content depending on which trigger opened it. Give each trigger a <code>payload</code>, and put a <code>PopoverPayload</code> with the same <code>name</code> in the <code>PopoverViewport</code>: the server renders each content in a <code>template</code>, and the viewport shows a copy of the content of the active trigger.</p>
                     </Example.description>
                     <PopoverMultipleDemo />
                 </Example>
-                <Example title="Controlled mode with multiple triggers">
+                <Example title="Controlled mode with multiple triggers" source="PopoverControlledDemo">
                     <Example.description>
                         <p>You can control the popover's open state with the <code>defaultOpen</code> and <code>triggerId</code> props of <code>Popover</code>: a render with new values opens the popover next to the trigger with that <code>id</code>. The controller keeps the values of the browser in <code>data-phem-popover-open-value</code> and <code>data-phem-popover-trigger-id-value</code>.</p>
                         <p>Here, the button is in the root, and opens the popover without a request with the <code>phem-popover#open</code> action and a <code>triggerId</code> param.</p>
                     </Example.description>
                     <PopoverControlledDemo />
                 </Example>
-                <Example title="Animating the Popover">
+                <Example title="Animating the Popover" source="PopoverAnimatedDemo">
                     <Example.description>
                         <p>You can animate a popover as it moves between different trigger elements. This includes animating its position, size, and content.</p>
                         <p>To animate the popover's position, apply CSS transitions to the <code>top</code> and <code>left</code> properties of the <code>PopoverPopup</code>. To animate its size, transition its <code>width</code> and <code>height</code> to <code>var(--popup-width)</code> and <code>var(--popup-height)</code>.</p>
@@ -72,6 +58,38 @@ function PopoverPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+/** The hero: a popover with its trigger in the root. */
+#[Component]
+function PopoverHeroDemo(): Node
+{
+    return (
+        <Popover sideOffset={{ 8 }}>
+            <PopoverTrigger>Notifications</PopoverTrigger>
+            <PopoverPopup>
+                <PopoverArrow />
+                <PopoverTitle>Notifications</PopoverTitle>
+                <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
+            </PopoverPopup>
+        </Popover>
+    );
+}
+
+/** Opening on hover: the `openOnHover` prop opens the popover when the pointer rests on the trigger. */
+#[Component]
+function PopoverHoverDemo(): Node
+{
+    return (
+        <Popover openOnHover sideOffset={{ 8 }}>
+            <PopoverTrigger>Notifications</PopoverTrigger>
+            <PopoverPopup>
+                <PopoverArrow />
+                <PopoverTitle>Notifications</PopoverTitle>
+                <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
+            </PopoverPopup>
+        </Popover>
     );
 }
 

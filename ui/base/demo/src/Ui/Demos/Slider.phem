@@ -14,80 +14,49 @@ function SliderPage(): Node
 {
     return (
         <DemoPage slug="slider">
-            <Hero>
-                <Slider defaultValue={{ 25 }}>
-                    <SliderControl>
-                        <SliderTrack>
-                            <SliderIndicator />
-                            <SliderThumb aria-label="Volume" />
-                        </SliderTrack>
-                    </SliderControl>
-                </Slider>
+            <Hero source="SliderHeroDemo">
+                <SliderHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Labeling a slider">
+                <Example title="Labeling a slider" source="SliderLabelingDemo">
                     <Example.description>
                         <p>A single-thumb slider without a visible label (such as a volume control) can be labeled using <code>aria-label</code> on <code>SliderThumb</code>. A visible label can be created using <code>SliderLabel</code>. For a multi-thumb range slider with a visible label, add <code>aria-label</code> on each <code>SliderThumb</code> to distinguish them.</p>
                     </Example.description>
                     <SliderLabelingDemo />
                 </Example>
-                <Example title="Range slider">
+                <Example title="Range slider" source="SliderRangeDemo">
                     <Example.description>
                         <p>To create a range slider, pass an array of values and place a <code>SliderThumb</code> for each value in the array, with the <code>index</code> of its value.</p>
                         <p>Thumbs can be configured to behave differently when they collide during pointer interactions using the <code>thumbCollisionBehavior</code> prop on <code>Slider</code>.</p>
                     </Example.description>
-                    <Slider defaultValue={{ [25, 45] }}>
-                        <SliderControl>
-                            <SliderTrack>
-                                <SliderIndicator />
-                                <SliderThumb index={{ 0 }} aria-label="Minimum value" />
-                                <SliderThumb index={{ 1 }} aria-label="Maximum value" />
-                            </SliderTrack>
-                        </SliderControl>
-                    </Slider>
+                    <SliderRangeDemo />
                 </Example>
-                <Example title="Steps">
+                <Example title="Steps" source="SliderStepsDemo">
                     <Example.description>
                         <p>Use the <code>step</code> prop to snap the value to multiples of a given increment, and <code>largeStep</code> to control the increment when using <kbd>Shift</kbd> + <kbd>Arrow Up</kbd>/<kbd>Arrow Down</kbd>.</p>
                     </Example.description>
-                    <Slider className="w-56" defaultValue={{ 400 }} min={{ 100 }} max={{ 900 }} step={{ 100 }} largeStep={{ 200 }}>
-                        <SliderLabel className="cursor-default font-normal">Playback speed</SliderLabel>
-                        <SliderValue className="text-end" />
-                        <SliderControl>
-                            <SliderTrack>
-                                <SliderIndicator />
-                                <SliderThumb />
-                            </SliderTrack>
-                        </SliderControl>
-                    </Slider>
+                    <SliderStepsDemo />
                 </Example>
-                <Example title="Marks">
+                <Example title="Marks" source="SliderMarksDemo">
                     <Example.description>
                         <p>Render your own tick marks, positioning each mark along the track as a percentage of the value range.</p>
                         <p>Marks are independent of the value’s granularity—pair them with the <a href="#steps" className="underline"><code>step</code></a> prop to snap the thumb to each mark.</p>
                     </Example.description>
                     <SliderMarksDemo />
                 </Example>
-                <Example title="Thumb alignment">
+                <Example title="Thumb alignment" source="SliderThumbAlignmentDemo">
                     <Example.description>
                         <p>Set <code>thumbAlignment="edge"</code> to inset the thumb such that its edge aligns with the edge of the control when the value is at <code>min</code> or <code>max</code>, without overflowing the control like the default <code>"center"</code> alignment.</p>
                     </Example.description>
-                    <Slider thumbAlignment="edge" defaultValue={{ 25 }}>
-                        <SliderControl>
-                            <SliderTrack>
-                                <SliderIndicator />
-                                <SliderThumb aria-label="Volume" />
-                            </SliderTrack>
-                        </SliderControl>
-                    </Slider>
+                    <SliderThumbAlignmentDemo />
                 </Example>
-                <Example title="Vertical">
+                <Example title="Vertical" source="SliderVerticalDemo">
                     <Example.description>
                         <p>Set <code>orientation</code> to <code>Orientation::Vertical</code> on <code>Slider</code> to build a vertical slider.</p>
                     </Example.description>
                     <SliderVerticalDemo />
                 </Example>
-                <Example title="Form integration">
+                <Example title="Form integration" source="SliderFormDemo">
                     <Example.description>
                         <p>To use a slider in a form, pass the slider <code>name</code> to <code>Slider</code>. For grouped multi-thumb range sliders in forms, <a href="/components/fieldset" className="underline">Fieldset</a> can provide the shared visible label while each thumb keeps its own <code>aria-label</code>.</p>
                     </Example.description>
@@ -95,6 +64,21 @@ function SliderPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function SliderHeroDemo(): Node
+{
+    return (
+        <Slider defaultValue={{ 25 }}>
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb aria-label="Volume" />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
     );
 }
 
@@ -135,6 +119,39 @@ function SliderLabelingDemo(): Node
 }
 
 #[Component]
+function SliderRangeDemo(): Node
+{
+    return (
+        <Slider defaultValue={{ [25, 45] }}>
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb index={{ 0 }} aria-label="Minimum value" />
+                    <SliderThumb index={{ 1 }} aria-label="Maximum value" />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
+    );
+}
+
+#[Component]
+function SliderStepsDemo(): Node
+{
+    return (
+        <Slider className="w-56" defaultValue={{ 400 }} min={{ 100 }} max={{ 900 }} step={{ 100 }} largeStep={{ 200 }}>
+            <SliderLabel className="cursor-default font-normal">Playback speed</SliderLabel>
+            <SliderValue className="text-end" />
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
+    );
+}
+
+#[Component]
 function SliderMarksDemo(): Node
 {
     $marks = [0, 25, 50, 75, 100];
@@ -155,6 +172,21 @@ function SliderMarksDemo(): Node
                     <span key={{ mark }} className="absolute -translate-x-1/2 text-xs whitespace-nowrap text-neutral-600 dark:text-neutral-400" style="left: {{ mark }}%">{{ mark }}</span>
                 {% endfor %}
             </div>
+        </Slider>
+    );
+}
+
+#[Component]
+function SliderThumbAlignmentDemo(): Node
+{
+    return (
+        <Slider thumbAlignment="edge" defaultValue={{ 25 }}>
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb aria-label="Volume" />
+                </SliderTrack>
+            </SliderControl>
         </Slider>
     );
 }

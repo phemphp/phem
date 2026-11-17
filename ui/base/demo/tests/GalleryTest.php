@@ -35,4 +35,36 @@ final class GalleryTest extends DemoTestCase
             expect($page->getByRole('link', ['name' => $component['name'], 'exact' => true]))->toHaveAttribute('aria-current', 'page');
         }
     }
+
+    public function testTheSourceOfADemoHasItsConstantsAndItsHelpers(): void
+    {
+        $source = Gallery::source('MenuFilterDemo');
+
+        // The constants, the demo, then the helpers that it calls, also through another helper.
+        self::assertStringStartsWith("<?phem\n\nuse Phem\\Attribute\\Component;\n", $source);
+        self::assertLessThan(strpos($source, 'function MenuFilterDemo('), strpos($source, 'const MENU_FILTER_POPUP = '));
+        self::assertGreaterThan(strpos($source, 'function MenuFilterDemo('), strpos($source, 'function MenuFilterSubmenu('));
+        self::assertStringContainsString('function MenuClearIcon(', $source);
+
+        // Not the page, the other demos, or the constants of the other demos.
+        self::assertStringNotContainsString('MenuPage', $source);
+        self::assertStringNotContainsString('function MenuHeroDemo(', $source);
+        self::assertStringNotContainsString('MENU_ANIMATED', $source);
+    }
+
+    public function testTheSourceOfADemoClass(): void
+    {
+        $source = Gallery::source('ButtonLoadingDemo');
+
+        self::assertStringContainsString("#[Component]\nfinal class ButtonLoadingDemo\n{", $source);
+        self::assertStringContainsString('use Phem\\Attribute\\{Component, State};', $source);
+        self::assertStringNotContainsString('ButtonHeroDemo', $source);
+    }
+
+    public function testTheSourceOfAnUnknownDemo(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Gallery::source('NoSuchDemo');
+    }
 }

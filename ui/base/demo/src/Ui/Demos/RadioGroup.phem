@@ -9,38 +9,28 @@ use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{FieldItem, FieldLabel, FieldsetLegend, Form, RadioIndicator};
 use Phem\Ui\Base\{Field, Fieldset, Radio, RadioGroup};
 
-const STORAGE_TYPES = ['ssd' => 'SSD', 'hdd' => 'HDD'];
-
 #[Page('/components/radio-group')]
 function RadioGroupPage(): Node
 {
-    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
-    $label = 'flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white';
-
     return (
         <DemoPage slug="radio-group">
-            <Hero>
-                <RadioGroup aria-labelledby="best-apple" defaultValue="fuji-apple" name="apple">
-                    <div className="text-sm font-bold" id="best-apple">Best apple</div>
-                    {% for value, name in apples %}
-                        <label key={{ value }} className={{ label }}><Radio value={{ value }}><RadioIndicator /></Radio>{{ name }}</label>
-                    {% endfor %}
-                </RadioGroup>
+            <Hero source="RadioGroupHeroDemo">
+                <RadioGroupHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Labeling a radio group">
+                <Example title="Labeling a radio group" source="RadioGroupLabelingDemo">
                     <Example.description>
                         <p>Label the group with <code>aria-labelledby</code> and a sibling label element. An enclosing <code>&lt;label&gt;</code> is the simplest labeling pattern for each radio.</p>
                     </Example.description>
                     <RadioGroupLabelingDemo />
                 </Example>
-                <Example title="Rendering as a native button">
+                <Example title="Rendering as a native button" source="RadioGroupNativeButtonDemo">
                     <Example.description>
                         <p>By default, <code>Radio</code> renders a <code>&lt;span&gt;</code> element to support enclosing labels. Prefer rendering each radio as a native button with <code>nativeButton</code> when using sibling labels (<code>for</code>/<code>id</code>).</p>
                     </Example.description>
                     <RadioGroupNativeButtonDemo />
                 </Example>
-                <Example title="Form integration">
+                <Example title="Form integration" source="RadioGroupFormDemo">
                     <Example.description>
                         <p>Use <a href="/components/field" className="underline">Field</a> and <a href="/components/fieldset" className="underline">Fieldset</a> for group labeling and form integration.</p>
                     </Example.description>
@@ -52,9 +42,24 @@ function RadioGroupPage(): Node
 }
 
 #[Component]
+function RadioGroupHeroDemo(): Node
+{
+    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
+
+    return (
+        <RadioGroup aria-labelledby="best-apple" defaultValue="fuji-apple" name="apple">
+            <div className="text-sm font-bold" id="best-apple">Best apple</div>
+            {% for value, name in apples %}
+                <label key={{ value }} className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white"><Radio value={{ value }}><RadioIndicator /></Radio>{{ name }}</label>
+            {% endfor %}
+        </RadioGroup>
+    );
+}
+
+#[Component]
 function RadioGroupLabelingDemo(): Node
 {
-    $types = STORAGE_TYPES;
+    $types = ['ssd' => 'SSD', 'hdd' => 'HDD'];
 
     return (
         <RadioGroup aria-labelledby="storage-type-label" defaultValue="ssd">
@@ -69,7 +74,7 @@ function RadioGroupLabelingDemo(): Node
 #[Component]
 function RadioGroupNativeButtonDemo(): Node
 {
-    $types = STORAGE_TYPES;
+    $types = ['ssd' => 'SSD', 'hdd' => 'HDD'];
 
     return (
         <RadioGroup aria-labelledby="storage-type" defaultValue="ssd">
@@ -87,7 +92,7 @@ function RadioGroupNativeButtonDemo(): Node
 #[Component]
 function RadioGroupFormDemo(): Node
 {
-    $types = STORAGE_TYPES;
+    $types = ['ssd' => 'SSD', 'hdd' => 'HDD'];
 
     return (
         <Form>

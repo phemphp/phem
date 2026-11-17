@@ -2,7 +2,7 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
@@ -13,12 +13,20 @@ function InputPage(): Node
 {
     return (
         <DemoPage slug="input">
-            <Hero>
-                <label className="flex flex-col items-start gap-1 text-sm font-bold text-neutral-950 dark:text-white">
-                    Name
-                    <Input placeholder="e.g. Colm Tuite" />
-                </label>
+            <Hero source="InputHeroDemo">
+                <InputHeroDemo />
             </Hero>
         </DemoPage>
+    );
+}
+
+#[Component]
+function InputHeroDemo(): Node
+{
+    return (
+        <label className="flex flex-col items-start gap-1 text-sm font-bold text-neutral-950 dark:text-white">
+            Name
+            <Input placeholder="e.g. Colm Tuite" />
+        </label>
     );
 }

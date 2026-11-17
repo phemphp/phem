@@ -26,7 +26,7 @@ final class ControlsTest extends DemoTestCase
     public function testSwitch(): void
     {
         $page = $this->visitComponent('switch');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         $switch = $hero->getByRole('switch', ['name' => 'Notifications']);
         expect($switch)->toHaveAttribute('aria-checked', 'true');
@@ -46,7 +46,7 @@ final class ControlsTest extends DemoTestCase
         $page = $this->visitComponent('switch');
 
         // A native button with a sibling label.
-        $native = $page->getByRole('region', ['name' => 'Rendering as a native button'])->getByRole('switch', ['name' => 'Notifications']);
+        $native = $page->getByRole('region', ['name' => 'Rendering as a native button'])->locator('[data-demo="preview"]')->getByRole('switch', ['name' => 'Notifications']);
         self::assertSame('BUTTON', $native->evaluate('el => el.tagName'));
         $page->locator('label[for="notifications-switch"]')->click();
         expect($native)->toHaveAttribute('aria-checked', 'true');
@@ -54,7 +54,7 @@ final class ControlsTest extends DemoTestCase
         expect($native)->toHaveAttribute('aria-checked', 'false');
 
         // In a Field: the form gets the value.
-        $field = $page->getByRole('region', ['name' => 'Form integration'])->getByRole('switch', ['name' => 'Notifications']);
+        $field = $page->getByRole('region', ['name' => 'Form integration'])->locator('[data-demo="preview"]')->getByRole('switch', ['name' => 'Notifications']);
         $field->click();
         expect($field)->toHaveAttribute('aria-checked', 'true');
         expect($page->locator('input[name="notifications"]'))->toBeChecked();
@@ -64,7 +64,7 @@ final class ControlsTest extends DemoTestCase
     {
         $page = $this->visitComponent('checkbox');
 
-        $checkbox = $page->getByRole('region', ['name' => 'Demo'])->getByRole('checkbox', ['name' => 'Enable notifications']);
+        $checkbox = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByRole('checkbox', ['name' => 'Enable notifications']);
         expect($checkbox)->toHaveAttribute('aria-checked', 'true');
 
         $checkbox->click();
@@ -78,12 +78,12 @@ final class ControlsTest extends DemoTestCase
 
         // An enclosing label: a click on its text checks the checkbox.
         $terms = $page->getByRole('checkbox', ['name' => 'Accept terms and conditions']);
-        $page->getByText('Accept terms and conditions')->click();
+        $page->getByRole('region', ['name' => 'Labeling a checkbox'])->locator('[data-demo="preview"]')->getByText('Accept terms and conditions')->click();
         expect($terms)->toHaveAttribute('aria-checked', 'true');
 
         // A native button with a sibling label: the label names it, a click on the label and
         // Space check it.
-        $native = $page->getByRole('region', ['name' => 'Rendering as a native button'])->getByRole('checkbox', ['name' => 'Enable notifications']);
+        $native = $page->getByRole('region', ['name' => 'Rendering as a native button'])->locator('[data-demo="preview"]')->getByRole('checkbox', ['name' => 'Enable notifications']);
         self::assertSame('BUTTON', $native->evaluate('el => el.tagName'));
         $page->locator('label[for="notifications-checkbox"]')->click();
         expect($native)->toHaveAttribute('aria-checked', 'true');
@@ -101,7 +101,7 @@ final class ControlsTest extends DemoTestCase
     public function testCheckboxGroupKeepsItsValue(): void
     {
         $page = $this->visitComponent('checkbox-group');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         $fuji = $hero->getByRole('checkbox', ['name' => 'Fuji']);
         $gala = $hero->getByRole('checkbox', ['name' => 'Gala']);
@@ -118,7 +118,7 @@ final class ControlsTest extends DemoTestCase
     public function testCheckboxGroupWithNativeButtons(): void
     {
         $page = $this->visitComponent('checkbox-group');
-        $example = $page->getByRole('region', ['name' => 'Rendering as a native button']);
+        $example = $page->getByRole('region', ['name' => 'Rendering as a native button'])->locator('[data-demo="preview"]');
 
         $example->locator('label[for="protocol-https"]')->click();
         expect($example->getByRole('checkbox', ['name' => 'HTTPS']))->toHaveAttribute('aria-checked', 'true');
@@ -128,7 +128,7 @@ final class ControlsTest extends DemoTestCase
     public function testCheckboxGroupParentCheckbox(): void
     {
         $page = $this->visitComponent('checkbox-group');
-        $example = $page->getByRole('region', ['name' => 'Parent checkbox']);
+        $example = $page->getByRole('region', ['name' => 'Parent checkbox'])->locator('[data-demo="preview"]');
 
         $apples = $example->getByRole('checkbox', ['name' => 'Apples']);
         $fuji = $example->getByRole('checkbox', ['name' => 'Fuji']);
@@ -150,7 +150,7 @@ final class ControlsTest extends DemoTestCase
     public function testCheckboxGroupNestedParentCheckbox(): void
     {
         $page = $this->visitComponent('checkbox-group');
-        $example = $page->getByRole('region', ['name' => 'Nested parent checkbox']);
+        $example = $page->getByRole('region', ['name' => 'Nested parent checkbox'])->locator('[data-demo="preview"]');
 
         $all = $example->getByRole('checkbox', ['name' => 'User Permissions']);
         $users = $example->getByRole('checkbox', ['name' => 'Manage Users']);
@@ -179,10 +179,10 @@ final class ControlsTest extends DemoTestCase
     public function testTheWrappingLabelNamesTheCheckboxAndTheSwitch(): void
     {
         $page = $this->visitComponent('checkbox');
-        expect($page->getByRole('region', ['name' => 'Demo'])->getByRole('checkbox', ['name' => 'Enable notifications']))->toHaveCount(1);
+        expect($page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByRole('checkbox', ['name' => 'Enable notifications']))->toHaveCount(1);
 
         $page = $this->visitComponent('switch');
-        expect($page->getByRole('region', ['name' => 'Demo'])->getByRole('switch', ['name' => 'Notifications']))->toHaveCount(1);
+        expect($page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByRole('switch', ['name' => 'Notifications']))->toHaveCount(1);
     }
 
     public function testRadioGroup(): void
@@ -212,7 +212,7 @@ final class ControlsTest extends DemoTestCase
 
         // A native button with a sibling label: a click on the label checks it, and the arrow keys
         // move the check.
-        $native = $page->getByRole('region', ['name' => 'Rendering as a native button']);
+        $native = $page->getByRole('region', ['name' => 'Rendering as a native button'])->locator('[data-demo="preview"]');
         $hdd = $native->getByRole('radio', ['name' => 'HDD']);
         self::assertSame('BUTTON', $hdd->evaluate('el => el.tagName'));
         $native->locator('label[for="storage-type-hdd"]')->click();
@@ -222,7 +222,7 @@ final class ControlsTest extends DemoTestCase
         expect($native->getByRole('radio', ['name' => 'SSD']))->toHaveAttribute('aria-checked', 'true');
 
         // In a Field and a Fieldset: the form gets the value.
-        $form = $page->getByRole('region', ['name' => 'Form integration']);
+        $form = $page->getByRole('region', ['name' => 'Form integration'])->locator('[data-demo="preview"]');
         $form->getByRole('radio', ['name' => 'HDD'])->click();
         expect($form->locator('input[name="storageType"]'))->toHaveValue('hdd');
     }
@@ -246,7 +246,7 @@ final class ControlsTest extends DemoTestCase
     public function testToggleGroupPressesMultipleItems(): void
     {
         $page = $this->visitComponent('toggle-group');
-        $example = $page->getByRole('region', ['name' => 'Multiple']);
+        $example = $page->getByRole('region', ['name' => 'Multiple'])->locator('[data-demo="preview"]');
 
         $bold = $example->getByRole('button', ['name' => 'Bold']);
         $underline = $example->getByRole('button', ['name' => 'Underline']);
@@ -263,7 +263,7 @@ final class ControlsTest extends DemoTestCase
     public function testToolbarMovesTheFocusWithTheArrowKeys(): void
     {
         $page = $this->visitComponent('toolbar');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         expect($hero->getByRole('toolbar'))->toHaveAttribute('aria-orientation', 'horizontal');
 
@@ -283,7 +283,7 @@ final class ControlsTest extends DemoTestCase
         $page = $this->visitComponent('toolbar');
 
         // A menu trigger is an item of the toolbar: the arrow keys go to it, and Enter opens it.
-        $menu = $page->getByRole('region', ['name' => 'Using with Menu']);
+        $menu = $page->getByRole('region', ['name' => 'Using with Menu'])->locator('[data-demo="preview"]');
         $menu->getByRole('button', ['name' => 'Save'])->focus();
         $page->keyboard()->press('ArrowRight');
         $export = $menu->getByRole('button', ['name' => 'Export']);
@@ -294,13 +294,13 @@ final class ControlsTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // The tooltip triggers are items of the toolbar.
-        $tooltip = $page->getByRole('region', ['name' => 'Using with Tooltip']);
+        $tooltip = $page->getByRole('region', ['name' => 'Using with Tooltip'])->locator('[data-demo="preview"]');
         $tooltip->getByRole('button', ['name' => 'Bold'])->focus();
         $page->keyboard()->press('ArrowRight');
         expect($tooltip->getByRole('button', ['name' => 'Italic']))->toBeFocused();
 
         // The input of a number field is an item of the toolbar.
-        $zoom = $page->getByRole('region', ['name' => 'Using with NumberField']);
+        $zoom = $page->getByRole('region', ['name' => 'Using with NumberField'])->locator('[data-demo="preview"]');
         $zoom->getByRole('button', ['name' => 'Fit'])->focus();
         $page->keyboard()->press('ArrowRight');
         $input = $zoom->getByRole('textbox', ['name' => 'Zoom']);
@@ -323,6 +323,6 @@ final class ControlsTest extends DemoTestCase
         $page = $this->visitComponent('avatar');
 
         // The second avatar has no image.
-        expect($page->getByText('LT', ['exact' => true])->last())->toBeVisible();
+        expect($page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByText('LT', ['exact' => true])->last())->toBeVisible();
     }
 }

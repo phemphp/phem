@@ -11,12 +11,13 @@ final class FormsTest extends DemoTestCase
     public function testFieldTracksItsStateAndValidatesOnSubmit(): void
     {
         $page = $this->visitComponent('field');
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
-        $input = $page->getByRole('textbox', ['name' => 'Name']);
-        $error = $page->getByText('Please enter your name');
+        $input = $hero->getByRole('textbox', ['name' => 'Name']);
+        $error = $hero->getByText('Please enter your name');
 
         // The parts link with the ids of the Field, as in Base UI.
-        expect($page->locator('label', ['hasText' => 'Name']))->toHaveAttribute('for', 'name-control');
+        expect($hero->locator('label', ['hasText' => 'Name']))->toHaveAttribute('for', 'name-control');
         expect($input)->toHaveAttribute('id', 'name-control');
         expect($input)->toHaveAttribute('aria-describedby', 'name-description');
 
@@ -36,15 +37,15 @@ final class FormsTest extends DemoTestCase
     public function testFormShowsTheErrorOfTheServerAndFocusesAnInvalidField(): void
     {
         $page = $this->visitComponent('form');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
-        $input = $page->getByRole('textbox', ['name' => 'Homepage']);
+        $input = $hero->getByRole('textbox', ['name' => 'Homepage']);
         $submit = $hero->getByRole('button', ['name' => 'Submit']);
         expect($input)->toHaveValue('https://example.com');
 
         // The value of the demo is valid for the browser: the server refuses it after 1 second.
         $submit->click();
-        expect($page->getByText('The example domain is not allowed'))->toBeVisible();
+        expect($hero->getByText('The example domain is not allowed'))->toBeVisible();
         expect($input)->toHaveAttribute('aria-invalid', 'true');
         expect($input)->toHaveAttribute('aria-describedby', 'url-error');
         // The lock of the submit (`aria-disabled`) goes at the end of the request.
@@ -56,7 +57,7 @@ final class FormsTest extends DemoTestCase
         $submit->click();
         expect($input)->toBeFocused();
         expect($input)->toHaveAttribute('data-invalid', '');
-        expect($page->getByText('The example domain is not allowed'))->toBeHidden();
+        expect($hero->getByText('The example domain is not allowed'))->toBeHidden();
 
         // A value that the server accepts removes the error.
         $input->fill('https://base-ui.com');
@@ -70,19 +71,19 @@ final class FormsTest extends DemoTestCase
         $page = $this->visitComponent('form');
 
         // The handler refuses the reserved name: the error shows in the FieldError.
-        $server = $page->getByRole('region', ['name' => 'Submit with a Server Function']);
+        $server = $page->getByRole('region', ['name' => 'Submit with a Server Function'])->locator('[data-demo="preview"]');
         $server->getByRole('button', ['name' => 'Submit'])->click();
         expect($server->locator('text=\'admin\' is reserved for system use'))->toBeVisible();
         expect($server->getByRole('textbox', ['name' => 'Username']))->toHaveAttribute('aria-invalid', 'true');
 
         // The handler gets the values of the form.
-        $values = $page->getByRole('region', ['name' => 'Submit form values as a JavaScript object']);
+        $values = $page->getByRole('region', ['name' => 'Submit form values as a JavaScript object'])->locator('[data-demo="preview"]');
         $values->getByRole('spinbutton', ['name' => 'Quantity'])->fill('3');
         $values->getByRole('button', ['name' => 'Submit'])->click();
         expect($values->locator('pre[aria-label="Payload"]'))->toContainText('"order_quantity": 3');
 
         // The checks of the server map their errors to the fields.
-        $zod = $page->getByRole('region', ['name' => 'Using with Zod']);
+        $zod = $page->getByRole('region', ['name' => 'Using with Zod'])->locator('[data-demo="preview"]');
         $zod->getByRole('textbox', ['name' => 'Age'])->fill('-2');
         $zod->getByRole('button', ['name' => 'Submit'])->click();
         expect($zod->locator('text=Name is required'))->toBeVisible();
@@ -114,7 +115,7 @@ final class FormsTest extends DemoTestCase
     public function testOtpFieldMovesToTheNextSlot(): void
     {
         $page = $this->visitComponent('otp-field');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         $first = $hero->getByRole('textbox', ['name' => 'Verification code']);
         $first->focus();
@@ -140,41 +141,41 @@ final class FormsTest extends DemoTestCase
         $page = $this->visitComponent('otp-field');
 
         // The label names the first slot, and the other slots get their own label.
-        $labeled = $page->getByRole('region', ['name' => 'Labeling an OTP field']);
+        $labeled = $page->getByRole('region', ['name' => 'Labeling an OTP field'])->locator('[data-demo="preview"]');
         expect($labeled->getByRole('textbox', ['name' => 'Verification code']))->toHaveAttribute('id', 'labeled-1');
         expect($labeled->getByRole('textbox', ['name' => 'Character 2 of 6']))->toBeVisible();
 
         // In a Field, the label names the first slot, and the form gets the code.
-        $form = $page->getByRole('region', ['name' => 'Form integration']);
+        $form = $page->getByRole('region', ['name' => 'Form integration'])->locator('[data-demo="preview"]');
         $form->getByRole('textbox', ['name' => 'Verification code'])->focus();
         $page->keyboard()->type('123456');
         expect($form->locator('input[name="verificationCode"]'))->toHaveValue('123456');
 
         // Alphanumeric: letters and digits.
-        $recovery = $page->getByRole('region', ['name' => 'Alphanumeric verification codes']);
+        $recovery = $page->getByRole('region', ['name' => 'Alphanumeric verification codes'])->locator('[data-demo="preview"]');
         $recovery->getByRole('textbox', ['name' => 'Recovery code'])->focus();
         $page->keyboard()->type('a7c');
         expect($recovery->getByRole('textbox', ['name' => 'Character 3 of 6']))->toHaveValue('c');
 
         // The separator of a grouped layout.
-        expect($page->getByRole('region', ['name' => 'Grouped layouts'])->getByRole('separator'))->toHaveAttribute('data-orientation', 'horizontal');
+        expect($page->getByRole('region', ['name' => 'Grouped layouts'])->locator('[data-demo="preview"]')->getByRole('separator'))->toHaveAttribute('data-orientation', 'horizontal');
 
         // Custom normalization: the letters become capital letters, and a dash is refused.
-        $normalized = $page->getByRole('region', ['name' => 'Custom normalization']);
+        $normalized = $page->getByRole('region', ['name' => 'Custom normalization'])->locator('[data-demo="preview"]');
         $normalized->getByRole('textbox', ['name' => 'Recovery code'])->focus();
         $page->keyboard()->type('a-b');
         expect($normalized->getByRole('textbox', ['name' => 'Recovery code']))->toHaveValue('A');
         expect($normalized->getByRole('textbox', ['name' => 'Character 2 of 6']))->toHaveValue('B');
 
         // Masked entry: the slots are password inputs.
-        expect($page->getByRole('region', ['name' => 'Masked entry'])->locator('input[data-phem-otp-field-target="input"]')->first())->toHaveAttribute('type', 'password');
+        expect($page->getByRole('region', ['name' => 'Masked entry'])->locator('[data-demo="preview"]')->locator('input[data-phem-otp-field-target="input"]')->first())->toHaveAttribute('type', 'password');
     }
 
     public function testSliderMovesWithTheKeyboard(): void
     {
         $page = $this->visitComponent('slider');
 
-        $thumb = $page->getByRole('region', ['name' => 'Demo'])->getByRole('slider', ['name' => 'Volume']);
+        $thumb = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByRole('slider', ['name' => 'Volume']);
         expect($thumb)->toHaveValue('25');
 
         $thumb->focus();
@@ -191,12 +192,12 @@ final class FormsTest extends DemoTestCase
         $page = $this->visitComponent('slider');
 
         // A range: each thumb has its own name and value.
-        $range = $page->getByRole('region', ['name' => 'Range slider']);
+        $range = $page->getByRole('region', ['name' => 'Range slider'])->locator('[data-demo="preview"]');
         expect($range->getByRole('slider', ['name' => 'Minimum value']))->toHaveValue('25');
         expect($range->getByRole('slider', ['name' => 'Maximum value']))->toHaveValue('45');
 
         // The steps: an arrow key adds the step, Shift with an arrow key the large step.
-        $speed = $page->getByRole('region', ['name' => 'Steps'])->getByRole('slider', ['name' => 'Playback speed']);
+        $speed = $page->getByRole('region', ['name' => 'Steps'])->locator('[data-demo="preview"]')->getByRole('slider', ['name' => 'Playback speed']);
         $speed->focus();
         $page->keyboard()->press('ArrowRight');
         expect($speed)->toHaveValue('500');
@@ -204,7 +205,7 @@ final class FormsTest extends DemoTestCase
         expect($speed)->toHaveValue('700');
 
         // The edge alignment keeps the thumb in the control at the max.
-        $edge = $page->getByRole('region', ['name' => 'Thumb alignment']);
+        $edge = $page->getByRole('region', ['name' => 'Thumb alignment'])->locator('[data-demo="preview"]');
         $edge->getByRole('slider', ['name' => 'Volume'])->focus();
         $page->keyboard()->press('End');
         $right = $edge->locator('[data-phem-slider-target="thumb"]')->evaluate('el => el.getBoundingClientRect().right');
@@ -212,14 +213,14 @@ final class FormsTest extends DemoTestCase
         self::assertLessThanOrEqual($control + 0.5, $right);
 
         // Vertical: ArrowUp raises the value.
-        $vertical = $page->getByRole('region', ['name' => 'Vertical'])->getByRole('slider', ['name' => 'Volume']);
+        $vertical = $page->getByRole('region', ['name' => 'Vertical'])->locator('[data-demo="preview"]')->getByRole('slider', ['name' => 'Volume']);
         expect($vertical)->toHaveAttribute('aria-orientation', 'vertical');
         $vertical->focus();
         $page->keyboard()->press('ArrowUp');
         expect($vertical)->toHaveValue('36');
 
         // In a form, the inputs have the name of the slider.
-        $form = $page->getByRole('region', ['name' => 'Form integration']);
+        $form = $page->getByRole('region', ['name' => 'Form integration'])->locator('[data-demo="preview"]');
         expect($form->locator('input[name="volume"]'))->toHaveValue('50');
         expect($form->locator('input[name="price[]"]'))->toHaveCount(2);
     }

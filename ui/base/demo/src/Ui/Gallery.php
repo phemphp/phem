@@ -62,24 +62,94 @@ final class Gallery
     }
 
     /**
-     * The source of a demo component, as on base-ui.com: the `use` statements that it needs and
-     * its function. The demo is a `#[Component]` function of a file in src/Ui/Demos/.
+     * The source of a demo component, as on base-ui.com: the `use` statements that it needs, the
+     * constants that it reads, its function or its class, and the helper components of its file
+     * that it calls. The demo is a `#[Component]` function or class of a file in src/Ui/Demos/.
      */
     public static function source(string $component): string
     {
         foreach (glob(__DIR__.'/Demos/*.phem') ?: [] as $file) {
             $code = (string) file_get_contents($file);
+            $definitions = self::definitions($code);
 
-            if (1 !== preg_match('/^(?:#\[[^\n]+\]\n)*function '.preg_quote($component, '/').'\(.*?^\}$/ms', $code, $function)) {
+            if (!isset($definitions[$component])) {
                 continue;
             }
 
-            $uses = self::uses($code, $function[0]);
+            $constants = self::constants($code);
+            $used = self::used($component, $constants + $definitions);
+            $helpers = array_diff_key(array_intersect_key($definitions, $used), [$component => true]);
 
-            return "<?phem\n\n".('' === $uses ? '' : $uses."\n\n").$function[0]."\n";
+            // The constants, the demo, then its helpers, each in the order of the file.
+            $blocks = array_filter([implode("\n", array_intersect_key($constants, $used)), $definitions[$component], ...array_values($helpers)]);
+            $uses = self::uses($code, implode("\n", $blocks));
+
+            return "<?phem\n\n".('' === $uses ? '' : $uses."\n\n").implode("\n\n", $blocks)."\n";
         }
 
-        throw new \InvalidArgumentException(\sprintf('No demo in src/Ui/Demos/ has the function "%s".', $component));
+        throw new \InvalidArgumentException(\sprintf('No demo in src/Ui/Demos/ has the function or the class "%s".', $component));
+    }
+
+    /**
+     * The top-level functions and classes of a file, by name, with their attributes.
+     *
+     * @return array<string, string>
+     */
+    private static function definitions(string $code): array
+    {
+        preg_match_all('/^(?:#\[[^\n]+\]\n)*(?:function (\w+)\(|(?:final )?class (\w+)\b).*?^\}$/ms', $code, $matches, \PREG_SET_ORDER);
+
+        $definitions = [];
+
+        foreach ($matches as $match) {
+            // A page is not a part of a demo.
+            if (str_starts_with($match[0], '#[Page(')) {
+                continue;
+            }
+
+            $definitions[$match[1] ?: $match[2]] = $match[0];
+        }
+
+        return $definitions;
+    }
+
+    /**
+     * The top-level constants of a file, by name.
+     *
+     * @return array<string, string>
+     */
+    private static function constants(string $code): array
+    {
+        preg_match_all('/^const (\w+) = .*?;$/ms', $code, $matches, \PREG_SET_ORDER);
+
+        return array_column($matches, 0, 1);
+    }
+
+    /**
+     * The names of the demo and of the constants and definitions that it uses, also through the
+     * others.
+     *
+     * @param array<string, string> $available
+     *
+     * @return array<string, true>
+     */
+    private static function used(string $component, array $available): array
+    {
+        $used = [$component => true];
+        $pending = [$available[$component]];
+
+        while (null !== $part = array_pop($pending)) {
+            foreach ($available as $name => $definition) {
+                if (isset($used[$name]) || 1 !== preg_match('/\b'.$name.'\b/', $part)) {
+                    continue;
+                }
+
+                $used[$name] = true;
+                $pending[] = $definition;
+            }
+        }
+
+        return $used;
     }
 
     /**

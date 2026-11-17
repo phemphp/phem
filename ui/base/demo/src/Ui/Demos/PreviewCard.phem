@@ -13,40 +13,32 @@ function PreviewCardPage(): Node
 {
     return (
         <DemoPage slug="preview-card">
-            <Hero>
-                <PreviewCard>
-                    <p className="text-base text-neutral-950 text-balance dark:text-white">
-                        The principles of good <PreviewCardTrigger href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.
-                    </p>
-                    <PreviewCardPopup>
-                        <PreviewCardArrow />
-                        <PreviewCardTypography long />
-                    </PreviewCardPopup>
-                </PreviewCard>
+            <Hero source="PreviewCardHeroDemo">
+                <PreviewCardHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Detached triggers">
+                <Example title="Detached triggers" source="PreviewCardDetachedDemo">
                     <Example.description>
                         <p>A preview card can be controlled by a trigger located either inside or outside the <code>PreviewCard</code> component. For simple, one-off interactions, place the <code>PreviewCardTrigger</code> inside <code>PreviewCard</code>, as shown in the example at the top of this page.</p>
                         <p>However, if defining the preview card's content next to its trigger is not practical, you can use a detached trigger. This involves placing the <code>PreviewCardTrigger</code> outside of <code>PreviewCard</code> and linking them with the same <code>handle</code>. The root gets the handle as its <code>id</code>, and the link gets <code>data-phem-popover-for</code>.</p>
                     </Example.description>
                     <PreviewCardDetachedDemo />
                 </Example>
-                <Example title="Multiple triggers">
+                <Example title="Multiple triggers" source="PreviewCardMultipleDemo">
                     <Example.description>
                         <p>A single preview card can be opened by multiple trigger elements. You can achieve this by using the same <code>handle</code> for several detached triggers, or by placing multiple <code>PreviewCardTrigger</code> components inside a single <code>PreviewCard</code>.</p>
                         <p>The preview card can render different content depending on which trigger opened it. Give each trigger a <code>payload</code>, and put a <code>PreviewCardPayload</code> with the same <code>name</code> in the <code>PreviewCardViewport</code>: the viewport shows a copy of the content of the active trigger.</p>
                     </Example.description>
                     <PreviewCardMultipleDemo />
                 </Example>
-                <Example title="Controlled mode with multiple triggers">
+                <Example title="Controlled mode with multiple triggers" source="PreviewCardControlledDemo">
                     <Example.description>
                         <p>You can control the preview card's open state with the <code>defaultOpen</code> and <code>triggerId</code> props of <code>PreviewCard</code>: a render with new values opens the card next to the link with that <code>id</code>. The controller keeps the values of the browser in <code>data-phem-popover-open-value</code> and <code>data-phem-popover-trigger-id-value</code>.</p>
                         <p>Here, the button is in the root, and opens the card without a request with the <code>phem-popover#open</code> action and a <code>triggerId</code> param. The focus stays on the button.</p>
                     </Example.description>
                     <PreviewCardControlledDemo />
                 </Example>
-                <Example title="Animating the Preview Card">
+                <Example title="Animating the Preview Card" source="PreviewCardAnimatedDemo">
                     <Example.description>
                         <p>You can animate a preview card as it moves between different trigger elements. This includes animating its position, size, and content.</p>
                         <p>To animate the preview card's position, apply CSS transitions to the <code>top</code> and <code>left</code> properties of the <code>PreviewCardPopup</code>. To animate its size, transition its <code>width</code> and <code>height</code> to <code>var(--popup-width)</code> and <code>var(--popup-height)</code>.</p>
@@ -56,6 +48,23 @@ function PreviewCardPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+/** The hero: a preview card on a link in a text. */
+#[Component]
+function PreviewCardHeroDemo(): Node
+{
+    return (
+        <PreviewCard>
+            <p className="text-base text-neutral-950 text-balance dark:text-white">
+                The principles of good <PreviewCardTrigger href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.
+            </p>
+            <PreviewCardPopup>
+                <PreviewCardArrow />
+                <PreviewCardTypography long />
+            </PreviewCardPopup>
+        </PreviewCard>
     );
 }
 

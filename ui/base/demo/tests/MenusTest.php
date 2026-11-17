@@ -12,7 +12,7 @@ final class MenusTest extends DemoTestCase
     {
         $page = $this->visitComponent('menu');
 
-        $trigger = $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->getByRole('button', ['name' => 'Song']);
+        $trigger = $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'Song']);
         $trigger->click();
         expect($page->getByRole('menu'))->toBeVisible();
         expect($trigger)->toHaveAttribute('aria-expanded', 'true');
@@ -45,7 +45,7 @@ final class MenusTest extends DemoTestCase
     public function testMenuExamples(): void
     {
         $page = $this->visitComponent('menu');
-        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true])->locator('[data-demo="preview"]');
         $menu = $page->getByRole('menu');
         $texts = function ($locator, array $texts): void {
             expect($locator)->toHaveCount(\count($texts));
@@ -180,7 +180,7 @@ final class MenusTest extends DemoTestCase
         expect($page->getByRole('menuitem', ['name' => 'Save as']))->toHaveAttribute('data-highlighted', '');
         expect($filter)->toBeFocused();
         $filter->fill('zzz');
-        expect($page->getByText('No actions found.'))->toBeVisible();
+        expect($page->getByRole('dialog')->getByText('No actions found.'))->toBeVisible();
         $page->getByRole('button', ['name' => 'Clear'])->first()->click();
         expect($filter)->toHaveValue('');
         expect($filter)->toBeFocused();
@@ -203,7 +203,7 @@ final class MenusTest extends DemoTestCase
     {
         $page = $this->visitComponent('context-menu');
 
-        $page->getByRole('region', ['name' => 'Demo'])->getByText('Right click here')->click(['button' => 'right']);
+        $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByText('Right click here')->click(['button' => 'right']);
         $menu = $page->getByRole('menu');
         expect($menu)->toBeVisible();
         expect($page->getByRole('menuitem', ['name' => 'Favorite']))->toBeVisible();
@@ -217,7 +217,7 @@ final class MenusTest extends DemoTestCase
         $page = $this->visitComponent('context-menu');
 
         // The same actions in the context menu of the card and in its menu button.
-        $card = $page->getByRole('region', ['name' => 'Using with Menu']);
+        $card = $page->getByRole('region', ['name' => 'Using with Menu'])->locator('[data-demo="preview"]');
         $card->getByText('Station Hofplein')->click(['button' => 'right']);
         expect($page->getByRole('menuitem', ['name' => 'Copy link']))->toBeVisible();
         $page->keyboard()->press('Escape');
@@ -228,7 +228,7 @@ final class MenusTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // The submenu of a context menu.
-        $page->getByRole('region', ['name' => 'Nested menu'])->getByText('Right click here')->click(['button' => 'right']);
+        $page->getByRole('region', ['name' => 'Nested menu'])->locator('[data-demo="preview"]')->getByText('Right click here')->click(['button' => 'right']);
         $page->getByRole('menuitem', ['name' => 'Add to Playlist'])->hover();
         expect($page->getByRole('menuitem', ['name' => 'New playlist…']))->toBeVisible();
     }
@@ -269,7 +269,7 @@ final class MenusTest extends DemoTestCase
     public function testNavigationMenuOpensItsContentInTheViewport(): void
     {
         $page = $this->visitComponent('navigation-menu');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         $overview = $hero->getByRole('button', ['name' => 'Overview']);
         $overview->click();
@@ -287,7 +287,7 @@ final class MenusTest extends DemoTestCase
     public function testNavigationMenuNestedSubmenus(): void
     {
         $page = $this->visitComponent('navigation-menu');
-        $example = $page->getByRole('region', ['name' => 'Nested submenus']);
+        $example = $page->getByRole('region', ['name' => 'Nested submenus'])->locator('[data-demo="preview"]');
 
         $overview = $example->getByRole('button', ['name' => 'Overview']);
         $overview->click();
@@ -323,7 +323,7 @@ final class MenusTest extends DemoTestCase
     public function testNavigationMenuNestedInlineSubmenus(): void
     {
         $page = $this->visitComponent('navigation-menu');
-        $example = $page->getByRole('region', ['name' => 'Nested inline submenus']);
+        $example = $page->getByRole('region', ['name' => 'Nested inline submenus'])->locator('[data-demo="preview"]');
 
         // The inner menu shows its default item in the panel of the outer menu.
         $product = $example->getByRole('button', ['name' => 'Product']);
@@ -346,7 +346,7 @@ final class MenusTest extends DemoTestCase
     public function testNavigationMenuLargeMenu(): void
     {
         $page = $this->visitComponent('navigation-menu');
-        $example = $page->getByRole('region', ['name' => 'Large menus']);
+        $example = $page->getByRole('region', ['name' => 'Large menus'])->locator('[data-demo="preview"]');
 
         $example->getByRole('button', ['name' => 'Components'])->click();
         expect($example->getByRole('link', ['name' => 'Accordion']))->toBeVisible();

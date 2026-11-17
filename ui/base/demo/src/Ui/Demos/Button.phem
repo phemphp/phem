@@ -13,15 +13,15 @@ function ButtonPage(): Node
 {
     return (
         <DemoPage slug="button">
-            <Hero>
-                <Button>Submit</Button>
+            <Hero source="ButtonHeroDemo">
+                <ButtonHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Rendering as another tag">
+                <Example title="Rendering as another tag" source="ButtonAnotherTagDemo">
                     <Example.description>
                         <p>The button can remain keyboard accessible while being rendered as another tag, such as a <code>&lt;div&gt;</code>, by specifying <code>tag="div"</code>.</p>
                     </Example.description>
-                    <Button tag="div">Button that can contain complex children</Button>
+                    <ButtonAnotherTagDemo />
                 </Example>
                 <Example title="Rendering links as buttons">
                     <Example.description>
@@ -29,7 +29,7 @@ function ButtonPage(): Node
                         <p>If a link needs to look like a button visually, style the <code>&lt;a&gt;</code> element directly with CSS rather than using the Button component.</p>
                     </Example.description>
                 </Example>
-                <Example title="Loading states">
+                <Example title="Loading states" source="ButtonLoadingDemo">
                     <Example.description>
                         <p>For buttons that enter a loading state after activation, specify <code>focusableWhenDisabled</code> so focus remains on the button while it is disabled. Because some browser and screen reader combinations do not reliably announce changes to a focused button’s descendant text, use <a href="https://www.w3.org/TR/accname-1.2/#computation-steps" className="underline"><code>aria-labelledby</code></a> to make the changing text the button’s explicit accessible name.</p>
                     </Example.description>
@@ -38,6 +38,18 @@ function ButtonPage(): Node
             </Examples>
         </DemoPage>
     );
+}
+
+#[Component]
+function ButtonHeroDemo(): Node
+{
+    return <Button>Submit</Button>;
+}
+
+#[Component]
+function ButtonAnotherTagDemo(): Node
+{
+    return <Button tag="div">Button that can contain complex children</Button>;
 }
 
 // The click starts a loading state of 4 seconds, as in the Base UI demo: the button is disabled

@@ -14,29 +14,17 @@ function ContextMenuPage(): Node
 {
     return (
         <DemoPage slug="context-menu">
-            <Hero>
-                <ContextMenu>
-                    <ContextMenuTrigger>Right click here</ContextMenuTrigger>
-                    <MenuPopup>
-                        <MenuItem>Add to Library</MenuItem>
-                        <MenuItem>Add to Playlist</MenuItem>
-                        <MenuSeparator />
-                        <MenuItem>Play Next</MenuItem>
-                        <MenuItem>Play Last</MenuItem>
-                        <MenuSeparator />
-                        <MenuItem>Favorite</MenuItem>
-                        <MenuItem>Share</MenuItem>
-                    </MenuPopup>
-                </ContextMenu>
+            <Hero source="ContextMenuHeroDemo">
+                <ContextMenuHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Using with Menu">
+                <Example title="Using with Menu" source="ContextMenuWithMenuDemo">
                     <Example.description>
                         <p>A context menu should supplement a primary way to perform the same actions. This image card exposes actions through a visible menu button and reuses them in the context menu for right-click and long-press users.</p>
                     </Example.description>
                     <ContextMenuWithMenuDemo />
                 </Example>
-                <Example title="Nested menu">
+                <Example title="Nested menu" source="ContextMenuSubmenuDemo">
                     <Example.description>
                         <p>To create a submenu, create a <code>MenuSubmenu</code> inside the parent context menu. Use the <code>MenuSubmenuTrigger</code> part for the menu item that opens the nested menu.</p>
                     </Example.description>
@@ -44,6 +32,26 @@ function ContextMenuPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function ContextMenuHeroDemo(): Node
+{
+    return (
+        <ContextMenu>
+            <ContextMenuTrigger>Right click here</ContextMenuTrigger>
+            <MenuPopup>
+                <MenuItem>Add to Library</MenuItem>
+                <MenuItem>Add to Playlist</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Play Next</MenuItem>
+                <MenuItem>Play Last</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Favorite</MenuItem>
+                <MenuItem>Share</MenuItem>
+            </MenuPopup>
+        </ContextMenu>
     );
 }
 

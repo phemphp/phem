@@ -47,90 +47,81 @@ function DrawerPage(): Node
 {
     return (
         <DemoPage slug="drawer">
-            <Hero>
-                <Drawer swipeDirection="right">
-                    <DrawerTrigger>Open drawer</DrawerTrigger>
-                    <DrawerPopup>
-                        <DrawerContent>
-                            <DrawerTitle>Drawer</DrawerTitle>
-                            <DrawerDescription>This is a drawer that slides in from the side. You can swipe to dismiss it.</DrawerDescription>
-                            <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
-                        </DrawerContent>
-                    </DrawerPopup>
-                </Drawer>
+            <Hero source="DrawerHeroDemo">
+                <DrawerHeroDemo />
             </Hero>
             <Examples>
-                <Example title="State">
+                <Example title="State" source="DrawerStateDemo">
                     <Example.description>
                         <p>By default, Drawer is an uncontrolled component: the browser keeps its state. The <code>defaultOpen</code> prop is the state that the server renders: a render with a new value opens or closes the drawer, and the controller keeps the value of the browser in <code>data-phem-dialog-open-value</code>.</p>
                     </Example.description>
                     <DrawerStateDemo />
                 </Example>
-                <Example title="Position">
+                <Example title="Position" source="DrawerPositionDemo">
                     <Example.description>
                         <p>The <code>swipeDirection</code> prop places the drawer, and gives the direction of the swipe that closes it. It defaults to <code>"down"</code> for bottom sheets. Use <code>"up"</code>, <code>"left"</code>, or <code>"right"</code> for other drawer positions.</p>
                     </Example.description>
                     <DrawerPositionDemo />
                 </Example>
-                <Example title="Nested drawers">
+                <Example title="Nested drawers" source="DrawerNestedDemo">
                     <Example.description>
                         <p>Use the <code>[data-nested-drawer-open]</code> selector and the <code>--nested-drawers</code> CSS variable to style drawers when a nested drawer is open.</p>
                         <p>This demo stacks nested drawers using a constant peek so the frontmost drawer stays anchored to the bottom while the ones behind it are scaled down and lifted. It also uses the <code>--drawer-height</code> and <code>--drawer-frontmost-height</code> CSS variables to handle varying drawer heights.</p>
                     </Example.description>
                     <DrawerNestedDemo />
                 </Example>
-                <Example title="Snap points">
+                <Example title="Snap points" source="DrawerSnapPointsDemo">
                     <Example.description>
                         <p>Use <code>snapPoints</code> to snap a bottom sheet drawer to preset heights. Numbers between 0 and 1 represent fractions of the viewport height, and numbers greater than 1 are treated as pixel values. String values support <code>px</code> and <code>rem</code> units (for example, <code>'148px'</code> or <code>'30rem'</code>). Apply the snap point offset in your styles: <code>translateY(calc(var(--drawer-snap-point-offset) + var(--drawer-swipe-movement-y)))</code>.</p>
                         <p>By default, the drawer can skip snap points when swiping quickly. Specify the <code>snapToSequentialPoints</code> prop to disable velocity-based skipping so the snap target is determined by drag distance (you can still drag past multiple points).</p>
                     </Example.description>
                     <DrawerSnapPointsDemo />
                 </Example>
-                <Example title="Virtual keyboard aware">
+                <Example title="Virtual keyboard aware" source="DrawerKeyboardDemo">
                     <Example.description>
                         <p>Set <code>virtualKeyboard</code> on a bottom sheet to make it react to software keyboards when it contains form controls. When the keyboard opens, the field with the focus scrolls into view, and the popup gets the height of the keyboard in <code>--drawer-keyboard-inset</code>.</p>
                         <p>Keep the popup frame stable: place header and footer content outside a plain scrollable body. If a footer contains its own input, reserve a footer slot below the scroll area and offset it by <code>var(--drawer-keyboard-inset, 0px)</code>. Always include the <code>0px</code> fallback: the variable is only set while the keyboard is open.</p>
                     </Example.description>
                     <DrawerKeyboardDemo />
                 </Example>
-                <Example title="Indent effect">
+                <Example title="Indent effect" source="DrawerIndentDemo">
                     <Example.description>
                         <p>Scale the background down when any drawer opens by wrapping your app in <code>DrawerProvider</code> and using <code>DrawerIndentBackground</code> and <code>DrawerIndent</code> at the top of your tree. Any <code>Drawer</code> within the provider activates the indent parts while it is open: they get the <code>[data-active]</code> attribute, and <code>--drawer-swipe-progress</code> during a swipe.</p>
                     </Example.description>
                     <DrawerIndentDemo />
                 </Example>
-                <Example title="Non-modal">
+                <Example title="Non-modal" source="DrawerNonModalDemo">
                     <Example.description>
                         <p>Set <code>modal={{ false }}</code> to opt out of focus trapping and <code>disablePointerDismissal</code> to keep the drawer open on outside clicks.</p>
                     </Example.description>
                     <DrawerNonModalDemo />
                 </Example>
-                <Example title="Mobile navigation">
+                <Example title="Mobile navigation" source="DrawerMobileNavDemo">
                     <Example.description>
                         <p>You can build a full-screen mobile navigation sheet using Drawer parts, including a flick-to-dismiss from the top gesture.</p>
                     </Example.description>
                     <DrawerMobileNavDemo />
                 </Example>
-                <Example title="Swipe to open">
+                <Example title="Swipe to open" source="DrawerSwipeAreaDemo">
                     <Example.description>
                         <p>Place <code>DrawerSwipeArea</code> along the edge of the viewport to enable swipe-to-open gestures.</p>
                     </Example.description>
                     <DrawerSwipeAreaDemo />
                 </Example>
-                <Example title="Close confirmation">
+                <Example title="Close confirmation" source="DrawerCloseConfirmationDemo">
                     <Example.description>
                         <p>This example shows a nested confirmation dialog that opens if the text entered in the drawer is going to be discarded.</p>
                         <p>To implement this, give the <code>confirmClose</code> prop of the <code>Drawer</code> the <code>handle</code> of an <code>AlertDialog</code> in its popup. When the user changed a field, a request to close opens the alert dialog: the confirmation is automatically shown when the user clicks the backdrop, presses the Esc key, clicks a close button, or dismisses the drawer with a swipe gesture. Its <code>DialogDiscard</code> button closes the two and resets the text.</p>
                     </Example.description>
                     <DrawerCloseConfirmationDemo />
                 </Example>
-                <Example title="Action sheet with separate destructive action">
+                <Example title="Action sheet with separate destructive action" source="DrawerActionSheetDemo">
                     <Example.description>
                         <p>This demo builds an action sheet with a grouped list of actions plus a separate destructive action button.</p>
                     </Example.description>
                     <DrawerActionSheetDemo />
                 </Example>
-                <Example title="Detached triggers">
+                <Example title="Detached triggers" source="DrawerDetachedDemo">
                     <Example.description>
                         <p>A drawer can be controlled by a trigger located either inside or outside the <code>Drawer</code> component. For simple, one-off interactions, place the <code>DrawerTrigger</code> inside <code>Drawer</code>.</p>
                         <p>However, if defining the drawer's content next to its trigger is not practical, you can use a detached trigger: give the same <code>handle</code> to the <code>DrawerTrigger</code> and to the <code>Drawer</code>. The drawer can render different content depending on which trigger opened it: give each trigger a <code>payload</code>, and the <code>DrawerPayload</code> part shows it.</p>
@@ -146,6 +137,24 @@ function DrawerPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+/** The hero: a drawer that slides in from the right side. */
+#[Component]
+function DrawerHeroDemo(): Node
+{
+    return (
+        <Drawer swipeDirection="right">
+            <DrawerTrigger>Open drawer</DrawerTrigger>
+            <DrawerPopup>
+                <DrawerContent>
+                    <DrawerTitle>Drawer</DrawerTitle>
+                    <DrawerDescription>This is a drawer that slides in from the side. You can swipe to dismiss it.</DrawerDescription>
+                    <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                </DrawerContent>
+            </DrawerPopup>
+        </Drawer>
     );
 }
 

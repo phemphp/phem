@@ -13,7 +13,7 @@ final class BasicsTest extends DemoTestCase
     {
         $page = $this->visitComponent('button');
 
-        $button = $page->getByRole('region', ['name' => 'Demo'])->getByRole('button', ['name' => 'Submit']);
+        $button = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'Submit']);
         expect($button)->toHaveAttribute('type', 'button');
         $button->focus();
         expect($button)->toBeFocused();
@@ -33,7 +33,7 @@ final class BasicsTest extends DemoTestCase
     public function testButtonKeepsTheFocusInItsLoadingState(): void
     {
         $page = $this->visitComponent('button');
-        $example = $page->getByRole('region', ['name' => 'Loading states']);
+        $example = $page->getByRole('region', ['name' => 'Loading states'])->locator('[data-demo="preview"]');
 
         $button = $example->getByRole('button');
         $label = $example->locator('#loading-label');
@@ -90,13 +90,14 @@ final class BasicsTest extends DemoTestCase
     public function testProgress(): void
     {
         $page = $this->visitComponent('progress');
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
-        $progress = $page->getByRole('progressbar', ['name' => 'Export data']);
+        $progress = $hero->getByRole('progressbar', ['name' => 'Export data']);
         expect($progress)->toHaveAttribute('data-progressing', '');
         self::assertGreaterThanOrEqual(20, (int) $progress->getAttribute('aria-valuenow'));
 
         // The value grows each second, as in the Base UI demo.
         $page->waitForFunction('() => Number(document.querySelector(\'[role="progressbar"]\').getAttribute("aria-valuenow")) > 45', null, ['timeout' => 30_000]);
-        expect($page->getByText('%'))->toBeVisible();
+        expect($progress)->toContainText('%');
     }
 }

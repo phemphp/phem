@@ -2,7 +2,7 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
@@ -14,14 +14,22 @@ function FieldPage(): Node
 {
     return (
         <DemoPage slug="field">
-            <Hero>
-                <Field id="name">
-                    <FieldLabel>Name</FieldLabel>
-                    <FieldControl required placeholder="Required" />
-                    <FieldError match="valueMissing">Please enter your name</FieldError>
-                    <FieldDescription>Visible on your profile</FieldDescription>
-                </Field>
+            <Hero source="FieldHeroDemo">
+                <FieldHeroDemo />
             </Hero>
         </DemoPage>
+    );
+}
+
+#[Component]
+function FieldHeroDemo(): Node
+{
+    return (
+        <Field id="name">
+            <FieldLabel>Name</FieldLabel>
+            <FieldControl required placeholder="Required" />
+            <FieldError match="valueMissing">Please enter your name</FieldError>
+            <FieldDescription>Visible on your profile</FieldDescription>
+        </Field>
     );
 }

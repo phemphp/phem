@@ -44,98 +44,86 @@ function MenuPage(): Node
 {
     return (
         <DemoPage slug="menu">
-            <Hero>
-                <Menu sideOffset={{ 8 }}>
-                    <MenuTrigger>Song</MenuTrigger>
-                    <MenuPopup>
-                        <MenuItem>Add to Library</MenuItem>
-                        <MenuItem>Add to Playlist</MenuItem>
-                        <MenuSeparator />
-                        <MenuItem>Play Next</MenuItem>
-                        <MenuItem>Play Last</MenuItem>
-                        <MenuSeparator />
-                        <MenuItem>Favorite</MenuItem>
-                        <MenuItem>Share</MenuItem>
-                    </MenuPopup>
-                </Menu>
+            <Hero source="MenuHeroDemo">
+                <MenuHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Open on hover">
+                <Example title="Open on hover" source="MenuHoverDemo">
                     <Example.description>
                         <p>To create a menu that opens on hover, add the <code>openOnHover</code> prop to <code>Menu</code>. You can additionally configure how quickly the menu opens on hover using the <code>delay</code> prop.</p>
                     </Example.description>
                     <MenuHoverDemo />
                 </Example>
-                <Example title="Checkbox items">
+                <Example title="Checkbox items" source="MenuCheckboxDemo">
                     <Example.description>
                         <p>Use the <code>MenuCheckboxItem</code> part to create a menu item that can toggle a setting on or off. Here, the server keeps the state: each item has <code>checked</code> and an <code>onClick</code> handler. With <code>defaultChecked</code> and no handler, the browser keeps it.</p>
                     </Example.description>
                     <MenuCheckboxDemo />
                 </Example>
-                <Example title="Radio items">
+                <Example title="Radio items" source="MenuRadioDemo">
                     <Example.description>
                         <p>Use the <code>MenuRadioGroup</code> and <code>MenuRadioItem</code> parts to create menu items that work like radio buttons.</p>
                     </Example.description>
                     <MenuRadioDemo />
                 </Example>
-                <Example title="Close on click">
+                <Example title="Close on click" source="MenuCloseOnClickDemo">
                     <Example.description>
                         <p>Use the <code>closeOnClick</code> prop to change whether the menu closes when an item is clicked. Here, the checkbox item closes the menu, and the first item keeps it open.</p>
                     </Example.description>
                     <MenuCloseOnClickDemo />
                 </Example>
-                <Example title="Group labels">
+                <Example title="Group labels" source="MenuGroupLabelsDemo">
                     <Example.description>
                         <p>Use the <code>MenuGroupLabel</code> part to add a label to a <code>MenuGroup</code> or <code>MenuRadioGroup</code>.</p>
                     </Example.description>
                     <MenuGroupLabelsDemo />
                 </Example>
-                <Example title="Nested menu">
+                <Example title="Nested menu" source="MenuSubmenuDemo">
                     <Example.description>
                         <p>To create a submenu, nest a <code>MenuSubmenu</code> inside the popup of the parent menu. Use the <code>MenuSubmenuTrigger</code> part for the menu item that opens the nested menu.</p>
                     </Example.description>
                     <MenuSubmenuDemo />
                 </Example>
-                <Example title="Navigate to another page">
+                <Example title="Navigate to another page" source="MenuLinksDemo">
                     <Example.description>
                         <p>Use the <code>MenuLinkItem</code> part to create a link. Turbo follows it as a link of the page.</p>
                     </Example.description>
                     <MenuLinksDemo />
                 </Example>
-                <Example title="Open a dialog">
+                <Example title="Open a dialog" source="MenuDialogDemo">
                     <Example.description>
                         <p>In order to open a dialog using a menu, make the menu item a detached trigger of the dialog: give it <code>data-phem-dialog-for</code> with the <code>handle</code> of the dialog. The click closes the menu and opens the dialog.</p>
                     </Example.description>
                     <MenuDialogDemo />
                 </Example>
-                <Example title="Detached triggers">
+                <Example title="Detached triggers" source="MenuDetachedDemo">
                     <Example.description>
                         <p>A menu can be opened by a trigger that lives either inside or outside the <code>Menu</code>. Keep the trigger inside <code>Menu</code> for simple, tightly coupled layouts like the hero demo at the top of this page. When the trigger and menu content need to live in different parts of the tree, give the same <code>handle</code> to the trigger and to the root. The root gets the handle as its <code>id</code>, and the trigger gets <code>data-phem-menu-for</code>.</p>
                         <p>Note that only top-level menus can have detached triggers. Submenus must have their triggers defined within the <code>MenuSubmenu</code> part.</p>
                     </Example.description>
                     <MenuDetachedDemo />
                 </Example>
-                <Example title="Multiple triggers">
+                <Example title="Multiple triggers" source="MenuMultipleDemo">
                     <Example.description>
                         <p>One menu can be opened by several triggers. You can either render multiple <code>MenuTrigger</code> components inside the same <code>Menu</code>, or attach several detached triggers to the same <code>handle</code>.</p>
                         <p>Menus can render different content depending on which trigger opened them. Give each trigger a <code>payload</code>, and put a <code>MenuPayload</code> with the same <code>name</code> in the <code>MenuViewport</code>: the server renders each content in a <code>template</code>, and the viewport shows a copy of the content of the active trigger.</p>
                     </Example.description>
                     <MenuMultipleDemo />
                 </Example>
-                <Example title="Controlled mode with multiple triggers">
+                <Example title="Controlled mode with multiple triggers" source="MenuControlledDemo">
                     <Example.description>
                         <p>You can control the menu's open state with the <code>defaultOpen</code> and <code>triggerId</code> props of <code>Menu</code>: a render with new values opens the menu next to the trigger with that <code>id</code>. The controller keeps the values of the browser in <code>data-phem-menu-open-value</code> and <code>data-phem-menu-trigger-id-value</code>.</p>
                         <p>Here, the button is in the root, and opens the menu without a request with the <code>phem-menu#open</code> action and a <code>triggerId</code> param.</p>
                     </Example.description>
                     <MenuControlledDemo />
                 </Example>
-                <Example title="Arrow">
+                <Example title="Arrow" source="MenuArrowDemo">
                     <Example.description>
                         <p>Use the <code>MenuArrow</code> part inside the popup to visually connect the menu to its trigger.</p>
                     </Example.description>
                     <MenuArrowDemo />
                 </Example>
-                <Example title="Animating the Menu">
+                <Example title="Animating the Menu" source="MenuAnimatedDemo">
                     <Example.description>
                         <p>When one menu is opened by multiple detached triggers, you can animate the menu as it moves between triggers. This includes animating position, size, and content.</p>
                         <p>To animate the menu's position, apply CSS transitions to the <code>top</code> and <code>left</code> properties of the <code>MenuPopup</code>. To animate its size, transition its <code>width</code> and <code>height</code> to <code>var(--popup-width)</code> and <code>var(--popup-height)</code>.</p>
@@ -143,7 +131,7 @@ function MenuPage(): Node
                     </Example.description>
                     <MenuAnimatedDemo />
                 </Example>
-                <Example title="Filtering">
+                <Example title="Filtering" source="MenuFilterDemo">
                     <Example.description>
                         <p>Add <code>MenuInput</code> to the popup, and put the items inside <code>MenuList</code>. Label the input with <code>aria-label</code>, <code>aria-labelledby</code>, or a visible <code>&lt;label&gt;</code>. Type to narrow the actions, then use the arrow keys to move through matching items.</p>
                         <p>Items match their text by default, ignoring case, accents, and punctuation. Use <code>label</code> to override it. Groups with no matching items get the <code>hidden</code> attribute and stay in the page, and <code>MenuEmpty</code> appears when no items match. <code>MenuClear</code> empties the query, and the query resets when the menu closes.</p>
@@ -154,6 +142,26 @@ function MenuPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function MenuHeroDemo(): Node
+{
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>Song</MenuTrigger>
+            <MenuPopup>
+                <MenuItem>Add to Library</MenuItem>
+                <MenuItem>Add to Playlist</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Play Next</MenuItem>
+                <MenuItem>Play Last</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Favorite</MenuItem>
+                <MenuItem>Share</MenuItem>
+            </MenuPopup>
+        </Menu>
     );
 }
 

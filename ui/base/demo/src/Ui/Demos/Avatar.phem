@@ -2,7 +2,7 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
@@ -13,15 +13,23 @@ function AvatarPage(): Node
 {
     return (
         <DemoPage slug="avatar">
-            <Hero>
-                <div className="flex gap-4">
-                    <Avatar>
-                        <AvatarImage src="https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1?w=128&h=128&dpr=2&q=80" width="48" height="48" />
-                        <AvatarFallback delay={{ 600 }}>LT</AvatarFallback>
-                    </Avatar>
-                    <Avatar>LT</Avatar>
-                </div>
+            <Hero source="AvatarHeroDemo">
+                <AvatarHeroDemo />
             </Hero>
         </DemoPage>
+    );
+}
+
+#[Component]
+function AvatarHeroDemo(): Node
+{
+    return (
+        <div className="flex gap-4">
+            <Avatar>
+                <AvatarImage src="https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1?w=128&h=128&dpr=2&q=80" width="48" height="48" />
+                <AvatarFallback delay={{ 600 }}>LT</AvatarFallback>
+            </Avatar>
+            <Avatar>LT</Avatar>
+        </div>
     );
 }

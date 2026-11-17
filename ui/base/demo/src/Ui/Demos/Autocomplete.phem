@@ -306,81 +306,67 @@ function autocompleteContains(string $text, string $query): bool
     return str_contains(mb_strtolower($text), mb_strtolower(trim($query)));
 }
 
-// The browser filters the tags, as the Base UI demo does. The popup has no animation.
 #[Page('/components/autocomplete')]
 function AutocompletePage(): Node
 {
-    $tags = TAGS;
-
     return (
         <DemoPage slug="autocomplete">
-            <Hero>
-                <Autocomplete id="tags" filter="contains">
-                    <ComboboxLabel>Search tags</ComboboxLabel>
-                    <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 px-2 placeholder:opacity-100 placeholder:[-webkit-text-fill-color:var(--color-neutral-500)] dark:placeholder:[-webkit-text-fill-color:var(--color-neutral-400)] focus:outline-solid focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:border-white dark:focus:outline-white" />
-                    <ComboboxPopup>
-                        <ComboboxEmpty>No tags found.</ComboboxEmpty>
-                        <ComboboxList className="scroll-py-[0.25rem]">
-                            {% for id, tag in tags %}
-                                <ComboboxItem key={{ id }} value={{ id }} className="flex">{{ tag }}</ComboboxItem>
-                            {% endfor %}
-                        </ComboboxList>
-                    </ComboboxPopup>
-                </Autocomplete>
+            <Hero source="AutocompleteHeroDemo">
+                <AutocompleteHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Async search">
+                <Example title="Async search" source="AutocompleteAsyncDemo">
                     <Example.description>
                         <p>Load items asynchronously while typing and render custom status content. Bind the input with <code>phem:bind</code>: the server searches, and renders the results and the status. While the search runs, the popup gets <code>aria-busy</code>, and the status shows a spinner.</p>
                     </Example.description>
                     <AutocompleteAsyncDemo />
                 </Example>
-                <Example title="Inline autocomplete">
+                <Example title="Inline autocomplete" source="AutocompleteInlineDemo">
                     <Example.description>
                         <p>Autofill the input with the highlighted item while navigating with arrow keys using the <code>mode</code> prop. Accepts <code>aria-autocomplete</code> values <code>list</code>, <code>both</code>, <code>inline</code>, or <code>none</code>.</p>
                     </Example.description>
                     <AutocompleteInlineDemo />
                 </Example>
-                <Example title="Grouped">
+                <Example title="Grouped" source="AutocompleteGroupedDemo">
                     <Example.description>
                         <p>Organize related options with <code>ComboboxGroup</code> and <code>ComboboxGroupLabel</code> to add section headings inside the popup.</p>
                         <p>Render one group for each section of your data, with the heading text in its label and its items in it. A group with no matching item is hidden.</p>
                     </Example.description>
                     <AutocompleteGroupedDemo />
                 </Example>
-                <Example title="Fuzzy matching">
+                <Example title="Fuzzy matching" source="AutocompleteFuzzyDemo">
                     <Example.description>
                         <p>Use fuzzy matching to find relevant results even when the query doesn’t exactly match the item text. Here the server matches the characters of the query in order, and marks the text that matches.</p>
                     </Example.description>
                     <AutocompleteFuzzyDemo />
                 </Example>
-                <Example title="Limit results">
+                <Example title="Limit results" source="AutocompleteLimitDemo">
                     <Example.description>
                         <p>Limit the number of visible items using the <code>limit</code> prop and guide users to refine their query using <code>ComboboxStatus</code>.</p>
                     </Example.description>
                     <AutocompleteLimitDemo />
                 </Example>
-                <Example title="Auto highlight">
+                <Example title="Auto highlight" source="AutocompleteAutoHighlightDemo">
                     <Example.description>
                         <p>The first matching item can be automatically highlighted as the user types by specifying the <code>autoHighlight</code> prop on <code>Autocomplete</code>. Set the prop’s value to <code>"always"</code> if the highlight should always be present, such as when the list is rendered inline within a dialog.</p>
                         <p>The prop can be combined with the <code>keepHighlight</code> and <code>highlightItemOnHover</code> props to configure how the highlight behaves during mouse interactions.</p>
                     </Example.description>
                     <AutocompleteAutoHighlightDemo />
                 </Example>
-                <Example title="Command palette">
+                <Example title="Command palette" source="AutocompleteCommandPaletteDemo">
                     <Example.description>
                         <p>Use the autocomplete input to filter a list of command items that perform an action when clicked. With no <code>ComboboxPopup</code>, the list is inline and always open. Give the items <code>data-phem-dialog-target="close"</code> to close the dialog on a choice.</p>
                     </Example.description>
                     <AutocompleteCommandPaletteDemo />
                 </Example>
-                <Example title="Grid layout">
+                <Example title="Grid layout" source="AutocompleteGridDemo">
                     <Example.description>
                         <p>Display items in a grid layout, wrapping each row in <code>ComboboxRow</code> components, and add the <code>grid</code> prop to <code>Autocomplete</code>. The arrow keys move in the rows and in the columns.</p>
                         <p>A choice runs the <code>onClick</code> handler of the item, which adds the emoji to the end of the message, and the focus goes back to the trigger.</p>
                     </Example.description>
                     <AutocompleteGridDemo />
                 </Example>
-                <Example title="Virtualized">
+                <Example title="Virtualized" source="AutocompleteVirtualizedDemo">
                     <Example.description>
                         <p>A virtualization library renders only the visible rows of a large dataset in the browser. In phem, the server searches the dataset, and renders only the first matches with a status of the total.</p>
                     </Example.description>
@@ -393,6 +379,28 @@ function AutocompletePage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+// The browser filters the tags, as the Base UI demo does. The popup has no animation.
+#[Component]
+function AutocompleteHeroDemo(): Node
+{
+    $tags = TAGS;
+
+    return (
+        <Autocomplete id="tags" filter="contains">
+            <ComboboxLabel>Search tags</ComboboxLabel>
+            <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 px-2 placeholder:opacity-100 placeholder:[-webkit-text-fill-color:var(--color-neutral-500)] dark:placeholder:[-webkit-text-fill-color:var(--color-neutral-400)] focus:outline-solid focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:border-white dark:focus:outline-white" />
+            <ComboboxPopup>
+                <ComboboxEmpty>No tags found.</ComboboxEmpty>
+                <ComboboxList className="scroll-py-[0.25rem]">
+                    {% for id, tag in tags %}
+                        <ComboboxItem key={{ id }} value={{ id }} className="flex">{{ tag }}</ComboboxItem>
+                    {% endfor %}
+                </ComboboxList>
+            </ComboboxPopup>
+        </Autocomplete>
     );
 }
 

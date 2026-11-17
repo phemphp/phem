@@ -2,7 +2,7 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
@@ -14,42 +14,50 @@ function MenubarPage(): Node
 {
     return (
         <DemoPage slug="menubar">
-            <Hero>
-                <Menubar>
-                    <Menu sideOffset={{ 4 }}>
-                        <MenuTrigger>File</MenuTrigger>
-                        <MenuPopup>
-                            <MenuItem>New</MenuItem>
-                            <MenuItem>Open</MenuItem>
-                            <MenuItem>Save</MenuItem>
-                            <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
-                                <MenuSubmenuTrigger>Export</MenuSubmenuTrigger>
-                                <MenuPopup><MenuItem>PDF</MenuItem><MenuItem>PNG</MenuItem><MenuItem>SVG</MenuItem></MenuPopup>
-                            </MenuSubmenu>
-                            <MenuSeparator />
-                            <MenuItem>Print</MenuItem>
-                        </MenuPopup>
-                    </Menu>
-                    <Menu sideOffset={{ 4 }}>
-                        <MenuTrigger>Edit</MenuTrigger>
-                        <MenuPopup><MenuItem>Cut</MenuItem><MenuItem>Copy</MenuItem><MenuItem>Paste</MenuItem></MenuPopup>
-                    </Menu>
-                    <Menu sideOffset={{ 4 }}>
-                        <MenuTrigger>View</MenuTrigger>
-                        <MenuPopup>
-                            <MenuItem>Zoom In</MenuItem>
-                            <MenuItem>Zoom Out</MenuItem>
-                            <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
-                                <MenuSubmenuTrigger>Layout</MenuSubmenuTrigger>
-                                <MenuPopup><MenuItem>Single Page</MenuItem><MenuItem>Two Pages</MenuItem><MenuItem>Continuous</MenuItem></MenuPopup>
-                            </MenuSubmenu>
-                            <MenuSeparator />
-                            <MenuItem>Full Screen</MenuItem>
-                        </MenuPopup>
-                    </Menu>
-                    <Menu disabled><MenuTrigger>Help</MenuTrigger></Menu>
-                </Menubar>
+            <Hero source="MenubarHeroDemo">
+                <MenubarHeroDemo />
             </Hero>
         </DemoPage>
+    );
+}
+
+#[Component]
+function MenubarHeroDemo(): Node
+{
+    return (
+        <Menubar>
+            <Menu sideOffset={{ 4 }}>
+                <MenuTrigger>File</MenuTrigger>
+                <MenuPopup>
+                    <MenuItem>New</MenuItem>
+                    <MenuItem>Open</MenuItem>
+                    <MenuItem>Save</MenuItem>
+                    <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
+                        <MenuSubmenuTrigger>Export</MenuSubmenuTrigger>
+                        <MenuPopup><MenuItem>PDF</MenuItem><MenuItem>PNG</MenuItem><MenuItem>SVG</MenuItem></MenuPopup>
+                    </MenuSubmenu>
+                    <MenuSeparator />
+                    <MenuItem>Print</MenuItem>
+                </MenuPopup>
+            </Menu>
+            <Menu sideOffset={{ 4 }}>
+                <MenuTrigger>Edit</MenuTrigger>
+                <MenuPopup><MenuItem>Cut</MenuItem><MenuItem>Copy</MenuItem><MenuItem>Paste</MenuItem></MenuPopup>
+            </Menu>
+            <Menu sideOffset={{ 4 }}>
+                <MenuTrigger>View</MenuTrigger>
+                <MenuPopup>
+                    <MenuItem>Zoom In</MenuItem>
+                    <MenuItem>Zoom Out</MenuItem>
+                    <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
+                        <MenuSubmenuTrigger>Layout</MenuSubmenuTrigger>
+                        <MenuPopup><MenuItem>Single Page</MenuItem><MenuItem>Two Pages</MenuItem><MenuItem>Continuous</MenuItem></MenuPopup>
+                    </MenuSubmenu>
+                    <MenuSeparator />
+                    <MenuItem>Full Screen</MenuItem>
+                </MenuPopup>
+            </Menu>
+            <Menu disabled><MenuTrigger>Help</MenuTrigger></Menu>
+        </Menubar>
     );
 }

@@ -92,17 +92,18 @@ final class DisclosureTest extends DemoTestCase
     public function testCollapsible(): void
     {
         $page = $this->visitComponent('collapsible');
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
-        $trigger = $page->getByRole('button', ['name' => 'Recovery keys']);
-        expect($page->getByText('alien-bean-pasta'))->toBeHidden();
+        $trigger = $hero->getByRole('button', ['name' => 'Recovery keys']);
+        expect($hero->getByText('alien-bean-pasta'))->toBeHidden();
 
         $trigger->click();
         expect($trigger)->toHaveAttribute('aria-expanded', 'true');
-        expect($page->getByText('alien-bean-pasta'))->toBeVisible();
+        expect($hero->getByText('alien-bean-pasta'))->toBeVisible();
 
         $trigger->click();
         expect($trigger)->toHaveAttribute('aria-expanded', 'false');
-        expect($page->getByText('alien-bean-pasta'))->toBeHidden();
+        expect($hero->getByText('alien-bean-pasta'))->toBeHidden();
     }
 
     public function testCollapsibleHidesItsPanelUntilFound(): void
@@ -122,7 +123,7 @@ final class DisclosureTest extends DemoTestCase
     public function testTabs(): void
     {
         $page = $this->visitComponent('tabs');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         $overview = $hero->getByRole('tab', ['name' => 'Overview']);
         $projects = $hero->getByRole('tab', ['name' => 'Projects']);
@@ -146,7 +147,7 @@ final class DisclosureTest extends DemoTestCase
     public function testTabsAnimateTheirPanels(): void
     {
         $page = $this->visitComponent('tabs');
-        $example = $page->getByRole('region', ['name' => 'Animated panels']);
+        $example = $page->getByRole('region', ['name' => 'Animated panels'])->locator('[data-demo="preview"]');
 
         $example->getByRole('tab', ['name' => 'Account'])->click();
         expect($example->getByRole('tabpanel'))->toHaveText('Profile and preferences.');
@@ -156,7 +157,7 @@ final class DisclosureTest extends DemoTestCase
     public function testTabsAsLinks(): void
     {
         $page = $this->visitComponent('tabs');
-        $example = $page->getByRole('region', ['name' => 'Links']);
+        $example = $page->getByRole('region', ['name' => 'Links'])->locator('[data-demo="preview"]');
 
         $projects = $example->getByRole('tab', ['name' => 'Projects']);
         self::assertSame('A', $projects->evaluate('el => el.tagName'));

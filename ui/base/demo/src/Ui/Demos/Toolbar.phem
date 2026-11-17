@@ -14,46 +14,24 @@ function ToolbarPage(): Node
 {
     return (
         <DemoPage slug="toolbar">
-            <Hero>
-                <Toolbar className="w-150">
-                    <ToggleGroup aria-label="Alignment">
-                        <Toggle aria-label="Align left" value="align-left">Align Left</Toggle>
-                        <Toggle aria-label="Align right" value="align-right">Align Right</Toggle>
-                    </ToggleGroup>
-                    <ToolbarSeparator />
-                    <ToolbarGroup aria-label="Numerical format">
-                        <ToolbarButton aria-label="Format as currency" className="px-0">$</ToolbarButton>
-                        <ToolbarButton aria-label="Format as percent" className="px-0">%</ToolbarButton>
-                    </ToolbarGroup>
-                    <ToolbarSeparator />
-                    <Select defaultValue="Helvetica" sideOffset={{ 4 }}>
-                        <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
-                        <SelectPopup>
-                            <SelectList>
-                                <SelectItem value="Helvetica"><SelectItemIndicator /><SelectItemText>Helvetica</SelectItemText></SelectItem>
-                                <SelectItem value="Arial"><SelectItemIndicator /><SelectItemText>Arial</SelectItemText></SelectItem>
-                            </SelectList>
-                        </SelectPopup>
-                    </Select>
-                    <ToolbarSeparator />
-                    <ToolbarLink href="#">Edited 51m ago</ToolbarLink>
-                </Toolbar>
+            <Hero source="ToolbarHeroDemo">
+                <ToolbarHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Using with Menu">
+                <Example title="Using with Menu" source="ToolbarMenuDemo">
                     <Example.description>
                         <p>All popup components that provide a <code>Trigger</code> component can be integrated with a toolbar: in a <code>Toolbar</code>, the trigger is an item of the toolbar, with the look of a <code>ToolbarButton</code>.</p>
                         <p>This applies to <code>AlertDialog</code>, <code>Dialog</code>, <code>Menu</code>, <code>Popover</code>, and <code>Select</code>.</p>
                     </Example.description>
                     <ToolbarMenuDemo />
                 </Example>
-                <Example title="Using with Tooltip">
+                <Example title="Using with Tooltip" source="ToolbarTooltipDemo">
                     <Example.description>
                         <p>A <code>TooltipTrigger</code> in a <code>Toolbar</code> is an item of the toolbar.</p>
                     </Example.description>
                     <ToolbarTooltipDemo />
                 </Example>
-                <Example title="Using with NumberField">
+                <Example title="Using with NumberField" source="ToolbarNumberFieldDemo">
                     <Example.description>
                         <p>A <code>NumberFieldInput</code> in a <code>Toolbar</code> is an item of the toolbar, as a <code>ToolbarInput</code>.</p>
                     </Example.description>
@@ -61,6 +39,36 @@ function ToolbarPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function ToolbarHeroDemo(): Node
+{
+    return (
+        <Toolbar className="w-150">
+            <ToggleGroup aria-label="Alignment">
+                <Toggle aria-label="Align left" value="align-left">Align Left</Toggle>
+                <Toggle aria-label="Align right" value="align-right">Align Right</Toggle>
+            </ToggleGroup>
+            <ToolbarSeparator />
+            <ToolbarGroup aria-label="Numerical format">
+                <ToolbarButton aria-label="Format as currency" className="px-0">$</ToolbarButton>
+                <ToolbarButton aria-label="Format as percent" className="px-0">%</ToolbarButton>
+            </ToolbarGroup>
+            <ToolbarSeparator />
+            <Select defaultValue="Helvetica" sideOffset={{ 4 }}>
+                <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
+                <SelectPopup>
+                    <SelectList>
+                        <SelectItem value="Helvetica"><SelectItemIndicator /><SelectItemText>Helvetica</SelectItemText></SelectItem>
+                        <SelectItem value="Arial"><SelectItemIndicator /><SelectItemText>Arial</SelectItemText></SelectItem>
+                    </SelectList>
+                </SelectPopup>
+            </Select>
+            <ToolbarSeparator />
+            <ToolbarLink href="#">Edited 51m ago</ToolbarLink>
+        </Toolbar>
     );
 }
 

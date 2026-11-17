@@ -12,6 +12,47 @@ use Phem\Ui\Base\{Align, NavigationMenu, Orientation, Side};
 #[Page('/components/navigation-menu')]
 function NavigationMenuPage(): Node
 {
+    return (
+        <DemoPage slug="navigation-menu">
+            <Hero source="NavigationMenuHeroDemo">
+                <NavigationMenuHeroDemo />
+            </Hero>
+            <Examples>
+                <Example title="Nested submenus" source="NavigationMenuNestedDemo">
+                    <Example.description>
+                        <p>A <code>NavigationMenu</code> can be nested within a higher-level <code>NavigationMenuContent</code> part to create a multi-level navigation menu.</p>
+                    </Example.description>
+                    <NavigationMenuNestedDemo />
+                </Example>
+                <Example title="Nested inline submenus" source="NavigationMenuInlineDemo">
+                    <Example.description>
+                        <p>For second-level navigation that should stay in the same panel, render only the <code>NavigationMenuList</code> and the <code>NavigationMenuViewport</code> of the nested menu (no positioner and no popup), with a <code>defaultValue</code>.</p>
+                    </Example.description>
+                    <NavigationMenuInlineDemo />
+                </Example>
+                <Example title="Custom links">
+                    <Example.description>
+                        <p><code>NavigationMenuLink</code> renders an <code>&lt;a&gt;</code>, so Turbo opens its page with client-side routing: no change is needed. Give the link of the current page <code>aria-current="page"</code>.</p>
+                    </Example.description>
+                </Example>
+                <Example title="Large menus" source="NavigationMenuLargeDemo">
+                    <Example.description>
+                        <p>When you have large menu content that doesn’t fit in the viewport in some cases, you usually have two choices:</p>
+                        <ol className="list-decimal pl-6">
+                            <li>Compress the navigation menu content: give the content and the popup <code>max-height: var(--available-height)</code>, so the menu is more compact and does not overflow.</li>
+                            <li>Make the navigation menu scrollable: put the content in a <a href="/components/scroll-area" className="underline">Scroll Area</a>, which keeps the scrollbars hidden while the content changes, and lets the arrow stay centered.</li>
+                        </ol>
+                    </Example.description>
+                    <NavigationMenuLargeDemo />
+                </Example>
+            </Examples>
+        </DemoPage>
+    );
+}
+
+#[Component]
+function NavigationMenuHeroDemo(): Node
+{
     $overview = [
         ['/quick-start', 'Quick Start', 'Install and assemble your first component.'],
         ['/accessibility', 'Accessibility', 'Learn how we build accessible components.'],
@@ -25,70 +66,37 @@ function NavigationMenuPage(): Node
     ];
 
     return (
-        <DemoPage slug="navigation-menu">
-            <Hero>
-                <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
-                    <NavigationMenuList>
-                        <NavigationMenuItem value="overview">
-                            <NavigationMenuTrigger>Overview <NavigationMenuIcon /></NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                <ul className="m-0 grid list-none grid-cols-2 p-0 max-[500px]:grid-cols-1">
-                                    {% for link in overview %}
-                                        <li key={{ link[0] }}><NavigationMenuLink href={{ link[0] }} card><h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3><p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p></NavigationMenuLink></li>
-                                    {% endfor %}
-                                </ul>
-                            </NavigationMenuContent>
-                        </NavigationMenuItem>
-                        <NavigationMenuItem value="handbook">
-                            <NavigationMenuTrigger>Handbook <NavigationMenuIcon /></NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                <ul className="m-0 flex max-w-[400px] list-none flex-col justify-center p-0">
-                                    {% for link in handbook %}
-                                        <li key={{ link[0] }}><NavigationMenuLink href={{ link[0] }} card><h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3><p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p></NavigationMenuLink></li>
-                                    {% endfor %}
-                                </ul>
-                            </NavigationMenuContent>
-                        </NavigationMenuItem>
-                        <NavigationMenuItem><NavigationMenuLink href="https://github.com/mui/base-ui">GitHub</NavigationMenuLink></NavigationMenuItem>
-                    </NavigationMenuList>
-                    <NavigationMenuPositioner>
-                        <NavigationMenuPopup>
-                            <NavigationMenuArrow />
-                            <NavigationMenuViewport />
-                        </NavigationMenuPopup>
-                    </NavigationMenuPositioner>
-                </NavigationMenu>
-            </Hero>
-            <Examples>
-                <Example title="Nested submenus">
-                    <Example.description>
-                        <p>A <code>NavigationMenu</code> can be nested within a higher-level <code>NavigationMenuContent</code> part to create a multi-level navigation menu.</p>
-                    </Example.description>
-                    <NavigationMenuNestedDemo />
-                </Example>
-                <Example title="Nested inline submenus">
-                    <Example.description>
-                        <p>For second-level navigation that should stay in the same panel, render only the <code>NavigationMenuList</code> and the <code>NavigationMenuViewport</code> of the nested menu (no positioner and no popup), with a <code>defaultValue</code>.</p>
-                    </Example.description>
-                    <NavigationMenuInlineDemo />
-                </Example>
-                <Example title="Custom links">
-                    <Example.description>
-                        <p><code>NavigationMenuLink</code> renders an <code>&lt;a&gt;</code>, so Turbo opens its page with client-side routing: no change is needed. Give the link of the current page <code>aria-current="page"</code>.</p>
-                    </Example.description>
-                </Example>
-                <Example title="Large menus">
-                    <Example.description>
-                        <p>When you have large menu content that doesn’t fit in the viewport in some cases, you usually have two choices:</p>
-                        <ol className="list-decimal pl-6">
-                            <li>Compress the navigation menu content: give the content and the popup <code>max-height: var(--available-height)</code>, so the menu is more compact and does not overflow.</li>
-                            <li>Make the navigation menu scrollable: put the content in a <a href="/components/scroll-area" className="underline">Scroll Area</a>, which keeps the scrollbars hidden while the content changes, and lets the arrow stay centered.</li>
-                        </ol>
-                    </Example.description>
-                    <NavigationMenuLargeDemo />
-                </Example>
-            </Examples>
-        </DemoPage>
+        <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
+            <NavigationMenuList>
+                <NavigationMenuItem value="overview">
+                    <NavigationMenuTrigger>Overview <NavigationMenuIcon /></NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                        <ul className="m-0 grid list-none grid-cols-2 p-0 max-[500px]:grid-cols-1">
+                            {% for link in overview %}
+                                <li key={{ link[0] }}><NavigationMenuLink href={{ link[0] }} card><h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3><p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p></NavigationMenuLink></li>
+                            {% endfor %}
+                        </ul>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem value="handbook">
+                    <NavigationMenuTrigger>Handbook <NavigationMenuIcon /></NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                        <ul className="m-0 flex max-w-[400px] list-none flex-col justify-center p-0">
+                            {% for link in handbook %}
+                                <li key={{ link[0] }}><NavigationMenuLink href={{ link[0] }} card><h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3><p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p></NavigationMenuLink></li>
+                            {% endfor %}
+                        </ul>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem><NavigationMenuLink href="https://github.com/mui/base-ui">GitHub</NavigationMenuLink></NavigationMenuItem>
+            </NavigationMenuList>
+            <NavigationMenuPositioner>
+                <NavigationMenuPopup>
+                    <NavigationMenuArrow />
+                    <NavigationMenuViewport />
+                </NavigationMenuPopup>
+            </NavigationMenuPositioner>
+        </NavigationMenu>
     );
 }
 

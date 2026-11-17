@@ -14,26 +14,42 @@ function ToggleGroupPage(): Node
 {
     return (
         <DemoPage slug="toggle-group">
-            <Hero>
-                <ToggleGroup aria-label="Text alignment" defaultValue={{ ['left'] }}>
-                    <Toggle aria-label="Align left" value="left"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-11 7h9M2.5 8h5" /></svg></Toggle>
-                    <Toggle aria-label="Align center" value="center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-10 7h9M5.5 8h5" /></svg></Toggle>
-                    <Toggle aria-label="Align right" value="right"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-9 7h9M8.5 8h5" /></svg></Toggle>
-                </ToggleGroup>
+            <Hero source="ToggleGroupHeroDemo">
+                <ToggleGroupHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Multiple">
+                <Example title="Multiple" source="ToggleGroupMultipleDemo">
                     <Example.description>
                         <p>Add the <code>multiple</code> prop to allow pressing more than one toggle at a time.</p>
                     </Example.description>
-                    <ToggleGroup multiple defaultValue={{ ['bold', 'italic'] }} aria-label="Text formatting options">
-                        <Toggle aria-label="Bold" value="bold"><BoldIcon /></Toggle>
-                        <Toggle aria-label="Italic" value="italic"><ItalicIcon /></Toggle>
-                        <Toggle aria-label="Underline" value="underline"><UnderlineIcon /></Toggle>
-                    </ToggleGroup>
+                    <ToggleGroupMultipleDemo />
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function ToggleGroupHeroDemo(): Node
+{
+    return (
+        <ToggleGroup aria-label="Text alignment" defaultValue={{ ['left'] }}>
+            <Toggle aria-label="Align left" value="left"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-11 7h9M2.5 8h5" /></svg></Toggle>
+            <Toggle aria-label="Align center" value="center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-10 7h9M5.5 8h5" /></svg></Toggle>
+            <Toggle aria-label="Align right" value="right"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block"><path stroke-linecap="square" stroke-linejoin="round" d="M2.5 4.5h11m-9 7h9M8.5 8h5" /></svg></Toggle>
+        </ToggleGroup>
+    );
+}
+
+#[Component]
+function ToggleGroupMultipleDemo(): Node
+{
+    return (
+        <ToggleGroup multiple defaultValue={{ ['bold', 'italic'] }} aria-label="Text formatting options">
+            <Toggle aria-label="Bold" value="bold"><BoldIcon /></Toggle>
+            <Toggle aria-label="Italic" value="italic"><ItalicIcon /></Toggle>
+            <Toggle aria-label="Underline" value="underline"><UnderlineIcon /></Toggle>
+        </ToggleGroup>
     );
 }
 

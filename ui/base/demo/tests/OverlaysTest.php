@@ -12,7 +12,7 @@ final class OverlaysTest extends DemoTestCase
     {
         $page = $this->visitComponent('dialog');
 
-        $trigger = $page->getByRole('region', ['name' => 'Demo'])->getByRole('button', ['name' => 'View notifications']);
+        $trigger = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'View notifications']);
         $dialog = $page->getByRole('dialog', ['name' => 'Notifications']);
 
         $trigger->click();
@@ -33,7 +33,7 @@ final class OverlaysTest extends DemoTestCase
     public function testAlertDialogClosesOnEscapeOnly(): void
     {
         $page = $this->visitComponent('alert-dialog');
-        $hero = $page->getByRole('region', ['name' => 'Demo', 'exact' => true]);
+        $hero = $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->locator('[data-demo="preview"]');
 
         $hero->getByRole('button', ['name' => 'Discard draft'])->click();
         $dialog = $page->getByRole('alertdialog', ['name' => 'Discard draft?']);
@@ -54,7 +54,7 @@ final class OverlaysTest extends DemoTestCase
     public function testAlertDialogExamples(): void
     {
         $page = $this->visitComponent('alert-dialog');
-        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true])->locator('[data-demo="preview"]');
 
         // Open from a menu: the item closes the menu and opens the alert dialog.
         $region('Open from a menu')->getByRole('button', ['name' => 'Playlist'])->click();
@@ -114,7 +114,7 @@ final class OverlaysTest extends DemoTestCase
     {
         $page = $this->visitComponent('drawer');
 
-        $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->getByRole('button', ['name' => 'Open drawer'])->click();
+        $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'Open drawer'])->click();
         $drawer = $page->getByRole('dialog', ['name' => 'Drawer', 'exact' => true]);
         expect($drawer)->toBeVisible();
         expect($drawer)->toHaveAttribute('data-swipe-direction', 'right');
@@ -136,7 +136,7 @@ final class OverlaysTest extends DemoTestCase
     public function testDrawerExamples(): void
     {
         $page = $this->visitComponent('drawer');
-        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true])->locator('[data-demo="preview"]');
         $dialog = fn (string $name) => $page->getByRole('dialog', ['name' => $name, 'exact' => true]);
 
         // State and Position: a bottom sheet, also in a viewport.
@@ -260,7 +260,7 @@ final class OverlaysTest extends DemoTestCase
     {
         $page = $this->visitComponent('popover');
 
-        $trigger = $page->getByRole('region', ['name' => 'Demo'])->getByRole('button', ['name' => 'Notifications']);
+        $trigger = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'Notifications']);
         $popup = $page->getByRole('dialog');
 
         $trigger->click();
@@ -278,7 +278,7 @@ final class OverlaysTest extends DemoTestCase
     public function testThePopoverIsNamedByItsTitle(): void
     {
         $page = $this->visitComponent('popover');
-        $page->getByRole('region', ['name' => 'Demo'])->getByRole('button', ['name' => 'Notifications'])->click();
+        $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'Notifications'])->click();
         expect($page->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();
     }
 
@@ -286,7 +286,7 @@ final class OverlaysTest extends DemoTestCase
     {
         $page = $this->visitComponent('preview-card');
 
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
         $hero->getByRole('link', ['name' => 'typography'])->hover();
         $card = $hero->locator('[data-phem-popover-target="popup"]');
         expect($card)->toBeVisible();
@@ -322,7 +322,7 @@ final class OverlaysTest extends DemoTestCase
         $page = $this->visitComponent('tooltip');
 
         // Detached triggers: the trigger is outside the root.
-        $detached = $page->getByRole('region', ['name' => 'Detached triggers']);
+        $detached = $page->getByRole('region', ['name' => 'Detached triggers'])->locator('[data-demo="preview"]');
         $delete = $detached->getByRole('button', ['name' => 'Delete']);
         $popup = $page->locator('#delete-tooltip [data-phem-tooltip-target="popup"]');
         $delete->hover();
@@ -333,7 +333,7 @@ final class OverlaysTest extends DemoTestCase
         expect($popup)->toBeHidden();
 
         // Multiple triggers: the payload of the trigger shows in the viewport.
-        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true]);
+        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true])->locator('[data-demo="preview"]');
         $popup = $page->locator('#multiple-tooltip [data-phem-tooltip-target="popup"]');
         $multiple->getByRole('button', ['name' => 'Trigger 2'])->hover();
         expect($popup)->toHaveText('Tooltip opened by Trigger 2');
@@ -343,7 +343,7 @@ final class OverlaysTest extends DemoTestCase
         expect($popup)->toBeHidden();
 
         // Controlled mode: the button opens the tooltip on the second trigger.
-        $controlled = $page->getByRole('region', ['name' => 'Controlled mode with multiple triggers']);
+        $controlled = $page->getByRole('region', ['name' => 'Controlled mode with multiple triggers'])->locator('[data-demo="preview"]');
         $controlled->getByRole('button', ['name' => 'Open programmatically'])->click();
         $popup = $controlled->locator('[data-phem-tooltip-target="popup"]');
         expect($popup)->toBeVisible();
@@ -353,7 +353,7 @@ final class OverlaysTest extends DemoTestCase
         self::assertEqualsWithDelta($trigger['x'] + $trigger['width'] / 2, $box['x'] + $box['width'] / 2, 1.5);
 
         // Animating: the popup moves to the next trigger, and its content changes with an animation.
-        $animated = $page->getByRole('region', ['name' => 'Animating the Tooltip']);
+        $animated = $page->getByRole('region', ['name' => 'Animating the Tooltip'])->locator('[data-demo="preview"]');
         $popup = $page->locator('#animated-tooltip [data-phem-tooltip-target="popup"]');
         $viewport = $popup->locator('[data-phem-tooltip-target="viewport"]');
         $animated->getByRole('button', ['name' => 'Listen to audio preview'])->hover();
@@ -383,7 +383,7 @@ final class OverlaysTest extends DemoTestCase
         $outside = fn () => $page->mouse()->click(5, 5);
 
         // Opening on hover.
-        $hover = $page->getByRole('region', ['name' => 'Opening on hover']);
+        $hover = $page->getByRole('region', ['name' => 'Opening on hover'])->locator('[data-demo="preview"]');
         $trigger = $hover->getByRole('button', ['name' => 'Notifications']);
         $trigger->hover();
         expect($trigger)->toHaveAttribute('aria-expanded', 'true');
@@ -391,7 +391,7 @@ final class OverlaysTest extends DemoTestCase
         expect($trigger)->toHaveAttribute('aria-expanded', 'false');
 
         // Detached triggers: the trigger is outside the root.
-        $trigger = $page->getByRole('region', ['name' => 'Detached triggers'])->getByRole('button', ['name' => 'Notifications']);
+        $trigger = $page->getByRole('region', ['name' => 'Detached triggers'])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'Notifications']);
         $trigger->click();
         expect($page->locator('#detached-popover')->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();
         expect($trigger)->toHaveAttribute('aria-expanded', 'true');
@@ -399,7 +399,7 @@ final class OverlaysTest extends DemoTestCase
         expect($trigger)->toHaveAttribute('aria-expanded', 'false');
 
         // Multiple triggers: a click on the other trigger moves the popover, with its payload.
-        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true]);
+        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true])->locator('[data-demo="preview"]');
         $dialog = $page->locator('#multiple-popover')->getByRole('dialog');
         $multiple->getByRole('button', ['name' => 'Trigger 1'])->click();
         expect($dialog)->toContainText('This has been opened by Trigger 1');
@@ -412,14 +412,14 @@ final class OverlaysTest extends DemoTestCase
         expect($second)->toHaveAttribute('aria-expanded', 'false');
 
         // Controlled mode: the button opens the popover on the second trigger.
-        $controlled = $page->getByRole('region', ['name' => 'Controlled mode with multiple triggers']);
+        $controlled = $page->getByRole('region', ['name' => 'Controlled mode with multiple triggers'])->locator('[data-demo="preview"]');
         $controlled->getByRole('button', ['name' => 'Open programmatically'])->click();
         expect($controlled->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();
         expect($controlled->getByRole('button', ['name' => 'Trigger 2']))->toHaveAttribute('aria-expanded', 'true');
         $outside();
 
         // Animating: the popup moves to the next trigger with the new panel.
-        $animated = $page->getByRole('region', ['name' => 'Animating the Popover']);
+        $animated = $page->getByRole('region', ['name' => 'Animating the Popover'])->locator('[data-demo="preview"]');
         $dialog = $page->locator('#animated-popover')->getByRole('dialog');
         $animated->getByRole('button', ['name' => 'Notifications'])->click();
         expect($page->locator('#animated-popover')->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();
@@ -445,7 +445,7 @@ final class OverlaysTest extends DemoTestCase
         $page = $this->visitComponent('preview-card');
 
         // Detached triggers: the link is outside the root.
-        $detached = $page->getByRole('region', ['name' => 'Detached triggers']);
+        $detached = $page->getByRole('region', ['name' => 'Detached triggers'])->locator('[data-demo="preview"]');
         $card = $page->locator('#detached-card [data-phem-popover-target="popup"]');
         $detached->getByRole('link', ['name' => 'typography'])->hover();
         expect($card)->toContainText('is the art and science of arranging type');
@@ -453,7 +453,7 @@ final class OverlaysTest extends DemoTestCase
         expect($card)->toBeHidden();
 
         // Multiple triggers: the payload of the link shows in the viewport.
-        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true]);
+        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true])->locator('[data-demo="preview"]');
         $card = $page->locator('#multiple-card [data-phem-popover-target="popup"]');
         $multiple->getByRole('link', ['name' => 'Trigger 2'])->hover();
         expect($card)->toHaveText('Preview card opened by Trigger 2');
@@ -463,7 +463,7 @@ final class OverlaysTest extends DemoTestCase
         expect($card)->toBeHidden();
 
         // Controlled mode: the button opens the card on the second link, and keeps the focus.
-        $controlled = $page->getByRole('region', ['name' => 'Controlled mode with multiple triggers']);
+        $controlled = $page->getByRole('region', ['name' => 'Controlled mode with multiple triggers'])->locator('[data-demo="preview"]');
         $button = $controlled->getByRole('button', ['name' => 'Open programmatically']);
         $button->click();
         $card = $controlled->locator('[data-phem-popover-target="popup"]');
@@ -474,7 +474,7 @@ final class OverlaysTest extends DemoTestCase
         expect($card)->toBeHidden();
 
         // Animating: the card moves to the next link with its new content.
-        $animated = $page->getByRole('region', ['name' => 'Animating the Preview Card']);
+        $animated = $page->getByRole('region', ['name' => 'Animating the Preview Card'])->locator('[data-demo="preview"]');
         $card = $page->locator('#animated-card [data-phem-popover-target="popup"]');
         $viewport = $card->locator('[data-phem-popover-target="viewport"]');
         $animated->getByRole('link', ['name' => 'typography'])->hover();
@@ -496,7 +496,7 @@ final class OverlaysTest extends DemoTestCase
     public function testDialogExamples(): void
     {
         $page = $this->visitComponent('dialog');
-        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true])->locator('[data-demo="preview"]');
 
         // State: the form closes the dialog when it submits.
         $region('State')->getByRole('button', ['name' => 'Open'])->click();

@@ -2,7 +2,7 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
@@ -12,49 +12,79 @@ use Phem\Ui\Base\{Field, SwitchRoot};
 #[Page('/components/switch')]
 function SwitchPage(): Node
 {
-    $label = 'flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white';
-
     return (
         <DemoPage slug="switch">
-            <Hero>
-                <label className={{ label }}>
-                    <SwitchRoot defaultChecked><SwitchThumb /></SwitchRoot>
-                    Notifications
-                </label>
+            <Hero source="SwitchHeroDemo">
+                <SwitchHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Labeling a switch">
+                <Example title="Labeling a switch" source="SwitchLabelingDemo">
                     <Example.description>
                         <p>An enclosing <code>&lt;label&gt;</code> is the simplest labeling pattern:</p>
                     </Example.description>
-                    <label className={{ label }}>
-                        <SwitchRoot><SwitchThumb /></SwitchRoot>
-                        Notifications
-                    </label>
+                    <SwitchLabelingDemo />
                 </Example>
-                <Example title="Rendering as a native button">
+                <Example title="Rendering as a native button" source="SwitchNativeButtonDemo">
                     <Example.description>
                         <p>By default, <code>SwitchRoot</code> renders a <code>&lt;span&gt;</code> element to support enclosing labels. Prefer rendering the switch as a native button with <code>nativeButton</code> when using sibling labels (<code>for</code>/<code>id</code>).</p>
                     </Example.description>
-                    <div className="flex items-center gap-2">
-                        <label htmlFor="notifications-switch" className="text-sm text-neutral-950 dark:text-white">Notifications</label>
-                        <SwitchRoot id="notifications-switch" nativeButton><SwitchThumb /></SwitchRoot>
-                    </div>
+                    <SwitchNativeButtonDemo />
                 </Example>
-                <Example title="Form integration">
+                <Example title="Form integration" source="SwitchFormDemo">
                     <Example.description>
                         <p>Use <a href="/components/field" className="underline">Field</a> to handle label associations and form integration:</p>
                     </Example.description>
-                    <Form>
-                        <Field>
-                            <FieldLabel className="flex items-center gap-2 font-normal">
-                                <SwitchRoot name="notifications"><SwitchThumb /></SwitchRoot>
-                                Notifications
-                            </FieldLabel>
-                        </Field>
-                    </Form>
+                    <SwitchFormDemo />
                 </Example>
             </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function SwitchHeroDemo(): Node
+{
+    return (
+        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+            <SwitchRoot defaultChecked><SwitchThumb /></SwitchRoot>
+            Notifications
+        </label>
+    );
+}
+
+#[Component]
+function SwitchLabelingDemo(): Node
+{
+    return (
+        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+            <SwitchRoot><SwitchThumb /></SwitchRoot>
+            Notifications
+        </label>
+    );
+}
+
+#[Component]
+function SwitchNativeButtonDemo(): Node
+{
+    return (
+        <div className="flex items-center gap-2">
+            <label htmlFor="notifications-switch" className="text-sm text-neutral-950 dark:text-white">Notifications</label>
+            <SwitchRoot id="notifications-switch" nativeButton><SwitchThumb /></SwitchRoot>
+        </div>
+    );
+}
+
+#[Component]
+function SwitchFormDemo(): Node
+{
+    return (
+        <Form>
+            <Field>
+                <FieldLabel className="flex items-center gap-2 font-normal">
+                    <SwitchRoot name="notifications"><SwitchThumb /></SwitchRoot>
+                    Notifications
+                </FieldLabel>
+            </Field>
+        </Form>
     );
 }

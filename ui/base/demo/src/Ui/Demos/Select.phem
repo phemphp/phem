@@ -12,24 +12,10 @@ use Phem\Ui\Base\Select;
 #[Page('/components/select')]
 function SelectPage(): Node
 {
-    $apples = ['gala' => 'Gala', 'fuji' => 'Fuji', 'honeycrisp' => 'Honeycrisp', 'granny-smith' => 'Granny Smith', 'pink-lady' => 'Pink Lady'];
-
     return (
         <DemoPage slug="select">
-            <Hero>
-                <Select id="apple" name="apple" sideOffset={{ 4 }}>
-                    <SelectLabel>Apple</SelectLabel>
-                    <SelectTrigger><SelectValue placeholder="Select apple" /><SelectIcon /></SelectTrigger>
-                    <SelectPopup>
-                        <SelectScrollUpArrow />
-                        <SelectList>
-                            {% for value, name in apples %}
-                                <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
-                            {% endfor %}
-                        </SelectList>
-                        <SelectScrollDownArrow />
-                    </SelectPopup>
-                </Select>
+            <Hero source="SelectHeroDemo">
+                <SelectHeroDemo />
             </Hero>
             <Examples>
                 <Example title="Typed wrapper component">
@@ -37,38 +23,38 @@ function SelectPage(): Node
                         <p>Wrap the Select component in a component of your application to give it its props and its parts once. A <code>Bound</code> prop passes a state of the page with <code>phem:bind</code>.</p>
                     </Example.description>
                 </Example>
-                <Example title="Formatting the value">
+                <Example title="Formatting the value" source="SelectFormattedDemo">
                     <Example.description>
                         <p><code>SelectValue</code> renders the label of the selected item: its <code>SelectItemText</code>, not its raw <code>value</code>.</p>
                         <p>To show more than a text, see the <a href="#object-values" className="underline">object values</a>.</p>
                     </Example.description>
-                    <SelectThemeDemo id="formatted" defaultValue="system" />
+                    <SelectFormattedDemo />
                 </Example>
-                <Example title="Labeling a select">
+                <Example title="Labeling a select" source="SelectLabeledDemo">
                     <Example.description>
                         <p>Use <code>SelectLabel</code> to provide a visible label for the select trigger. <code>SelectLabel</code> renders a <code>&lt;div&gt;</code>, so clicking it focuses the select trigger without opening the popup.</p>
                     </Example.description>
-                    <SelectThemeDemo id="labeled" defaultValue="light" />
+                    <SelectLabeledDemo />
                 </Example>
-                <Example title="Placeholder values">
+                <Example title="Placeholder values" source="SelectPlaceholderDemo">
                     <Example.description>
                         <p>To show a placeholder value, use the <code>placeholder</code> prop on <code>SelectValue</code>.</p>
                     </Example.description>
-                    <SelectThemeDemo id="placeholder" placeholder="Select theme" />
+                    <SelectPlaceholderDemo />
                 </Example>
-                <Example title="Multiple selection">
+                <Example title="Multiple selection" source="SelectMultipleDemo">
                     <Example.description>
                         <p>Add the <code>multiple</code> prop to the <code>Select</code> component to allow multiple selections. The <code>template</code> of <code>SelectValue</code> gives the text of two values or more.</p>
                     </Example.description>
                     <SelectMultipleDemo />
                 </Example>
-                <Example title="Object values">
+                <Example title="Object values" source="SelectObjectValuesDemo">
                     <Example.description>
                         <p>Select items can show more than a text. With <code>markup</code>, <code>SelectValue</code> shows a copy of the markup of the selected item text.</p>
                     </Example.description>
                     <SelectObjectValuesDemo />
                 </Example>
-                <Example title="Grouped">
+                <Example title="Grouped" source="SelectGroupedDemo">
                     <Example.description>
                         <p>Organize related options with <code>SelectGroup</code> and <code>SelectGroupLabel</code> to add section headings inside the popup.</p>
                     </Example.description>
@@ -80,14 +66,76 @@ function SelectPage(): Node
 }
 
 #[Component]
-function SelectThemeDemo(string $id, ?string $defaultValue = null, ?string $placeholder = null): Node
+function SelectHeroDemo(): Node
+{
+    $apples = ['gala' => 'Gala', 'fuji' => 'Fuji', 'honeycrisp' => 'Honeycrisp', 'granny-smith' => 'Granny Smith', 'pink-lady' => 'Pink Lady'];
+
+    return (
+        <Select id="apple" name="apple" sideOffset={{ 4 }}>
+            <SelectLabel>Apple</SelectLabel>
+            <SelectTrigger><SelectValue placeholder="Select apple" /><SelectIcon /></SelectTrigger>
+            <SelectPopup>
+                <SelectScrollUpArrow />
+                <SelectList>
+                    {% for value, name in apples %}
+                        <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                    {% endfor %}
+                </SelectList>
+                <SelectScrollDownArrow />
+            </SelectPopup>
+        </Select>
+    );
+}
+
+#[Component]
+function SelectFormattedDemo(): Node
 {
     $themes = ['system' => 'System default', 'light' => 'Light', 'dark' => 'Dark'];
 
     return (
-        <Select id={{ id }} defaultValue={{ defaultValue }} sideOffset={{ 4 }}>
+        <Select id="formatted" defaultValue="system" sideOffset={{ 4 }}>
             <SelectLabel>Theme</SelectLabel>
-            <SelectTrigger><SelectValue placeholder={{ placeholder }} /><SelectIcon /></SelectTrigger>
+            <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
+            <SelectPopup>
+                <SelectList>
+                    {% for value, name in themes %}
+                        <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                    {% endfor %}
+                </SelectList>
+            </SelectPopup>
+        </Select>
+    );
+}
+
+#[Component]
+function SelectLabeledDemo(): Node
+{
+    $themes = ['system' => 'System default', 'light' => 'Light', 'dark' => 'Dark'];
+
+    return (
+        <Select id="labeled" defaultValue="light" sideOffset={{ 4 }}>
+            <SelectLabel>Theme</SelectLabel>
+            <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
+            <SelectPopup>
+                <SelectList>
+                    {% for value, name in themes %}
+                        <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                    {% endfor %}
+                </SelectList>
+            </SelectPopup>
+        </Select>
+    );
+}
+
+#[Component]
+function SelectPlaceholderDemo(): Node
+{
+    $themes = ['system' => 'System default', 'light' => 'Light', 'dark' => 'Dark'];
+
+    return (
+        <Select id="placeholder" sideOffset={{ 4 }}>
+            <SelectLabel>Theme</SelectLabel>
+            <SelectTrigger><SelectValue placeholder="Select theme" /><SelectIcon /></SelectTrigger>
             <SelectPopup>
                 <SelectList>
                     {% for value, name in themes %}

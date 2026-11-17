@@ -11,7 +11,7 @@ final class PickersTest extends DemoTestCase
     public function testComboboxFiltersTheItemsInTheBrowser(): void
     {
         $page = $this->visitComponent('combobox');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         $input = $hero->getByRole('combobox', ['name' => 'Choose a fruit']);
         $clear = $hero->getByRole('button', ['name' => 'Clear selection']);
@@ -39,7 +39,7 @@ final class PickersTest extends DemoTestCase
 
         $input->fill('zzz');
         expect($page->getByRole('option'))->toHaveCount(0);
-        expect($page->getByText('No fruits found.'))->toBeVisible();
+        expect($hero->getByText('No fruits found.'))->toBeVisible();
 
         // The input has no free text: it gets the label of the selection again.
         $input->blur();
@@ -55,7 +55,7 @@ final class PickersTest extends DemoTestCase
         $page = $this->visitComponent('combobox');
 
         // IDs: the input shows the label of the default value, and the form gets the ID.
-        $ids = $page->getByRole('region', ['name' => 'Value selection with IDs']);
+        $ids = $page->getByRole('region', ['name' => 'Value selection with IDs'])->locator('[data-demo="preview"]');
         $fruit = $ids->getByRole('combobox', ['name' => 'Choose a fruit']);
         expect($fruit)->toHaveValue('Banana');
         expect($ids->locator('input[name="fruit"]'))->toHaveValue('banana');
@@ -65,7 +65,7 @@ final class PickersTest extends DemoTestCase
         expect($ids->locator('input[name="fruit"]'))->toHaveValue('mango');
 
         // Multiple: a click on an item adds a chip, and the popup stays open.
-        $multiple = $page->getByRole('region', ['name' => 'Multiple select']);
+        $multiple = $page->getByRole('region', ['name' => 'Multiple select'])->locator('[data-demo="preview"]');
         $languages = $multiple->getByRole('combobox', ['name' => 'Programming languages']);
         $languages->click();
         $page->getByRole('option', ['name' => 'TypeScript'])->click();
@@ -83,7 +83,7 @@ final class PickersTest extends DemoTestCase
 
         // The input in the popup: the trigger opens it with the focus in the input, and a choice
         // shows the label on the trigger.
-        $inside = $page->getByRole('region', ['name' => 'Input inside popup']);
+        $inside = $page->getByRole('region', ['name' => 'Input inside popup'])->locator('[data-demo="preview"]');
         $country = $inside->getByRole('button', ['name' => 'Country']);
         expect($country)->toContainText('Select country');
         $country->click();
@@ -96,7 +96,7 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Async search: the server gives the results of the query.
-        $async = $page->getByRole('region', ['name' => 'Async search (single)']);
+        $async = $page->getByRole('region', ['name' => 'Async search (single)'])->locator('[data-demo="preview"]');
         $reviewer = $async->getByRole('combobox', ['name' => 'Assign reviewer']);
         $reviewer->click();
         $page->keyboard()->press('ArrowDown');
@@ -110,7 +110,7 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Async search with chips.
-        $multiple = $page->getByRole('region', ['name' => 'Async search (multiple)']);
+        $multiple = $page->getByRole('region', ['name' => 'Async search (multiple)'])->locator('[data-demo="preview"]');
         $reviewers = $multiple->getByRole('combobox', ['name' => 'Assign reviewers']);
         $reviewers->fill('lindsay');
         $multiple->getByRole('option', ['name' => 'Lindsay Walton'])->click();
@@ -118,7 +118,7 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Creatable: a new text shows a Create item, which opens a dialog with the text.
-        $creatable = $page->getByRole('region', ['name' => 'Creatable']);
+        $creatable = $page->getByRole('region', ['name' => 'Creatable'])->locator('[data-demo="preview"]');
         $labels = $creatable->getByRole('combobox', ['name' => 'Labels']);
         $labels->fill('urgent');
         $creatable->getByRole('option', ['name' => 'Create "urgent"'])->click();
@@ -130,7 +130,7 @@ final class PickersTest extends DemoTestCase
         expect($creatable->getByRole('button', ['name' => 'Remove urgent']))->toBeVisible();
 
         // Virtualized: the server renders the first 50 matches, and the status gives the total.
-        $virtual = $page->getByRole('region', ['name' => 'Virtualized']);
+        $virtual = $page->getByRole('region', ['name' => 'Virtualized'])->locator('[data-demo="preview"]');
         $items = $virtual->getByRole('combobox', ['name' => 'Search 10,000 items']);
         $items->fill('1');
         expect($virtual->locator('[data-phem-combobox-target="item"]'))->toHaveCount(50);
@@ -140,7 +140,7 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Grouped: the filter hides a group with no match.
-        $produce = $page->getByRole('region', ['name' => 'Grouped'])->getByRole('combobox', ['name' => 'Select produce']);
+        $produce = $page->getByRole('region', ['name' => 'Grouped'])->locator('[data-demo="preview"]')->getByRole('combobox', ['name' => 'Select produce']);
         $produce->fill('ka');
         expect($page->getByRole('group', ['name' => 'Vegetables']))->toBeVisible();
         expect($page->getByRole('group', ['name' => 'Fruits']))->toBeHidden();
@@ -151,7 +151,7 @@ final class PickersTest extends DemoTestCase
     {
         $page = $this->visitComponent('autocomplete');
 
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
         $input = $hero->getByRole('combobox', ['name' => 'Search tags']);
 
         // The input shows its focus ring, as the input of the Base UI demo.
@@ -176,7 +176,7 @@ final class PickersTest extends DemoTestCase
         $page = $this->visitComponent('autocomplete');
 
         // Async search: the server searches, and the status gives the number of results.
-        $async = $page->getByRole('region', ['name' => 'Async search']);
+        $async = $page->getByRole('region', ['name' => 'Async search'])->locator('[data-demo="preview"]');
         $movies = $async->getByRole('combobox', ['name' => 'Search movies by name or year']);
         $movies->fill('god');
         expect($async->locator('text=3 results found'))->toBeVisible();
@@ -189,7 +189,7 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Inline: the arrow keys write the label of the highlighted item in the input.
-        $inline = $page->getByRole('region', ['name' => 'Inline autocomplete'])->getByRole('combobox', ['name' => 'Search tags']);
+        $inline = $page->getByRole('region', ['name' => 'Inline autocomplete'])->locator('[data-demo="preview"]')->getByRole('combobox', ['name' => 'Search tags']);
         expect($inline)->toHaveAttribute('aria-autocomplete', 'both');
         $inline->pressSequentially('fe');
         $page->keyboard()->press('ArrowDown');
@@ -199,14 +199,14 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Grouped: the filter hides a group with no match.
-        $grouped = $page->getByRole('region', ['name' => 'Grouped']);
+        $grouped = $page->getByRole('region', ['name' => 'Grouped'])->locator('[data-demo="preview"]');
         $grouped->getByRole('combobox', ['name' => 'Select a tag'])->fill('dial');
         expect($grouped->getByRole('group', ['name' => 'Component']))->toBeVisible();
         expect($grouped->getByRole('group', ['name' => 'Type']))->toBeHidden();
         $page->keyboard()->press('Escape');
 
         // Fuzzy matching: the characters in order match, and the query is marked.
-        $fuzzy = $page->getByRole('region', ['name' => 'Fuzzy matching']);
+        $fuzzy = $page->getByRole('region', ['name' => 'Fuzzy matching'])->locator('[data-demo="preview"]');
         $docs = $fuzzy->getByRole('combobox', ['name' => 'Fuzzy search documentation']);
         $docs->fill('rct hks');
         expect($fuzzy->getByRole('option'))->toHaveCount(1);
@@ -219,7 +219,7 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Limit results: 8 items show, and the status gives the number of hidden items.
-        $limit = $page->getByRole('region', ['name' => 'Limit results']);
+        $limit = $page->getByRole('region', ['name' => 'Limit results'])->locator('[data-demo="preview"]');
         $limited = $limit->getByRole('combobox', ['name' => 'Limit results to 8']);
         $limited->fill('component');
         expect($limit->locator('[data-phem-combobox-target="item"]:not([hidden])'))->toHaveCount(8);
@@ -230,13 +230,13 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Auto highlight: the first match gets the highlight as the user types.
-        $highlight = $page->getByRole('region', ['name' => 'Auto highlight']);
+        $highlight = $page->getByRole('region', ['name' => 'Auto highlight'])->locator('[data-demo="preview"]');
         $highlight->getByRole('combobox', ['name' => 'Auto highlight on type'])->pressSequentially('d');
         expect($highlight->getByRole('option', ['name' => 'docs', 'exact' => true]))->toHaveAttribute('data-highlighted', '');
         $page->keyboard()->press('Escape');
 
         // Command palette: the inline list always has a highlight, and Enter closes the dialog.
-        $palette = $page->getByRole('region', ['name' => 'Command palette']);
+        $palette = $page->getByRole('region', ['name' => 'Command palette'])->locator('[data-demo="preview"]');
         $palette->getByRole('button', ['name' => 'Open command palette'])->click();
         $dialog = $page->getByRole('dialog', ['name' => 'Command palette']);
         $commands = $dialog->getByRole('combobox', ['name' => 'Search commands']);
@@ -250,7 +250,7 @@ final class PickersTest extends DemoTestCase
 
         // Grid layout: the arrow keys move in the rows and in the columns, and a choice adds the
         // emoji to the message.
-        $grid = $page->getByRole('region', ['name' => 'Grid layout']);
+        $grid = $page->getByRole('region', ['name' => 'Grid layout'])->locator('[data-demo="preview"]');
         $grid->getByRole('button', ['name' => 'Choose emoji'])->click();
         $emojis = $grid->getByRole('grid', ['name' => 'Emoji results']);
         expect($grid->getByRole('combobox', ['name' => 'Search emojis']))->toBeFocused();
@@ -266,7 +266,7 @@ final class PickersTest extends DemoTestCase
         $page->keyboard()->press('Escape');
 
         // Virtualized: a click on the input opens the first 50 items, with the total in the status.
-        $virtual = $page->getByRole('region', ['name' => 'Virtualized']);
+        $virtual = $page->getByRole('region', ['name' => 'Virtualized'])->locator('[data-demo="preview"]');
         $virtual->getByRole('combobox', ['name' => 'Search 10,000 items'])->click();
         expect($virtual->getByRole('option'))->toHaveCount(50);
         expect($virtual->locator('text=Showing 50 of 10,000 items. Type to refine.'))->toBeVisible();
@@ -301,15 +301,15 @@ final class PickersTest extends DemoTestCase
         $page = $this->visitComponent('select');
 
         // The value shows the label of the item, and the label focuses the trigger.
-        $formatted = $page->getByRole('region', ['name' => 'Formatting the value']);
+        $formatted = $page->getByRole('region', ['name' => 'Formatting the value'])->locator('[data-demo="preview"]');
         expect($formatted->getByRole('combobox', ['name' => 'Theme']))->toHaveText('System default');
-        $labeled = $page->getByRole('region', ['name' => 'Labeling a select']);
+        $labeled = $page->getByRole('region', ['name' => 'Labeling a select'])->locator('[data-demo="preview"]');
         $labeled->getByText('Theme')->click();
         expect($labeled->getByRole('combobox', ['name' => 'Theme']))->toBeFocused();
         expect($page->getByRole('listbox'))->toBeHidden();
 
         // The placeholder.
-        expect($page->getByRole('region', ['name' => 'Placeholder values'])->getByRole('combobox', ['name' => 'Theme']))->toHaveAttribute('data-placeholder', '');
+        expect($page->getByRole('region', ['name' => 'Placeholder values'])->locator('[data-demo="preview"]')->getByRole('combobox', ['name' => 'Theme']))->toHaveAttribute('data-placeholder', '');
 
         // Multiple: the template gives the text of two values or more.
         $languages = $page->getByRole('combobox', ['name' => 'Languages']);
@@ -363,7 +363,7 @@ final class PickersTest extends DemoTestCase
     public function testScrollAreaShowsItsScrollbar(): void
     {
         $page = $this->visitComponent('scroll-area');
-        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
         $root = $hero->locator('[data-controller~="phem-scroll-area"]');
         expect($root)->toHaveAttribute('data-has-overflow-y', '');
@@ -380,19 +380,19 @@ final class PickersTest extends DemoTestCase
         $page = $this->visitComponent('scroll-area');
 
         // Both scrollbars and a corner.
-        $both = $page->getByRole('region', ['name' => 'Both scrollbars'])->locator('[data-controller~="phem-scroll-area"]');
+        $both = $page->getByRole('region', ['name' => 'Both scrollbars'])->locator('[data-demo="preview"]')->locator('[data-controller~="phem-scroll-area"]');
         expect($both)->toHaveAttribute('data-has-overflow-x', '');
         expect($both)->toHaveAttribute('data-has-overflow-y', '');
         expect($both->locator('[data-phem-scroll-area-target="corner"]'))->not()->toHaveAttribute('hidden', '');
 
         // The fade reads the overflow variables of the viewport.
-        $fade = $page->getByRole('region', ['name' => 'Gradient scroll fade'])->locator('[data-phem-scroll-area-target="viewport"]');
+        $fade = $page->getByRole('region', ['name' => 'Gradient scroll fade'])->locator('[data-demo="preview"]')->locator('[data-phem-scroll-area-target="viewport"]');
         self::assertSame('0px', $fade->evaluate('el => getComputedStyle(el).getPropertyValue("--scroll-area-overflow-y-start").trim()'));
         $fade->evaluate('(el) => el.scrollTo(0, 100)');
         expect($fade)->toHaveCSS('--scroll-area-overflow-y-start', '100px');
 
         // A tab list in a viewport: it scrolls, and the tabs still work.
-        $tabs = $page->getByRole('region', ['name' => 'Combining with Tabs']);
+        $tabs = $page->getByRole('region', ['name' => 'Combining with Tabs'])->locator('[data-demo="preview"]');
         expect($tabs->locator('[data-controller~="phem-scroll-area"]'))->toHaveAttribute('data-has-overflow-x', '');
         $tabs->getByRole('tab', ['name' => 'Notifications'])->click();
         expect($tabs->getByRole('tabpanel'))->toHaveText('Notifications');
@@ -404,20 +404,21 @@ final class PickersTest extends DemoTestCase
 
         // A long duration: the test does not depend on the time of a toast. The first viewport is
         // the viewport of the hero.
-        $page->locator('[data-controller~="phem-toast"]')->first()->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
+        $stack = $page->locator('[data-controller~="phem-toast"]')->first();
+        $stack->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
 
-        $button = $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->getByRole('button', ['name' => 'Create toast']);
+        $button = $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'Create toast']);
         $button->click();
-        expect($page->getByText('Toast 1 created'))->toBeVisible();
-        expect($page->getByText('This is a toast notification.'))->toBeVisible();
+        expect($stack->getByText('Toast 1 created'))->toBeVisible();
+        expect($stack->getByText('This is a toast notification.'))->toBeVisible();
 
         // The text of the toast behind the new one hides, until the pointer is on the stack.
         $button->click();
-        expect($page->getByText('Toast 2 created'))->toBeVisible();
+        expect($stack->getByText('Toast 2 created'))->toBeVisible();
         expect($page->locator('[data-phem-toast-content][data-behind]'))->toHaveCount(1);
         expect($page->locator('[data-phem-toast-content][data-behind]'))->toHaveCSS('opacity', '0');
 
-        $page->getByText('Toast 2 created')->hover();
+        $stack->getByText('Toast 2 created')->hover();
         expect($page->locator('[data-phem-toast-content][data-behind]'))->toHaveCSS('opacity', '1');
     }
 
@@ -428,7 +429,7 @@ final class PickersTest extends DemoTestCase
         $region = $page->getByRole('region', ['name' => 'Notifications'])->first();
         $region->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
 
-        $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->getByRole('button', ['name' => 'Create toast'])->click();
+        $page->getByRole('region', ['name' => 'Demo', 'exact' => true])->locator('[data-demo="preview"]')->getByRole('button', ['name' => 'Create toast'])->click();
         // Each toast is a dialog that is not modal, as in Base UI.
         expect($region->getByRole('dialog'))->toHaveCount(1);
 
@@ -439,7 +440,7 @@ final class PickersTest extends DemoTestCase
     public function testToastExamples(): void
     {
         $page = $this->visitComponent('toast');
-        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true])->locator('[data-demo="preview"]');
         $viewport = fn (string $name) => $page->locator('[data-phem-toast-name-value="'.$name.'"]');
         $main = $page->locator('[data-controller~="phem-toast"]:not([data-phem-toast-name-value])');
         $main->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
@@ -463,13 +464,13 @@ final class PickersTest extends DemoTestCase
 
         // Undo action: the action button calls the handler, which shows another toast.
         $region('Undo action')->getByRole('button', ['name' => 'Perform action'])->click();
-        $undo = $main->getByRole('button', ['name' => 'Undo']);
-        expect($main->getByText('Action performed'))->toBeVisible();
+        $undo = $viewport('undo')->getByRole('button', ['name' => 'Undo']);
+        expect($viewport('undo')->getByText('Action performed'))->toBeVisible();
         // The stack expands under the pointer: the button of the toast is in front.
-        $main->getByText('Action performed')->hover();
+        $viewport('undo')->getByText('Action performed')->hover();
         $undo->click();
-        expect($main->getByText('Action undone'))->toBeVisible();
-        expect($main->getByText('Action performed'))->toHaveCount(0);
+        expect($viewport('undo')->getByText('Action undone'))->toBeVisible();
+        expect($viewport('undo')->getByText('Action performed'))->toHaveCount(0);
 
         // Promise: the loading toast of the click becomes the toast of the answer.
         $region('Promise')->getByRole('button', ['name' => 'Run promise'])->click();

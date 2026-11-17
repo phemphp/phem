@@ -2,16 +2,28 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Page, State};
+use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
 use function Phem\Ui\Base\{ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue};
 use Phem\Ui\Base\Progress;
 
-// The value grows each second, as in the Base UI demo: a poll adds a random step, up to 100.
 #[Page('/components/progress')]
-final class ProgressPage
+function ProgressPage(): Node
+{
+    return (
+        <DemoPage slug="progress">
+            <Hero source="ProgressHeroDemo">
+                <ProgressHeroDemo />
+            </Hero>
+        </DemoPage>
+    );
+}
+
+// The value grows each second, as in the Base UI demo: a poll adds a random step, up to 100.
+#[Component]
+final class ProgressHeroDemo
 {
     #[State] public int $value = 20;
 
@@ -31,15 +43,13 @@ final class ProgressPage
         );
 
         return (
-            <DemoPage slug="progress">
-                <Hero>
-                    {% if value < 100 %}
-                        <div className="contents" onPoll={{ advance }} phem:poll={{ 1000 }}>{{ bar }}</div>
-                    {% else %}
-                        <div className="contents">{{ bar }}</div>
-                    {% endif %}
-                </Hero>
-            </DemoPage>
+            <div className="contents">
+                {% if value < 100 %}
+                    <div className="contents" onPoll={{ advance }} phem:poll={{ 1000 }}>{{ bar }}</div>
+                {% else %}
+                    <div className="contents">{{ bar }}</div>
+                {% endif %}
+            </div>
         );
     }
 }
