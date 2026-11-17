@@ -127,10 +127,12 @@ final class ControlsTest extends DemoTestCase
         $page->getByRole('button', ['name' => 'Format as currency'])->focus();
         $page->keyboard()->press('ArrowRight');
         expect($page->getByRole('button', ['name' => 'Format as percent']))->toBeFocused();
+
+        // Home and End do nothing in a toolbar, as in Base UI: only a toggle group has them.
         $page->keyboard()->press('End');
-        expect($page->getByRole('link', ['name' => 'Edited 51m ago']))->toBeFocused();
+        expect($page->getByRole('button', ['name' => 'Format as percent']))->toBeFocused();
         $page->keyboard()->press('Home');
-        expect($page->getByRole('button', ['name' => 'Align left']))->toBeFocused();
+        expect($page->getByRole('button', ['name' => 'Format as percent']))->toBeFocused();
     }
 
     /** In Base UI, the toolbar moves the focus out of a toggle group in it. */

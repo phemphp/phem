@@ -7,9 +7,12 @@
     "authors": [
         { "name": "Yonel Ceruto", "email": "open@yceruto.dev" }
     ],
+    "repositories": [
+        { "type": "path", "url": "../..", "options": { "symlink": true, "versions": { "phem/phem": "0.4.x-dev" } } }
+    ],
     "require": {
         "php": ">=8.4",
-        "phem/phem": "^0.4.8",
+        "phem/phem": "^0.4.9",
         "symfony/config": "^7.4|^8.0",
         "symfony/dependency-injection": "^7.4|^8.0",
         "symfony/http-kernel": "^7.4|^8.0"
@@ -34,5 +37,7 @@
     "extra": {
         "phem": { "source": "src" }
     },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "config": { "sort-packages": true }
 }

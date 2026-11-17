@@ -1,24 +1,26 @@
 .PHONY: help install test test-e2e check shell demo
 
-DC = docker compose run --rm
+# The services of phem/ui-base are in the compose file of the repository: the phem image, with the
+# phem of this repository and the phemc that the entrypoint builds from compiler/.
+DC = docker compose -f ../../docker/compose.yaml run --rm
 
 help: ## Show the targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-10s %s\n", $$1, $$2}'
 
-install: ## Install the Composer dependencies (phem/phem from Packagist). composer.lock is not in git: a newer composer.json updates it
-	$(DC) dev sh -c 'if [ ! -f composer.lock ] || [ composer.json -nt composer.lock ]; then composer update --no-interaction && touch composer.lock; else composer install --no-interaction; fi'
+install: ## Install the Composer dependencies (phem/phem from the root of the repository). composer.lock is not in git: a newer composer.json updates it
+	$(DC) ui sh -c 'if [ ! -f composer.lock ] || [ composer.json -nt composer.lock ]; then composer update --no-interaction && touch composer.lock; else composer install --no-interaction; fi'
 
-test: ## Run PHPUnit (render tests of the components)
-	$(DC) dev vendor/bin/phpunit $(ARGS)
+test: install ## Run PHPUnit (render tests of the components)
+	$(DC) ui vendor/bin/phpunit $(ARGS)
 
 test-e2e: ## Run the browser tests of the demo (Playwright PHP, no web server). Pass PHPUnit options with ARGS="--filter Dialog"
-	$(DC) --build e2e bin/test $(ARGS)
+	$(DC) --build ui-e2e bin/test $(ARGS)
 
-check: ## Check the components with phemc
-	$(DC) dev vendor/bin/phemc check src
+check: install ## Check the components with phemc
+	$(DC) ui sh -c '"$$PHEMC_BIN" check src'
 
-shell: ## Open a shell in the dev image
-	$(DC) dev bash
+shell: ## Open a shell in the image
+	$(DC) ui bash
 
 demo: ## Serve the demo app on http://localhost:8100
-	$(DC) --service-ports dev sh -c 'demo/bin/setup && cd demo && php -S 0.0.0.0:8000 -t public'
+	$(DC) --service-ports ui sh -c 'demo/bin/setup && cd demo && php -S 0.0.0.0:8000 -t public'

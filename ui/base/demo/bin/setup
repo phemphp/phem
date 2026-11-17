@@ -18,5 +18,6 @@ if [ ! -d assets/vendor ] || [ importmap.php -nt assets/vendor ]; then
     touch assets/vendor
 fi
 
-vendor/bin/phemc build src
+# PHEMC_BIN: the phemc that the images of the repository build from compiler/.
+"${PHEMC_BIN:-vendor/bin/phemc}" build src
 bin/console tailwind:build --quiet

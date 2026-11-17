@@ -112,6 +112,7 @@ editors/server/      the Node launcher of the language server (phem-lsp.wasm: `m
 editors/vscode/      VS Code extension: .phem syntax highlighting (TextMate grammar) and the language server
 editors/phpstorm/    PhpStorm plugin: the same grammar and language server
 editors/claude-code/ Claude Code plugin: the language server, for diagnostics after each edit
+ui/base/             phem/ui-base: the Base UI components and their demo, on the phem of this repository: `make ui-test`, `make ui-test-e2e`
 docs/                the docs, as plain Markdown (GitHub, the website and LLMs read the same files)
 website/             the docs website (Astro): `make docs`, `make docs-build`
 recipe/              the Symfony Flex recipe of phem/phem (a copy of the recipe in symfony/recipes-contrib)

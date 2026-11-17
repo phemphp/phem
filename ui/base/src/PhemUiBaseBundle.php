@@ -19,7 +19,8 @@ class PhemUiBaseBundle extends AbstractBundle
 {
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        if (!interface_exists(AssetMapperInterface::class)) {
+        // Git keeps no empty folder: a package with no assets has no assets/ folder.
+        if (!interface_exists(AssetMapperInterface::class) || !is_dir($this->getPath().'/assets')) {
             return;
         }
 

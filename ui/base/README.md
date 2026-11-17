@@ -52,7 +52,9 @@ All 37 Base UI components are here. The parts follow the Base UI anatomy, with t
 
 ## Develop
 
-The bundle requires the `phem/phem` release from Packagist (`^0.4.7`). The commands run in the dev image of phem, from the phem checkout in `../../phem`. They use `vendor/bin/phemc`, the phemc binary of the installed phem release.
+The bundle lives in `ui/base/` of the phem repository until its components are stable. It requires `phem/phem` from the root of the repository (a Composer path repository), so a change in phem and a change in a component go in the same commit. The commands run in the images of `docker/compose.yaml` (the `ui` and `ui-e2e` services), with the `phemc` that the images build from `compiler/` (`PHEMC_BIN`). Run them here, or from the root of the repository with `make ui-test`, `make ui-check`, `make ui-demo` and `make ui-test-e2e`.
+
+The components use only the public API of phem: the components, the controllers and their documented attributes. A package of an app can do the same.
 
 ```sh
 make install   # composer install

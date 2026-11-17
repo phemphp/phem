@@ -11,6 +11,7 @@
 /TODO.md export-ignore
 /assets/package-lock.json export-ignore
 /assets/tests export-ignore
+/ui export-ignore
 /website export-ignore
 /assets/vitest.config.js export-ignore
 /bench export-ignore
@@ -29,3 +30,4 @@
 /release.sh export-ignore
 /stubs export-ignore
 /tests export-ignore
+/ui export-ignore

@@ -17,6 +17,22 @@ The repository root is the `phem/phem` Composer package (`src/`, `config/`, `tem
 repository, so one change can update all of them. `.gitattributes` keeps them out of the Composer
 dist.
 
+### phem/ui-base
+
+`ui/base/` is the `phem/ui-base` package (the Base UI components, styled with Tailwind CSS) and
+its demo. It stays here until its components are stable, then it moves to its own repository
+again (`git subtree split --prefix=ui/base`). Its own Composer package requires `phem/phem` from
+the root of this repository (a path repository).
+
+- The components use only the public API of phem. `src/`, `config/`, `templates/` and `assets/`
+  never use a class, a file or a selector of `ui/base/`.
+- A missing behavior goes into phem (a controller, a component), not into `ui/base/`.
+- A change in phem that changes a component updates `ui/base/` in the same change: its
+  components, its tests and its demo. `ui/base/` has no changelog: the changelog of phem has the
+  change of the controller.
+- Run `make ui-test` and `make ui-test-e2e` after a change in `ui/base/`, and after a change in a
+  controller that a component uses. They do not run in `make test`.
+
 ## Docs
 
 Update the docs in `docs/` in the same change when you add a feature or change a behavior. This
