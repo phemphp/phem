@@ -8,6 +8,14 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-dialog` has several triggers, as `phem-popover`: the `trigger` parts and the detached
+  triggers with `data-phem-dialog-for`, for example an item of a menu. Each trigger gets its own
+  `aria-expanded`, the `payload` part shows the `data-phem-dialog-payload` of the trigger, the
+  `trigger-id` value is its `id`, and the `open` action takes a `triggerId` param. The new
+  `confirm-close` value opens another dialog on a request to close when the user changed a field,
+  and a `[data-phem-dialog-discard]` element in it closes the two dialogs and resets the fields.
+  The new `final-focus` value gives the focus to an element after the close. See
+  docs/controllers.md.
 - A preview card of `phem-popover` (`open-on-hover` with link triggers) moves at once to the next
   link that gets the keyboard focus, and the focus out to that link does not close it. Before, the
   card closed and opened again after the delay. The `open` action does not move the focus into a

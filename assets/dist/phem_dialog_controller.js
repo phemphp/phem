@@ -7,7 +7,9 @@ import { hide, render, show } from "./phem_transition.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
 import { edgeTabbable, nextTabbable } from "./phem_focus.js"
 import { scrollLock } from "./phem_modal.js"
+import { PopupViewport } from "./phem_popup_viewport.js"
 import { isTouchClick } from "./phem_press.js"
+import { Triggers } from "./phem_triggers.js"
 
 // The attributes of a dialog in a dialog.
 const NESTED_ATTRIBUTES = new Set(["data-nested", "data-nested-dialog-open", "data-nested-drawer-open", "data-nested-drawer-swiping", "style"])
@@ -37,6 +39,19 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // element of the dialog that can have it. After an open with a touch, the focus goes to the popup
 // (it gets `tabindex="-1"`), so the keyboard of the device does not show. A drawer always gives
 // the focus to its popup, unless an element in it has `autofocus`.
+//
+// A dialog can have several triggers: `trigger` targets, and elements anywhere in the page with
+// `data-phem-dialog-for` and the `id` of the controller element (phem_triggers.js), for example an
+// item of a menu. The trigger that opened the dialog is the active trigger: it gets
+// `aria-expanded="true"`, and the `triggerId` value gets its `id`. The `payload` part shows the
+// `data-phem-dialog-payload` of the active trigger (phem_popup_viewport.js).
+//
+// With the `confirmClose` value (the `id` of another `phem-dialog` element, an alert dialog in
+// the popup), a request to close the dialog (Escape, a tap on the backdrop, a `close` part, the
+// `close` action) opens that dialog in place, when a field of the popup has a value that the user
+// changed. A click on a `[data-phem-dialog-discard]` element in that dialog closes the two
+// dialogs and resets the fields. The `finalFocus` value is a CSS selector: the element that gets
+// the focus after the close, in place of the element that had it before the open.
 //
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. When the `dismiss` value is true (the default), Escape and a
@@ -77,9 +92,12 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // `data-expanded` at its full height. With `snapToSequentialPoints`, a fast swipe does not skip a
 // snap point. A new snap point dispatches `phem-dialog:snap` with the `snapPoint` in the detail.
 export default class PhemDialogController extends Controller {
-  static targets = ["trigger", "popup", "viewport", "backdrop", "close", "title", "description", "content"]
+  static targets = ["trigger", "popup", "viewport", "backdrop", "close", "title", "description", "content", "payload"]
   static values = {
     open: Boolean,
+    triggerId: String,
+    confirmClose: String,
+    finalFocus: String,
     dismiss: { type: Boolean, default: true },
     disablePointerDismissal: Boolean,
     modal: { type: String, default: "true" },
@@ -94,6 +112,14 @@ export default class PhemDialogController extends Controller {
   // dialog => the function that removes its dismiss layer (a dialog that is not a modal).
   #layers = new Map()
 
+  initialize() {
+    this.triggers = new Triggers(this)
+    this.payload = new PopupViewport({
+      viewport: () => this.payloadTargets[0] ?? null,
+      payload: (trigger) => trigger?.getAttribute("data-phem-dialog-payload") ?? null,
+    })
+  }
+
   connect() {
     this.state = new ClientState(this, {
       value: "open",
@@ -102,6 +128,8 @@ export default class PhemDialogController extends Controller {
         // A dialog that the morph moved is out of the top layer: show it again.
         for (const el of this.#dialogs) this.#render(el)
         for (const el of this.backdropTargets) render(el, this.openValue)
+        this.payload.capture()
+        if (this.openValue) this.payload.render(this.triggers.active)
         this.#renderAria()
       },
     })
@@ -109,8 +137,13 @@ export default class PhemDialogController extends Controller {
 
     this.element.addEventListener("click", this.onClick)
     this.element.addEventListener("keydown", this.onKeydown)
+    // A click on a detached trigger.
+    document.addEventListener("click", this.onDocumentClick)
     window.addEventListener("resize", this.onResize)
     this.rendered = this.openValue
+    if (this.openValue) this.triggers.activate(this.triggers.byId(this.triggerIdValue))
+    this.payload.capture()
+    if (this.openValue) this.payload.render(this.triggers.active)
     for (const el of this.backdropTargets) render(el, this.openValue)
     this.#renderAria()
   }
@@ -119,6 +152,7 @@ export default class PhemDialogController extends Controller {
     this.state.disconnect()
     this.element.removeEventListener("click", this.onClick)
     this.element.removeEventListener("keydown", this.onKeydown)
+    document.removeEventListener("click", this.onDocumentClick)
     window.removeEventListener("resize", this.onResize)
     for (const off of this.#layers.values()) off()
     this.#layers.clear()
@@ -127,11 +161,17 @@ export default class PhemDialogController extends Controller {
     this.rendered = undefined
   }
 
-  open() {
+  // Opens the dialog, for the trigger of the `triggerId` param, or else the active trigger.
+  open(event) {
+    const trigger = this.triggers.byId(event?.params?.triggerId)
+    if (trigger) this.#activate(trigger)
     this.#set(true)
   }
 
+  // A request to close the dialog: it can open the dialog of the `confirmClose` value.
   close() {
+    if (this.#confirm()) return
+
     this.#set(false)
   }
 
@@ -139,7 +179,12 @@ export default class PhemDialogController extends Controller {
   openValueChanged() {
     if (this.rendered === undefined || this.rendered === this.openValue) return
 
+    if (this.openValue) this.#activate(this.triggers.byId(this.triggerIdValue))
     this.#apply()
+  }
+
+  payloadTargetConnected() {
+    this.payload.capture()
   }
 
   snapPointValueChanged() {
@@ -178,12 +223,16 @@ export default class PhemDialogController extends Controller {
   onClick = (event) => {
     if (event.defaultPrevented) return
 
+    const trigger = this.triggers.of(event.target)
     if (this.closeTargets.some((el) => el.contains(event.target))) this.close()
-    else if (this.triggerTargets.some((el) => el.contains(event.target))) {
-      this.touch = isTouchClick(event)
-      this.open()
-      this.touch = false
-    }
+    else if (this.#discards(event.target)) this.#discard()
+    else if (trigger) this.#openFrom(trigger, event)
+  }
+
+  onDocumentClick = (event) => {
+    if (event.defaultPrevented || this.element.contains(event.target) || !this.triggers.detached(event.target)) return
+
+    this.#openFrom(this.triggers.of(event.target), event)
   }
 
   // A modal and `trap-focus`: Tab goes from the last field of the dialog to the first one, and
@@ -228,6 +277,68 @@ export default class PhemDialogController extends Controller {
     this.#unlayer(dialog)
     this.#renderNesting(dialog, false)
     if (this.openValue) this.#set(false)
+    if (this.finalFocusValue) document.querySelector(this.finalFocusValue)?.focus({ preventScroll: true })
+  }
+
+  #openFrom(trigger, event) {
+    this.touch = isTouchClick(event)
+    this.#activate(trigger)
+    this.#set(true)
+    this.touch = false
+  }
+
+  // The trigger of a dialog that opens: the active trigger, its id and its payload.
+  #activate(trigger) {
+    if (this.openValue && this.rendered) return
+
+    this.triggers.activate(trigger)
+    const id = this.triggers.active?.id ?? ""
+    if (this.triggerIdValue !== id) this.triggerIdValue = id
+  }
+
+  // A field of the popup has a value that the user changed: the dialog of the `confirmClose` value
+  // opens, and this dialog stays open.
+  #confirm() {
+    const confirm = this.#confirmDialog
+    if (!confirm || !this.openValue || !this.#changedFields().length) return false
+
+    this.application.getControllerForElementAndIdentifier(confirm, this.identifier)?.open()
+
+    return true
+  }
+
+  // A `[data-phem-dialog-discard]` element of the dialog of the `confirmClose` value.
+  #discards(el) {
+    const confirm = this.#confirmDialog
+
+    return Boolean(confirm && el.closest?.("[data-phem-dialog-discard]") && confirm.contains(el))
+  }
+
+  // The changes go: the fields get their first values, and the dialog closes.
+  #discard() {
+    for (const field of this.#changedFields()) {
+      if (field.type === "checkbox" || field.type === "radio") field.checked = field.defaultChecked
+      else if (field instanceof HTMLSelectElement) for (const option of field.options) option.selected = option.defaultSelected
+      else field.value = field.defaultValue
+    }
+
+    this.#set(false)
+  }
+
+  // The fields of the popup (not of a dialog in it) with a value that the user changed.
+  #changedFields() {
+    const fields = this.#dialogs.flatMap((dialog) => [...dialog.querySelectorAll("input, textarea, select")].filter((field) => field.closest("dialog") === dialog))
+
+    return fields.filter((field) => {
+      if (field.type === "checkbox" || field.type === "radio") return field.checked !== field.defaultChecked
+      if (field instanceof HTMLSelectElement) return [...field.options].some((option) => option.selected !== option.defaultSelected)
+
+      return field.value !== field.defaultValue
+    })
+  }
+
+  get #confirmDialog() {
+    return this.confirmCloseValue ? document.getElementById(this.confirmCloseValue) : null
   }
 
   #connectDialog(el) {
@@ -279,6 +390,7 @@ export default class PhemDialogController extends Controller {
     if (this.openValue === open && this.rendered === open) return
 
     this.openValue = open
+    if (open) this.payload.render(this.triggers.active)
     this.#apply()
   }
 
@@ -375,7 +487,7 @@ export default class PhemDialogController extends Controller {
     if (this.#layers.has(el)) return
 
     this.#layers.set(el, dismissable({
-      inside: () => [el, ...this.triggerTargets],
+      inside: () => [el, ...this.triggers.all],
       dismiss: (reason) => {
         if (!this.dismissValue || (reason === "outside" && this.disablePointerDismissalValue)) return false
 
@@ -559,11 +671,13 @@ export default class PhemDialogController extends Controller {
     if (dialog && title) link(dialog, "aria-labelledby", "ariaLabelledByElements", title)
     if (dialog && description) link(dialog, "aria-describedby", "ariaDescribedByElements", description)
 
-    for (const trigger of this.triggerTargets) {
+    // The active trigger is the trigger of the open dialog.
+    const active = this.openValue ? this.triggers.active : null
+    for (const trigger of this.triggers.all) {
       if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "dialog")
-      trigger.setAttribute("aria-expanded", String(this.openValue))
-      trigger.toggleAttribute("data-popup-open", this.openValue)
-      controlWhileOpen(trigger, dialog, this.openValue)
+      trigger.setAttribute("aria-expanded", String(trigger === active))
+      trigger.toggleAttribute("data-popup-open", trigger === active)
+      controlWhileOpen(trigger, dialog, trigger === active)
     }
   }
 
@@ -573,7 +687,7 @@ export default class PhemDialogController extends Controller {
     if (NESTED_ATTRIBUTES.has(name) && (this.popupTargets.includes(el) || this.viewportTargets.includes(el)) && this.#dialogOf(el).querySelector?.("dialog[open]")) return true
     if (name === "tabindex" && focused.has(el)) return true
     if (this.backdropTargets.includes(el)) return OPEN_ATTRIBUTES.has(name)
-    if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-popup-open"
+    if (this.triggers.all.includes(el)) return name === "aria-expanded" || name === "data-popup-open"
     if (!this.popupTargets.includes(el) && !this.viewportTargets.includes(el)) return false
 
     // The `style` of a swipe: the popup stays at its place. The variables of a snap point and of

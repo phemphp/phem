@@ -43,7 +43,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Collapsible | `DisclosureTest` | Open and close with a click, `hiddenUntilFound` (`beforematch`) | Keyboard (Enter and Space), the `--collapsible-panel-height` variable |
 | Combobox | `PickersTest` | Client filter, arrow keys and Enter select, the empty state, IDs as values, multiple with chips and Backspace, the input in the popup, async search (single and multiple), creatable with a dialog, 10,000 items on the server, the named groups | The clear button, the trigger button, Escape |
 | Context Menu | `MenusTest` | A right click opens it, a click on an item closes it, the card with a menu button, a submenu | Keyboard, the menu position at the pointer |
-| Dialog | `OverlaysTest` | Open, close with a button and Escape, focus back to the trigger | Focus trap, a click on the backdrop closes it |
+| Dialog | `OverlaysTest` | Open, close with a button and Escape, focus back to the trigger; a form that closes it, an item of a menu opens it, a nested dialog, the close confirmation (Go back, Discard resets the text), `autofocus` and `finalFocus`, the outside and the inside scroll, a click outside the box of an uncontained popup, a detached trigger, the payloads, the `open` action on the second trigger | Focus trap, a click on the backdrop closes it |
 | Drawer | `OverlaysTest` | Open and close, `data-swipe-direction` | A swipe to dismiss (pointer drag) |
 | Field | `FormsTest` | `data-focused`, `data-touched`, `data-dirty`, `data-filled`, no error on blur | The error and `aria-describedby` after a submit |
 | Fieldset | `BasicsTest` | The legend names the group | `disabled` on all the fields |

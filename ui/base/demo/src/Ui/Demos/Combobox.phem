@@ -6,8 +6,8 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\{Event, Node};
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxIcon, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxStatus, ComboboxTrigger, ComboboxValue, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle};
-use Phem\Ui\Base\{Align, Button, Combobox};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxIcon, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxStatus, ComboboxTrigger, ComboboxValue, DialogClose, DialogDescription, DialogPopup, DialogTitle};
+use Phem\Ui\Base\{Align, Button, Combobox, Dialog};
 
 // The people of the Async search demos of Base UI.
 const PEOPLE = [

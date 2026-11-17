@@ -5,8 +5,8 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport, PreviewCard, PreviewCardPayload, PreviewCardPopup, PreviewCardTrigger, PreviewCardViewport};
-use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Menu, MenuRadioGroup, MenuSubmenu, Tabs};
+use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport, PreviewCard, PreviewCardPayload, PreviewCardPopup, PreviewCardTrigger, PreviewCardViewport, DialogDiscard, DialogPayload};
+use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Dialog, DialogViewport, Menu, MenuRadioGroup, MenuSubmenu, Tabs};
 
 #[Component]
 function CollapsibleDemo(bool $open = false): Node
@@ -146,6 +146,26 @@ function PreviewCardDetachedDemo(): Node
                     </PreviewCardViewport>
                 </PreviewCardPopup>
             </PreviewCard>
+        </div>
+    );
+}
+
+#[Component]
+function DialogDetachedDemo(): Node
+{
+    return (
+        <div>
+            <DialogTrigger handle="shared" id="two" payload="Dialog 2">Open 2</DialogTrigger>
+            <Dialog handle="shared" triggerId="two" confirmClose="discard" finalFocus="#after">
+                <DialogViewport>
+                    <DialogPopup>
+                        <DialogTitle><DialogPayload /></DialogTitle>
+                        <AlertDialog handle="discard">
+                            <AlertDialogPopup><DialogDiscard>Discard</DialogDiscard></AlertDialogPopup>
+                        </AlertDialog>
+                    </DialogPopup>
+                </DialogViewport>
+            </Dialog>
         </div>
     );
 }

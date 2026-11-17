@@ -1011,3 +1011,96 @@ describe("phem-dialog: a drawer in a drawer", () => {
     expect($("inner").open).toBe(true)
   })
 })
+
+describe("phem-dialog: several triggers, a close confirmation and the final focus", () => {
+  const $ = (id) => document.getElementById(id)
+
+  it("opens from a detached trigger, with its payload, and gives aria-expanded to that trigger only", async () => {
+    await mount(`<button id="t1" data-phem-dialog-for="shared" data-phem-dialog-payload="Dialog 1">Open 1</button>
+      <button id="t2" data-phem-dialog-for="shared" data-phem-dialog-payload="Dialog 2">Open 2</button>
+      <div id="shared" data-controller="phem-dialog">
+        <dialog id="dialog" data-phem-dialog-target="popup"><h2 data-phem-dialog-target="title"><span id="payload" data-phem-dialog-target="payload"></span></h2></dialog>
+      </div>`)
+    $("t2").click()
+
+    expect(dialog().open).toBe(true)
+    expect($("payload").textContent).toBe("Dialog 2")
+    expect($("t2").getAttribute("aria-expanded")).toBe("true")
+    expect($("t1").getAttribute("aria-expanded")).toBe("false")
+    expect($("t1").getAttribute("aria-haspopup")).toBe("dialog")
+    expect($("shared").getAttribute("data-phem-dialog-trigger-id-value")).toBe("t2")
+  })
+
+  it("opens for the trigger of the triggerId value, and of the triggerId param of the open action", async () => {
+    await mount(`<div id="shared" data-controller="phem-dialog">
+        <button id="t1" data-phem-dialog-target="trigger" data-phem-dialog-payload="Dialog 1">Open 1</button>
+        <button id="t2" data-phem-dialog-target="trigger" data-phem-dialog-payload="Dialog 2">Open 2</button>
+        <button id="go" data-action="phem-dialog#open" data-phem-dialog-trigger-id-param="t2">Open</button>
+        <dialog id="dialog" data-phem-dialog-target="popup"><span id="payload" data-phem-dialog-target="payload"></span></dialog>
+      </div>`)
+    $("go").click()
+
+    expect(dialog().open).toBe(true)
+    expect($("payload").textContent).toBe("Dialog 2")
+    expect($("t2").getAttribute("aria-expanded")).toBe("true")
+  })
+
+  // A dialog with a text field, and its confirmation dialog in its popup.
+  const tweet = () => `<div id="tweet" data-controller="phem-dialog" data-phem-dialog-confirm-close-value="discard">
+      <button id="open" data-phem-dialog-target="trigger">Tweet</button>
+      <dialog id="dialog" data-phem-dialog-target="popup">
+        <textarea id="text"></textarea>
+        <button id="cancel" data-phem-dialog-target="close">Cancel</button>
+        <div id="discard" data-controller="phem-dialog">
+          <dialog id="confirm" data-phem-dialog-target="popup">
+            <button id="back" data-phem-dialog-target="close">Go back</button>
+            <button id="yes" data-phem-dialog-target="close" data-phem-dialog-discard>Discard</button>
+          </dialog>
+        </div>
+      </dialog>
+    </div>`
+
+  it("closes at once when no field changed", async () => {
+    await mount(tweet())
+    $("open").click()
+    $("cancel").click()
+
+    expect($("tweet").getAttribute("data-phem-dialog-open-value")).toBe("false")
+    expect($("confirm").open).toBe(false)
+  })
+
+  it("opens the confirmation on a close request when a field changed, and keeps the dialog open", async () => {
+    await mount(tweet())
+    $("open").click()
+    $("text").value = "Hello"
+    $("cancel").click()
+
+    expect($("tweet").getAttribute("data-phem-dialog-open-value")).toBe("true")
+    expect($("confirm").open).toBe(true)
+
+    // Go back: the text stays.
+    $("back").click()
+    await nextTask()
+    expect($("confirm").open).toBe(false)
+    expect(dialog().open).toBe(true)
+    expect($("text").value).toBe("Hello")
+
+    // Escape asks again, and Discard closes the two dialogs and resets the field.
+    escape()
+    expect($("confirm").open).toBe(true)
+    $("yes").click()
+    await nextTask()
+    expect($("confirm").open).toBe(false)
+    expect(dialog().open).toBe(false)
+    expect($("text").value).toBe("")
+  })
+
+  it("gives the focus to the element of the finalFocus value after the close", async () => {
+    await mount(`${edit('data-phem-dialog-final-focus-value="#after"')}<button id="after">After</button>`)
+    $("open").click()
+    $("close").click()
+    await nextTask()
+
+    expect(document.activeElement).toBe($("after"))
+  })
+})

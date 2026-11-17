@@ -106,6 +106,15 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-popover-target="viewport"] > template[data-payload="art"]');
     }
 
+    public function testADialogHasDetachedTriggersAViewportAndACloseConfirmation(): void
+    {
+        $this->mount(self::APP.'DialogDetachedDemo')
+            ->assertSelectorExists('div#shared[data-controller="phem-dialog"][data-phem-dialog-trigger-id-value="two"][data-phem-dialog-confirm-close-value="discard"][data-phem-dialog-final-focus-value="#after"]')
+            ->assertSelectorExists('button#two[data-phem-dialog-for="shared"][data-phem-dialog-payload="Dialog 2"]:not([data-phem-dialog-target])')
+            ->assertSelectorExists('dialog[data-phem-dialog-target="viewport"] > div[data-phem-dialog-target="popup"] [data-phem-dialog-target="payload"]')
+            ->assertSelectorExists('div#discard[data-controller="phem-dialog"] dialog[role="alertdialog"] button[data-phem-dialog-target="close"][data-phem-dialog-discard]');
+    }
+
     public function testTheTabsSelectTheirDefaultValue(): void
     {
         $this->mount(self::APP.'TabsDemo')

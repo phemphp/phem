@@ -2,7 +2,7 @@
 
 namespace Phem\Ui\Base;
 
-use Phem\Attribute\{Component, Context};
+use Phem\Attribute\{Component, Context, Prop, Provide};
 use Phem\{Html, Node};
 
 /**
@@ -10,30 +10,66 @@ use Phem\{Html, Node};
  *
  * The popup is a native `<dialog>` in the top layer, so it needs no Portal. Its `::backdrop` is the
  * Backdrop of Base UI: the DialogPopup classes style it with the `backdrop:` variant.
+ *
+ * A `handle` links the root to detached triggers: a DialogTrigger with the same `handle`, anywhere
+ * in the page, opens this dialog. The DialogPayload shows the `payload` of the trigger that opened
+ * it, and `triggerId` is the `id` of this trigger. `confirmClose` is the `handle` of an
+ * AlertDialog in the popup: a request to close opens it when the user changed a field. Its
+ * DialogDiscard closes the two dialogs. `finalFocus` is a CSS selector of the element that gets
+ * the focus after the close. For the first focus, give a field the `autofocus` attribute.
  */
-#[Component]
-function Dialog(bool $defaultOpen = false, bool $dismissible = true, bool $disablePointerDismissal = false, bool $modal = true, ?Html $children = null, mixed ...$rest): Node
+#[Component, Provide]
+class Dialog
 {
-    return (
-        <div
-            data-controller="phem-dialog"
-            data-phem-dialog-open-value={{ defaultOpen ? 'true' : null }}
-            data-phem-dialog-dismiss-value={{ dismissible ? null : 'false' }}
-            data-phem-dialog-disable-pointer-dismissal-value={{ disablePointerDismissal ? 'true' : null }}
-            data-phem-dialog-modal-value={{ modal ? null : 'false' }}
-            className={{ classes('contents') }}
-            {{ ...rest }}
-        >
-            {{ children }}
-        </div>
-    );
+    #[Prop] public ?string $handle = null;
+    #[Prop] public bool $defaultOpen = false;
+    #[Prop] public ?string $triggerId = null;
+    #[Prop] public bool $dismissible = true;
+    #[Prop] public bool $disablePointerDismissal = false;
+    #[Prop] public bool $modal = true;
+    #[Prop] public ?string $confirmClose = null;
+    #[Prop] public ?string $finalFocus = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return (
+            <div
+                id={{ handle }}
+                data-controller="phem-dialog"
+                data-phem-dialog-open-value={{ defaultOpen ? 'true' : null }}
+                data-phem-dialog-trigger-id-value={{ triggerId }}
+                data-phem-dialog-confirm-close-value={{ confirmClose }}
+                data-phem-dialog-final-focus-value={{ finalFocus }}
+                data-phem-dialog-dismiss-value={{ dismissible ? null : 'false' }}
+                data-phem-dialog-disable-pointer-dismissal-value={{ disablePointerDismissal ? 'true' : null }}
+                data-phem-dialog-modal-value={{ modal ? null : 'false' }}
+                className={{ classes('contents') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
 }
 
-/** The button that opens the dialog. */
+/**
+ * The button that opens the dialog. With a `handle`, it is a detached trigger of the Dialog with
+ * the same `handle`: it can be anywhere in the page. The `payload` is the text of the
+ * DialogPayload while this trigger opened the dialog.
+ */
 #[Component]
-function DialogTrigger(#[Context] ?Toolbar $toolbar = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
-{
+function DialogTrigger(
+    ?string $handle = null,
+    ?string $payload = null,
+    #[Context] ?Toolbar $toolbar = null,
+    bool $disabled = false,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
     $item = null !== $toolbar ? 'item' : null;
+    $target = null === $handle ? 'trigger' : null;
     $base = null !== $toolbar ? Style::TOOLBAR_BUTTON : Style::BUTTON;
 
     return (
@@ -41,7 +77,9 @@ function DialogTrigger(#[Context] ?Toolbar $toolbar = null, bool $disabled = fal
             type="button"
             disabled={{ disabled }}
             data-disabled={{ disabled ? '' : null }}
-            data-phem-dialog-target="trigger"
+            data-phem-dialog-target={{ target }}
+            data-phem-dialog-for={{ handle }}
+            data-phem-dialog-payload={{ payload }}
             data-phem-toolbar-target={{ item }}
             className={{ classes(base) }}
             {{ ...rest }}
@@ -51,10 +89,15 @@ function DialogTrigger(#[Context] ?Toolbar $toolbar = null, bool $disabled = fal
     );
 }
 
-/** The box of the dialog. */
+/** The box of the dialog. In a DialogViewport, it is a `div`, and the classes of the caller place it. */
 #[Component]
-function DialogPopup(?Html $children = null, mixed ...$rest): Node
+function DialogPopup(#[Context] ?Dialog $dialog = null, #[Context] ?DialogViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
 {
+    // The viewport of a dialog around this dialog does not count.
+    if (null !== $viewport && $viewport->dialog === $dialog) {
+        return <div data-phem-dialog-target="popup" className={{ classes('outline-0') }} {{ ...rest }}>{{ children }}</div>;
+    }
+
     $base = Style::DIALOG;
 
     return <dialog data-phem-dialog-target="popup" className={{ classes(base) }} {{ ...rest }}>{{ children }}</dialog>;
@@ -96,4 +139,47 @@ function DialogClose(bool $disabled = false, ?Html $children = null, mixed ...$r
             {{ children }}
         </button>
     );
+}
+
+/**
+ * The container that places the popup, as the Viewport of Base UI: a `<dialog>` that fills the
+ * screen. A tap on it outside the popup closes the dialog. Its `::backdrop` is the Backdrop.
+ */
+#[Component, Provide]
+class DialogViewport
+{
+    /** The dialog of the viewport. */
+    #[Context] public ?Dialog $dialog = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return (
+            <dialog
+                data-phem-dialog-target="viewport"
+                className={{ classes('m-0 p-0 fixed inset-0 size-full max-w-none max-h-none border-0 bg-transparent overflow-hidden backdrop:bg-black/20 dark:backdrop:bg-black/50 backdrop:transition-opacity backdrop:duration-150 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </dialog>
+        );
+    }
+}
+
+/** The text of the `payload` of the trigger that opened the dialog, or its children. */
+#[Component]
+function DialogPayload(?Html $children = null, mixed ...$rest): Node
+{
+    return <span data-phem-dialog-target="payload" {{ ...rest }}>{{ children }}</span>;
+}
+
+/**
+ * A button of the AlertDialog of the `confirmClose` of a Dialog: it closes the two dialogs, and
+ * the fields of the Dialog get their first values.
+ */
+#[Component]
+function DialogDiscard(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogClose data-phem-dialog-discard {{ ...rest }}>{{ children }}</DialogClose>;
 }

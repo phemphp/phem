@@ -1300,6 +1300,53 @@ dialog[data-nested-dialog-open] { scale: calc(1 - 0.05 * var(--nested-dialogs));
 | `snap-point` | the first one | The state: the snap point of the drawer |
 | `snap-to-sequential-points` | `false` | A fast swipe does not skip a snap point |
 
+### Open a dialog from several triggers
+
+A dialog can have several triggers, as a popover (see [Open one popover from several triggers](#open-one-popover-from-several-triggers)): the `trigger` parts, and the elements anywhere in the page with `data-phem-dialog-for` and the `id` of the controller element. An item of a menu can be a detached trigger: the click closes the menu and opens the dialog. The trigger that opened the dialog gets `aria-expanded="true"`, the others get `"false"`, and the `trigger-id` value gets its `id`. The `payload` part shows the `data-phem-dialog-payload` text of this trigger:
+
+```html
+<button data-phem-dialog-for="details" data-phem-dialog-payload="Dialog 1">Open 1</button>
+<button data-phem-dialog-for="details" data-phem-dialog-payload="Dialog 2">Open 2</button>
+
+<div id="details" data-controller="phem-dialog">
+    <dialog data-phem-dialog-target="popup">
+        <h2 data-phem-dialog-target="title"><span data-phem-dialog-target="payload"></span></h2>
+        <button data-phem-dialog-target="close">Close</button>
+    </dialog>
+</div>
+```
+
+After a click on **Open 2**, the title is `Dialog 2`. The server opens the dialog for a trigger with `data-phem-dialog-open-value="true"` and `data-phem-dialog-trigger-id-value`, and the `open` action takes a `trigger-id` param.
+
+### Ask before the close
+
+Set the `confirm-close` value to the `id` of another `phem-dialog` element in the popup, for example an alert dialog. When the user changed a field of the popup (its value is not its value of the server render), a request to close opens this dialog, and the first dialog stays open. A request to close is Escape, a tap on the backdrop, a `close` part, and the `close` action. A click on a `[data-phem-dialog-discard]` element of the second dialog closes the two dialogs, and the fields get the values of the server render again:
+
+```html
+<div data-controller="phem-dialog" data-phem-dialog-confirm-close-value="discard">
+    <button data-phem-dialog-target="trigger">Tweet</button>
+    <dialog data-phem-dialog-target="popup">
+        <form method="dialog">
+            <textarea required></textarea>
+            <button data-phem-dialog-target="close" type="button">Cancel</button>
+            <button>Tweet</button>
+        </form>
+        <div id="discard" data-controller="phem-dialog" data-phem-dialog-disable-pointer-dismissal-value="true">
+            <dialog data-phem-dialog-target="popup" role="alertdialog">
+                <button data-phem-dialog-target="close">Go back</button>
+                <button data-phem-dialog-target="close" data-phem-dialog-discard>Discard</button>
+            </dialog>
+        </div>
+    </dialog>
+</div>
+```
+
+With no changed field, the dialog closes at once. A `<form method="dialog">` closes the dialog with no question.
+
+### Choose the focus
+
+The browser gives the first focus to the `[autofocus]` element of the dialog, or else to its first element that can have the focus. After the close, the browser gives the focus back to the element that had it before the open. Set the `final-focus` value to a CSS selector to give it to another element: `data-phem-dialog-final-focus-value="#next-step"`.
+
 ### Add a backdrop and a viewport
 
 The `::backdrop` of a modal `<dialog>` covers the page. For a backdrop with its own animation, add a `backdrop` part: an element outside the dialog. It gets `hidden`, `data-open` or `data-closed`, and the animations of the [conventions](#animations), at the same time as the dialog.

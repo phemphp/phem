@@ -5,8 +5,8 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\{Component, State};
 use Phem\Node;
 
-use function Phem\Ui\Base\{Dialog, DialogPopup, DialogTrigger, MenuItem, MenuPopup, MenuTrigger, NumberField, NumberFieldInput, Popover, PopoverPopup, PopoverTrigger, Tooltip, TooltipPopup, TooltipTrigger, Avatar, AvatarFallback, AvatarImage, CheckboxIndicator, RadioIndicator, SwitchThumb, Toggle, ToolbarButton, ToolbarGroup, ToolbarSeparator};
-use Phem\Ui\Base\{Checkbox, CheckboxGroup, Menu, Radio, RadioGroup, SwitchRoot, ToggleGroup, Toolbar};
+use function Phem\Ui\Base\{DialogPopup, DialogTrigger, MenuItem, MenuPopup, MenuTrigger, NumberField, NumberFieldInput, Popover, PopoverPopup, PopoverTrigger, Tooltip, TooltipPopup, TooltipTrigger, Avatar, AvatarFallback, AvatarImage, CheckboxIndicator, RadioIndicator, SwitchThumb, Toggle, ToolbarButton, ToolbarGroup, ToolbarSeparator};
+use Phem\Ui\Base\{Checkbox, CheckboxGroup, Dialog, Menu, Radio, RadioGroup, SwitchRoot, ToggleGroup, Toolbar};
 
 #[Component]
 function ToggleDemo(): Node

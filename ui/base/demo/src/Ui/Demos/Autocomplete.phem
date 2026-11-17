@@ -6,8 +6,8 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxInput, ComboboxItem, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, Dialog, DialogClose, DialogPopup, DialogTrigger, ScrollArea, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport};
-use Phem\Ui\Base\{Align, Autocomplete};
+use function Phem\Ui\Base\{ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxInput, ComboboxItem, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, DialogClose, DialogPopup, DialogTrigger, ScrollArea, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport};
+use Phem\Ui\Base\{Align, Autocomplete, Dialog};
 
 // The input of the Base UI autocomplete demos.
 const AUTOCOMPLETE_INPUT = 'h-8 w-[16rem] border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white';
