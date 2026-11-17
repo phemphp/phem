@@ -69,7 +69,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Toggle | `ControlsTest` | A click and Space toggle `aria-pressed` | — |
 | Toggle Group | `ControlsTest` | One pressed item, ArrowRight, `multiple` | Home and End |
 | Toolbar | `ControlsTest` | ArrowRight, End, Home, the arrow keys leave a toggle group, a menu trigger, tooltip triggers and a number field input as items | The select in the toolbar |
-| Tooltip | `OverlaysTest` | Hover and focus open it, leaving closes it, no `role` and no `aria-describedby` | The delay between two tooltips |
+| Tooltip | `OverlaysTest` | Hover and focus open it, leaving closes it, no `role` and no `aria-describedby`; a detached trigger, the payloads of two triggers, the `show` action on the second trigger, the move, the size and the content animation between two triggers | The delay between two tooltips |
 
 Other open work for the browser tests:
 

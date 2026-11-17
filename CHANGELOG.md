@@ -8,6 +8,13 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-tooltip` has several triggers, as the detached triggers of a Base UI tooltip: the
+  `trigger` parts, and the elements anywhere in the page with `data-phem-tooltip-for` and the `id`
+  of the controller element. The popup moves to the trigger under the pointer or with the focus,
+  and its `viewport` part shows the `data-phem-tooltip-payload` of that trigger, with
+  `data-current`, `data-previous` and `data-activation-direction` for an animation. The popup
+  gets `--popup-width` and `--popup-height`. The `open` and `trigger-id` values are the state, and
+  the `show` action takes a `triggerId` param. See docs/controllers.md.
 - `phem-combobox` has the highlight values of the Base UI Autocomplete: `auto-highlight` takes
   `always` (an open list always has a highlight), `keep-highlight` keeps the highlight when the
   pointer leaves the items, and `highlight-item-on-hover="false"` stops the highlight on hover.

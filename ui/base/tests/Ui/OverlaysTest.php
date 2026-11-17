@@ -82,6 +82,14 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-tooltip-target="popup"][hidden]');
     }
 
+    public function testATooltipHasDetachedTriggersWithAPayload(): void
+    {
+        $this->mount(self::APP.'TooltipDetachedDemo')
+            ->assertSelectorExists('span#tools[data-controller="phem-tooltip"][data-phem-tooltip-open-value="true"][data-phem-tooltip-trigger-id-value="timer"]')
+            ->assertSelectorExists('button#timer[data-phem-tooltip-for="tools"][data-phem-tooltip-payload="Set a timer"]:not([data-phem-tooltip-target])')
+            ->assertSelectorExists('[data-phem-tooltip-target="popup"] [data-phem-tooltip-target="viewport"]');
+    }
+
     public function testTheTabsSelectTheirDefaultValue(): void
     {
         $this->mount(self::APP.'TabsDemo')

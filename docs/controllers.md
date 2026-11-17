@@ -379,6 +379,51 @@ A tooltip is only visual, as the Tooltip of Base UI: the popup gets no `role="to
 
 A tooltip helps only the users of a pointer and of a keyboard. A touch shows no tooltip. Give the trigger its own label (here `aria-label`) for a touch screen and for a screen reader. Do not put important information only in a tooltip: use a popover with `open-on-hover`.
 
+### Open one tooltip from several triggers
+
+One tooltip can have several triggers. Each `trigger` part in the controller element is a trigger. A trigger can also be anywhere in the page: give it `data-phem-tooltip-for` with the `id` of the controller element, as the detached triggers of Base UI. The tooltip goes next to the trigger that opened it, and shows the `data-phem-tooltip-payload` text of this trigger in its `viewport` part:
+
+```html
+<div class="toolbar">
+    <button data-phem-tooltip-for="tools" data-phem-tooltip-payload="Listen to audio preview" aria-label="Listen to audio preview">…</button>
+    <button data-phem-tooltip-for="tools" data-phem-tooltip-payload="Set a timer" aria-label="Set a timer">…</button>
+</div>
+
+<span id="tools" data-controller="phem-tooltip">
+    <span data-phem-tooltip-target="popup" popover="manual" hidden>
+        <span data-phem-tooltip-target="viewport"></span>
+    </span>
+</span>
+```
+
+While the tooltip is open, the pointer or the keyboard focus on another trigger moves it at once, with no delay. The trigger of the tooltip gets `data-popup-open`. A trigger with no payload shows the content of the server render of the viewport. When the pointer goes from **Listen to audio preview** to **Set a timer**, the browser shows:
+
+```html
+<span data-phem-tooltip-target="viewport" data-activation-direction="right">
+    <div data-previous data-closed data-ending-style style="position: absolute; top: 4px; left: 8px; width: 149px;">Listen to audio preview</div>
+    <div data-current data-open data-starting-style>Set a timer</div>
+</span>
+```
+
+The new content gets `data-starting-style` for its first frame. The old content keeps its place with `position: absolute`, gets `data-ending-style`, and goes when its animations end. `data-activation-direction` is the direction of the new trigger from the old one: up to two words, `left` or `right`, and `up` or `down`. Match one word with `~=`, as `[data-activation-direction~="right"]`. The popup gets the size of its content in `--popup-width` and `--popup-height`: they are `auto` at rest, and px values during a change (see [Build a navigation menu](#build-a-navigation-menu)). Animate the move, the size and the content with CSS:
+
+```css
+[data-phem-tooltip-target="popup"] {
+    width: var(--popup-width, auto);
+    height: var(--popup-height, auto);
+    transition: top .35s, left .35s, width .35s, height .35s;
+}
+[data-current], [data-previous] { transition: translate .35s, opacity .175s }
+[data-activation-direction~="right"] [data-current][data-starting-style] { translate: 50%; opacity: 0 }
+[data-activation-direction~="right"] [data-previous][data-ending-style] { translate: -50%; opacity: 0 }
+```
+
+The `open` value is the state, and the `trigger-id` value is the `id` of the trigger of the open tooltip. The server opens the tooltip next to a trigger with `data-phem-tooltip-open-value="true"` and `data-phem-tooltip-trigger-id-value="timer"`, and a new render moves it or closes it. An element in the controller element opens the tooltip with the `show` action, and a `trigger-id` param for another trigger than the first one:
+
+```html
+<button data-action="phem-tooltip#show" data-phem-tooltip-trigger-id-param="timer">Open</button>
+```
+
 ## Build a menu of actions
 
 `phem-menu` shows a list of actions in a popup, with the keyboard of a menu:

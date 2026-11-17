@@ -2,11 +2,16 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
-use function App\Ui\{DemoPage, Hero};
-use function Phem\Ui\Base\{Tooltip, TooltipArrow, TooltipPopup, TooltipTrigger};
+use function App\Ui\{DemoPage, Example, Examples, Hero};
+use function Phem\Ui\Base\{Tooltip, TooltipArrow, TooltipPopup, TooltipTrigger, TooltipViewport};
+
+// A trigger with a border, as in the examples of base-ui.com.
+const TOOLTIP_ICON_TRIGGER = 'border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950';
+
+const TOOLTIP_BUTTON = 'flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700';
 
 #[Page('/components/tooltip')]
 function TooltipPage(): Node
@@ -30,6 +35,154 @@ function TooltipPage(): Node
                     {% endfor %}
                 </div>
             </Hero>
+            <Examples>
+                <Example title="Detached triggers">
+                    <Example.description>
+                        <p>A tooltip can be controlled by a trigger located either inside or outside the <code>Tooltip</code> component. For simple, one-off interactions, place the <code>TooltipTrigger</code> inside <code>Tooltip</code>, as shown in the example at the top of this page.</p>
+                        <p>However, if defining the tooltip's content next to its trigger is not practical, you can use a detached trigger. This involves placing the <code>TooltipTrigger</code> outside of <code>Tooltip</code> and linking them with the same <code>handle</code>. The root gets the handle as its <code>id</code>, and the trigger gets <code>data-phem-tooltip-for</code>.</p>
+                    </Example.description>
+                    <TooltipDetachedDemo />
+                </Example>
+                <Example title="Multiple triggers">
+                    <Example.description>
+                        <p>A single tooltip can be opened by multiple trigger elements. You can achieve this by using the same <code>handle</code> for several detached triggers, or by placing multiple <code>TooltipTrigger</code> components inside a single <code>Tooltip</code>.</p>
+                        <p>The tooltip can render different content depending on which trigger opened it. Give each trigger a <code>payload</code>: the <code>TooltipViewport</code> shows the payload of the active trigger.</p>
+                    </Example.description>
+                    <TooltipMultipleDemo />
+                </Example>
+                <Example title="Controlled mode with multiple triggers">
+                    <Example.description>
+                        <p>You can control the tooltip's open state with the <code>open</code> and <code>triggerId</code> props of <code>Tooltip</code>: a render with new values opens the tooltip next to the trigger with that <code>id</code>, or closes it. The controller keeps the values of the browser in <code>data-phem-tooltip-open-value</code> and <code>data-phem-tooltip-trigger-id-value</code>.</p>
+                        <p>Here, the button is in the root, and opens the tooltip without a request with the <code>phem-tooltip#show</code> action and a <code>triggerId</code> param.</p>
+                    </Example.description>
+                    <TooltipControlledDemo />
+                </Example>
+                <Example title="Animating the Tooltip">
+                    <Example.description>
+                        <p>You can animate a tooltip as it moves between different trigger elements. This includes animating its position, size, and content.</p>
+                        <p>To animate the tooltip's position, apply CSS transitions to the <code>top</code> and <code>left</code> properties of the <code>TooltipPopup</code>. To animate its size, transition its <code>width</code> and <code>height</code> to <code>var(--popup-width)</code> and <code>var(--popup-height)</code>.</p>
+                        <p>To enable content animations, wrap the content in the <code>TooltipViewport</code> part. It gets a <code>data-activation-direction</code> attribute that indicates the new trigger's position relative to the previous one: up to two tokens, <code>left</code> or <code>right</code> and <code>up</code> or <code>down</code>. Match a single token with the <code>~=</code> attribute selector. Inside the viewport, the content is wrapped in <code>div</code>s with <code>data-current</code> (the incoming content) and <code>data-previous</code> (the outgoing content).</p>
+                    </Example.description>
+                    <TooltipAnimatedDemo />
+                </Example>
+            </Examples>
         </DemoPage>
+    );
+}
+
+#[Component]
+function TooltipHeadphonesIcon(): Node
+{
+    return (
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block">
+            <path strokeLinecap="round" d="M1.5 11V7.5c0-2.5 2.5-6 6.5-6s6.5 3.5 6.5 6V11" />
+            <path d="M12 7.5c1.3807 0 2.5 1.11929 2.5 2.5v2c0 1.3807-1.1193 2.5-2.5 2.5h-1.5v-7zm-8 0h1.5v7H4c-1.38071 0-2.5-1.1193-2.5-2.5v-2c0-1.38071 1.11929-2.5 2.5-2.5Z" />
+        </svg>
+    );
+}
+
+#[Component]
+function TooltipStopwatchIcon(): Node
+{
+    return (
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block">
+            <circle cx="8" cy="8.5" r="6" />
+            <path strokeLinecap="square" strokeLinejoin="round" d="M8 9.5v-5m0-2v-2m-2 0h4M12 4l1.5-1.5" />
+        </svg>
+    );
+}
+
+#[Component]
+function TooltipTrashIcon(): Node
+{
+    return (
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeLinejoin="round" className="block">
+            <path strokeLinecap="square" d="M2.5 4h11" />
+            <path strokeLinecap="round" d="M6.5 4V3c0-.82843.67157-1.5 1.5-1.5s1.5.67157 1.5 1.5v1" />
+            <path strokeLinecap="square" d="m3.5 4 .87069 9.1422c.07332.7699.7199 1.3578 1.49324 1.3578h4.27217c.7733 0 1.4199-.5879 1.4932-1.3578L12.5 4" />
+        </svg>
+    );
+}
+
+/** Detached triggers: the trigger is outside the root, with the same handle. */
+#[Component]
+function TooltipDetachedDemo(): Node
+{
+    $iconTrigger = TOOLTIP_ICON_TRIGGER;
+
+    return (
+        <div>
+            <TooltipTrigger handle="delete-tooltip" aria-label="Delete" className={{ iconTrigger }}><TooltipTrashIcon /></TooltipTrigger>
+            <Tooltip handle="delete-tooltip" sideOffset={{ 11 }}>
+                <TooltipPopup><TooltipArrow />Delete</TooltipPopup>
+            </Tooltip>
+        </div>
+    );
+}
+
+/** Multiple triggers: two detached triggers of one tooltip, with a payload each. */
+#[Component]
+function TooltipMultipleDemo(): Node
+{
+    $button = TOOLTIP_BUTTON;
+
+    return (
+        <div className="flex gap-2">
+            <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 1" className={{ button }}>Trigger 1</TooltipTrigger>
+            <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 2" className={{ button }}>Trigger 2</TooltipTrigger>
+            <Tooltip handle="multiple-tooltip" sideOffset={{ 8 }}>
+                <TooltipPopup><TooltipArrow /><TooltipViewport /></TooltipPopup>
+            </Tooltip>
+        </div>
+    );
+}
+
+/** Controlled mode: three triggers in the root, and a button that opens the tooltip on the second one. */
+#[Component]
+function TooltipControlledDemo(): Node
+{
+    $iconTrigger = TOOLTIP_ICON_TRIGGER;
+    $button = TOOLTIP_BUTTON;
+
+    return (
+        <Tooltip sideOffset={{ 11 }}>
+            <div className="flex flex-wrap justify-center gap-2">
+                <div className="flex">
+                    <TooltipTrigger id="trigger-1" aria-label="Controlled tooltip" className={{ iconTrigger }}><TooltipHeadphonesIcon /></TooltipTrigger>
+                    <TooltipTrigger id="trigger-2" aria-label="Controlled tooltip" className={{ iconTrigger ~ ' border-l-0' }}><TooltipStopwatchIcon /></TooltipTrigger>
+                    <TooltipTrigger id="trigger-3" aria-label="Controlled tooltip" className={{ iconTrigger ~ ' border-l-0' }}><TooltipTrashIcon /></TooltipTrigger>
+                </div>
+                <button type="button" data-action="phem-tooltip#show" data-phem-tooltip-trigger-id-param="trigger-2" className={{ button }}>Open programmatically</button>
+            </div>
+            <TooltipPopup className="max-w-[var(--available-width)]"><TooltipArrow />Controlled tooltip</TooltipPopup>
+        </Tooltip>
+    );
+}
+
+/** Animating the Tooltip: its position, its size and its content move from one trigger to the next. */
+#[Component]
+function TooltipAnimatedDemo(): Node
+{
+    $iconTrigger = TOOLTIP_ICON_TRIGGER;
+    $triggers = [
+        ['Listen to audio preview', 'headphones'],
+        ['Set a timer', 'stopwatch'],
+        ['Delete: This action cannot be undone', 'trash'],
+    ];
+
+    return (
+        <div className="flex">
+            {% for trigger in triggers %}
+                <TooltipTrigger key={{ trigger[1] }} handle="animated-tooltip" payload={{ trigger[0] }} aria-label={{ trigger[0] }} className={{ iconTrigger ~ (loop.first ? '' : ' border-l-0') }}>
+                    {% if trigger[1] == 'headphones' %}<TooltipHeadphonesIcon />{% elseif trigger[1] == 'stopwatch' %}<TooltipStopwatchIcon />{% else %}<TooltipTrashIcon />{% endif %}
+                </TooltipTrigger>
+            {% endfor %}
+            <Tooltip handle="animated-tooltip" sideOffset={{ 11 }}>
+                <TooltipPopup className="h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] max-w-[500px] px-0 py-0 transition-[top,left,width,height,opacity,transform] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:[transform:scale(0.9)] data-starting-style:[transform:scale(0.9)]">
+                    <TooltipArrow className="transition-[left] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] data-instant:transition-none" />
+                    <TooltipViewport className="[--viewport-inline-padding:0.5rem] relative h-full w-full overflow-clip px-[var(--viewport-inline-padding)] py-1 whitespace-nowrap [&_[data-previous]]:w-[calc(var(--popup-width)-2*var(--viewport-inline-padding))] [&_[data-previous]]:translate-x-0 [&_[data-previous]]:opacity-100 [&_[data-previous]]:transition-[translate,opacity] [&_[data-previous]]:duration-[350ms,175ms] [&_[data-previous]]:ease-[cubic-bezier(0.22,1,0.36,1)] [&_[data-current]]:w-[calc(var(--popup-width)-2*var(--viewport-inline-padding))] [&_[data-current]]:translate-x-0 [&_[data-current]]:opacity-100 [&_[data-current]]:transition-[translate,opacity] [&_[data-current]]:duration-[350ms,175ms] [&_[data-current]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:-translate-x-1/2 data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:translate-x-1/2 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:opacity-0 [[data-instant]_&_[data-previous]]:transition-none [[data-instant]_&_[data-current]]:transition-none data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:translate-x-1/2 data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:-translate-x-1/2 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:opacity-0" />
+                </TooltipPopup>
+            </Tooltip>
+        </div>
     );
 }

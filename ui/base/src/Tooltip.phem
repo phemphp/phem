@@ -12,9 +12,18 @@ use Phem\{Html, Node};
  * The props of the Base UI Positioner are props of the root. Tooltips that open one after the other
  * open at once (`data-instant="delay"`), as the Base UI Tooltip.Provider does: the controller does
  * it for all the tooltips of the page.
+ *
+ * A `handle` links the root to detached triggers: a TooltipTrigger with the same `handle`, anywhere
+ * in the page, opens this tooltip. The root then gets the handle as its `id`. One tooltip can have
+ * several triggers, and the `payload` of each trigger goes in the TooltipViewport. `open` and
+ * `triggerId` are the state: a render with new values opens the tooltip next to the trigger with
+ * that `id`, or closes it.
  */
 #[Component]
 function Tooltip(
+    ?string $handle = null,
+    bool $open = false,
+    ?string $triggerId = null,
     int $delay = 600,
     int $closeDelay = 0,
     bool $hoverable = true,
@@ -28,7 +37,10 @@ function Tooltip(
 ): Node {
     return (
         <span
+            id={{ handle }}
             data-controller="phem-tooltip"
+            data-phem-tooltip-open-value={{ open ? 'true' : null }}
+            data-phem-tooltip-trigger-id-value={{ triggerId }}
             data-phem-tooltip-delay-value={{ 600 == delay ? null : delay }}
             data-phem-tooltip-close-delay-value={{ 0 == closeDelay ? null : closeDelay }}
             data-phem-tooltip-hoverable-value={{ hoverable ? null : 'false' }}
@@ -45,16 +57,30 @@ function Tooltip(
     );
 }
 
-/** The element that shows the tooltip. Give it its own label (`aria-label`): a touch shows no tooltip. */
+/**
+ * The element that shows the tooltip. Give it its own label (`aria-label`): a touch shows no tooltip.
+ *
+ * With a `handle`, it is a detached trigger of the Tooltip with the same `handle`: it can be
+ * anywhere in the page. The `payload` is the text of the TooltipViewport while this trigger is
+ * active.
+ */
 #[Component]
-function TooltipTrigger(#[Context] ?Toolbar $toolbar = null, ?Html $children = null, mixed ...$rest): Node
-{
+function TooltipTrigger(
+    ?string $handle = null,
+    ?string $payload = null,
+    #[Context] ?Toolbar $toolbar = null,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
     $item = null !== $toolbar ? 'item' : null;
+    $target = null === $handle ? 'trigger' : null;
 
     return (
         <button
             type="button"
-            data-phem-tooltip-target="trigger"
+            data-phem-tooltip-target={{ target }}
+            data-phem-tooltip-for={{ handle }}
+            data-phem-tooltip-payload={{ payload }}
             data-phem-toolbar-target={{ item }}
             className={{ classes('flex size-8 items-center justify-center border-0 bg-transparent text-neutral-950 select-none data-popup-open:bg-neutral-100 focus-visible:relative focus-visible:z-1 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:text-white dark:data-popup-open:bg-neutral-800 dark:hover:bg-neutral-800 dark:active:bg-neutral-700') }}
             {{ ...rest }}
@@ -86,4 +112,19 @@ function TooltipArrow(mixed ...$rest): Node
     $base = Style::ARROW;
 
     return <span data-phem-tooltip-target="arrow" aria-hidden="true" className={{ classes(base) }} {{ ...rest }} />;
+}
+
+/**
+ * The content of a tooltip with several triggers: the `payload` of the active trigger, or its
+ * children. When the active trigger changes, the old content gets `data-previous` and the new
+ * content `data-current`, and the viewport gets `data-activation-direction`, for an animation.
+ */
+#[Component]
+function TooltipViewport(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <span data-phem-tooltip-target="viewport" className={{ classes('block') }} {{ ...rest }}>
+            {{ children }}
+        </span>
+    );
 }

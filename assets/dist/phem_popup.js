@@ -88,6 +88,13 @@ export class Popup {
     }
   }
 
+  // The anchor changed (another trigger): the open popup goes next to the new anchor. A CSS
+  // transition of `top` and `left` animates the move.
+  reanchor() {
+    const popup = this.#parts.popup()
+    if (this.#open && popup) this.#start(popup)
+  }
+
   // After the morph: the morph resets the `style` attribute of the popup and of the arrow.
   reposition() {
     this.#update?.()

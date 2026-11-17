@@ -327,3 +327,135 @@ describe("phem-tooltip", () => {
     expect($("tip").style.position).toBe("fixed")
   })
 })
+
+// Three detached triggers of one tooltip, with a payload each.
+function detached(attributes = "") {
+  return `<div id="bar">
+      <button id="t1" data-phem-tooltip-for="shared" data-phem-tooltip-payload="Listen" aria-label="Listen">1</button>
+      <button id="t2" data-phem-tooltip-for="shared" data-phem-tooltip-payload="Set a timer" aria-label="Set a timer">2</button>
+      <button id="t3" data-phem-tooltip-for="other" aria-label="Other">3</button>
+    </div>
+    <span id="shared" data-controller="phem-tooltip" data-phem-tooltip-delay-value="0" ${attributes}>
+      <span id="shared-tip" data-phem-tooltip-target="popup" hidden><span id="vp" data-phem-tooltip-target="viewport">Server text</span></span>
+    </span>
+    <p id="outside">Outside</p>`
+}
+
+describe("phem-tooltip with several triggers", () => {
+  it("opens next to a detached trigger, with its payload in the viewport", async () => {
+    await mount(detached())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    over($("t2"))
+    vi.advanceTimersByTime(0)
+
+    expect($("shared-tip").hidden).toBe(false)
+    expect($("t2").hasAttribute("data-popup-open")).toBe(true)
+    expect($("t1").hasAttribute("data-popup-open")).toBe(false)
+    expect($("vp").innerHTML).toBe('<div data-current="">Set a timer</div>')
+    expect($("shared").getAttribute("data-phem-tooltip-open-value")).toBe("true")
+    expect($("shared").getAttribute("data-phem-tooltip-trigger-id-value")).toBe("t2")
+
+    out($("t2"), $("outside"))
+    expect($("shared-tip").hidden).toBe(true)
+    expect($("t2").hasAttribute("data-popup-open")).toBe(false)
+    expect($("shared").getAttribute("data-phem-tooltip-open-value")).toBe("false")
+  })
+
+  it("ignores a trigger of another tooltip", async () => {
+    await mount(detached())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    over($("t3"))
+    vi.advanceTimersByTime(0)
+
+    expect($("shared-tip").hidden).toBe(true)
+  })
+
+  it("moves to the next trigger at once, and animates the change of the content", async () => {
+    await mount(detached())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    $("t1").getBoundingClientRect = () => new DOMRect(0, 0, 32, 32)
+    $("t2").getBoundingClientRect = () => new DOMRect(32, 0, 32, 32)
+    over($("t1"))
+    vi.advanceTimersByTime(0)
+    out($("t1"), $("t2"))
+    over($("t2"))
+
+    expect($("shared-tip").hidden).toBe(false)
+    expect($("t1").hasAttribute("data-popup-open")).toBe(false)
+    expect($("t2").hasAttribute("data-popup-open")).toBe(true)
+    expect($("vp").getAttribute("data-activation-direction")).toBe("right")
+    expect($("vp").querySelector("[data-current]").textContent).toBe("Set a timer")
+    expect($("shared").getAttribute("data-phem-tooltip-trigger-id-value")).toBe("t2")
+  })
+
+  it("moves with the focus of the keyboard from one trigger to the next", async () => {
+    await mount(detached())
+    tabTo($("t1"))
+    expect($("vp").textContent).toBe("Listen")
+
+    tabTo($("t2"))
+    expect($("shared-tip").hidden).toBe(false)
+    expect($("t2").hasAttribute("data-popup-open")).toBe(true)
+    expect($("vp").querySelector("[data-current]").textContent).toBe("Set a timer")
+
+    $("outside").setAttribute("tabindex", "-1")
+    $("outside").focus()
+    expect($("shared-tip").hidden).toBe(true)
+  })
+
+  it("opens and moves with the open and triggerId values", async () => {
+    await mount(detached())
+    $("shared").setAttribute("data-phem-tooltip-trigger-id-value", "t2")
+    $("shared").setAttribute("data-phem-tooltip-open-value", "true")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect($("shared-tip").hidden).toBe(false)
+    expect($("t2").hasAttribute("data-popup-open")).toBe(true)
+
+    $("shared").setAttribute("data-phem-tooltip-trigger-id-value", "t1")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("t1").hasAttribute("data-popup-open")).toBe(true)
+    expect($("vp").querySelector("[data-current]").textContent).toBe("Listen")
+
+    $("shared").setAttribute("data-phem-tooltip-open-value", "false")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("shared-tip").hidden).toBe(true)
+  })
+
+  it("opens on load with the open value, next to the trigger of triggerId", async () => {
+    await mount(detached('data-phem-tooltip-open-value="true" data-phem-tooltip-trigger-id-value="t2"'))
+
+    expect($("shared-tip").hidden).toBe(false)
+    expect($("t2").hasAttribute("data-popup-open")).toBe(true)
+  })
+
+  it("opens next to the trigger of the triggerId param of the show action", async () => {
+    await mount(`<span id="shared" data-controller="phem-tooltip">
+        <button id="a" data-phem-tooltip-target="trigger">A</button>
+        <button id="b" data-phem-tooltip-target="trigger">B</button>
+        <button id="open" data-action="phem-tooltip#show" data-phem-tooltip-trigger-id-param="b">Open</button>
+        <span id="shared-tip" data-phem-tooltip-target="popup" hidden>Tip</span>
+      </span>`)
+    $("open").click()
+
+    expect($("shared-tip").hidden).toBe(false)
+    expect($("b").hasAttribute("data-popup-open")).toBe(true)
+    expect($("a").hasAttribute("data-popup-open")).toBe(false)
+
+    // The pointer out of the button that is not a trigger keeps the tooltip open.
+    out($("open"), $("a"))
+    expect($("shared-tip").hidden).toBe(false)
+  })
+
+  it("keeps the payload of the active trigger through the morph of an event", async () => {
+    await mount(`<button id="send" data-phem-on-click="c1.send">Send</button>${detached()}`)
+    respond(`<button id="send" data-phem-on-click="c1.send">Send</button>${detached()}`)
+    tabTo($("t2"))
+    const done = nextDone()
+    $("send").click()
+    await done
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect($("vp").querySelector("[data-current]")?.textContent).toBe("Set a timer")
+  })
+})
