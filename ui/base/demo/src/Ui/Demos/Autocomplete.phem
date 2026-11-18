@@ -368,11 +368,6 @@ function AutocompletePage(): Node
                     </Example.description>
                     <AutocompleteVirtualizedDemo />
                 </Example>
-                <Example title="Memoizing items">
-                    <Example.description>
-                        <p>React memoizes each item so that unchanged items skip re-rendering. phem renders the items on the server, and the morph changes only the items that changed, so the items need no memoization. For a dataset that is too large to render at once, render only the first matches, as in the Virtualized example.</p>
-                    </Example.description>
-                </Example>
             </Examples>
         </DemoPage>
     );

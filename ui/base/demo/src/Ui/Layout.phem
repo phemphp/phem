@@ -198,11 +198,32 @@ function DemoBox(Html $children, ?string $source = null): Node
     );
 }
 
-/** The demo at the top of the page, with its source when `source` is set. */
+/**
+ * The demo at the top of the page, with its source when `source` is set. Its description, when
+ * it has one, goes below the demo.
+ */
 #[Component]
-function Hero(Html $children, ?string $source = null): Node
+function Hero(Html $children, ?Html $description = null, ?string $source = null): Node
 {
-    return <section aria-label="Demo"><DemoBox source={{ source }}>{{ children }}</DemoBox></section>;
+    return (
+        <section aria-label="Demo" className="flex flex-col gap-6">
+            <DemoBox source={{ source }}>{{ children }}</DemoBox>
+            {% if description is not empty %}
+                <Description>{{ description }}</Description>
+            {% endif %}
+        </section>
+    );
+}
+
+/** The text of a demo or an example: paragraphs, with `<code>` and `<kbd>`. */
+#[Component]
+function Description(Html $children): Node
+{
+    return (
+        <div className="flex flex-col gap-3 text-[#767676] dark:text-[#b3b3b3] [&_code]:rounded-sm [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.875em] [&_code]:text-neutral-950 dark:[&_code]:bg-neutral-800 dark:[&_code]:text-white [&_kbd]:rounded-sm [&_kbd]:border [&_kbd]:border-neutral-300 [&_kbd]:px-1 [&_kbd]:font-mono [&_kbd]:text-[0.875em] dark:[&_kbd]:border-neutral-700">
+            {{ children }}
+        </div>
+    );
 }
 
 /** The "Examples" section of a page: a heading, then its Example blocks. */
@@ -230,9 +251,7 @@ function Example(string $title, Html $description, ?Html $children = null, ?stri
     return (
         <section aria-labelledby={{ id }} className="flex flex-col gap-3">
             <h3 id={{ id }} data-contents className="scroll-mt-6 text-lg font-bold"><a href="#{{ id }}" className="underline-offset-4 hover:underline focus-visible:underline">{{ title }}</a></h3>
-            <div className="flex flex-col gap-3 text-[#767676] dark:text-[#b3b3b3] [&_code]:rounded-sm [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.875em] [&_code]:text-neutral-950 dark:[&_code]:bg-neutral-800 dark:[&_code]:text-white [&_kbd]:rounded-sm [&_kbd]:border [&_kbd]:border-neutral-300 [&_kbd]:px-1 [&_kbd]:font-mono [&_kbd]:text-[0.875em] dark:[&_kbd]:border-neutral-700">
-                {{ description }}
-            </div>
+            <Description>{{ description }}</Description>
             {% if children is not empty %}
                 <DemoBox source={{ source }}>{{ children }}</DemoBox>
             {% endif %}

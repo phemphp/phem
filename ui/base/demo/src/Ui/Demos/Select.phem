@@ -18,11 +18,6 @@ function SelectPage(): Node
                 <SelectHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Typed wrapper component">
-                    <Example.description>
-                        <p>Wrap the Select component in a component of your application to give it its props and its parts once. A <code>Bound</code> prop passes a state of the page with <code>phem:bind</code>.</p>
-                    </Example.description>
-                </Example>
                 <Example title="Formatting the value" source="SelectFormattedDemo">
                     <Example.description>
                         <p><code>SelectValue</code> renders the label of the selected item: its <code>SelectItemText</code>, not its raw <code>value</code>.</p>

@@ -250,11 +250,6 @@ function ComboboxPage(): Node
                 <ComboboxHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Typed wrapper component">
-                    <Example.description>
-                        <p>Wrap the Combobox component in a component of your application to give it its props and its parts once. A <code>Bound</code> prop passes a state of the page with <code>phem:bind</code>.</p>
-                    </Example.description>
-                </Example>
                 <Example title="Value selection with IDs" source="ComboboxIdsDemo">
                     <Example.description>
                         <p>When your app stores IDs rather than labels, give each <code>ComboboxItem</code> the ID as its <code>value</code>, and the label as its content. With <code>selectionMode="single"</code>, the input shows the label, and the form gets the ID.</p>

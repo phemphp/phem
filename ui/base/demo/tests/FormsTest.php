@@ -39,15 +39,15 @@ final class FormsTest extends DemoTestCase
         $page = $this->visitComponent('form');
         $hero = $page->getByRole('region', ['name' => 'Demo'])->locator('[data-demo="preview"]');
 
-        $input = $hero->getByRole('textbox', ['name' => 'Homepage']);
+        $input = $hero->getByRole('textbox', ['name' => 'Username']);
         $submit = $hero->getByRole('button', ['name' => 'Submit']);
-        expect($input)->toHaveValue('https://example.com');
+        expect($input)->toHaveValue('admin');
 
         // The value of the demo is valid for the browser: the server refuses it after 1 second.
         $submit->click();
-        expect($hero->getByText('The example domain is not allowed'))->toBeVisible();
+        expect($hero->locator('text=\'admin\' is reserved for system use'))->toBeVisible();
         expect($input)->toHaveAttribute('aria-invalid', 'true');
-        expect($input)->toHaveAttribute('aria-describedby', 'url-error');
+        expect($input)->toHaveAttribute('aria-describedby', 'username-error');
         // The lock of the submit (`aria-disabled`) goes at the end of the request.
         expect($submit)->not()->toHaveAttribute('aria-disabled', 'true');
 
@@ -57,38 +57,29 @@ final class FormsTest extends DemoTestCase
         $submit->click();
         expect($input)->toBeFocused();
         expect($input)->toHaveAttribute('data-invalid', '');
-        expect($hero->getByText('The example domain is not allowed'))->toBeHidden();
-
-        // A value that the server accepts removes the error.
-        $input->fill('https://base-ui.com');
-        $submit->click();
-        expect($input)->not()->toHaveAttribute('aria-invalid', 'true');
-        expect($input)->toHaveValue('https://base-ui.com');
+        expect($hero->locator('text=\'admin\' is reserved for system use'))->toBeHidden();
     }
 
-    public function testFormExamples(): void
+    public function testFormMapsItsValuesToAnObjectAndShowsTheErrorsOfTheValidator(): void
     {
         $page = $this->visitComponent('form');
+        $form = $page->getByRole('region', ['name' => 'Validate with #[MapForm]'])->locator('[data-demo="preview"]');
 
-        // The handler refuses the reserved name: the error shows in the FieldError.
-        $server = $page->getByRole('region', ['name' => 'Submit with a Server Function'])->locator('[data-demo="preview"]');
-        $server->getByRole('button', ['name' => 'Submit'])->click();
-        expect($server->locator('text=\'admin\' is reserved for system use'))->toBeVisible();
-        expect($server->getByRole('textbox', ['name' => 'Username']))->toHaveAttribute('aria-invalid', 'true');
+        // The object is not valid: the handler does not run, and each error goes to its field.
+        $form->getByRole('textbox', ['name' => 'Age'])->fill('-2');
+        $form->getByRole('button', ['name' => 'Submit'])->click();
+        expect($form->locator('text=Name is required'))->toBeVisible();
+        expect($form->locator('text=Age must be a positive number'))->toBeVisible();
+        expect($form->getByRole('textbox', ['name' => 'Age']))->toHaveAttribute('aria-describedby', 'age-error');
+        expect($form->getByRole('status'))->toHaveCount(0);
 
-        // The handler gets the values of the form.
-        $values = $page->getByRole('region', ['name' => 'Submit form values as a JavaScript object'])->locator('[data-demo="preview"]');
-        $values->getByRole('spinbutton', ['name' => 'Quantity'])->fill('3');
-        $values->getByRole('button', ['name' => 'Submit'])->click();
-        expect($values->locator('pre[aria-label="Payload"]'))->toContainText('"order_quantity": 3');
-
-        // The checks of the server map their errors to the fields.
-        $zod = $page->getByRole('region', ['name' => 'Using with Zod'])->locator('[data-demo="preview"]');
-        $zod->getByRole('textbox', ['name' => 'Age'])->fill('-2');
-        $zod->getByRole('button', ['name' => 'Submit'])->click();
-        expect($zod->locator('text=Name is required'))->toBeVisible();
-        expect($zod->locator('text=Age must be a positive number'))->toBeVisible();
-        expect($zod->getByRole('textbox', ['name' => 'Age']))->toHaveAttribute('aria-describedby', 'age-error');
+        // A valid object runs the handler and removes the errors.
+        $form->getByRole('textbox', ['name' => 'Name'])->fill('Colm');
+        $form->getByRole('textbox', ['name' => 'Age'])->fill('30');
+        $form->getByRole('button', ['name' => 'Submit'])->click();
+        expect($form->getByRole('status'))->toHaveText('Saved Colm, 30');
+        expect($form->locator('text=Name is required'))->toBeHidden();
+        expect($form->getByRole('textbox', ['name' => 'Age']))->not()->toHaveAttribute('aria-invalid', 'true');
     }
 
     public function testNumberField(): void

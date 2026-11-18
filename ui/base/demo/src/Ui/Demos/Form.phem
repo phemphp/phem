@@ -2,8 +2,9 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page, State};
-use Phem\{Event, Node};
+use Phem\Attribute\{Component, MapForm, Page, State};
+use Phem\{Event, Node, Validation};
+use Symfony\Component\Validator\Constraints as Assert;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{FieldControl, FieldError, FieldLabel, Form};
@@ -15,83 +16,31 @@ function FormPage(): Node
     return (
         <DemoPage slug="form">
             <Hero source="FormHeroDemo">
+                <Hero.description>
+                    <p>The <code>onSubmit</code> handler of a <code>Form</code> runs on the server, as a Server Function. The browser does not send the form: the submit is an event of the page, and the handler gets it as its <code>Event $e</code> argument.</p>
+                    <p><code>$e-&gt;form</code> has the values of the form as an array. The key is the <code>name</code> of each control. The value is a string, or a list of strings when many controls have the same name. Read a value with a default, as in <code>$e-&gt;form['username'] ?? ''</code>.</p>
+                    <p>The handler sets the state of the component, and its errors show in the <code>FieldError</code> of each field. While the request runs, phem locks the submit button with <code>aria-disabled="true"</code>. To get the values as a typed object, see <a href="#validate-with-mapform" className="underline">Validate with #[MapForm]</a>.</p>
+                </Hero.description>
                 <FormHeroDemo />
             </Hero>
             <Examples>
-                <Example title="Submit with a Server Function" source="FormServerFunctionDemo">
+                <Example title="Validate with #[MapForm]" source="FormMapFormDemo">
                     <Example.description>
-                        <p>The <code>onSubmit</code> handler of a <code>Form</code> runs on the server, as a Server Function. It gets the values of the form in <code>$e-&gt;form</code>, and its errors show in the <code>FieldError</code> of each field.</p>
+                        <p>Add <code>#[MapForm]</code> to a parameter of the handler to get the values of the form as an object. The Validator checks its <code>#[Assert]</code> constraints before the handler runs, and the errors go to the <code>Validation</code> property of the component.</p>
+                        <p>Show the error of each field with <code>validation.error()</code> in its <code>FieldError</code>. The field of an error is the property path of the object, so name each control as its property.</p>
                     </Example.description>
-                    <FormServerFunctionDemo />
-                </Example>
-                <Example title="Submit form values as a JavaScript object" source="FormValuesDemo">
-                    <Example.description>
-                        <p>The handler gets the values of the form as an array in <code>$e-&gt;form</code>, or as an object with <code>#[MapForm]</code>. This is useful when you need to transform the values before submission, or integrate with 3rd party APIs.</p>
-                        <p>The browser does not send the form: the submit is an event of the page.</p>
-                    </Example.description>
-                    <FormValuesDemo />
-                </Example>
-                <Example title="Using with Zod" source="FormValidationDemo">
-                    <Example.description>
-                        <p>Zod validates the values in the browser. In phem, the handler validates them on the server (with Symfony Validator constraints and <code>#[MapForm]</code>, or with your own checks), and the errors map to each field’s <code>name</code>.</p>
-                    </Example.description>
-                    <FormValidationDemo />
+                    <FormMapFormDemo />
                 </Example>
             </Examples>
         </DemoPage>
     );
 }
 
-// The submit of the Base UI demo: the server answers after 1 second, and refuses the example
-// domain. The error of the server shows in the Field.Error of the field. While the request runs,
-// phem locks the button with `aria-disabled="true"`, and the Button has the disabled look.
+// The Server Function of the Base UI demo: the server answers after 1 second. "admin" is reserved,
+// and another name is unavailable one time out of two. While the request runs, phem locks the
+// button with `aria-disabled="true"`, and the Button has the disabled look.
 #[Component]
 final class FormHeroDemo
-{
-    #[State] public string $url = 'https://example.com';
-    #[State] public ?string $error = null;
-
-    public function submit(Event $e): void
-    {
-        $this->url = (string) ($e->form['url'] ?? '');
-        sleep(1);
-
-        $host = parse_url($this->url, \PHP_URL_HOST);
-        $this->error = match (true) {
-            !\is_string($host) || '' === $host => 'This is not a valid URL',
-            str_ends_with($host, 'example.com') => 'The example domain is not allowed',
-            default => null,
-        };
-    }
-
-    public function render(): Node
-    {
-        return (
-            <Form onSubmit={{ submit }}>
-                <Field id="url">
-                    <FieldLabel>Homepage</FieldLabel>
-                    <FieldControl
-                        type="url"
-                        name="url"
-                        required
-                        defaultValue={{ url }}
-                        placeholder="https://example.com"
-                        pattern="https?://.*"
-                        aria-invalid={{ error ? 'true' : null }}
-                        aria-describedby={{ error ? 'url-error' : null }}
-                    />
-                    <FieldError>{{ error }}</FieldError>
-                </Field>
-                <Button type="submit">Submit</Button>
-            </Form>
-        );
-    }
-}
-
-// The Server Function of the Base UI demo: the server answers after 1 second. "admin" is reserved,
-// and another name is unavailable one time out of two.
-#[Component]
-final class FormServerFunctionDemo
 {
     #[State] public string $username = 'admin';
     #[State] public ?string $error = null;
@@ -123,52 +72,27 @@ final class FormServerFunctionDemo
     }
 }
 
-// The values of the form as an array: the handler makes the payload of an API.
-#[Component]
-final class FormValuesDemo
+// The values of the form as an object, with the constraints of the Validator. When the object is
+// not valid, the handler does not run, and each error shows in the FieldError of its field.
+final class Person
 {
-    #[State] public ?string $payload = null;
+    #[Assert\NotBlank(message: 'Name is required')]
+    public ?string $name = null;
 
-    public function submit(Event $e): void
-    {
-        $this->payload = json_encode(['product_id' => (string) ($e->form['id'] ?? ''), 'order_quantity' => (int) ($e->form['quantity'] ?? 0)], \JSON_PRETTY_PRINT);
-    }
-
-    public function render(): Node
-    {
-        return (
-            <Form onSubmit={{ submit }}>
-                <Field id="product">
-                    <FieldLabel>Product ID</FieldLabel>
-                    <FieldControl name="id" defaultValue="sku-42" required />
-                </Field>
-                <Field id="quantity">
-                    <FieldLabel>Quantity</FieldLabel>
-                    <FieldControl name="quantity" type="number" defaultValue="1" min="1" required />
-                </Field>
-                <Button type="submit">Submit</Button>
-                {% if payload %}<pre aria-label="Payload" className="m-0 bg-neutral-100 p-2 text-xs dark:bg-neutral-800">{{ payload }}</pre>{% endif %}
-            </Form>
-        );
-    }
+    #[Assert\NotNull(message: 'Age is required')]
+    #[Assert\Positive(message: 'Age must be a positive number')]
+    public ?int $age = null;
 }
 
-// The checks of the Zod schema of the Base UI demo, on the server: each error goes to its field.
 #[Component]
-final class FormValidationDemo
+final class FormMapFormDemo
 {
-    /** @var array<string, string> */
-    #[State] public array $errors = [];
+    #[State] public Validation $validation;
+    #[State] public ?string $saved = null;
 
-    public function submit(Event $e): void
+    public function submit(#[MapForm] Person $person): void
     {
-        $name = trim((string) ($e->form['name'] ?? ''));
-        $age = trim((string) ($e->form['age'] ?? ''));
-
-        $this->errors = array_filter([
-            'name' => '' === $name ? 'Name is required' : null,
-            'age' => !is_numeric($age) ? 'Age must be a number' : ((float) $age <= 0 ? 'Age must be a positive number' : null),
-        ]);
+        $this->saved = \sprintf('Saved %s, %d', $person->name, $person->age);
     }
 
     public function render(): Node
@@ -180,11 +104,12 @@ final class FormValidationDemo
                 {% for field, info in fields %}
                     <Field key={{ field }} id={{ field }}>
                         <FieldLabel>{{ info[0] }}</FieldLabel>
-                        <FieldControl name={{ field }} placeholder={{ info[1] }} aria-invalid={{ errors[field] is defined ? 'true' : null }} aria-describedby={{ errors[field] is defined ? field ~ '-error' : null }} />
-                        <FieldError>{{ errors[field] ?? '' }}</FieldError>
+                        <FieldControl name={{ field }} placeholder={{ info[1] }} aria-invalid={{ validation.hasError(field) ? 'true' : null }} aria-describedby={{ validation.hasError(field) ? field ~ '-error' : null }} />
+                        <FieldError>{{ validation.error(field) }}</FieldError>
                     </Field>
                 {% endfor %}
                 <Button type="submit">Submit</Button>
+                {% if saved %}<p role="status" className="m-0 text-sm">{{ saved }}</p>{% endif %}
             </Form>
         );
     }
