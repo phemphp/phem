@@ -127,6 +127,10 @@
             "theme": {
                 "enabled": true,
                 "fetch": "eager"
+            },
+            "scrollspy": {
+                "enabled": true,
+                "fetch": "lazy"
             }
         }
     },

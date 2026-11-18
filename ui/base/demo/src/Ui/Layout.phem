@@ -35,7 +35,7 @@ function Sidebar(?string $current = null): Node
     $components = Gallery::components();
 
     return (
-        <nav aria-label="Components" className="border-b border-neutral-200 px-4 py-6 md:sticky md:top-0 md:h-dvh md:w-64 md:shrink-0 md:overflow-y-auto md:border-b-0 md:px-6 dark:border-neutral-800">
+        <nav aria-label="Components" className="border-b border-neutral-200 px-4 py-6 md:sticky md:top-0 md:h-dvh md:w-56 md:shrink-0 md:overflow-y-auto md:border-b-0 md:px-0 md:py-10 dark:border-neutral-800">
             <div className="mb-6 flex items-center justify-between gap-2 px-2">
                 <a href="/" className="text-sm font-bold">phem/ui-base</a>
                 <ThemeSwitch />
@@ -83,17 +83,50 @@ function ThemeSwitch(): Node
     );
 }
 
-/** The frame of each page: the sidebar and the content. */
+/**
+ * The index of the page on the right ("On this page"): a link to each section. `phem-scrollspy`
+ * marks the link of the section in view. On a narrow screen, it is hidden. It keeps its width with no headings, so the content stays in the center.
+ */
 #[Component]
-function Shell(string $title, Html $children, ?string $current = null): Node
+function OnThisPage(array $headings = []): Node
+{
+    return (
+        <aside className="hidden w-56 shrink-0 py-10 xl:sticky xl:top-0 xl:block xl:h-dvh xl:overflow-y-auto">
+            {% if headings is not empty %}
+                <nav aria-label="On this page" data-controller="phem-scrollspy">
+                    <h2 className="px-2 py-[3px] text-sm leading-[22px] font-normal text-[#767676] dark:text-[#b3b3b3]">On this page</h2>
+                    <ul>
+                        {% for heading in headings %}
+                            <li key={{ heading.id }}>
+                                <a
+                                    href="#{{ heading.id }}"
+                                    data-phem-scrollspy-target="link"
+                                    className={{ 'block rounded-md py-0.5 pr-2 text-sm leading-[22px] text-[#767676] hover:bg-[#f9f9f9] hover:text-neutral-950 data-active:bg-[#f9f9f9] data-active:font-medium data-active:text-neutral-950 dark:text-[#b3b3b3] dark:hover:bg-[#1a1a1a] dark:hover:text-white dark:data-active:bg-[#1a1a1a] dark:data-active:text-white ' ~ (heading.level == 2 ? 'pl-2' : 'pl-5') }}
+                                >{{ heading.title }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </aside>
+    );
+}
+
+/**
+ * The frame of each page: the sidebar, the content and the index of the page. The three columns
+ * stay together in the center of the screen.
+ */
+#[Component]
+function Shell(string $title, Html $children, ?string $current = null, array $headings = []): Node
 {
     return (
         <Document title={{ title }}>
-            <div className="md:flex">
+            <div className="mx-auto max-w-7xl md:flex md:justify-center md:gap-10 md:px-6">
                 <Sidebar current={{ current }} />
-                <main className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-6 px-4 py-10">
+                <main className="flex w-full max-w-3xl min-w-0 flex-col gap-6 px-4 py-10 md:px-0">
                     {{ children }}
                 </main>
+                <OnThisPage headings={{ headings }} />
             </div>
         </Document>
     );
@@ -104,9 +137,10 @@ function Shell(string $title, Html $children, ?string $current = null): Node
 function DemoPage(string $slug, Html $children): Node
 {
     $component = Gallery::components()[$slug];
+    $headings = Contents::headings((string) $children);
 
     return (
-        <Shell title={{ component.name }} current={{ slug }}>
+        <Shell title={{ component.name }} current={{ slug }} headings={{ headings }}>
             <header className="flex flex-col gap-2">
                 <h1 className="text-[34px] leading-[1.27] font-bold">{{ component.name }}</h1>
                 <p className="text-lg leading-7 text-[#767676] dark:text-[#b3b3b3]">{{ component.description }}</p>
@@ -177,7 +211,7 @@ function Examples(Html $children): Node
 {
     return (
         <section aria-labelledby="examples" className="flex flex-col gap-10 pt-4">
-            <h2 id="examples" className="text-xl font-bold">Examples</h2>
+            <h2 id="examples" data-contents className="scroll-mt-6 text-xl font-bold"><a href="#examples" className="underline-offset-4 hover:underline focus-visible:underline">Examples</a></h2>
             {{ children }}
         </section>
     );
@@ -195,7 +229,7 @@ function Example(string $title, Html $description, ?Html $children = null, ?stri
 
     return (
         <section aria-labelledby={{ id }} className="flex flex-col gap-3">
-            <h3 id={{ id }} className="text-lg font-bold">{{ title }}</h3>
+            <h3 id={{ id }} data-contents className="scroll-mt-6 text-lg font-bold"><a href="#{{ id }}" className="underline-offset-4 hover:underline focus-visible:underline">{{ title }}</a></h3>
             <div className="flex flex-col gap-3 text-[#767676] dark:text-[#b3b3b3] [&_code]:rounded-sm [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.875em] [&_code]:text-neutral-950 dark:[&_code]:bg-neutral-800 dark:[&_code]:text-white [&_kbd]:rounded-sm [&_kbd]:border [&_kbd]:border-neutral-300 [&_kbd]:px-1 [&_kbd]:font-mono [&_kbd]:text-[0.875em] dark:[&_kbd]:border-neutral-700">
                 {{ description }}
             </div>
