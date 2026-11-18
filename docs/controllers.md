@@ -1054,6 +1054,18 @@ The input can be in the popup, as a search. A `trigger` button opens the popup, 
 
 The popup goes against the trigger, and the input gets the focus at the open. A choice, Escape and a click outside give the focus back to the trigger, and the input has no text at the next open.
 
+As in Base UI, the popup is a dialog that has the search and the list. The popup gets `role="dialog"`. The trigger gets `aria-haspopup="dialog"`, `aria-controls` to the popup while it is open, and `data-placeholder` while no item is selected. The input keeps `aria-haspopup="listbox"` and points to the list. Give the popup an `aria-label`. With no item selected, the browser shows:
+
+```html
+<button type="button" data-phem-combobox-target="trigger" aria-haspopup="dialog" aria-expanded="false" data-placeholder="">
+    <span data-phem-combobox-target="value" placeholder="Select country" data-placeholder="">Select country</span>
+</button>
+<div data-phem-combobox-target="popup" aria-label="Select country" role="dialog" hidden>
+    <input data-phem-combobox-target="input" aria-label="Country" role="combobox" aria-haspopup="listbox" ... />
+    <ul data-phem-combobox-target="list" role="listbox">...</ul>
+</div>
+```
+
 The list has no `id`, so the input points to it with an element reference (`ariaControlsElements`). An item with no `id` gets no id: the input points to the highlighted item with `ariaActiveDescendantElement`, and the browser shows `aria-activedescendant=""`. The highlight stays on the same item through the morph of another event. When the morph replaces the item, the highlight stays only on an item with the same `id`, so give each item a stable `id` in a list that changes. A move of the pointer on an item highlights it. An item that comes under a pointer that does not move, for example when the list changes, does not get the highlight. When the pointer goes out of the items, the highlight goes (a highlight of the keyboard stays). With `both` and `inline`, the input gets the text of the user again. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight. The popup and the list get `data-empty` when there is no visible item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
 
 ### Choose more than one value

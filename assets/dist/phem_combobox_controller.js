@@ -50,7 +50,10 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 // (`ariaControlsElements`, `ariaActiveDescendantElement`). The input also gets
 // `aria-haspopup="listbox"`, and `data-list-empty` when there is no item. A `trigger` gets
 // `aria-haspopup="listbox"`, `aria-expanded`, `data-popup-open`, and `aria-controls` while the
-// popup is open. An `inputGroup` gets `role="group"` and `data-popup-open`. A `group` of items gets
+// popup is open. With the input in the popup (a searchable select), the popup gets
+// `role="dialog"`, and the trigger gets `aria-haspopup="dialog"` and points to the popup, as in
+// Base UI. A trigger with a `value` target gets `data-placeholder` while no item is selected.
+// An `inputGroup` gets `role="group"` and `data-popup-open`. A `group` of items gets
 // `role="group"` and the name of its `groupLabel` target. The popup and the list
 // get `data-empty` when there is no item. An `empty` target is a live region (`role="status"`,
 // `aria-live="polite"`, `aria-atomic="true"`) that stays in the page, as the Empty part of Base UI:
@@ -863,6 +866,10 @@ export default class PhemComboboxController extends Controller {
       if (this.#multiple) list.setAttribute("aria-multiselectable", "true")
     }
 
+    // The input is in the popup: the popup is a dialog that the trigger opens, as in Base UI.
+    const dialog = this.#dialog
+    if (dialog && !dialog.hasAttribute("role")) dialog.setAttribute("role", "dialog")
+
     // A `value` target that is not an input shows the label of the selection, or its `placeholder`.
     const label = this.#selectedItem ? this.#labelOf(this.#selectedItem) : null
     for (const el of this.valueTargets) {
@@ -975,10 +982,12 @@ export default class PhemComboboxController extends Controller {
     // The trigger and the input group show the state of the popup, as in Base UI. The trigger points
     // to the list only while the popup is open.
     for (const trigger of this.triggerTargets) {
-      if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", this.#popupRole)
+      if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", dialog ? "dialog" : this.#popupRole)
       trigger.setAttribute("aria-expanded", String(open))
-      controlWhileOpen(trigger, list, open)
+      controlWhileOpen(trigger, dialog ?? list, open)
       trigger.toggleAttribute("data-popup-open", open)
+      // A trigger that shows the value has `data-placeholder` while no item is selected.
+      if (this.#showsValue(trigger)) trigger.toggleAttribute("data-placeholder", this.#selectedItem === null)
     }
 
     // The input group has `data-placeholder` while no item is selected, as in Base UI.
@@ -1056,7 +1065,7 @@ export default class PhemComboboxController extends Controller {
 
       return ["aria-expanded", "aria-activedescendant", "aria-haspopup", "data-popup-open", "data-list-empty"].includes(name)
     }
-    if (this.triggerTargets.includes(el)) return ["aria-expanded", "aria-haspopup", "data-popup-open"].includes(name)
+    if (this.triggerTargets.includes(el)) return ["aria-expanded", "aria-haspopup", "data-popup-open"].includes(name) || (name === "data-placeholder" && this.#showsValue(el))
     if (this.inputGroupTargets.includes(el)) return name === "role" || name === "data-popup-open" || (name === "data-placeholder" && (this.#selecting || this.#selectingMany))
     if (this.itemTargets.includes(el)) return (name === "aria-selected" && (!this.#multiple || this.#selectingMany)) || name === "data-highlighted" || (name === "data-selected" && (this.#selecting || this.#selectingMany))
     if (this.chipTargets.includes(el)) return name === "hidden" && this.#selectingMany && el.hasAttribute("data-value")
@@ -1085,6 +1094,20 @@ export default class PhemComboboxController extends Controller {
 
   get #popupRole() {
     return this.gridValue ? "grid" : "listbox"
+  }
+
+  // The trigger has a `value` target that shows the label of the selected item.
+  #showsValue(trigger) {
+    return this.#selecting && this.valueTargets.some((el) => !(el instanceof HTMLInputElement) && trigger.contains(el))
+  }
+
+  // The popup that has the input and a list: a searchable select. Null when the input is out of
+  // the popup.
+  get #dialog() {
+    const input = this.#input
+    if (!this.hasPopupTarget || !this.hasListTarget || !input) return null
+
+    return this.popupTarget.contains(input) ? this.popupTarget : null
   }
 
   // The browser filters the items: the `filter` value, with no inline `mode`.

@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A `phem-combobox` with its input in the popup (a searchable select) gives the popup
+  `role="dialog"`, as in Base UI. The trigger gets `aria-haspopup="dialog"`, `aria-controls` to
+  the popup while it is open, and `data-placeholder` while no item is selected. In
+  `phem/ui-base`, `ComboboxIcon` gets the icon color of Base UI.
 - A `phem-combobox` with a client filter and the new `multiple` selection mode
   (`data-phem-combobox-selection-mode-value="multiple"`) keeps the chosen items in the browser,
   as the Combobox of Base UI with `multiple`. A choice sends no event to the server. A click on

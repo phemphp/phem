@@ -97,7 +97,7 @@ const PEOPLE = [
     ],
 ];
 
-// The 183 countries of the Input inside popup demo of Base UI.
+// The 187 countries of the Input inside popup demo of Base UI.
 const COUNTRIES = [
     'af' => 'Afghanistan',
     'al' => 'Albania',
@@ -119,6 +119,7 @@ const COUNTRIES = [
     'bj' => 'Benin',
     'bt' => 'Bhutan',
     'bo' => 'Bolivia',
+    'ba' => 'Bosnia and Herzegovina',
     'bw' => 'Botswana',
     'br' => 'Brazil',
     'bn' => 'Brunei',
@@ -129,6 +130,7 @@ const COUNTRIES = [
     'cm' => 'Cameroon',
     'ca' => 'Canada',
     'cv' => 'Cape Verde',
+    'cf' => 'Central African Republic',
     'td' => 'Chad',
     'cl' => 'Chile',
     'cn' => 'China',
@@ -143,6 +145,7 @@ const COUNTRIES = [
     'dk' => 'Denmark',
     'dj' => 'Djibouti',
     'dm' => 'Dominica',
+    'do' => 'Dominican Republic',
     'ec' => 'Ecuador',
     'eg' => 'Egypt',
     'sv' => 'El Salvador',
@@ -264,6 +267,7 @@ const COUNTRIES = [
     'tl' => 'Timor-Leste',
     'tg' => 'Togo',
     'to' => 'Tonga',
+    'tt' => 'Trinidad and Tobago',
     'tn' => 'Tunisia',
     'tr' => 'Turkey',
     'tm' => 'Turkmenistan',
@@ -342,6 +346,12 @@ function ComboboxPage(): Node
                     </Example.description>
                     <ComboboxInputInsidePopupDemo />
                 </Example>
+                <Example title="Grouped" source="ComboboxGroupedDemo">
+                    <Example.description>
+                        <p>Organize related options with <code>ComboboxGroup</code> and <code>ComboboxGroupLabel</code> to add section headings inside the popup.</p>
+                    </Example.description>
+                    <ComboboxGroupedDemo />
+                </Example>
                 <Example title="Async search (single)" source="ComboboxAsyncSingleDemo">
                     <Example.description>
                         <p>Load items from the server on input changes: bind the input with <code>phem:bind</code>, and render the results of the query. Keep the selected item in the list so it remains available while new results come in.</p>
@@ -365,12 +375,6 @@ function ComboboxPage(): Node
                         <p>For a large dataset, render only the first matches in the popup, and show the total in the status. The server searches the dataset at each change of the input.</p>
                     </Example.description>
                     <ComboboxLargeDatasetDemo />
-                </Example>
-                <Example title="Grouped" source="ComboboxGroupedDemo">
-                    <Example.description>
-                        <p>Organize related options with <code>ComboboxGroup</code> and <code>ComboboxGroupLabel</code> to add section headings inside the popup.</p>
-                    </Example.description>
-                    <ComboboxGroupedDemo />
                 </Example>
             </Examples>
         </DemoPage>
@@ -514,7 +518,7 @@ function ComboboxGroupedDemo(): Node
     return (
         <Combobox id="produce" filter="contains">
             <ComboboxLabel>Select produce</ComboboxLabel>
-            <ComboboxInputGroup>
+            <ComboboxInputGroup className="w-64">
                 <ComboboxInput placeholder="e.g. Mango" />
                 <ComboboxActions>
                     <ComboboxClear aria-label="Clear selection" />
@@ -525,8 +529,8 @@ function ComboboxGroupedDemo(): Node
                 <ComboboxEmpty>No produce found.</ComboboxEmpty>
                 <ComboboxList>
                     {% for name, items in groups %}
-                        <ComboboxGroup key={{ name }}>
-                            <ComboboxGroupLabel>{{ name }}</ComboboxGroupLabel>
+                        <ComboboxGroup key={{ name }} className="block pb-2 last:pb-0">
+                            <ComboboxGroupLabel className="pr-2 pl-8">{{ name }}</ComboboxGroupLabel>
                             {% for label in items %}
                                 <ComboboxItem key={{ label }} value={{ label|lower|replace({' ': '-'}) }}>
                                     <ComboboxItemIndicator />
@@ -553,7 +557,7 @@ function ComboboxInputInsidePopupDemo(): Node
                 <ComboboxValue placeholder="Select country" />
                 <ComboboxIcon />
             </ComboboxTrigger>
-            <ComboboxPopup aria-label="Select country" className="[--input-container-height:2rem] max-h-[24.5rem] max-w-[var(--available-width)] origin-[var(--transform-origin)] bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0_rgb(0_0_0_/_12%)] transition-[scale,opacity] duration-150 data-starting-style:scale-90 data-starting-style:opacity-0 data-ending-style:scale-90 data-ending-style:opacity-0 dark:bg-neutral-950 dark:text-white dark:shadow-none">
+            <ComboboxPopup aria-label="Select country" className="w-auto border-0 [--input-container-height:2rem] max-h-[24.5rem] max-w-[var(--available-width)] origin-[var(--transform-origin)] bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0_rgb(0_0_0_/_12%)] transition-[scale,opacity] duration-150 data-starting-style:scale-90 data-starting-style:opacity-0 data-ending-style:scale-90 data-ending-style:opacity-0 dark:bg-neutral-950 dark:text-white dark:shadow-none">
                 <ComboboxInput placeholder="e.g. United Kingdom" className="h-8 w-full min-w-80 border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-2 focus:outline-neutral-950 any-pointer-coarse:text-base dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:border-white dark:focus:outline-white" />
                 <div className="border-x border-b border-neutral-950 dark:border-white">
                     <ComboboxEmpty className="py-4 pr-4 pl-2 text-sm leading-4 text-neutral-500 dark:text-neutral-400">No countries found.</ComboboxEmpty>

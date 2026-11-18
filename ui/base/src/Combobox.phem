@@ -231,7 +231,7 @@ function ComboboxValue(?string $placeholder = null, mixed ...$rest): Node
 #[Component]
 function ComboboxIcon(?Html $children = null, mixed ...$rest): Node
 {
-    return <span aria-hidden="true" className={{ classes('flex') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
+    return <span aria-hidden="true" className={{ classes('flex text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
 }
 
 /** The button that clears the input. Give it an `aria-label`. */

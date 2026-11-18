@@ -629,10 +629,24 @@ describe("phem-combobox", () => {
           </div>
         </div>`
 
+      it("makes the popup a dialog that the trigger opens", async () => {
+        await mount(markup)
+        expect($("popup").getAttribute("role")).toBe("dialog")
+        expect($("list").getAttribute("role")).toBe("listbox")
+        expect($("trigger").getAttribute("aria-haspopup")).toBe("dialog")
+        expect($("trigger").hasAttribute("aria-controls")).toBe(false)
+        expect($("input").getAttribute("aria-haspopup")).toBe("listbox")
+
+        click("#trigger")
+        expect($("trigger").getAttribute("aria-controls")).toBe("popup")
+        expect($("input").getAttribute("aria-controls")).toBe("list")
+      })
+
       it("shows the placeholder, and opens with the focus in the input", async () => {
         await mount(markup)
         expect($("value").textContent).toBe("Select country")
         expect($("value").hasAttribute("data-placeholder")).toBe(true)
+        expect($("trigger").hasAttribute("data-placeholder")).toBe(true)
 
         click("#trigger")
         expect($("popup").hidden).toBe(false)
@@ -648,6 +662,7 @@ describe("phem-combobox", () => {
         expect($("popup").hidden).toBe(true)
         expect($("value").textContent).toBe("Germany")
         expect($("value").hasAttribute("data-placeholder")).toBe(false)
+        expect($("trigger").hasAttribute("data-placeholder")).toBe(false)
         expect(document.activeElement).toBe($("trigger"))
 
         // The input is a search: it has no text at the next open, and all the items show.
