@@ -1255,6 +1255,8 @@ An item that does not match the text of the input gets `hidden`. The match ignor
 
 The list belongs to the client. A choice writes the label of the item in the input, and sends its `input` and `change` events, so a `phem:bind` or an `onChange` handler gets the value. The text of an input with no `phem:bind` stays through the morph of another event. An item can still have an `onClick` handler.
 
+A popup that closes keeps its items and its highlight until its close animation ends, as in Base UI. For example, the user types "ap" and chooses Pineapple: the input shows "Pineapple", and the closing popup still shows the matches of "ap", with the highlight on Pineapple. The next open filters again: with the `single` selection mode, it shows all the items, with the highlight on Pineapple.
+
 The `mode` value is the `aria-autocomplete` attribute of the input, as in the Autocomplete of Base UI:
 
 | `mode` | The items | The input on ArrowDown and ArrowUp |

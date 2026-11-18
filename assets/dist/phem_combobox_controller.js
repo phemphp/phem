@@ -72,7 +72,9 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 // server rendered one time: an item that does not match the text of the input gets `hidden`, and
 // a `group` target with no visible item too. The match ignores the case and the accents
 // (`Intl.Collator` with the `locale` value, or the language of the page). The label of an item is
-// its `data-label` attribute, or its text. The `limit` value shows only the first matches.
+// its `data-label` attribute, or its text. The `limit` value shows only the first matches. A
+// popup that closes keeps its items and its highlight until the next open, as in Base UI: a choice
+// writes the label of the item in the input, and the close animation shows the same items.
 //
 // The `mode` value is the `aria-autocomplete` of the input: `list` (the default), `both`,
 // `inline` or `none`. With `both` and `inline`, the arrow keys write the label of the highlighted
@@ -288,6 +290,8 @@ export default class PhemComboboxController extends Controller {
         return
       }
 
+      // A closed popup has the items of its last open: the filter gives the items of the text now.
+      if (opening) this.#filter()
       const items = this.#items
       // A popup that opens with a selection has the highlight on the selected item.
       const selection = opening ? this.#selection(items) : null
@@ -668,6 +672,11 @@ export default class PhemComboboxController extends Controller {
   // The client filter: the items that do not match the text of the user get `hidden`, and the
   // groups with no visible item too.
   #filter() {
+    // A popup that closes keeps its items, as in Base UI: a choice writes the label of the item in
+    // the input, and the close animation still shows the matches of the text of the user. The next
+    // open filters again.
+    if (!this.wanted && !this.#inline && this.hasPopupTarget) return
+
     const filtering = this.#filtering
 
     // The popup shows all the items while the input has the label of the selected item.
@@ -813,9 +822,12 @@ export default class PhemComboboxController extends Controller {
 
     for (const row of this.rowTargets) if (!row.hasAttribute("role")) row.setAttribute("role", "row")
 
-    for (const item of items) {
+    // All the items: a closed popup keeps the items that the filter hid, and they get the selection
+    // too.
+    for (const item of this.itemTargets) {
       if (!item.hasAttribute("role")) item.setAttribute("role", this.rowTargets.some((row) => row.contains(item)) ? "gridcell" : "option")
-      item.toggleAttribute("data-highlighted", item === active)
+      // A popup that closes keeps its highlight, as in Base UI.
+      if (open) item.toggleAttribute("data-highlighted", item === active)
       item.toggleAttribute("data-disabled", isDisabled(item))
 
       // A choice of more than one item: `aria-selected` is the choice of the server.

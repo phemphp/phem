@@ -1037,6 +1037,33 @@ describe("phem-combobox", () => {
         expect(visible()).toEqual(["fruit-banana"])
       })
 
+      it("keeps the items and the highlight of the popup that closes, until the next open", async () => {
+        await mount(page())
+        typeText("e")
+        press("ArrowDown")
+        press("ArrowDown")
+        press("Enter")
+
+        // The input has the label of the choice, and the closing popup has the matches of "e".
+        expect($("popup").hasAttribute("data-open")).toBe(false)
+        expect($("input").value).toBe("Cherry")
+        expect(visible()).toEqual(["fruit-apple", "fruit-cherry", "fruit-lemon", "fruit-éclair"])
+        expect($("fruit-cherry").hasAttribute("data-highlighted")).toBe(true)
+        expect($("fruit-banana").getAttribute("aria-selected")).toBe("false")
+
+        // Escape after a text with no match: the closing popup has no item.
+        typeText("zzz")
+        press("Escape")
+        expect($("popup").hasAttribute("data-open")).toBe(false)
+        expect($("input").value).toBe("Cherry")
+        expect(visible()).toEqual([])
+
+        // The next open filters again.
+        press("ArrowDown")
+        expect(visible()).toHaveLength(5)
+        expect($("fruit-cherry").hasAttribute("data-highlighted")).toBe(true)
+      })
+
       it("gives the input the label of the selection again when the popup closes", async () => {
         await mount(page())
         typeText("che")

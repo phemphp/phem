@@ -8,6 +8,11 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A `phem-combobox` with a client filter keeps its items and its highlight while its popup
+  closes, as in Base UI. Before, a choice wrote the label of the item in the input, and the
+  closing popup showed all the items again, with no highlight. Escape after a text with no match
+  also showed all the items. The next open filters again. An item that the filter hid also gets
+  its `data-selected` and `aria-selected` now.
 - **Breaking**: The reply of a handler moves from `Phem\Event` to the new `Phem\Reply` class. A
   handler declares `Reply $reply`, at any position, alone or with `Event $e`, and calls
   `$reply->toast()`, `$reply->announce()`, `$reply->refresh()`, `$reply->clearFiles()` and
