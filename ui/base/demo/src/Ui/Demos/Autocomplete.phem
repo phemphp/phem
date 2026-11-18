@@ -807,7 +807,7 @@ function AutocompleteCommandPaletteDemo(): Node
             <DialogPopup aria-label="Command palette" className="top-18 mt-0 max-h-[min(36rem,calc(100dvh-5rem))] w-[calc(100vw-1rem)] max-w-md translate-y-0 gap-0 p-0 data-ending-style:-translate-y-4 data-ending-style:scale-95 data-starting-style:-translate-y-4 data-starting-style:scale-95 transition-[translate,scale,opacity] duration-150">
                 <Autocomplete id="palette" filter="contains" autoHighlight="always" keepHighlight className="min-h-0 gap-0">
                     <div className="relative z-1 flex cursor-text items-center gap-2 bg-white pl-3 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-neutral-950 dark:bg-neutral-950 dark:focus-within:outline-white">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeLinecap="square" strokeLinejoin="round" aria-hidden="true" className="block h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="round" aria-hidden="true" className="block h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400">
                             <path d="m11 11 3.5 3.5" />
                             <circle cx="7" cy="7" r="5.5" />
                         </svg>

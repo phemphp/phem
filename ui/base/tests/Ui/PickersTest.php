@@ -128,7 +128,8 @@ final class PickersTest extends KernelTestCase
         self::assertStringContainsString('data-phem-toast-data="userId"', $custom);
         self::assertDoesNotMatchRegularExpression('/data-phem-toast-close(?!-label)/', $custom);
 
+        // The anchored template has no arrow, as the Base UI demo.
         $anchored = substr($html, (int) strpos($html, 'data-phem-toast-name-value="anchored"'));
-        self::assertStringContainsString('data-phem-toast-arrow', substr($anchored, 0, (int) strpos($anchored, '</template>')));
+        self::assertStringNotContainsString('data-phem-toast-arrow', substr($anchored, 0, (int) strpos($anchored, '</template>')));
     }
 }

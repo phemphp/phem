@@ -86,7 +86,7 @@ function TooltipHeadphonesIcon(): Node
 {
     return (
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block">
-            <path strokeLinecap="round" d="M1.5 11V7.5c0-2.5 2.5-6 6.5-6s6.5 3.5 6.5 6V11" />
+            <path stroke-linecap="round" d="M1.5 11V7.5c0-2.5 2.5-6 6.5-6s6.5 3.5 6.5 6V11" />
             <path d="M12 7.5c1.3807 0 2.5 1.11929 2.5 2.5v2c0 1.3807-1.1193 2.5-2.5 2.5h-1.5v-7zm-8 0h1.5v7H4c-1.38071 0-2.5-1.1193-2.5-2.5v-2c0-1.38071 1.11929-2.5 2.5-2.5Z" />
         </svg>
     );
@@ -98,7 +98,7 @@ function TooltipStopwatchIcon(): Node
     return (
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block">
             <circle cx="8" cy="8.5" r="6" />
-            <path strokeLinecap="square" strokeLinejoin="round" d="M8 9.5v-5m0-2v-2m-2 0h4M12 4l1.5-1.5" />
+            <path stroke-linecap="square" stroke-linejoin="round" d="M8 9.5v-5m0-2v-2m-2 0h4M12 4l1.5-1.5" />
         </svg>
     );
 }
@@ -107,10 +107,10 @@ function TooltipStopwatchIcon(): Node
 function TooltipTrashIcon(): Node
 {
     return (
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeLinejoin="round" className="block">
-            <path strokeLinecap="square" d="M2.5 4h11" />
-            <path strokeLinecap="round" d="M6.5 4V3c0-.82843.67157-1.5 1.5-1.5s1.5.67157 1.5 1.5v1" />
-            <path strokeLinecap="square" d="m3.5 4 .87069 9.1422c.07332.7699.7199 1.3578 1.49324 1.3578h4.27217c.7733 0 1.4199-.5879 1.4932-1.3578L12.5 4" />
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linejoin="round" className="block">
+            <path stroke-linecap="square" d="M2.5 4h11" />
+            <path stroke-linecap="round" d="M6.5 4V3c0-.82843.67157-1.5 1.5-1.5s1.5.67157 1.5 1.5v1" />
+            <path stroke-linecap="square" d="m3.5 4 .87069 9.1422c.07332.7699.7199 1.3578 1.49324 1.3578h4.27217c.7733 0 1.4199-.5879 1.4932-1.3578L12.5 4" />
         </svg>
     );
 }
@@ -134,15 +134,22 @@ function TooltipDetachedDemo(): Node
     );
 }
 
-/** Multiple triggers: two detached triggers of one tooltip, with a payload each. */
+/** Multiple triggers: three detached triggers of one tooltip, with a payload each. */
 #[Component]
 function TooltipMultipleDemo(): Node
 {
     return (
-        <div className="flex gap-2">
-            <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 1" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">Trigger 1</TooltipTrigger>
-            <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 2" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">Trigger 2</TooltipTrigger>
-            <Tooltip handle="multiple-tooltip" sideOffset={{ 8 }}>
+        <div className="flex">
+            <TooltipTrigger handle="multiple-tooltip" payload="Listen to audio preview" aria-label="Listen to audio preview" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950">
+                <TooltipHeadphonesIcon />
+            </TooltipTrigger>
+            <TooltipTrigger handle="multiple-tooltip" payload="Set a timer" aria-label="Set a timer" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950 border-l-0">
+                <TooltipStopwatchIcon />
+            </TooltipTrigger>
+            <TooltipTrigger handle="multiple-tooltip" payload="Delete: This action cannot be undone" aria-label="Delete: This action cannot be undone" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950 border-l-0">
+                <TooltipTrashIcon />
+            </TooltipTrigger>
+            <Tooltip handle="multiple-tooltip" sideOffset={{ 11 }}>
                 <TooltipPopup>
                     <TooltipArrow />
                     <TooltipViewport />

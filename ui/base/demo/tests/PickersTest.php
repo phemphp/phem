@@ -445,16 +445,19 @@ final class PickersTest extends DemoTestCase
         $main = $page->locator('[data-controller~="phem-toast"]:not([data-phem-toast-name-value])');
         $main->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
 
-        // Anchored toasts: the toast shows above the copy button, with its arrow.
+        // Anchored toasts: the toast shows above the copy button, and the button has its check icon
+        // until the toast goes.
+        $page->context()->grantPermissions(['clipboard-read', 'clipboard-write']);
         $copy = $page->getByRole('button', ['name' => 'Copy to clipboard']);
         $copy->click();
         $anchored = $viewport('anchored')->locator('[data-phem-toast]');
         expect($anchored)->toHaveText('Copied');
         expect($anchored)->toHaveAttribute('data-side', 'top');
+        expect($anchored->locator('[data-phem-toast-arrow]'))->toHaveCount(0);
         self::assertTrue($anchored->evaluate('(el) => el.getBoundingClientRect().bottom <= document.getElementById("toast-copy").getBoundingClientRect().top'));
+        expect($copy)->toHaveAttribute('data-copied', '');
         expect($anchored)->toHaveCount(0, ['timeout' => 5000]);
-        $region('Anchored toasts')->getByRole('button', ['name' => 'Stacked toast'])->click();
-        expect($main->getByText('Copied'))->toBeVisible();
+        expect($copy)->not()->toHaveAttribute('data-copied', '');
 
         // Custom position: the stack is at the top of the screen.
         $region('Custom position')->getByRole('button', ['name' => 'Create toast'])->click();

@@ -72,11 +72,11 @@ function ThemeSwitch(): Node
             data-action="phem-theme#toggle"
             className="flex size-7 items-center justify-center rounded-md text-[#767676] hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-blue-800 dark:text-[#b3b3b3] dark:hover:bg-neutral-800 dark:hover:text-white"
         >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" className="dark:hidden">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" className="dark:hidden">
                 <circle cx="8" cy="8" r="3" />
                 <path d="M8 1.5v1.25M8 13.25v1.25M1.5 8h1.25M13.25 8h1.25M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" />
             </svg>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true" className="hidden dark:block">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" className="hidden dark:block">
                 <path d="M13.5 9.5A5.75 5.75 0 0 1 6.5 2.5a5.75 5.75 0 1 0 7 7Z" />
             </svg>
         </button>
@@ -174,7 +174,7 @@ function DemoBox(Html $children, ?string $source = null): Node
                     <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
                         <span data-phem-clipboard-target="feedback" className="text-xs text-[#767676] dark:text-[#b3b3b3]"></span>
                         <button type="button" data-action="phem-clipboard#copy" aria-label="Copy code" className="flex size-7 items-center justify-center rounded-md bg-[#fcfcfc] text-[#767676] hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-blue-800 dark:bg-[#0d0d0d] dark:text-[#b3b3b3] dark:hover:bg-neutral-800 dark:hover:text-white">
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                 <rect x="5.25" y="5.25" width="8.5" height="8.5" rx="1.5" />
                                 <path d="M10.75 5.25V3.75a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v5a1.5 1.5 0 0 0 1.5 1.5h1.5" />
                             </svg>

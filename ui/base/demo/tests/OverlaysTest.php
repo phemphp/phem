@@ -338,10 +338,10 @@ final class OverlaysTest extends DemoTestCase
         // Multiple triggers: the payload of the trigger shows in the viewport.
         $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true])->locator('[data-demo="preview"]');
         $popup = $page->locator('#multiple-tooltip [data-phem-tooltip-target="popup"]');
-        $multiple->getByRole('button', ['name' => 'Trigger 2'])->hover();
-        expect($popup)->toHaveText('Tooltip opened by Trigger 2');
-        $multiple->getByRole('button', ['name' => 'Trigger 1'])->hover();
-        expect($popup->locator('[data-current]'))->toHaveText('Tooltip opened by Trigger 1');
+        $multiple->getByRole('button', ['name' => 'Set a timer'])->hover();
+        expect($popup)->toHaveText('Set a timer');
+        $multiple->getByRole('button', ['name' => 'Listen to audio preview'])->hover();
+        expect($popup->locator('[data-current]'))->toHaveText('Listen to audio preview');
         $page->mouse()->move(5, 5);
         expect($popup)->toBeHidden();
 

@@ -25,8 +25,9 @@ enum ToastPosition: string
  *
  * `position` places the stack: at the bottom right (the default), or at the top center (a swipe up
  * closes a toast). With `anchored`, each toast shows next to the element of its `anchor`, as Base
- * UI Toast.Positioner, on the `side` with the `sideOffset`. A `name` takes only the toasts with
- * this `viewport`: `$reply->toast('Copied', anchor: 'copy', viewport: 'anchored')`.
+ * UI Toast.Positioner, on the `side` with the `sideOffset`. Its default template has no arrow, as
+ * the Base UI demo: put a ToastArrow in your template to point to the anchor. A `name` takes only
+ * the toasts with this `viewport`: `$reply->toast('Copied', anchor: 'copy', viewport: 'anchored')`.
  */
 #[Component, Provide]
 class ToastViewport
@@ -69,7 +70,6 @@ class ToastViewport
                         {{ children }}
                     {% elseif anchored %}
                         <ToastRoot>
-                            <ToastArrow />
                             <ToastContent>
                                 <ToastDescription />
                             </ToastContent>
