@@ -124,9 +124,9 @@ function ScrollAreaTabsDemo(): Node
 
     return (
         <Tabs id="scroll-tabs" defaultValue="overview" className="w-72">
-            <ScrollArea>
+            <ScrollArea className="relative z-1 -mb-px h-auto w-full bg-transparent dark:bg-transparent">
                 <ScrollAreaViewport className="border-0 mask-linear-[to_right,transparent_0,black_min(40px,var(--scroll-area-overflow-x-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-x-end,40px))),transparent_100%] mask-no-repeat">
-                    <TabsList className="w-max">
+                    <TabsList className="mb-0 w-max">
                         {% for value, name in tabs %}
                             <TabsTab key={{ value }} value={{ value }}>{{ name }}</TabsTab>
                         {% endfor %}
