@@ -3,9 +3,12 @@
 //
 // The pointer on a trigger opens the popup after `delay()` ms. The pointer out of the triggers and
 // of the popups closes it after `closeDelay()` ms (0 closes it at once). The pointer can go from
-// the trigger to the popup: while it is in the space between them (also on a diagonal path), the
-// popup stays open, and the time of the close starts when the pointer goes out of that space. A touch does nothing: a tap
-// opens the popup with its click.
+// the trigger to the popup, as the `safePolygon` of Base UI: while it is in the safe space, the
+// popup stays open, and the time of the close starts when the pointer goes out of that space. The
+// safe space is the triangle from the point where the pointer left the trigger to the popup (also
+// a diagonal path), and the gap between the trigger and the popup. A pointer that goes away from
+// the popup, for example down to the next item of a menu when the submenu opens on the right,
+// closes it at once. A touch does nothing: a tap opens the popup with its click.
 //
 // With `stayAfterLanding` (`() => false`), a popup that the pointer entered (`landed`) stays open
 // when the pointer goes out of it to a node that is not a trigger or a popup, or out of the page,
@@ -31,6 +34,7 @@ export class Hover {
   #timer = null
   #tracking = null
   #landed = false
+  #leave = null
 
   constructor(options) {
     this.#options = { stayAfterLanding: () => false, ...options }
@@ -63,11 +67,14 @@ export class Hover {
     this.cancel()
     if (!isOpen()) return
 
+    // The point where the pointer left a trigger or a popup: the apex of the triangle.
+    this.#leave = [event.clientX, event.clientY]
+
     // The pointer entered the popup, and goes out of it to empty space: the popup stays open.
     if (this.landed && stayAfterLanding() && within(popups(), event.target)) return
 
-    // The pointer went out of the page, or out of the space between the trigger and the popup.
-    if (!(to instanceof Node) || !this.#between(event)) {
+    // The pointer went out of the page, or away from the popup.
+    if (!(to instanceof Node) || !this.#toward(event)) {
       this.#close()
 
       return
@@ -115,20 +122,48 @@ export class Hover {
     document.documentElement.addEventListener("pointerleave", leave, options)
   }
 
-  // Whether the pointer is in the space between a trigger and a popup: the smallest convex shape
-  // around the two boxes. It has the straight path and the diagonal paths from the trigger to the
-  // popup, for example from the trigger of a submenu over the next item of the menu.
-  #between({ clientX: x, clientY: y }) {
+  // Whether the pointer that leaves goes toward a popup: it is in the smallest convex shape around
+  // the boxes of a trigger and a popup. A pointer out of the other sides goes away from it.
+  #toward({ clientX: x, clientY: y }) {
     const { triggers, popups } = this.#options
-    const boxes = (elements) => elements.map((el) => el.getBoundingClientRect()).filter((box) => box.width > 0 && box.height > 0)
     const popupBoxes = boxes(popups())
 
     return boxes(triggers()).some((a) => popupBoxes.some((b) => inHull([...corners(a), ...corners(b)], x, y)))
   }
+
+  // Whether the pointer is in the safe space: the triangle from the point where it left to a popup
+  // (the smallest convex shape around the point and the box of the popup), or the gap between a
+  // trigger and a popup. A pointer that left a popup has only the gap: the triangle is in the popup.
+  #between({ clientX: x, clientY: y }) {
+    const { triggers, popups } = this.#options
+    const popupBoxes = boxes(popups())
+    const leave = this.#leave
+
+    if (leave && popupBoxes.some((box) => inHull([leave, ...corners(box)], x, y))) return true
+
+    return boxes(triggers()).some((a) => popupBoxes.some((b) => inGap(a, b, x, y)))
+  }
+}
+
+// The boxes of the elements that show.
+function boxes(elements) {
+  return elements.map((el) => el.getBoundingClientRect()).filter((box) => box.width > 0 && box.height > 0)
 }
 
 function corners({ left, top, right, bottom }) {
   return [[left, top], [right, top], [right, bottom], [left, bottom]]
+}
+
+// Whether the point is in the gap between two boxes that do not overlap on one axis: the band
+// between their facing sides, as wide as the two boxes together.
+function inGap(a, b, x, y) {
+  const [top, bottom] = [Math.min(a.bottom, b.bottom), Math.max(a.top, b.top)]
+  if (top <= bottom) return y >= top && y <= bottom && x >= Math.min(a.left, b.left) && x <= Math.max(a.right, b.right)
+
+  const [left, right] = [Math.min(a.right, b.right), Math.max(a.left, b.left)]
+  if (left <= right) return x >= left && x <= right && y >= Math.min(a.top, b.top) && y <= Math.max(a.bottom, b.bottom)
+
+  return false
 }
 
 // Whether the point is in the convex hull of `points` (the monotone chain algorithm).

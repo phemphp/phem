@@ -102,7 +102,8 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 // ArrowRight (ArrowLeft in a right-to-left page) open it on its first item. ArrowLeft and Escape
 // close it and give the focus back to its trigger. Its popup goes on the `inline-end` side of the
 // trigger. While a submenu is open, the pointer on another item gives it the highlight after
-// 150 ms, so the pointer can cross an item on its way to the submenu. When the pointer is in the
+// 150 ms, so the pointer can cross an item on its way to the submenu. The pointer that leaves the
+// trigger away from the submenu closes it at once (phem_hover.js). When the pointer is in the
 // submenu, its trigger loses the highlight (the focus stays on it), the pointer in empty space
 // keeps the submenu open, and the pointer on another item closes it at once. Shift+Tab closes the
 // submenu and gives the focus back to its trigger. A click on an item of a submenu closes all the
@@ -155,7 +156,11 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 // An open with a click or the keyboard gives the focus to the input. An open on hover or with a
 // touch gives it to the popup, so the keyboard of the device does not show. The arrow keys move
 // the highlight while the input keeps the focus (`aria-activedescendant`), and Enter clicks the
-// item with the highlight. The input has the highlight (`data-highlighted`) when no item has it.
+// item with the highlight. The highlight on another item (the pointer or the arrow keys) closes an
+// open submenu, as the focus does in a menu with no filter. The arrow to a submenu (ArrowRight)
+// opens the submenu of the item with the highlight when the caret is at the end of the text, and
+// the arrow back (ArrowLeft) in the input of a submenu closes it when the caret is at the start.
+// A submenu that closes gives the focus back to the input, and its trigger keeps the highlight. The input has the highlight (`data-highlighted`) when no item has it.
 // With the `autoHighlight` value `input`, the first match gets the highlight while the query is
 // not empty, and with `always` also when it is empty. The popup gets `role="dialog"`, the list
 // `role="menu"`, and the input `role="searchbox"`.
@@ -452,9 +457,20 @@ export default class PhemMenuController extends Controller {
     trigger.toggleAttribute("data-disabled", isDisabled(trigger))
   }
 
-  // The focus after a close of the menu with the focus in it.
+  // The focus after a close of the menu with the focus in it. The focus of a submenu in a menu with
+  // a filter goes back to the input of the filter, and its trigger keeps the highlight, as in Base
+  // UI.
   restoreFocus() {
-    this.#trigger?.focus()
+    const parent = this.#parent
+    const input = parent?.#filterInput
+    if (!input) {
+      this.#trigger?.focus()
+
+      return
+    }
+
+    input.focus({ preventScroll: true })
+    parent.#highlight(this.#trigger)
   }
 
   // The placement of the popup (phem_position.js).
@@ -633,7 +649,7 @@ export default class PhemMenuController extends Controller {
       if (!item.isConnected || !this.openValue) return
 
       // The input of the filter keeps the focus.
-      if (this.#filterInput) this.#highlight(item)
+      if (this.#filterInput) this.#moveHighlight(item)
       else item.focus({ preventScroll: true })
     }
     const open = this.#submenus.some((menu) => menu.openValue && menu.#trigger !== item)
@@ -809,11 +825,20 @@ export default class PhemMenuController extends Controller {
     else input.removeAttribute("aria-activedescendant")
   }
 
+  // The highlight goes to another item while the input of the filter keeps the focus: the open
+  // submenu of another trigger closes, as the focus out of its trigger closes it with no filter.
+  #moveHighlight(item) {
+    this.#highlight(item)
+
+    for (const submenu of this.#submenus) if (submenu.openValue && submenu.#trigger !== item) submenu.#close({ focus: false })
+  }
+
   // The keys in the input of the filter: the arrow keys move the highlight, and Enter clicks the
   // item with the highlight. The other keys write the query.
   #inputKeydown(event) {
     const items = this.#items.filter((el) => !el.hidden)
     const current = items.find((el) => el.hasAttribute("data-highlighted")) ?? null
+    if (this.#inputSubmenuKeydown(event, current)) return
 
     if (event.key === "Enter") {
       if (!current) return
@@ -829,9 +854,32 @@ export default class PhemMenuController extends Controller {
     event.preventDefault()
     const next = current ? nextItem(items, current, event.key, { orientation: "vertical", loop: this.loopFocusValue, skip: skipped }) : nextItem(items, null, event.key === "ArrowDown" ? "Home" : "End", { skip: skipped })
     if (next) {
-      this.#highlight(next)
+      this.#moveHighlight(next)
       next.scrollIntoView?.({ block: "nearest" })
     }
+  }
+
+  // The arrow to a submenu in the input of the filter opens the submenu of the item with the
+  // highlight, when the caret is at the end of the text. The arrow back in the input of a submenu
+  // closes it, when the caret is at the start. Else the arrows move the caret, as in Base UI.
+  #inputSubmenuKeydown(event, current) {
+    const { selectionStart: start, selectionEnd: end, value } = event.target
+    if (start !== end) return false
+
+    if (this.isSubmenu && event.key === this.#closeKey && start === 0) {
+      event.preventDefault()
+      this.#close({ focus: true })
+
+      return true
+    }
+
+    const submenu = current && !isDisabled(current) ? this.#submenus.find((menu) => menu.triggers.all.includes(current)) : null
+    if (!submenu || event.key === "ArrowDown" || event.key !== submenu.#openKey || end !== value.length) return false
+
+    event.preventDefault()
+    submenu.#open("first", { trigger: current })
+
+    return true
   }
 
   onInput = (event) => {

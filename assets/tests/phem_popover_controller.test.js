@@ -460,7 +460,7 @@ describe("phem-popover", () => {
     vi.advanceTimersByTime(0)
     expect(isOpen()).toBe(true)
 
-    // The pointer is between the trigger and the popup.
+    // The pointer is in the gap between the trigger and the popup.
     move("pointerout", trigger, 50, 24)
     vi.advanceTimersByTime(1000)
     expect(isOpen()).toBe(true)
@@ -468,13 +468,22 @@ describe("phem-popover", () => {
     vi.advanceTimersByTime(1000)
     expect(isOpen()).toBe(true)
 
-    // A diagonal path from the side of the trigger to the popup is also in that space.
-    move("pointermove", document.body, 140, 15)
+    // It goes out of that space: the popup closes with no delay.
+    move("pointermove", document.body, 300, 26)
+    vi.advanceTimersByTime(0)
+    expect(isOpen()).toBe(false)
+
+    // A diagonal path from the side of the trigger to the popup is in the triangle from the point
+    // where the pointer left the trigger.
+    move("pointerover", trigger, 50, 10)
+    vi.advanceTimersByTime(0)
+    move("pointerout", trigger, 102, 15)
+    move("pointermove", document.body, 130, 20)
     vi.advanceTimersByTime(1000)
     expect(isOpen()).toBe(true)
 
-    // It goes out of that space: the popup closes with no delay.
-    move("pointermove", document.body, 300, 26)
+    // A path away from the popup is out of the triangle: the popup closes.
+    move("pointermove", document.body, 160, 12)
     vi.advanceTimersByTime(0)
     expect(isOpen()).toBe(false)
 

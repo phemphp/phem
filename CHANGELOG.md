@@ -8,6 +8,21 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The pointer that leaves the trigger of a hover popup (`phem-popover` and `phem-menu` with
+  `openOnHover`, and a submenu) away from the popup closes it at once, as the `safePolygon` of
+  Base UI. The safe space is now the triangle from the point where the pointer left the trigger
+  to the popup, and the gap between them. Before, it was the shape around the trigger and the
+  popup: with a tall submenu, it covered the items below the trigger, so a move down over the
+  triggers of several submenus kept them all open for a time.
+- In a `phem-menu` with a filter (`input` part), the highlight on another item (with the pointer
+  or the arrow keys) closes an open submenu, as the focus does in a menu with no filter. Before,
+  the input kept the focus, so the submenu stayed open while the pointer was on other items.
+- In a `phem-menu` with a filter, the arrow keys open and close a submenu, as in Base UI.
+  ArrowRight in the input opens the submenu of the item with the highlight, when the caret is at
+  the end of the text: the input of the submenu gets the focus (or else its first item). ArrowLeft
+  in the input of a submenu closes it, when the caret is at the start of the text. A submenu that
+  closes gives the focus back to the input of the menu, and its trigger keeps the highlight.
+  Before, only Enter opened the submenu, and Escape gave the focus to the trigger of the submenu.
 - A popup of `phem-popover`, `phem-tooltip`, `phem-menu`, `phem-context-menu`, `phem-combobox`,
   `phem-select` and `phem-navigation-menu` goes to its place at once, also with a CSS transition
   of `top` and `left`.

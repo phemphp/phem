@@ -1122,6 +1122,37 @@ describe("phem-menu: the behavior of Base UI", () => {
       expect($("move-trigger").hasAttribute("data-highlighted")).toBe(false)
     })
 
+    // Base UI v1.9.0 closes the submenu when the pointer leaves its trigger away from the popup,
+    // also when the popup is taller than the menu.
+    it("closes when the pointer leaves its trigger straight down to a sibling item", async () => {
+      await mount(nested())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      mouseClick($("trigger"))
+      // The popup of the submenu is on the right of its trigger, and goes far below it.
+      $("move-trigger").getBoundingClientRect = () => ({ left: 0, top: 30, right: 100, bottom: 60, width: 100, height: 30 })
+      $("move-popup").getBoundingClientRect = () => ({ left: 96, top: 26, right: 300, bottom: 400, width: 204, height: 374 })
+      const at = (x, y) => ({ clientX: x, clientY: y })
+      const leave = (x, y) => $("move-trigger").dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: $("delete"), ...at(x, y) }))
+      hover($("move-trigger"), at(50, 45))
+      vi.advanceTimersByTime(100)
+      expect(subOpen()).toBe(true)
+
+      // A diagonal path to the popup crosses "Delete": the submenu stays open.
+      leave(60, 61)
+      hover($("delete"), at(80, 70))
+      vi.advanceTimersByTime(100)
+      expect(subOpen()).toBe(true)
+
+      // The pointer goes back to the trigger, and straight down: the submenu closes at once, and
+      // "Delete" gets the highlight with no grace time.
+      hover($("move-trigger"), at(50, 45))
+      leave(50, 61)
+      hover($("delete"), at(50, 64))
+      vi.advanceTimersByTime(0)
+      expect(subOpen()).toBe(false)
+      expect(document.activeElement.id).toBe("delete")
+    })
+
     it("stays open when the pointer goes from the submenu to empty space", async () => {
       await enter()
 
@@ -1396,5 +1427,127 @@ describe("phem-menu: a filter", () => {
     type("zzz")
     expect(shown()).toEqual(["new", "save", "save-as", "move", "delete"])
     expect($("empty").hidden).toBe(true)
+  })
+
+  // "Move to" opens a submenu with its own filter, and "Share" a submenu with no filter.
+  const submenus = `<div id="menu" data-controller="phem-menu">
+      <button id="trigger" data-phem-menu-target="trigger">Actions</button>
+      <div id="popup" data-phem-menu-target="popup" hidden>
+        <input id="input" data-phem-menu-target="input" aria-label="Filter actions">
+        <div id="list" data-phem-menu-target="list">
+          <div id="move-menu" data-controller="phem-menu">
+            <button id="move-trigger" data-phem-menu-target="trigger">Move to</button>
+            <div id="move-popup" data-phem-menu-target="popup" hidden>
+              <input id="move-input" data-phem-menu-target="input" aria-label="Filter folders">
+              <div data-phem-menu-target="list">
+                <button id="inbox" data-phem-menu-target="item">Inbox</button>
+                <button id="archive" data-phem-menu-target="item">Archive</button>
+              </div>
+            </div>
+          </div>
+          <div id="share-menu" data-controller="phem-menu">
+            <button id="share-trigger" data-phem-menu-target="trigger">Share</button>
+            <div id="share-popup" data-phem-menu-target="popup" hidden>
+              <button id="email" data-phem-menu-target="item">Email</button>
+            </div>
+          </div>
+          <button id="delete" data-phem-menu-target="item">Delete</button>
+        </div>
+      </div>
+    </div>`
+
+  // Base UI v1.9.0: the arrows open and close a submenu only at the end and at the start of the
+  // text. Else they move the caret.
+  it("opens the submenu of the item with the highlight with ArrowRight, and closes it with ArrowLeft", async () => {
+    await mount(submenus)
+    const highlighted = (id) => $(id).hasAttribute("data-highlighted")
+    open()
+    press("ArrowDown")
+    expect(highlighted("move-trigger")).toBe(true)
+
+    // The caret is not at the end of the text: ArrowRight moves it.
+    type("o")
+    $("input").setSelectionRange(0, 0)
+    expect(press("ArrowRight").defaultPrevented).toBe(false)
+    expect($("move-popup").hidden).toBe(true)
+
+    // At the end of the text: the submenu opens, and its input gets the focus.
+    $("input").setSelectionRange(1, 1)
+    expect(press("ArrowRight").defaultPrevented).toBe(true)
+    expect($("move-popup").hidden).toBe(false)
+    expect(document.activeElement).toBe($("move-input"))
+    expect(highlighted("inbox")).toBe(true)
+
+    // The caret is not at the start of the text of the submenu: ArrowLeft moves it.
+    $("move-input").value = "a"
+    $("move-input").setSelectionRange(1, 1)
+    expect(press("ArrowLeft").defaultPrevented).toBe(false)
+    expect($("move-popup").hidden).toBe(false)
+
+    // At the start: the submenu closes, the input of the menu gets the focus back, and the trigger
+    // keeps the highlight.
+    $("move-input").setSelectionRange(0, 0)
+    expect(press("ArrowLeft").defaultPrevented).toBe(true)
+    expect($("move-popup").hidden).toBe(true)
+    expect(document.activeElement).toBe($("input"))
+    expect(highlighted("move-trigger")).toBe(true)
+  })
+
+  it("gives the focus to the first item of a submenu with no filter, and back to the input at the close", async () => {
+    await mount(submenus)
+    open()
+    press("ArrowDown")
+    press("ArrowDown")
+    expect($("share-trigger").hasAttribute("data-highlighted")).toBe(true)
+
+    press("ArrowRight")
+    expect($("share-popup").hidden).toBe(false)
+    expect(document.activeElement).toBe($("email"))
+
+    press("ArrowLeft")
+    expect($("share-popup").hidden).toBe(true)
+    expect(document.activeElement).toBe($("input"))
+    expect($("share-trigger").hasAttribute("data-highlighted")).toBe(true)
+  })
+
+  it("gives the focus back to the input after Escape in a submenu that Enter opened", async () => {
+    await mount(submenus)
+    open()
+    press("ArrowDown")
+    press("Enter")
+    expect(document.activeElement).toBe($("move-input"))
+
+    press("Escape")
+    expect($("move-popup").hidden).toBe(true)
+    expect(isOpen()).toBe(true)
+    expect(document.activeElement).toBe($("input"))
+    expect($("move-trigger").hasAttribute("data-highlighted")).toBe(true)
+  })
+
+  // With no filter, the focus out of the trigger closes the submenu: the input keeps the focus.
+  it("closes an open submenu when the highlight goes to another item", async () => {
+    await mount(submenus)
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const subOpen = () => !$("move-popup").hidden
+    open()
+    hover($("move-trigger"))
+    vi.advanceTimersByTime(100)
+    expect(subOpen()).toBe(true)
+
+    // The pointer on another item: it gets the highlight after the grace time.
+    hover($("delete"))
+    expect(subOpen()).toBe(true)
+    vi.advanceTimersByTime(150)
+    expect(document.activeElement).toBe($("input"))
+    expect($("delete").hasAttribute("data-highlighted")).toBe(true)
+    expect(subOpen()).toBe(false)
+
+    // The arrow keys move the highlight in the same way.
+    hover($("move-trigger"))
+    vi.advanceTimersByTime(100)
+    expect(subOpen()).toBe(true)
+    press("ArrowDown")
+    expect($("share-trigger").hasAttribute("data-highlighted")).toBe(true)
+    expect(subOpen()).toBe(false)
   })
 })

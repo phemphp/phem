@@ -191,6 +191,15 @@ final class MenusTest extends DemoTestCase
         $page->keyboard()->press('Enter');
         $folders = $page->getByRole('searchbox', ['name' => 'Filter folders']);
         expect($folders)->toBeFocused();
+
+        // ArrowLeft at the start of its input closes the submenu, and ArrowRight at the end of the
+        // input of the menu opens it again.
+        $page->keyboard()->press('ArrowLeft');
+        expect($folders)->toBeHidden();
+        expect($filter)->toBeFocused();
+        expect($page->getByRole('menuitem', ['name' => 'Move to folder']))->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('ArrowRight');
+        expect($folders)->toBeFocused();
         $folders->fill('proj');
         expect($page->getByRole('menuitem', ['name' => 'Projects']))->toBeVisible();
         expect($page->getByRole('menuitem', ['name' => 'Desktop']))->toBeHidden();
