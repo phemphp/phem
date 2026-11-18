@@ -236,6 +236,8 @@ describe("phem-dialog", () => {
     expect(document.getElementById("inner").hasAttribute("data-nested")).toBe(true)
     expect(outer.hasAttribute("data-nested-dialog-open")).toBe(true)
     expect(outer.style.getPropertyValue("--nested-dialogs")).toBe("1")
+    // Its own count: it does not inherit the variable of the dialog around it.
+    expect(document.getElementById("inner").style.getPropertyValue("--nested-dialogs")).toBe("0")
 
     click("#inner-close")
     await nextTask()

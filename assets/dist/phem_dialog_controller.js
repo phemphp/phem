@@ -470,8 +470,8 @@ export default class PhemDialogController extends Controller {
         const [dialog, ...parts] = this.#parts(el)
         for (const part of parts) show(part, { hidden: false })
         show(dialog, { hidden: false, reveal: () => this.#showDialog(el) })
-        this.#renderNesting(el, true)
         this.#renderDrawer()
+        this.#renderNesting(el, true)
 
         continue
       }
@@ -572,8 +572,8 @@ export default class PhemDialogController extends Controller {
     }
 
     this.#showDialog(el)
-    this.#renderNesting(el, true)
     this.#renderDrawer()
+    this.#renderNesting(el, true)
   }
 
   #showDialog(el) {
@@ -652,24 +652,15 @@ export default class PhemDialogController extends Controller {
     }
   }
 
-  // A dialog in a dialog: the dialog around it shows how many dialogs are open in it.
+  // A dialog in a dialog: the dialog around it shows how many dialogs are open in it. The dialog
+  // in it gets its own count, so it does not inherit the CSS variables of the dialog around it.
   #renderNesting(el, open) {
     const parent = el.parentElement?.closest("dialog")
     for (const part of this.#parts(el)) part.toggleAttribute("data-nested", open && Boolean(parent))
     if (!parent) return
 
-    const nested = [...parent.querySelectorAll("dialog[open]")].filter((d) => d !== el || open).length
-    const parts = popupsOf(parent)
-    const drawer = parts.some((part) => part.hasAttribute("data-swipe-direction"))
-
-    for (const part of parts) {
-      part.toggleAttribute("data-nested-dialog-open", nested > 0)
-      part.style.setProperty("--nested-dialogs", String(nested))
-      if (!drawer) continue
-
-      part.toggleAttribute("data-nested-drawer-open", nested > 0)
-      part.style.setProperty("--nested-drawers", String(nested))
-    }
+    if (open) renderNestedCount(el, el.querySelectorAll("dialog[open]").length)
+    renderNestedCount(parent, [...parent.querySelectorAll("dialog[open]")].filter((d) => d !== el || open).length)
 
     for (let drawer = parent; drawer; drawer = drawer.parentElement?.closest("dialog")) this.#renderFrontmost(drawer, open ? null : el)
   }
@@ -814,6 +805,22 @@ export default class PhemDialogController extends Controller {
     if (name === "style") return [...SWIPE_ATTRIBUTES].some((attribute) => el.hasAttribute(attribute)) || this.keyboardInset > 0
 
     return name === "open" || OPEN_ATTRIBUTES.has(name) || name === "data-nested" || SWIPE_ATTRIBUTES.has(name) || DRAWER_ATTRIBUTES.has(name)
+  }
+}
+
+// The number of open dialogs in a dialog: `data-nested-dialog-open` and `--nested-dialogs` on its
+// parts, and `data-nested-drawer-open` and `--nested-drawers` on a drawer.
+function renderNestedCount(dialog, nested) {
+  const parts = popupsOf(dialog)
+  const drawer = parts.some((part) => part.hasAttribute("data-swipe-direction"))
+
+  for (const part of parts) {
+    part.toggleAttribute("data-nested-dialog-open", nested > 0)
+    part.style.setProperty("--nested-dialogs", String(nested))
+    if (!drawer) continue
+
+    part.toggleAttribute("data-nested-drawer-open", nested > 0)
+    part.style.setProperty("--nested-drawers", String(nested))
   }
 }
 

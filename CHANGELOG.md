@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A dialog of `phem-dialog` in an open dialog gets its own `--nested-dialogs` (and
+  `--nested-drawers` for a drawer): `0` when no dialog is open in it, as in Base UI. Before, it
+  inherited the value of the dialog around it, so a stack style moved and scaled the two dialogs
+  in the same way, and the dialog in front covered the dialog behind.
 - `phem:lock` disables the element of a handler while its event runs:
   `<button onClick={{ submit }} phem:lock>`. At the event, the browser gives the element
   `aria-disabled="true"` at once, before the request goes. The element keeps the focus and sends

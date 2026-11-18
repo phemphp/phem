@@ -1370,7 +1370,7 @@ Escape and a tap on the backdrop close the dialog. Set `data-phem-dialog-dismiss
 
 A tap on the backdrop is a press and a click on the dialog itself, at a point outside the box of the dialog. The press does not move the focus, so the trigger gets the focus back after the close, with its focus ring after an open with the keyboard. A click on the padding of the dialog is inside the box, so the dialog stays open. A text selection that starts in the dialog and ends on the backdrop also keeps the dialog open. Phem does not use `closedby="any"`, because Safari does not support it.
 
-A dialog in an open dialog gets `data-nested`. The dialog around it gets `data-nested-dialog-open` and the `--nested-dialogs` CSS variable (the number of open dialogs in it), for a stack of dialogs:
+A dialog in an open dialog gets `data-nested`. The dialog around it gets `data-nested-dialog-open` and the `--nested-dialogs` CSS variable (the number of open dialogs in it), for a stack of dialogs. The dialog in it gets its own `--nested-dialogs` (`0` when no dialog is open in it), so it does not inherit the value of the dialog around it:
 
 ```css
 dialog[data-nested-dialog-open] { scale: calc(1 - 0.05 * var(--nested-dialogs)); }
