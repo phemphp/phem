@@ -8,6 +8,12 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A `phem-navigation-menu` in a content of another navigation menu (a nested menu) gives its
+  arrow keys to that content, as in Base UI. The arrow keys in the content move the focus
+  between its links and the triggers and the links of the nested menu, from the last one to the
+  first one. Before, ArrowRight on the trigger of a vertical nested menu opened it, and the
+  arrow keys in the content skipped that trigger. Enter, Space, a click and the pointer still
+  open the nested menu. The docs no longer say that a nested menu is not supported.
 - The pointer that leaves the trigger of a hover popup (`phem-popover` and `phem-menu` with
   `openOnHover`, and a submenu) away from the popup closes it at once, as the `safePolygon` of
   Base UI. The safe space is now the triangle from the point where the pointer left the trigger

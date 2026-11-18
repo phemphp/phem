@@ -55,7 +55,18 @@ function NavigationMenuDemo(): Node
             <NavigationMenuList>
                 <NavigationMenuItem value="overview">
                     <NavigationMenuTrigger>Overview <NavigationMenuIcon /></NavigationMenuTrigger>
-                    <NavigationMenuContent><NavigationMenuLink href="/start" card>Quick start</NavigationMenuLink></NavigationMenuContent>
+                    <NavigationMenuContent>
+                        <NavigationMenuLink href="/start" card>Quick start</NavigationMenuLink>
+                        <NavigationMenu id="handbook-menu">
+                            <NavigationMenuList>
+                                <NavigationMenuItem value="handbook">
+                                    <NavigationMenuTrigger>Handbook</NavigationMenuTrigger>
+                                    <NavigationMenuContent><NavigationMenuLink href="/styling" card>Styling</NavigationMenuLink></NavigationMenuContent>
+                                </NavigationMenuItem>
+                            </NavigationMenuList>
+                            <NavigationMenuPositioner><NavigationMenuPopup><NavigationMenuViewport /></NavigationMenuPopup></NavigationMenuPositioner>
+                        </NavigationMenu>
+                    </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem><NavigationMenuLink href="/blog">Blog</NavigationMenuLink></NavigationMenuItem>
             </NavigationMenuList>

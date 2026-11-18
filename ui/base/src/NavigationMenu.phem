@@ -3,7 +3,7 @@
 namespace Phem\Ui\Base;
 
 use Phem\Attribute\{Component, Context, Prop, Provide};
-use Phem\{Html, Node};
+use Phem\{Dynamic, Html, Node};
 
 /**
  * The links of a site, with a panel of links under some items: Base UI NavigationMenu.Root, on the
@@ -12,10 +12,15 @@ use Phem\{Html, Node};
  *
  * Put a NavigationMenuPositioner after the list, with a NavigationMenuPopup and a
  * NavigationMenuViewport in it. The props of the Base UI Positioner are props of the root.
+ *
+ * A NavigationMenu in a NavigationMenuContent is a submenu, as in Base UI: a `<div>` with the width
+ * of its place, and its arrow keys move the focus in the content of the parent menu.
  */
 #[Component, Provide]
 class NavigationMenu
 {
+    /** The menu that has this menu in a content. */
+    #[Context] public ?NavigationMenu $parent = null;
     #[Prop] public ?string $defaultValue = null;
     #[Prop] public int $delay = 50;
     #[Prop] public int $closeDelay = 50;
@@ -35,7 +40,8 @@ class NavigationMenu
     public function render(): Node
     {
         return (
-            <nav
+            <Dynamic
+                tag={{ parent ? 'div' : 'nav' }}
                 data-controller="phem-navigation-menu"
                 data-phem-navigation-menu-value-value={{ defaultValue }}
                 data-phem-navigation-menu-delay-value={{ 50 == delay ? null : delay }}
@@ -49,11 +55,11 @@ class NavigationMenu
                 data-phem-navigation-menu-collision-padding-inline-value={{ collisionPaddingInline }}
                 data-phem-navigation-menu-flip-value={{ flip ? null : 'false' }}
                 style="--duration: 0.35s; --easing: cubic-bezier(0.22, 1, 0.36, 1)"
-                className={{ classes('min-w-max text-neutral-950 dark:text-white') }}
+                className={{ classes(parent ? '' : 'min-w-max', 'text-neutral-950 dark:text-white') }}
                 {{ ...attrs }}
             >
                 {{ children }}
-            </nav>
+            </Dynamic>
         );
     }
 }

@@ -316,6 +316,21 @@ final class MenusTest extends DemoTestCase
         $page->keyboard()->press('Escape');
         expect($overview)->toHaveAttribute('aria-expanded', 'false');
 
+        // The arrow keys on the trigger of the inner menu move the focus in the content of the
+        // outer menu, as in Base UI: ArrowRight goes from the last item to the first one, and it
+        // does not open the inner menu. Enter opens the outer menu: the pointer stays where it is,
+        // so the hover below moves it.
+        $overview->focus();
+        $page->keyboard()->press('Enter');
+        $handbook->focus();
+        $page->keyboard()->press('ArrowRight');
+        expect($page->getByRole('link', ['name' => 'Quick Start Install and assemble your first component.']))->toBeFocused();
+        expect($handbook)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('ArrowLeft');
+        expect($handbook)->toBeFocused();
+        $page->keyboard()->press('Escape');
+        expect($overview)->toHaveAttribute('aria-expanded', 'false');
+
         // With the pointer: hover opens the two menus, and the pointer in the inner popup keeps
         // both of them open.
         $overview->hover();

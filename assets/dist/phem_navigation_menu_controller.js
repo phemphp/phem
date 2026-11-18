@@ -18,6 +18,11 @@ const EXIT_STYLES = ["position", "inset-block-start", "inset-inline-start", "wid
 // Base UI. A later click closes it.
 const PATIENT_CLICK = 500
 
+// The parts of a menu in the page, for a menu nested in a content.
+const CONTENT = '[data-phem-navigation-menu-target~="content"]'
+const FOCUS_ITEM = '[data-phem-navigation-menu-target~="link"], [data-phem-navigation-menu-target~="trigger"]'
+const ARROWS = ["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"]
+
 // The causes of a close that do not give the focus back to the trigger, as in Base UI.
 const KEEPS_FOCUS = new Set(["hover", "outside", "focusout"])
 
@@ -72,8 +77,10 @@ const KEEPS_FOCUS = new Set(["hover", "outside", "focusout"])
 // element of the content goes back to the trigger, and Tab on the last element goes to the next
 // trigger: the menu stays open until the focus goes out of it. Tab on the last entry of the list
 // goes to the next element of the page, and the menu closes. In a content, the four arrow keys
-// move the focus between its links, from the last one to the first one. A field in the content
-// keeps its arrow keys.
+// move the focus between its links and the triggers and the links of a menu in it, from the last
+// one to the first one. A field in the content keeps its arrow keys. A menu in the content of
+// another menu (a nested menu) gives its arrow keys to that content, as in Base UI: they do not
+// move the focus in its list, and they do not open its items.
 //
 // The contents stay in their items in the server render. With a `viewport` target, the content of
 // the open item moves into the viewport while it is open, as in Base UI, and goes back to its item
@@ -237,7 +244,7 @@ export default class PhemNavigationMenuController extends Controller {
     // The arrow keys of a field move its caret or change its value.
     if (event.target.closest?.("input, textarea, select, [contenteditable]")) return false
 
-    const links = this.linkTargets.filter((el) => content.contains(el) && !isDisabled(el))
+    const links = focusItems(content)
     if (links.length === 0) return false
 
     const at = links.findIndex((el) => el.contains(event.target))
@@ -252,6 +259,10 @@ export default class PhemNavigationMenuController extends Controller {
   #entryKeydown(event, entry, entries) {
     const trigger = this.triggerTargets.includes(entry) ? entry : null
     const item = trigger && this.#itemOf(trigger)
+
+    // The arrow keys of a menu in a content move the focus in that content, as in Base UI: they do
+    // not open an item.
+    if (ARROWS.includes(event.key) && this.#nested) return
 
     if (trigger && !isDisabled(trigger) && event.key === this.#openKey) {
       event.preventDefault()
@@ -688,6 +699,11 @@ export default class PhemNavigationMenuController extends Controller {
     return getComputedStyle(this.element).direction === "rtl"
   }
 
+  // Whether the menu is in the content of another menu.
+  get #nested() {
+    return this.element.parentElement?.closest(CONTENT) != null
+  }
+
   // The direction of the new item from the old one.
   #direction(from, to) {
     const forward = this.itemTargets.indexOf(to) > this.itemTargets.indexOf(from)
@@ -726,6 +742,14 @@ export default class PhemNavigationMenuController extends Controller {
 
     return parts.some((part) => part.contains(el))
   }
+}
+
+// The links of a content, and the triggers and the links of the menus in it, as in Base UI: not
+// the elements of a content of a nested menu.
+function focusItems(content) {
+  const items = [...content.querySelectorAll(FOCUS_ITEM)]
+
+  return items.filter((el) => el.parentElement.closest(CONTENT) === content && !isDisabled(el))
 }
 
 // The value of an item: its `data-value`, its key, or its index.

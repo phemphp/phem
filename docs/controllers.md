@@ -860,7 +860,7 @@ The pointer on a trigger opens its content after the `delay` value, also when an
 | Shift+Tab | The first element of the content | Moves the focus back to the trigger |
 | Tab | The last element of the content | Moves the focus to the next trigger. The menu stays open until the focus goes out of it |
 | Tab | The last trigger or link of the list | Moves the focus to the next element of the page, not into the content. The menu closes |
-| ArrowDown, ArrowUp, ArrowRight, ArrowLeft | A link of a content | Moves the focus to the next or to the previous link of the content, and from the last one to the first one. A field in the content keeps its arrow keys |
+| ArrowDown, ArrowUp, ArrowRight, ArrowLeft | A link of a content, or a trigger of a nested menu in it | Moves the focus to the next or to the previous link or trigger of the content, and from the last one to the first one. A field in the content keeps its arrow keys |
 | Escape | The menu | Closes the menu. The focus goes back to the trigger when it is in the content, in the popup, on the trigger or on the page body, as in Base UI. The focus on another trigger stays |
 
 The arrow keys of the list skip a disabled trigger, and do not go to the links in a content. They stop at the first and at the last one, as in Base UI: set `data-phem-navigation-menu-loop-focus-value="true"` to go from the last one to the first one. Home and End do not move the focus. In a right-to-left page, ArrowLeft and ArrowRight go the other way.
@@ -920,7 +920,31 @@ A trigger gets `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pre
 
 During the size transition (the first 200 ms of the move to **Guides**), the variables have px values: the popup goes from `--popup-width: 302px; --popup-height: 122px;` to `202px` and `82px`, and the positioner has `--positioner-width: 202px; --positioner-height: 82px;` at once. When the menu is closed, the `nav`, the list and the arrow have no `data-open`, the popup has no `data-side` and `data-align`, and `tabindex="-1"` stays.
 
-A navigation menu in a content (a nested menu of Base UI) is not supported yet.
+A navigation menu in a content is a nested menu, as in Base UI. Give it its own positioner, popup and viewport: its content shows next to its trigger, and the outer menu stays open while the pointer or the focus is in the nested menu. With only a viewport in the content (no positioner and no popup), its content shows in the content of the outer menu. Escape closes the nested menu first, then the outer menu:
+
+```html
+<div data-phem-navigation-menu-target="content" hidden>
+    <a data-phem-navigation-menu-target="link" href="/quick-start">Quick start</a>
+    <div data-controller="phem-navigation-menu" data-phem-navigation-menu-orientation-value="vertical"
+         data-phem-navigation-menu-side-value="right" data-phem-navigation-menu-align-value="end">
+        <ul data-phem-navigation-menu-target="list">
+            <li data-phem-navigation-menu-target="item" data-value="handbook">
+                <button data-phem-navigation-menu-target="trigger">Handbook</button>
+                <div data-phem-navigation-menu-target="content" hidden>
+                    <a data-phem-navigation-menu-target="link" href="/styling">Styling</a>
+                </div>
+            </li>
+        </ul>
+        <div data-phem-navigation-menu-target="positioner" hidden>
+            <div data-phem-navigation-menu-target="popup">
+                <div data-phem-navigation-menu-target="viewport"></div>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+A nested menu gives its arrow keys to the content of the outer menu, as in Base UI. In the example, ArrowDown on **Quick start** moves the focus to **Handbook**, and ArrowRight on **Handbook** moves it back to **Quick start**. The arrow keys do not open the nested menu: open it with Enter, Space, a click or the pointer. In the content of the nested menu, the arrow keys move the focus between its own links.
 
 ## Open a menu on a right click
 

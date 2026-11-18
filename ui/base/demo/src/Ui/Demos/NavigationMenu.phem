@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{ScrollArea, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport, NavigationMenuArrow, NavigationMenuContent, NavigationMenuIcon, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuPopup, NavigationMenuPositioner, NavigationMenuTrigger, NavigationMenuViewport};
+use function Phem\Ui\Base\{CaretRightIcon, ScrollArea, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport, NavigationMenuArrow, NavigationMenuContent, NavigationMenuIcon, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuPopup, NavigationMenuPositioner, NavigationMenuTrigger, NavigationMenuViewport};
 use Phem\Ui\Base\{Align, NavigationMenu, Orientation, Side};
 
 #[Page('/components/navigation-menu')]
@@ -189,12 +189,14 @@ function NavigationMenuNestedDemo(): Node
                                 <NavigationMenu orientation={{ vertical }} side={{ right }} align={{ end }} sideOffset={{ 8 }} alignOffset={{ -8 }}>
                                     <NavigationMenuList className="block">
                                         <NavigationMenuItem value="handbook">
-                                            <NavigationMenuTrigger className="relative block h-full w-full border-0 bg-transparent p-2 text-left text-inherit no-underline hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800">
+                                            <NavigationMenuTrigger className="relative block h-full w-full border-0 bg-transparent p-2 min-[501px]:p-2 text-left text-inherit no-underline hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800">
                                                 <span className="m-0 mb-1 block text-sm leading-4 font-normal">Handbook</span>
                                                 <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">How to use Base UI effectively.</p>
-                                                <NavigationMenuIcon className="absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center justify-center" />
+                                                <NavigationMenuIcon className="absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center justify-center">
+                                                    <CaretRightIcon />
+                                                </NavigationMenuIcon>
                                             </NavigationMenuTrigger>
-                                            <NavigationMenuContent className="min-[500px]:min-w-[400px]">
+                                            <NavigationMenuContent className="min-[500px]:min-w-[400px] min-[500px]:max-w-none">
                                                 <ul className="m-0 flex max-w-[400px] list-none flex-col justify-center p-0">
                                                     {% for link in handbook %}
                                                         <li key={{ link[0] }}>
@@ -367,11 +369,11 @@ function NavigationMenuInlineDemo(): Node
                                 <NavigationMenuList className="m-0 flex list-none flex-row gap-1 overflow-x-auto p-2 min-[700px]:h-[var(--popup-height)] min-[700px]:flex-col min-[700px]:gap-px min-[700px]:overflow-x-visible min-[700px]:overflow-y-clip min-[700px]:border-r min-[700px]:border-r-neutral-950 min-[700px]:transition-[height] min-[700px]:duration-[var(--duration)] min-[700px]:ease-[var(--easing)] dark:min-[700px]:border-r-white">
                                     {% for menu in audiences %}
                                         <NavigationMenuItem key={{ menu.value }} value={{ menu.value }}>
-                                            <NavigationMenuTrigger className="m-0 flex w-full min-w-[10rem] flex-col items-start gap-1 border-0 bg-transparent p-2 text-left text-inherit hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800">
+                                            <NavigationMenuTrigger className="m-0 flex h-auto w-full min-w-[10rem] flex-col items-start justify-start gap-1 border-0 bg-transparent p-2 min-[501px]:p-2 text-left text-inherit hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800">
                                                 <span className="text-sm leading-4 font-normal text-neutral-950 dark:text-white">{{ menu.label }}</span>
                                                 <span className="text-sm text-neutral-500 dark:text-neutral-400">{{ menu.hint }}</span>
                                             </NavigationMenuTrigger>
-                                            <NavigationMenuContent className="flex h-full translate-x-0 flex-col gap-4 p-4 min-[700px]:blur-0 transition-[opacity,translate,filter] duration-[var(--duration)] ease-[var(--easing)] min-[700px]:duration-[calc(var(--duration)*1.35)] min-[700px]:ease-[cubic-bezier(0.16,1,0.3,1)] data-starting-style:data-[activation-direction=left]:opacity-0 data-starting-style:data-[activation-direction=right]:opacity-0 data-starting-style:data-[activation-direction=left]:translate-x-[-50%] data-starting-style:data-[activation-direction=right]:translate-x-[50%] data-ending-style:opacity-0 data-ending-style:data-[activation-direction=left]:translate-x-[50%] data-ending-style:data-[activation-direction=right]:translate-x-[-50%] min-[700px]:data-starting-style:data-[activation-direction=up]:opacity-0 min-[700px]:data-starting-style:data-[activation-direction=down]:opacity-0 min-[700px]:data-starting-style:data-[activation-direction=up]:translate-y-[-72px] min-[700px]:data-starting-style:data-[activation-direction=down]:translate-y-[72px] min-[700px]:data-starting-style:blur-[2px] min-[700px]:data-ending-style:data-[activation-direction=up]:translate-y-[72px] min-[700px]:data-ending-style:data-[activation-direction=down]:translate-y-[-72px] min-[700px]:data-ending-style:blur-[2px]">
+                                            <NavigationMenuContent className="flex h-full w-full translate-x-0 flex-col min-[500px]:w-full min-[500px]:max-w-none gap-4 p-4 min-[700px]:blur-0 transition-[opacity,translate,filter] duration-[var(--duration)] ease-[var(--easing)] min-[700px]:duration-[calc(var(--duration)*1.35)] min-[700px]:ease-[cubic-bezier(0.16,1,0.3,1)] data-starting-style:data-[activation-direction=left]:opacity-0 data-starting-style:data-[activation-direction=right]:opacity-0 data-starting-style:data-[activation-direction=left]:translate-x-[-50%] data-starting-style:data-[activation-direction=right]:translate-x-[50%] data-ending-style:opacity-0 data-ending-style:data-[activation-direction=left]:translate-x-[50%] data-ending-style:data-[activation-direction=right]:translate-x-[-50%] min-[700px]:data-starting-style:data-[activation-direction=up]:opacity-0 min-[700px]:data-starting-style:data-[activation-direction=down]:opacity-0 min-[700px]:data-starting-style:data-[activation-direction=up]:translate-y-[-72px] min-[700px]:data-starting-style:data-[activation-direction=down]:translate-y-[72px] min-[700px]:data-starting-style:blur-[2px] min-[700px]:data-ending-style:data-[activation-direction=up]:translate-y-[72px] min-[700px]:data-ending-style:data-[activation-direction=down]:translate-y-[-72px] min-[700px]:data-ending-style:blur-[2px]">
                                                 <div>
                                                     <h4 className="m-0 text-base leading-5 font-normal">{{ menu.title }}</h4>
                                                     <p className="m-0 mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ menu.description }}</p>
@@ -380,7 +382,7 @@ function NavigationMenuInlineDemo(): Node
                                                     {% for link in menu.links %}
                                                         <li key={{ link.href }}>
                                                             <NavigationMenuLink href={{ link.href }} card className="relative block h-full w-full border-0 bg-transparent p-2 text-left text-inherit no-underline hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800">
-                                                                <h5 className="m-0 text-sm leading-4 font-normal">{{ link.title }}</h5>
+                                                                <h5 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link.title }}</h5>
                                                                 <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link.description }}</p>
                                                             </NavigationMenuLink>
                                                         </li>
@@ -410,7 +412,7 @@ function NavigationMenuInlineDemo(): Node
                                 {% for link in guideLinks %}
                                     <li key={{ link.href }}>
                                         <NavigationMenuLink href={{ link.href }} card className="relative block h-full w-full border-0 bg-transparent p-2 text-left text-inherit no-underline hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800">
-                                            <h5 className="m-0 text-sm leading-4 font-normal">{{ link.title }}</h5>
+                                            <h5 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link.title }}</h5>
                                             <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link.description }}</p>
                                         </NavigationMenuLink>
                                     </li>

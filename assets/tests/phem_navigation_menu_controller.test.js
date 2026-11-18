@@ -521,6 +521,47 @@ describe("phem-navigation-menu", () => {
     expect(document.activeElement).toBe(links[0])
   })
 
+  it("gives the arrow keys of a nested menu to the content of the parent menu", async () => {
+    const nested = `<nav id="inner" data-controller="phem-navigation-menu" data-phem-navigation-menu-orientation-value="vertical">
+        <ul data-phem-navigation-menu-target="list">
+          <li data-phem-navigation-menu-target="item" data-value="handbook">
+            <button id="handbook-trigger" data-phem-navigation-menu-target="trigger">Handbook</button>
+            <div data-phem-navigation-menu-target="content" hidden>
+              <a id="animation" data-phem-navigation-menu-target="link" href="#animation">Animation</a>
+              <a id="composition" data-phem-navigation-menu-target="link" href="#composition">Composition</a>
+            </div>
+          </li>
+        </ul>
+        <div data-phem-navigation-menu-target="positioner" hidden>
+          <div data-phem-navigation-menu-target="popup"><div id="inner-viewport" data-phem-navigation-menu-target="viewport"></div></div>
+        </div>
+      </nav>`
+    await mount(nav().replace('<button id="save" data-phem-on-click="c1.save">Save</button>', nested))
+
+    clickOn($("overview-trigger"))
+    $("install").focus()
+    press("ArrowDown")
+    expect(document.activeElement).toBe($("handbook-trigger"))
+
+    // ArrowRight on the trigger of the vertical nested menu goes to the next item of the content,
+    // from the last one to the first one: it does not open the nested menu, as in Base UI.
+    expect(press("ArrowRight").defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe($("start"))
+    expect($("handbook-trigger").getAttribute("aria-expanded")).toBe("false")
+    press("ArrowLeft")
+    expect(document.activeElement).toBe($("handbook-trigger"))
+
+    // The arrow keys in the content of the nested menu stay in it.
+    clickOn($("handbook-trigger"), 0)
+    expect($("inner-viewport").contains($("animation"))).toBe(true)
+    $("animation").focus()
+    press("ArrowDown")
+    expect(document.activeElement).toBe($("composition"))
+    press("ArrowDown")
+    expect(document.activeElement).toBe($("animation"))
+    expect($("overview-trigger").getAttribute("aria-expanded")).toBe("true")
+  })
+
   it("moves Tab into the content in the viewport, and out of it to the next trigger with the menu open", async () => {
     await mount(nav())
 
