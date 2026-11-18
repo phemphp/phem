@@ -966,6 +966,15 @@ describe("phem-combobox", () => {
       const single = 'data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="single"'
       const page = () => fruits(single).replace(`<input id="input"`, `<input type="hidden" id="value" name="fruit" data-phem-combobox-target="value" /><button id="clear" data-phem-combobox-target="clear">Clear</button><input id="input"`).replaceAll(`data-phem-combobox-target="item">`, `data-phem-combobox-target="item" data-value="x">`)
 
+      it("gives data-placeholder to the input group while no item is selected", async () => {
+        await mount(page().replace(`<input id="input"`, `<div id="group" data-phem-combobox-target="inputGroup"><input id="input"`).replace(`aria-label="Fruit" />`, `aria-label="Fruit" /></div>`))
+        expect($("group").hasAttribute("data-placeholder")).toBe(true)
+
+        typeText("che")
+        $("fruit-cherry").click()
+        expect($("group").hasAttribute("data-placeholder")).toBe(false)
+      })
+
       it("gives the input and the value target the selection of the server render", async () => {
         const events = []
         document.addEventListener("input", (event) => events.push(event.type), { once: true })
@@ -1149,6 +1158,175 @@ describe("phem-combobox", () => {
 
         expect($("fruit-cherry").hasAttribute("data-selected")).toBe(true)
         expect($("fruit-lemon").hasAttribute("data-selected")).toBe(false)
+      })
+    })
+
+    describe("with the multiple selection mode", () => {
+      // The languages: the server renders a chip and an item for each one, one time.
+      function languages({ chosen = [] } = {}) {
+        const names = { js: "JavaScript", ts: "TypeScript", go: "Go" }
+        const chip = (v) => `<span id="chip-${v}" data-phem-combobox-target="chip" data-value="${v}"${chosen.includes(v) ? "" : " hidden"}>${names[v]}<button id="remove-${v}" data-phem-combobox-target="chipRemove" aria-label="Remove ${names[v]}">×</button></span>`
+        const item = (v) => `<li id="lang-${v}" data-phem-combobox-target="item" data-value="${v}"${chosen.includes(v) ? " data-selected" : ""}>${names[v]}</li>`
+
+        return `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="multiple" data-phem-combobox-open-on-input-click-value="true">
+            <div id="group" data-phem-combobox-target="inputGroup">
+              <div id="chips" data-phem-combobox-target="chips" aria-label="Selected languages">
+                ${Object.keys(names).map(chip).join("")}
+                <input id="input" data-phem-combobox-target="input" aria-label="Languages" placeholder="e.g. Go" data-phem-combobox-description="{count} selected" />
+              </div>
+            </div>
+            <button id="clear" data-phem-combobox-target="clear">Clear</button>
+            <div id="popup" data-phem-combobox-target="popup" hidden>
+              <ul id="list" data-phem-combobox-target="list">${Object.keys(names).map(item).join("")}</ul>
+            </div>
+            <button id="refresh" data-phem-on-click="c1.refresh">Refresh</button>
+          </div>`
+      }
+
+      const chips = () => [...$("chips").children].filter((el) => el.matches("[data-phem-combobox-target=chip]") && !el.hidden).map((el) => el.id)
+
+      it("shows the chips of the chosen items in the order of the choices, with no event of the server", async () => {
+        await mount(languages())
+        const changes = []
+        $("combobox").addEventListener("phem-combobox:change", (event) => changes.push(event.detail.value))
+        $("input").focus()
+        press("ArrowDown")
+
+        $("lang-ts").click()
+        $("lang-js").click()
+
+        expect(chips()).toEqual(["chip-ts", "chip-js"])
+        expect($("lang-ts").getAttribute("aria-selected")).toBe("true")
+        expect($("lang-ts").hasAttribute("data-selected")).toBe(true)
+        expect($("lang-go").getAttribute("aria-selected")).toBe("false")
+        expect($("list").getAttribute("aria-multiselectable")).toBe("true")
+        expect(changes).toEqual([["ts"], ["ts", "js"]])
+        expect(fetch).not.toHaveBeenCalled()
+
+        // A second click removes the value.
+        $("lang-ts").click()
+        expect(chips()).toEqual(["chip-js"])
+        expect($("lang-ts").getAttribute("aria-selected")).toBe("false")
+      })
+
+      it("keeps the popup open after a choice with an empty input, and closes it after a choice that clears a text", async () => {
+        await mount(languages())
+        $("input").focus()
+        press("ArrowDown")
+        $("lang-go").click()
+        expect($("popup").hidden).toBe(false)
+
+        typeText("ja")
+        press("ArrowDown")
+        press("Enter")
+
+        expect(chips()).toEqual(["chip-go", "chip-js"])
+        expect($("input").value).toBe("")
+        expect($("popup").hidden).toBe(true)
+        expect(document.activeElement.id).toBe("input")
+      })
+
+      it("removes a value with the remove button of its chip, Backspace and the clear target", async () => {
+        await mount(languages({ chosen: ["js", "ts", "go"] }))
+        expect(chips()).toEqual(["chip-js", "chip-ts", "chip-go"])
+
+        $("remove-ts").click()
+        expect(chips()).toEqual(["chip-js", "chip-go"])
+        expect($("lang-ts").hasAttribute("data-selected")).toBe(false)
+
+        $("input").focus()
+        press("Backspace")
+        expect(chips()).toEqual(["chip-js"])
+
+        // The arrow keys skip the hidden chips.
+        press("ArrowLeft")
+        expect(document.activeElement.id).toBe("chip-js")
+
+        expect($("clear").hidden).toBe(false)
+        $("clear").click()
+        expect(chips()).toEqual([])
+        expect($("clear").hidden).toBe(true)
+      })
+
+      it("shows the placeholder and the label of the chips only with no value, and the number of the values", async () => {
+        await mount(languages())
+        expect($("input").getAttribute("placeholder")).toBe("e.g. Go")
+        expect($("input").hasAttribute("aria-description")).toBe(false)
+        expect($("chips").hasAttribute("aria-label")).toBe(false)
+        expect($("chips").hasAttribute("role")).toBe(false)
+        expect($("group").hasAttribute("data-placeholder")).toBe(true)
+
+        $("lang-go").click()
+        $("lang-js").click()
+        expect($("input").hasAttribute("placeholder")).toBe(false)
+        expect($("input").getAttribute("aria-description")).toBe("2 selected")
+        expect($("chips").getAttribute("aria-label")).toBe("Selected languages")
+        expect($("chips").getAttribute("role")).toBe("toolbar")
+        expect($("group").hasAttribute("data-placeholder")).toBe(false)
+
+        $("remove-go").click()
+        $("remove-js").click()
+        expect($("input").getAttribute("placeholder")).toBe("e.g. Go")
+        expect($("input").hasAttribute("aria-description")).toBe(false)
+        expect($("chips").hasAttribute("aria-label")).toBe(false)
+        expect($("chips").hasAttribute("role")).toBe(false)
+        expect($("group").hasAttribute("data-placeholder")).toBe(true)
+      })
+
+      it("gives the focus to the input and opens the popup on a press on the space of the input group", async () => {
+        await mount(languages({ chosen: ["js"] }))
+        const press = new PointerEvent("pointerdown", { bubbles: true, cancelable: true })
+        $("chips").dispatchEvent(press)
+
+        expect(press.defaultPrevented).toBe(true)
+        expect(document.activeElement.id).toBe("input")
+
+        $("chips").click()
+        expect($("popup").hidden).toBe(false)
+
+        // A press on a chip is not a press on the space.
+        const chip = new PointerEvent("pointerdown", { bubbles: true, cancelable: true })
+        $("chip-js").dispatchEvent(chip)
+        expect(chip.defaultPrevented).toBe(false)
+      })
+
+      it("closes the popup when the focus goes to a chip", async () => {
+        await mount(languages({ chosen: ["js", "go"] }))
+        $("input").focus()
+        press("ArrowDown")
+        expect($("popup").hidden).toBe(false)
+
+        press("ArrowLeft")
+
+        expect(document.activeElement.id).toBe("chip-go")
+        expect($("popup").hidden).toBe(true)
+        expect($("input").getAttribute("aria-expanded")).toBe("false")
+      })
+
+      it("takes the first values and the changes of the server render, and keeps the values through a morph", async () => {
+        await mount(languages({ chosen: ["go"] }))
+        expect(chips()).toEqual(["chip-go"])
+
+        $("lang-ts").click()
+        respond(languages({ chosen: ["go"] }))
+        let done = nextDone()
+        click("#refresh")
+        await done
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        expect(chips()).toEqual(["chip-go", "chip-ts"])
+        expect($("lang-ts").hasAttribute("data-selected")).toBe(true)
+        expect($("input").hasAttribute("placeholder")).toBe(false)
+
+        // The server render chooses JavaScript and no more Go.
+        respond(languages({ chosen: ["js"] }))
+        done = nextDone()
+        click("#refresh")
+        await done
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        expect(chips()).toEqual(["chip-ts", "chip-js"])
+        expect($("lang-go").hasAttribute("data-selected")).toBe(false)
       })
     })
 

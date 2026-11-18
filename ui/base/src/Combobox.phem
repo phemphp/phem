@@ -9,7 +9,9 @@ use Phem\{Bound, Html, Node};
  * A text field with a list of suggestions: Base UI Combobox.Root, on the `phem-combobox` controller.
  *
  * The browser filters a list that the server renders one time, as in Base UI: set `filter` to
- * `contains` or `starts-with`. A choice writes the label of the item in the input. For a long list,
+ * `contains` or `starts-with`. A choice writes the label of the item in the input. With `multiple`,
+ * the browser also keeps the chosen items: render a ComboboxChip with a `value` for each item, and
+ * the chips of the chosen items show. For a long list,
  * the server filters: bind the input to a state (`phem:bind`), filter the items in the render, and
  * choose an item in the handler of its `onClick`. The server marks the chosen items with
  * `selected`. Give an `id`: the ids of the input and the items start with it, so the highlight stays
@@ -47,11 +49,15 @@ class Combobox
     #[Prop] public int $collisionPadding = 5;
     /** The name of the selected value in a form: a hidden input gets the `value` of the selected item. */
     #[Prop] public ?string $name = null;
-    /** The `value` of the item that is selected at first: Base UI `defaultValue`. */
-    #[Prop] public ?string $defaultValue = null;
+    /** The `value` of the item that is selected at first (a list with `multiple`): Base UI `defaultValue`. */
+    #[Prop] public string|array|null $defaultValue = null;
     /** The text of the input at first, for example the label of `defaultValue`: Base UI `defaultInputValue`. */
     #[Prop] public ?string $defaultInputValue = null;
-    /** `single` (one selected item, no free text) or `none`. Null gives the Base UI default of the component. */
+    /**
+     * `single` (one selected item, no free text), `multiple` (the browser keeps the chosen items) or
+     * `none` (the browser keeps no selection: the handlers of the server choose). Null gives the Base
+     * UI default of the component.
+     */
     #[Prop] public ?string $selectionMode = null;
     /** A click on the input opens the popup. Null gives the Base UI default of the component. */
     #[Prop] public ?bool $openOnInputClick = null;
@@ -71,11 +77,18 @@ class Combobox
 
     /**
      * The selection of Base UI: a Combobox with a list of the browser has one selected item, and
-     * its input has no free text. An Autocomplete has no selection.
+     * its input has no free text, or with `multiple` the chosen items. An Autocomplete has no
+     * selection.
      */
     public function resolvedSelectionMode(): string
     {
-        return $this->selectionMode ?? ($this->hasClientList() && !$this->multiple ? 'single' : 'none');
+        return $this->selectionMode ?? ($this->hasClientList() ? ($this->multiple ? 'multiple' : 'single') : 'none');
+    }
+
+    /** Whether the item with this `value` is selected at first (`defaultValue`). */
+    public function isDefault(string $value): bool
+    {
+        return \in_array($value, array_map(strval(...), (array) ($this->defaultValue ?? [])), true);
     }
 
     /**
@@ -102,7 +115,7 @@ class Combobox
         return (
             <div
                 data-controller="phem-combobox"
-                data-phem-combobox-selection-mode-value={{ 'single' === selectionMode ? 'single' : null }}
+                data-phem-combobox-selection-mode-value={{ 'none' === selectionMode ? null : selectionMode }}
                 data-phem-combobox-open-on-input-click-value={{ openOnInputClick ? 'true' : null }}
                 data-phem-combobox-multiple-value={{ multiple ? 'true' : null }}
                 data-phem-combobox-filter-value={{ filter }}
@@ -138,7 +151,10 @@ function ComboboxLabel(#[Context] Combobox $combobox, ?Html $children = null, mi
     return <label htmlFor={{ for }} className={{ classes('') }} {{ ...rest }}>{{ children }}</label>;
 }
 
-/** The box around the input, the clear button and the trigger. */
+/**
+ * The box around the input, the clear button and the trigger, or around the ComboboxChips. A press
+ * on the box out of the input and the buttons gives the focus to the input.
+ */
 #[Component]
 function ComboboxInputGroup(?Html $children = null, mixed ...$rest): Node
 {
@@ -153,9 +169,15 @@ function ComboboxInputGroup(?Html $children = null, mixed ...$rest): Node
     );
 }
 
-/** The text field. Bind it to a state of the app with `phem:bind` and `phem:live`. */
+/**
+ * The text field. Bind it to a state of the app with `phem:bind` and `phem:live`.
+ *
+ * With `multiple` and a list of the browser, the `placeholder` shows only when no item is chosen,
+ * and `selectedDescription` is the `aria-description` while an item is chosen: `{count}` is the
+ * number of the chosen items.
+ */
 #[Component]
-function ComboboxInput(#[Context] Combobox $combobox, ?Bound $value = null, mixed ...$rest): Node
+function ComboboxInput(#[Context] Combobox $combobox, ?Bound $value = null, ?string $selectedDescription = null, mixed ...$rest): Node
 {
     $id = $combobox->partId('input');
     $text = $combobox->defaultInputValue;
@@ -165,6 +187,7 @@ function ComboboxInput(#[Context] Combobox $combobox, ?Bound $value = null, mixe
             id={{ id }}
             phem:bind={{ value }}
             value={{ text }}
+            data-phem-combobox-description={{ selectedDescription }}
             phem:live
             data-phem-combobox-target="input"
             className={{ classes('h-full w-full border-0 bg-white pl-2 dark:bg-neutral-950 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 outline-none placeholder:text-neutral-500 dark:placeholder:text-neutral-400 dark:text-white') }}
@@ -272,8 +295,9 @@ function ComboboxRow(?Html $children = null, mixed ...$rest): Node
 /**
  * A suggestion. `value` gives its id, and the value of the selection.
  *
- * With a list of the browser (`filter` on the root), a click selects the item in the browser: it
- * needs no handler, and the item with the `defaultValue` of the root is selected at first. With a
+ * With a list of the browser (`filter` on the root), a click selects the item in the browser (with
+ * `multiple`, it adds or removes the item): it needs no handler, and the items with the
+ * `defaultValue` of the root are selected at first. With a
  * list of the server, a click runs its `onClick` handler, which chooses it, and the server gives
  * `selected` to the chosen items.
  */
@@ -281,7 +305,7 @@ function ComboboxRow(?Html $children = null, mixed ...$rest): Node
 function ComboboxItem(#[Context] Combobox $combobox, string $value, bool $selected = false, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
     $id = $combobox->partId('item-'.$value);
-    $selected = $selected || (null !== $combobox->defaultValue && $value === $combobox->defaultValue);
+    $selected = $selected || $combobox->isDefault($value);
 
     return (
         <div
@@ -346,13 +370,18 @@ function ComboboxSeparator(mixed ...$rest): Node
     return <div role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...rest }} />;
 }
 
-/** The box of the chips and the input, for a combobox with `multiple`. */
+/**
+ * The row of the chips and the input, for a combobox with `multiple`. Put it in a
+ * ComboboxInputGroup, the box around it. It gets `role="toolbar"` while a chip shows. With a list
+ * of the browser, its `aria-label` shows only when an item is chosen.
+ */
 #[Component]
 function ComboboxChips(?Html $children = null, mixed ...$rest): Node
 {
     return (
         <div
-            className={{ classes('flex min-h-8 w-64 flex-wrap items-center gap-1 border border-neutral-950 bg-white px-1 py-1 dark:border-white dark:bg-neutral-950 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-neutral-950 dark:focus-within:outline-white [&>input]:h-6 [&>input]:min-w-12 [&>input]:flex-1 [&>input]:w-auto') }}
+            data-phem-combobox-target="chips"
+            className={{ classes('flex w-full flex-wrap items-center gap-1') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -360,23 +389,35 @@ function ComboboxChips(?Html $children = null, mixed ...$rest): Node
     );
 }
 
-/** A chosen value, for a combobox with `multiple`. Give it an `aria-label`. */
+/**
+ * A chosen value, for a combobox with `multiple`. Give it an `aria-label`.
+ *
+ * With a list of the browser, render a chip for each item, with the `value` of its item: the
+ * browser shows the chips of the chosen items, in the order of the choices.
+ */
 #[Component]
-function ComboboxChip(?Html $children = null, mixed ...$rest): Node
+function ComboboxChip(#[Context] Combobox $combobox, ?string $value = null, ?Html $children = null, mixed ...$rest): Node
 {
+    $hidden = null !== $value && 'multiple' === $combobox->resolvedSelectionMode() && !$combobox->isDefault($value);
+
     return (
-        <span
+        <div
             data-phem-combobox-target="chip"
+            data-value={{ value }}
+            hidden={{ hidden }}
             aria-description="Press Backspace or Delete to remove"
-            className={{ classes('flex h-6 items-center gap-1 border border-neutral-950 bg-white px-1.5 text-sm font-normal text-neutral-950 outline-none dark:border-white dark:bg-neutral-950 dark:text-white focus-visible:bg-neutral-950 focus-visible:text-white dark:focus-visible:bg-white dark:focus-visible:text-neutral-950') }}
+            className={{ classes('group flex min-h-[calc(1.5rem-2px)] cursor-default items-center gap-1 overflow-hidden bg-neutral-100 py-0 pr-[0.2rem] pl-[0.4rem] text-sm leading-none font-normal text-neutral-950 outline-none focus-within:bg-neutral-950 focus-within:text-white [@media(hover:hover)]:data-highlighted:bg-neutral-950 [@media(hover:hover)]:data-highlighted:text-white dark:bg-neutral-800 dark:text-white dark:focus-within:bg-white dark:focus-within:text-neutral-950 dark:[@media(hover:hover)]:data-highlighted:bg-white dark:[@media(hover:hover)]:data-highlighted:text-neutral-950 [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}
-        </span>
+        </div>
     );
 }
 
-/** The button that removes a chip. Give it an `aria-label` and an `onClick` handler. */
+/**
+ * The button that removes a chip. Give it an `aria-label`. With a list of the browser, a click
+ * removes the chosen item. Else give it an `onClick` handler.
+ */
 #[Component]
 function ComboboxChipRemove(?Html $children = null, mixed ...$rest): Node
 {
@@ -384,10 +425,10 @@ function ComboboxChipRemove(?Html $children = null, mixed ...$rest): Node
         <button
             type="button"
             data-phem-combobox-target="chipRemove"
-            className={{ classes('flex size-4 items-center justify-center border-0 bg-transparent p-0 text-inherit') }}
+            className={{ classes('flex size-4 items-center justify-center border-0 bg-transparent p-0 text-inherit hover:bg-neutral-200 group-focus-within:hover:bg-neutral-700 dark:hover:bg-neutral-700 dark:group-focus-within:hover:bg-neutral-200') }}
             {{ ...rest }}
         >
-            {{ children ? children : <XIcon width="12" height="12" /> }}
+            {{ children ? children : <XIcon /> }}
         </button>
     );
 }

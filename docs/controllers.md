@@ -81,7 +81,7 @@ The controller shows its state in data attributes. Use them in your CSS, or as T
 | `data-panel-open` | A trigger of `phem-collapsible` | Its panel is open |
 | `data-side`, `data-align` | A positioned popup, its arrow, the popup of a navigation menu | The side and the alignment after a flip: `top`, `bottom`, `left`, `right`, `inline-start`, `inline-end`, and `start`, `center`, `end` |
 | `data-highlighted` | An item of a menu or of a combobox | The item has the focus, or the highlight |
-| `data-selected` | An item of a combobox with `multiple` | The server chose the item (`aria-selected="true"`) |
+| `data-selected` | An item of a combobox with `multiple` | The item is chosen (`aria-selected="true"`) |
 | `data-expanded` | The `phem-toast` element, a toast | The pointer or the focus is on the stack |
 | `data-swiping`, `data-swipe-direction` | A toast, a drawer | The user swipes the part, and the direction of the swipe (a toast gets the direction at the first move of the swipe) |
 | `data-pressed` | A toggle button, an item of a toggle group, the trigger of a menu, a context menu, a popover or a select | The button is pressed, or its popup is open |
@@ -1038,7 +1038,7 @@ The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when 
 | Enter | Chooses the highlighted item. With an open popup and no highlight, Enter closes the popup and keeps its default action (the submit of the form). With a closed popup, Enter has its default action |
 | Escape | Closes the popup. A second Escape clears the input, and the popup stays closed |
 
-To choose an item is a click on it: its handler runs (here `choose`), or its link opens. The handler sets the state, and the morph shows the new text in the input. Then the popup closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail. A click on a `clear` part clears the input and sends its `input` event, as when the user deletes the text. The popup stays closed when it was closed. A click on a `trigger` part opens or closes the popup. A click outside and the focus out of the combobox close the popup. A `trigger` part gets `aria-haspopup="listbox"`, `aria-expanded` and `data-popup-open`, and `aria-controls` only while the popup is open. An `inputGroup` part gets `role="group"` and `data-popup-open`. The input gets `aria-haspopup="listbox"`, and `data-list-empty` when the list has no visible item.
+To choose an item is a click on it: its handler runs (here `choose`), or its link opens. The handler sets the state, and the morph shows the new text in the input. Then the popup closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail. A click on a `clear` part clears the input and sends its `input` event, as when the user deletes the text. The popup stays closed when it was closed. A click on a `trigger` part opens or closes the popup. A click outside and the focus out of the combobox close the popup. A `trigger` part gets `aria-haspopup="listbox"`, `aria-expanded` and `data-popup-open`, and `aria-controls` only while the popup is open. An `inputGroup` part gets `role="group"` and `data-popup-open`. A press on an `inputGroup` out of the input, the chips and the buttons gives the focus to the input, as a press on the input. The input gets `aria-haspopup="listbox"`, and `data-list-empty` when the list has no visible item.
 
 The input can be in the popup, as a search. A `trigger` button opens the popup, and a `value` part in it that is not an input shows the label of the selection, or its `placeholder` (with `data-placeholder`):
 
@@ -1123,7 +1123,7 @@ The server gives the chosen items `aria-selected="true"`, and the controller doe
 | ArrowLeft, ArrowRight | A chip | Moves the focus to the chip before or after it, or back to the input |
 | Backspace, Delete | A chip | Clicks its `chipRemove`. The focus goes to the chip before it (Backspace) or after it (Delete), or to the input |
 
-The chips and their `chipRemove` parts get `tabindex="-1"`, so Tab goes from the input out of the combobox. A press on a `chipRemove` keeps the focus in the input. A press in the popup also keeps the focus in the input: on an item, on the space around the items, and on a list with `tabindex="-1"`. A field of your application in the popup (an input, a textarea, a select, editable content) gets the focus of its press.
+The chips and their `chipRemove` parts get `tabindex="-1"`, so Tab goes from the input out of the combobox. The focus on a chip closes the popup, as in Base UI. A `chips` part (the row of the chips and the input) gets `role="toolbar"` while a chip shows. A press on a `chipRemove` keeps the focus in the input. A press in the popup also keeps the focus in the input: on an item, on the space around the items, and on a list with `tabindex="-1"`. A field of your application in the popup (an input, a textarea, a select, editable content) gets the focus of its press.
 
 ### Select one item of a list of the browser
 
@@ -1155,9 +1155,50 @@ A click on an item selects it. The item gets `data-selected` and `aria-selected=
 <li data-value="cherry" data-phem-combobox-target="item" role="option" aria-selected="true" data-selected>Cherry</li>
 ```
 
-The first selection is the item that the server renders with `data-selected`: an input with no text gets its label, and a `value` part with no value gets its `data-value`, with no event. So `<li data-value="cherry" data-selected data-phem-combobox-target="item">Cherry</li>` gives `<input value="Cherry">` and `<input type="hidden" name="fruit" value="cherry">` in the browser. The selection of the browser stays after the morph of an event. A server render that changes the `data-selected` of an item sets the selection again, with the text of the input and the `value` part: use it to reset a form. The input has no free text: when the popup closes, the input gets the label of the selected item again, or no text. When the popup opens with the label of the selection in the input, the list shows all the items, until the user types, and the selected item has the highlight (`data-highlighted`) and is in view. Enter with no highlight closes the popup, and the input gets the label of the selected item again. A click on the `clear` part removes the text and the selection.
+An `inputGroup` part gets `data-placeholder` while no item is selected. The first selection is the item that the server renders with `data-selected`: an input with no text gets its label, and a `value` part with no value gets its `data-value`, with no event. So `<li data-value="cherry" data-selected data-phem-combobox-target="item">Cherry</li>` gives `<input value="Cherry">` and `<input type="hidden" name="fruit" value="cherry">` in the browser. The selection of the browser stays after the morph of an event. A server render that changes the `data-selected` of an item sets the selection again, with the text of the input and the `value` part: use it to reset a form. The input has no free text: when the popup closes, the input gets the label of the selected item again, or no text. When the popup opens with the label of the selection in the input, the list shows all the items, until the user types, and the selected item has the highlight (`data-highlighted`) and is in view. Enter with no highlight closes the popup, and the input gets the label of the selected item again. A click on the `clear` part removes the text and the selection.
 
-A `clear` part shows only when there is something to clear, and has `hidden` at other times: a selected item in this mode, a chip with `multiple`, and else a text in the input. With `data-phem-combobox-open-on-input-click-value="true"`, a click on the input opens the popup. With an `inputGroup` part (the box around the input and its buttons), the popup is positioned against this box, so `var(--anchor-width)` is its width.
+A `clear` part shows only when there is something to clear, and has `hidden` at other times: a selected item in this mode, a chip with `multiple` or the `multiple` selection mode, and else a text in the input. With `data-phem-combobox-open-on-input-click-value="true"`, a click on the input opens the popup. With an `inputGroup` part (the box around the input and its buttons), the popup is positioned against this box, so `var(--anchor-width)` is its width.
+
+### Choose more than one item of a list of the browser
+
+With a list of the browser and `data-phem-combobox-selection-mode-value="multiple"`, the browser keeps the chosen items, as the Combobox of Base UI with `multiple`. A choice sends no event to the server. The server renders the items and the chips one time: give each `chip` part the `data-value` of its item, and `hidden` when its item is not chosen. A `chips` part is the box of the chips and the input:
+
+```phem
+<div data-controller="phem-combobox" data-phem-combobox-filter-value="contains"
+     data-phem-combobox-selection-mode-value="multiple" data-phem-combobox-multiple-value="true">
+    <div data-phem-combobox-target="chips" aria-label="Selected languages">
+        {% for id, label in languages %}
+            <span key={{ id }} data-value={{ id }} hidden data-phem-combobox-target="chip">
+                {{ label }}
+                <button type="button" data-phem-combobox-target="chipRemove" aria-label="Remove {{ label }}">×</button>
+            </span>
+        {% endfor %}
+        <input data-phem-combobox-target="input" aria-label="Languages" placeholder="e.g. TypeScript"
+               data-phem-combobox-description="{count} selected" />
+    </div>
+    <div data-phem-combobox-target="popup" hidden>
+        <ul data-phem-combobox-target="list">
+            {% for id, label in languages %}
+                <li key={{ id }} data-value={{ id }} data-phem-combobox-target="item">{{ label }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+```
+
+A click on an item adds its `data-value` to the values, or removes it. The item gets `data-selected` and `aria-selected`, and the chip of the value shows. The chips show in the order of the choices. A click on a `chipRemove` part removes the value of its chip, and a click on the `clear` part removes all the values. The keys of the chips are the same as above. A choice clears the text of the input: when the input had a text, the popup closes, and else it stays open, as in Base UI. Each change sends `phem-combobox:change` with the `item` (or `null`) and the `value` (the array of the values) in the detail. While a value is chosen, the input has no `placeholder`, it gets the `aria-description` of its `data-phem-combobox-description` attribute (`{count}` is the number of the values), and the `chips` part keeps its `aria-label`. With no value, they lose it, and an `inputGroup` part gets `data-placeholder`. After a click on **TypeScript** and on **Go**, the browser shows:
+
+```html
+<div data-phem-combobox-target="chips" aria-label="Selected languages" role="toolbar">
+    <span data-value="js" hidden data-phem-combobox-target="chip" tabindex="-1">JavaScript …</span>
+    <span data-value="ts" data-phem-combobox-target="chip" tabindex="-1">TypeScript …</span>
+    <span data-value="go" data-phem-combobox-target="chip" tabindex="-1">Go …</span>
+    <input data-phem-combobox-target="input" role="combobox" aria-description="2 selected" ...>
+</div>
+<li data-value="ts" data-phem-combobox-target="item" role="option" aria-selected="true" data-selected>TypeScript</li>
+```
+
+The first values are the items that the server renders with `data-selected`. The values stay after the morph of an event, and a server render that changes the `data-selected` of an item adds or removes its value.
 
 The `trigger` and the `inputGroup` parts show the state of the popup. An Autocomplete (no selection) with a list of the browser, a trigger and an input group:
 

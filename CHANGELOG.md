@@ -8,6 +8,28 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A `phem-combobox` with a client filter and the new `multiple` selection mode
+  (`data-phem-combobox-selection-mode-value="multiple"`) keeps the chosen items in the browser,
+  as the Combobox of Base UI with `multiple`. A choice sends no event to the server. A click on
+  an item adds or removes its value, and the `chip` parts with a `data-value` show only for the
+  chosen values, in the order of the choices. A `chipRemove` and the `clear` part remove the
+  values. A choice clears the text of the input, and closes the popup when the input had a text.
+  The controller dispatches `phem-combobox:change` with the array of the values. While a value is
+  chosen, the input has no `placeholder` and gets the `aria-description` of its
+  `data-phem-combobox-description` attribute (`{count}`), and the new `chips` part keeps its
+  `aria-label`. As in Base UI, the `chips` part gets `role="toolbar"` while a chip shows, the
+  focus on a chip closes the popup, a press on an `inputGroup` out of the input and its parts
+  gives the focus to the input, and an `inputGroup` gets `data-placeholder` while no item is
+  selected (also in the `single` selection mode).
+- **Breaking**: In `phem/ui-base`, a `Combobox` with `multiple` and a `filter` keeps the chosen
+  items in the browser (the `multiple` selection mode). Render a `ComboboxChip` with the `value`
+  of its item for each item, and give no handler to the items and to the `ComboboxChipRemove`.
+  A handler that toggles the item on the server now runs after the choice of the browser. Set
+  `selectionMode="none"` to keep the choice on the server. `defaultValue` can be a list, and
+  `ComboboxInput` has a `selectedDescription` prop for the `aria-description` of the chosen items.
+  `ComboboxChips` is now the row of the chips, as the Chips of Base UI: put it in a
+  `ComboboxInputGroup`, the box around it. `ComboboxChip` (now a `<div>`) and
+  `ComboboxChipRemove` get the classes of the Multiple select demo of Base UI.
 - A `phem-combobox` with a client filter keeps its items and its highlight while its popup
   closes, as in Base UI. Before, a choice wrote the label of the item in the input, and the
   closing popup showed all the items again, with no highlight. Escape after a text with no match

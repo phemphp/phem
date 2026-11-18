@@ -331,8 +331,8 @@ function ComboboxPage(): Node
                 </Example>
                 <Example title="Multiple select" source="ComboboxMultipleDemo">
                     <Example.description>
-                        <p>The combobox can allow multiple selections by adding the <code>multiple</code> prop to <code>Combobox</code>. Selection chips are rendered with <code>ComboboxChip</code> inside the input that can be removed.</p>
-                        <p>In order for screen readers to announce how to reach and remove the chips, add <code>aria-description</code> to <code>ComboboxChip</code> and <code>ComboboxInput</code>, alongside the <code>aria-label</code> on <code>ComboboxChips</code> and <code>ComboboxChipRemove</code>. Translate them together with the rest of your interface.</p>
+                        <p>The combobox can allow multiple selections by adding the <code>multiple</code> prop to <code>Combobox</code>. Selection chips are rendered with <code>ComboboxChip</code> inside the input that can be removed. Render a chip with the <code>value</code> of each item: the browser keeps the selection, and shows the chips of the chosen items.</p>
+                        <p>In order for screen readers to announce how to reach and remove the chips, add <code>aria-description</code> to <code>ComboboxChip</code> and <code>selectedDescription</code> to <code>ComboboxInput</code>, alongside the <code>aria-label</code> on <code>ComboboxChips</code> and <code>ComboboxChipRemove</code>. Translate them together with the rest of your interface.</p>
                     </Example.description>
                     <ComboboxMultipleDemo />
                 </Example>
@@ -437,12 +437,12 @@ function ComboboxIdsDemo(): Node
     );
 }
 
-// The chosen languages are a state of the server: a click on an item adds or removes
-// it, and a chip removes its language.
+// The browser keeps the chosen languages: a click on an item shows its chip, with no
+// event of the server.
 #[Component]
-final class ComboboxMultipleDemo
+function ComboboxMultipleDemo(): Node
 {
-    public const array LANGUAGES = [
+    $languages = [
         'js' => 'JavaScript',
         'ts' => 'TypeScript',
         'py' => 'Python',
@@ -456,52 +456,33 @@ final class ComboboxMultipleDemo
         'swift' => 'Swift',
     ];
 
-    /** @var list<string> */
-    #[State] public array $selected = [];
-
-    public function toggle(string $id): void
-    {
-        $this->selected = \in_array($id, $this->selected, true)
-            ? array_values(array_diff($this->selected, [$id]))
-            : [...$this->selected, $id];
-    }
-
-    public function remove(string $id): void
-    {
-        $this->selected = array_values(array_diff($this->selected, [$id]));
-    }
-
-    public function render(): Node
-    {
-        $languages = self::LANGUAGES;
-        $count = \count($this->selected);
-
-        return (
-            <Combobox id="languages" multiple filter="contains">
-                <ComboboxLabel>Programming languages</ComboboxLabel>
-                <ComboboxChips aria-label={{ count > 0 ? 'Selected languages' : null }}>
-                    {% for id in selected %}
-                        <ComboboxChip key={{ id }} aria-label={{ languages[id] }}>
-                            {{ languages[id] }}
-                            <ComboboxChipRemove aria-label="Remove {{ languages[id] }}" onClick={{ remove(id) }} />
+    return (
+        <Combobox id="languages" multiple filter="contains" className="max-w-md">
+            <ComboboxLabel>Programming languages</ComboboxLabel>
+            <ComboboxInputGroup className="flex h-auto min-h-8 w-64 cursor-text flex-wrap items-center gap-0.5 px-2 py-1 has-[button]:px-1 min-[32rem]:w-[22rem]">
+                <ComboboxChips aria-label="Selected languages">
+                    {% for id, label in languages %}
+                        <ComboboxChip key={{ id }} value={{ id }} aria-label={{ label }}>
+                            {{ label }}
+                            <ComboboxChipRemove aria-label="Remove {{ label }}" />
                         </ComboboxChip>
                     {% endfor %}
-                    <ComboboxInput placeholder={{ count > 0 ? '' : 'e.g. TypeScript' }} aria-description={{ count > 0 ? count ~ ' selected. From the start of the input, press Left Arrow to focus the selected items' : null }} className="h-6 min-w-12 flex-1 border-0 px-1.5 focus:outline-none" />
+                    <ComboboxInput placeholder="e.g. TypeScript" selectedDescription="{count} selected. From the start of the input, press Left Arrow to focus the selected items" className="h-[calc(1.5rem-2px)] w-auto min-w-12 flex-1 p-0" />
                 </ComboboxChips>
-                <ComboboxPopup>
-                    <ComboboxEmpty>No languages found.</ComboboxEmpty>
-                    <ComboboxList>
-                        {% for id, label in languages %}
-                            <ComboboxItem key={{ id }} value={{ id }} selected={{ id in selected }} onClick={{ toggle(id) }}>
-                                <ComboboxItemIndicator />
-                                <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
-                            </ComboboxItem>
-                        {% endfor %}
-                    </ComboboxList>
-                </ComboboxPopup>
-            </Combobox>
-        );
-    }
+            </ComboboxInputGroup>
+            <ComboboxPopup className="duration-150">
+                <ComboboxEmpty className="py-2">No languages found.</ComboboxEmpty>
+                <ComboboxList className="max-h-[min(var(--available-height),24.5rem)] scroll-py-0 data-empty:py-1">
+                    {% for id, label in languages %}
+                        <ComboboxItem key={{ id }} value={{ id }}>
+                            <ComboboxItemIndicator />
+                            <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                        </ComboboxItem>
+                    {% endfor %}
+                </ComboboxList>
+            </ComboboxPopup>
+        </Combobox>
+    );
 }
 
 #[Component]
@@ -740,17 +721,19 @@ final class ComboboxAsyncMultipleDemo
         $count = \count($chosen);
 
         return (
-            <Combobox id="reviewers" multiple>
+            <Combobox id="reviewers" multiple className="max-w-md">
                 <ComboboxLabel>Assign reviewers</ComboboxLabel>
-                <ComboboxChips aria-label={{ count > 0 ? 'Selected reviewers' : null }}>
-                    {% for person in chosen %}
-                        <ComboboxChip key={{ person.id }} aria-label={{ person.name }}>
-                            {{ person.name }}
-                            <ComboboxChipRemove aria-label="Remove {{ person.name }}" onClick={{ remove(person.id) }} />
-                        </ComboboxChip>
-                    {% endfor %}
-                    <ComboboxInput phem:bind={{ query }} placeholder={{ count > 0 ? '' : 'e.g. Michael' }} className="h-6 min-w-12 flex-1 border-0 px-1.5 focus:outline-none" />
-                </ComboboxChips>
+                <ComboboxInputGroup className="flex h-auto min-h-8 w-64 cursor-text flex-wrap items-center gap-0.5 px-2 py-1 has-[button]:px-1 min-[32rem]:w-[22rem]">
+                    <ComboboxChips aria-label={{ count > 0 ? 'Selected reviewers' : null }}>
+                        {% for person in chosen %}
+                            <ComboboxChip key={{ person.id }} aria-label={{ person.name }}>
+                                {{ person.name }}
+                                <ComboboxChipRemove aria-label="Remove {{ person.name }}" onClick={{ remove(person.id) }} />
+                            </ComboboxChip>
+                        {% endfor %}
+                        <ComboboxInput phem:bind={{ query }} placeholder={{ count > 0 ? '' : 'e.g. Michael' }} className="h-[calc(1.5rem-2px)] w-auto min-w-12 flex-1 p-0" />
+                    </ComboboxChips>
+                </ComboboxInputGroup>
                 <ComboboxPopup>
                     <ComboboxStatus className="flex items-center gap-2 py-1 pr-5 pl-2 text-sm leading-5 text-neutral-500 empty:hidden dark:text-neutral-400">{{ status }}</ComboboxStatus>
                     <ComboboxList>
@@ -771,7 +754,8 @@ final class ComboboxAsyncMultipleDemo
 }
 
 // The labels of the Creatable demo of Base UI. A text that matches no label shows a
-// "Create" item, which opens a dialog to name the new label.
+// "Create" item, which opens a dialog to name the new label. The "Create" item runs a
+// handler, so the server keeps the chosen labels (`selectionMode="none"`).
 #[Component]
 final class ComboboxCreatableDemo
 {
@@ -850,17 +834,19 @@ final class ComboboxCreatableDemo
 
         return (
             <div className="contents">
-                <Combobox id="labels" multiple filter="contains">
+                <Combobox id="labels" multiple filter="contains" selectionMode="none">
                     <ComboboxLabel>Labels</ComboboxLabel>
-                    <ComboboxChips aria-label={{ count > 0 ? 'Selected labels' : null }}>
-                        {% for id in selected %}
-                            <ComboboxChip key={{ id }} aria-label={{ labels[id] }}>
-                                {{ labels[id] }}
-                                <ComboboxChipRemove aria-label="Remove {{ labels[id] }}" onClick={{ remove(id) }} />
-                            </ComboboxChip>
-                        {% endfor %}
-                        <ComboboxInput phem:bind={{ query }} placeholder={{ count > 0 ? '' : 'e.g. bug' }} className="h-6 min-w-12 flex-1 border-0 px-1.5 focus:outline-none" />
-                    </ComboboxChips>
+                    <ComboboxInputGroup className="flex h-auto min-h-8 w-64 cursor-text flex-wrap items-center gap-0.5 px-2 py-1 has-[button]:px-1 min-[32rem]:w-[22rem]">
+                        <ComboboxChips aria-label={{ count > 0 ? 'Selected labels' : null }}>
+                            {% for id in selected %}
+                                <ComboboxChip key={{ id }} aria-label={{ labels[id] }}>
+                                    {{ labels[id] }}
+                                    <ComboboxChipRemove aria-label="Remove {{ labels[id] }}" onClick={{ remove(id) }} />
+                                </ComboboxChip>
+                            {% endfor %}
+                            <ComboboxInput phem:bind={{ query }} placeholder={{ count > 0 ? '' : 'e.g. bug' }} className="h-[calc(1.5rem-2px)] w-auto min-w-12 flex-1 p-0" />
+                        </ComboboxChips>
+                    </ComboboxInputGroup>
                     <ComboboxPopup>
                         <ComboboxEmpty>No labels found.</ComboboxEmpty>
                         <ComboboxList>

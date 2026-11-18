@@ -64,17 +64,34 @@ final class PickersTest extends DemoTestCase
         expect($fruit)->toHaveValue('Mango');
         expect($ids->locator('input[name="fruit"]'))->toHaveValue('mango');
 
-        // Multiple: a click on an item adds a chip, and the popup stays open.
+        // Multiple: the browser keeps the chosen languages. A click on an item adds a chip, and
+        // the popup stays open.
         $multiple = $page->getByRole('region', ['name' => 'Multiple select'])->locator('[data-demo="preview"]');
         $languages = $multiple->getByRole('combobox', ['name' => 'Programming languages']);
+        expect($languages)->toHaveAttribute('placeholder', 'e.g. TypeScript');
+        expect($multiple->getByRole('button', ['name' => 'Remove TypeScript']))->toHaveCount(0);
         $languages->click();
         $page->getByRole('option', ['name' => 'TypeScript'])->click();
         expect($multiple->getByRole('button', ['name' => 'Remove TypeScript']))->toBeVisible();
         expect($page->getByRole('option', ['name' => 'TypeScript']))->toHaveAttribute('aria-selected', 'true');
+        expect($languages)->not()->toHaveAttribute('placeholder', 'e.g. TypeScript');
         $page->getByRole('option', ['name' => 'Go'])->click();
         expect($multiple->getByRole('button', ['name' => 'Remove Go']))->toBeVisible();
+        expect($languages)->toHaveAttribute('aria-description', '2 selected. From the start of the input, press Left Arrow to focus the selected items');
 
-        // Backspace in the empty input removes the last chip.
+        // A choice with a text clears the text, and the chips keep the order of the choices.
+        $languages->fill('java');
+        $page->getByRole('option', ['name' => 'JavaScript'])->click();
+        expect($languages)->toHaveValue('');
+        $chips = $multiple->getByRole('toolbar', ['name' => 'Selected languages'])->locator('[data-phem-combobox-target="chip"]:visible');
+        expect($chips)->toHaveCount(3);
+        expect($chips->nth(0))->toHaveText('TypeScript');
+        expect($chips->nth(1))->toHaveText('Go');
+        expect($chips->nth(2))->toHaveText('JavaScript');
+
+        // The remove button of a chip, and Backspace in the empty input, remove a chip.
+        $multiple->getByRole('button', ['name' => 'Remove JavaScript'])->click();
+        expect($multiple->getByRole('button', ['name' => 'Remove JavaScript']))->toHaveCount(0);
         $languages->focus();
         $page->keyboard()->press('Backspace');
         expect($multiple->getByRole('button', ['name' => 'Remove Go']))->toHaveCount(0);

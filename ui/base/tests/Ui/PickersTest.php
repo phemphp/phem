@@ -59,6 +59,21 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorExists('[role="row"][data-phem-combobox-target="row"] #typed-item-a');
     }
 
+    public function testAMultipleComboboxWithAListOfTheBrowserKeepsTheChosenItems(): void
+    {
+        $this->mount(self::APP.'ComboboxMultipleDemo')
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-selection-mode-value="multiple"][data-phem-combobox-multiple-value="true"]')
+            ->assertSelectorExists('[data-phem-combobox-target="chips"][aria-label="Selected languages"]')
+            ->assertSelectorExists('#langs-input[placeholder="e.g. Go"][data-phem-combobox-description="{count} selected"]')
+            ->assertSelectorCount(3, '[data-phem-combobox-target="chip"][data-value]')
+            ->assertSelectorExists('[data-phem-combobox-target="chip"][data-value="go"]:not([hidden])')
+            ->assertSelectorExists('[data-phem-combobox-target="chip"][data-value="js"][hidden]')
+            ->assertSelectorExists('[data-phem-combobox-target="chip"][data-value="php"]:not([hidden])')
+            ->assertSelectorExists('#langs-item-go[data-selected][aria-selected="true"]')
+            ->assertSelectorExists('#langs-item-js:not([data-selected])[aria-selected="false"]')
+            ->assertSelectorExists('#langs-item-php[data-selected]');
+    }
+
     public function testThePopupOfAnAutocompleteHasNoAnimation(): void
     {
         $this->mount(self::APP.'ComboboxSelectionDemo')

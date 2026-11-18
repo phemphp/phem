@@ -5,7 +5,7 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
 use Phem\Ui\Base\{Autocomplete, Combobox, Drawer, DrawerViewport, ToastViewport};
 
 // A Combobox with a list of the browser has one selected item, and an Autocomplete has none.
@@ -27,6 +27,30 @@ function ComboboxSelectionDemo(): Node
                 <ComboboxPopup><ComboboxList><ComboboxItem value="fix">fix</ComboboxItem></ComboboxList></ComboboxPopup>
             </Autocomplete>
         </div>
+    );
+}
+
+// With `multiple` and a list of the browser, the browser keeps the chosen items: the chips
+// of the other items are hidden.
+#[Component]
+function ComboboxMultipleDemo(): Node
+{
+    return (
+        <Combobox id="langs" multiple filter="contains" defaultValue={{ ['go', 'php'] }}>
+            <ComboboxChips aria-label="Selected languages">
+                <ComboboxChip value="go" aria-label="Go">Go<ComboboxChipRemove aria-label="Remove Go" /></ComboboxChip>
+                <ComboboxChip value="js" aria-label="JavaScript">JavaScript<ComboboxChipRemove aria-label="Remove JavaScript" /></ComboboxChip>
+                <ComboboxChip value="php" aria-label="PHP">PHP<ComboboxChipRemove aria-label="Remove PHP" /></ComboboxChip>
+                <ComboboxInput placeholder="e.g. Go" selectedDescription="{count} selected" />
+            </ComboboxChips>
+            <ComboboxPopup>
+                <ComboboxList>
+                    <ComboboxItem value="go">Go</ComboboxItem>
+                    <ComboboxItem value="js">JavaScript</ComboboxItem>
+                    <ComboboxItem value="php">PHP</ComboboxItem>
+                </ComboboxList>
+            </ComboboxPopup>
+        </Combobox>
     );
 }
 

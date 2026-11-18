@@ -68,6 +68,21 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 // `chipRemove` of the last chip. The chips and their `chipRemove` targets get `tabindex="-1"`,
 // and a chosen item gets `data-selected`.
 //
+// With the `selectionMode` value `multiple` and a list of the client, the browser keeps the chosen
+// items, as the Combobox of Base UI with `multiple`: the server renders the items and the chips
+// one time, and a choice needs no event of the server. A click on an item adds its `data-value` to
+// the values, or removes it: the item gets `data-selected` and `aria-selected`. Each `chip` target
+// with a `data-value` shows only while its value is chosen (the others get `hidden`), in the order
+// of the choices. A click on its `chipRemove` removes the value, and a click on the `clear` target
+// removes all the values. A choice clears the text of the input: when the input had a text, the
+// popup closes, else it stays open. The first values are the items that the server renders with
+// `data-selected`, and a server render that changes the `data-selected` of an item adds or removes
+// its value. Each change dispatches `phem-combobox:change` with the `item` (or null) and the
+// `value` (the array of the values) in the detail. While a value is chosen, the input has no
+// `placeholder`, it gets the `aria-description` of its `data-phem-combobox-description` attribute
+// (`{count}` is the number of the values), and a `chips` target (the box of the chips, which gets
+// `role="toolbar"`) keeps its `aria-label`. With no value, they lose it.
+//
 // With the `filter` value (`contains` or `starts-with`), the browser filters the items that the
 // server rendered one time: an item that does not match the text of the input gets `hidden`, and
 // a `group` target with no visible item too. The match ignores the case and the accents
@@ -93,7 +108,7 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 // items, until the user types, and the selected item has the highlight and is in view. A click on the `clear` target also removes the selection.
 //
 // The `clear` targets show only when there is something to clear: a selected item with the
-// `single` selection mode, a chip with the `multiple` value, and else a text in the input. A
+// `single` selection mode, a chip with the `multiple` value or selection mode, and else a text in the input. A
 // hidden `clear` target has `hidden`.
 //
 // The input can be in the popup, as a search: a `trigger` (a button with a `value` target that is not
@@ -120,7 +135,7 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 const FIELDS = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
 
 export default class PhemComboboxController extends Controller {
-  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "row", "item", "group", "groupLabel", "empty", "status", "chip", "chipRemove"]
+  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "row", "item", "group", "groupLabel", "empty", "status", "chips", "chip", "chipRemove"]
   static values = {
     autoHighlight: String,
     keepHighlight: Boolean,
@@ -150,6 +165,15 @@ export default class PhemComboboxController extends Controller {
     // The selected item of the `single` selection mode. It stays through the morph: the same
     // element, or an item with its id. `undefined` until the first render reads the server render.
     this.selected = undefined
+    // The chosen values of the `multiple` selection mode, in the order of the choices. `undefined`
+    // until the first render reads the server render.
+    this.values = undefined
+    // The values of a server render that changed the `data-selected` of their item: true (chosen)
+    // or false.
+    this.serverValues = new Map()
+    // The `placeholder` of the input and the `aria-label` of the `chips` targets in the server
+    // render: they show only with no chosen value.
+    this.labels = new WeakMap()
     // The user changed the text of the input after the popup opened.
     this.queryChanged = false
     // The `data-selected` of each item in the last server render, and the selection of a server
@@ -191,6 +215,7 @@ export default class PhemComboboxController extends Controller {
     this.element.addEventListener("pointermove", this.onPointerMove, options)
     this.element.addEventListener("pointerout", this.onPointerOut, options)
     this.element.addEventListener("focusout", this.onFocusOut, options)
+    this.element.addEventListener("focusin", this.onFocusIn, options)
     this.element.addEventListener("turbo:before-morph-element", this.onBeforeMorph, options)
 
     // The loading state of phem on the input goes to the popup.
@@ -238,6 +263,10 @@ export default class PhemComboboxController extends Controller {
   }
 
   inputGroupTargetConnected() {
+    this.#later()
+  }
+
+  chipsTargetConnected() {
     this.#later()
   }
 
@@ -341,14 +370,38 @@ export default class PhemComboboxController extends Controller {
   onClick = (event) => {
     if (event.defaultPrevented) return
 
-    if (this.chipRemoveTargets.some((el) => el.contains(event.target))) return
+    const remove = this.chipRemoveTargets.find((el) => el.contains(event.target))
+    if (remove) {
+      // The `multiple` selection mode: the chip of the remove button loses its value.
+      const value = this.#selectingMany ? this.chipTargets.find((chip) => chip.contains(remove))?.getAttribute("data-value") : null
+      if (value != null) {
+        this.#choose(this.values.filter((v) => v !== value), null)
+        this.#render()
+      }
+
+      return
+    }
 
     const item = this.#itemOf(event.target)
     if (item) {
       if (isDisabled(item)) return
 
+      // The `multiple` selection mode: the item adds or removes its value, and the text of the
+      // input goes. A choice that clears a text closes the popup, as in Base UI.
+      if (this.#selectingMany) {
+        const value = valueOf(item)
+        this.#choose(this.values.includes(value) ? this.values.filter((v) => v !== value) : [...this.values, value], item)
+
+        if ((this.#input?.value ?? "") !== "") {
+          this.wanted = false
+          this.queryChanged = false
+          this.highlighted = null
+          this.#fill("")
+        }
+      }
+
       // A choice of more than one item keeps the popup open, with its highlight.
-      if (!this.multipleValue) {
+      if (!this.#multiple) {
         this.wanted = false
         this.queryChanged = false
         this.highlighted = null
@@ -360,7 +413,7 @@ export default class PhemComboboxController extends Controller {
 
       this.#render()
       // With the input in the popup, a choice gives the focus back to the trigger.
-      const focus = this.#inPopup && !this.multipleValue ? this.triggerTargets[0] : this.#input
+      const focus = this.#inPopup && !this.#multiple ? this.triggerTargets[0] : this.#input
       focus?.focus({ preventScroll: true })
       this.dispatch("select", { detail: { item } })
 
@@ -382,7 +435,8 @@ export default class PhemComboboxController extends Controller {
       return
     }
 
-    if (this.openOnInputClickValue && event.target === this.#input && !this.#open) {
+    // A press on the input group out of the input and its parts acts as a press on the input.
+    if (this.openOnInputClickValue && (event.target === this.#input || this.#inGroupSpace(event.target)) && !this.#open) {
       this.wanted = true
       this.#render()
     }
@@ -398,6 +452,17 @@ export default class PhemComboboxController extends Controller {
 
     const parts = [...this.popupTargets, ...this.triggerTargets, ...this.clearTargets, ...this.chipRemoveTargets]
     if (this.#itemOf(event.target) || parts.some((el) => el.contains(event.target))) event.preventDefault()
+
+    // A press on the space of the input group gives the focus to the input, as in Base UI.
+    if (this.#inGroupSpace(event.target)) {
+      event.preventDefault()
+      this.#input?.focus()
+    }
+  }
+
+  // The focus on a chip closes the popup, as in Base UI.
+  onFocusIn = (event) => {
+    if (this.#chipOf(event.target)) this.#dismiss()
   }
 
   // A move of the pointer highlights the item under it. The browser also sends `pointerover` when
@@ -434,27 +499,40 @@ export default class PhemComboboxController extends Controller {
     })
   }
 
-  // The morph of an item in the `single` selection mode: a server render that changes the
-  // `data-selected` of an item sets the selection, as a new state value does (phem_client_state.js).
+  // The morph of an item in the `single` or `multiple` selection mode: a server render that changes
+  // the `data-selected` of an item sets the selection, as a new state value does
+  // (phem_client_state.js).
   onBeforeMorph = (event) => {
     const item = event.target
 
     // The morph compares the content of an `empty` target with the server render.
     if (this.emptyTargets.includes(item)) this.#renderEmpty(item, true)
 
-    if (!this.#selecting || !this.serverSelected.has(item)) return
+    if (!(this.#selecting || this.#selectingMany) || !this.serverSelected.has(item)) return
 
     const next = event.detail.newElement?.hasAttribute("data-selected") ?? false
     if (next === this.serverSelected.get(item)) return
 
     this.serverSelected.set(item, next)
-    if (next) this.serverSelection = item
+    if (this.#selectingMany) this.serverValues.set(valueOf(event.detail.newElement ?? item), next)
+    else if (next) this.serverSelection = item
     else if (this.serverSelection === undefined) this.serverSelection = null
   }
 
   // After a morph that changed the selection of the server: the selection, the text of the input
   // and the `value` targets take it, with no event.
   #takeServerSelection() {
+    if (this.#selectingMany && this.values !== undefined && this.serverValues.size > 0) {
+      let values = this.values
+      for (const [value, chosen] of this.serverValues) {
+        values = values.filter((v) => v !== value)
+        if (chosen) values.push(value)
+      }
+      this.values = values
+    }
+
+    this.serverValues.clear()
+
     const item = this.serverSelection
     this.serverSelection = undefined
     if (item === undefined || !this.#selecting) return
@@ -475,7 +553,7 @@ export default class PhemComboboxController extends Controller {
 
   // The keys of the input that go to the chips. Returns true when the key went to a chip.
   #chipsKeydown(event) {
-    const chips = this.chipTargets
+    const chips = this.#chips
     const input = this.#input
     if (chips.length === 0) return false
 
@@ -503,7 +581,7 @@ export default class PhemComboboxController extends Controller {
   // the chip: the focus goes to the chip before it (Backspace) or after it (Delete), or to the
   // input.
   #chipKeydown(event, chip) {
-    const chips = this.chipTargets
+    const chips = this.#chips
     const at = chips.indexOf(chip)
     const [back, forward] = this.#rtl ? ["ArrowRight", "ArrowLeft"] : ["ArrowLeft", "ArrowRight"]
 
@@ -603,6 +681,12 @@ export default class PhemComboboxController extends Controller {
     this.dispatch("change", { detail: { item: item ?? null, value: item ? value : null } })
   }
 
+  // The `multiple` selection mode: the new values, and the item that the user chose (or null).
+  #choose(values, item) {
+    this.values = values
+    this.dispatch("change", { detail: { item, value: [...values] } })
+  }
+
   // An inline `mode`: the input shows the label of the highlighted item, or the text of the user
   // again when no item has the highlight.
   #complete(item) {
@@ -642,6 +726,7 @@ export default class PhemComboboxController extends Controller {
     if (!input) return
 
     if (this.#selecting && this.#selectedItem) this.#select(null)
+    if (this.#selectingMany && this.values.length > 0) this.#choose([], null)
     this.queryChanged = false
     input.value = ""
 
@@ -760,6 +845,7 @@ export default class PhemComboboxController extends Controller {
   // The state: the open popup, the highlight and the ARIA attributes.
   #render() {
     if (this.selected === undefined) this.#takeFirstSelection()
+    if (this.values === undefined && this.#selectingMany) this.values = this.itemTargets.filter((el) => el.hasAttribute("data-selected")).map(valueOf)
     for (const item of this.itemTargets) if (!this.serverSelected.has(item)) this.serverSelected.set(item, item.hasAttribute("data-selected"))
 
     // The selected item left the page (a new list of the server): no item is selected.
@@ -774,7 +860,7 @@ export default class PhemComboboxController extends Controller {
 
     if (list) {
       if (!list.hasAttribute("role")) list.setAttribute("role", this.gridValue ? "grid" : "listbox")
-      if (this.multipleValue) list.setAttribute("aria-multiselectable", "true")
+      if (this.#multiple) list.setAttribute("aria-multiselectable", "true")
     }
 
     // A `value` target that is not an input shows the label of the selection, or its `placeholder`.
@@ -787,8 +873,15 @@ export default class PhemComboboxController extends Controller {
       el.toggleAttribute("data-placeholder", label === null)
     }
 
+    this.#renderChips()
     for (const chip of this.chipTargets) chip.tabIndex = -1
     for (const remove of this.chipRemoveTargets) remove.tabIndex = -1
+    // The row of the chips is a toolbar while a chip shows.
+    const chipped = this.#chips.length > 0
+    for (const el of this.chipsTargets) {
+      if (chipped) el.setAttribute("role", "toolbar")
+      else el.removeAttribute("role")
+    }
 
     for (const el of [...this.popupTargets, ...this.listTargets]) el.toggleAttribute("data-empty", empty)
     for (const el of this.emptyTargets) {
@@ -830,8 +923,17 @@ export default class PhemComboboxController extends Controller {
       if (open) item.toggleAttribute("data-highlighted", item === active)
       item.toggleAttribute("data-disabled", isDisabled(item))
 
+      // The `multiple` selection mode: `aria-selected` is the choice of the browser.
+      if (this.#selectingMany) {
+        const chosen = this.values.includes(valueOf(item))
+        item.setAttribute("aria-selected", String(chosen))
+        item.toggleAttribute("data-selected", chosen)
+
+        continue
+      }
+
       // A choice of more than one item: `aria-selected` is the choice of the server.
-      if (this.multipleValue) {
+      if (this.#multiple) {
         if (!item.hasAttribute("aria-selected")) item.setAttribute("aria-selected", "false")
         item.toggleAttribute("data-selected", item.getAttribute("aria-selected") === "true")
 
@@ -852,7 +954,7 @@ export default class PhemComboboxController extends Controller {
     }
 
     // A clear button shows only when there is something to clear.
-    const clearable = this.#selecting ? this.#selectedItem !== null : this.multipleValue ? this.chipTargets.length > 0 : (input?.value ?? "") !== ""
+    const clearable = this.#selecting ? this.#selectedItem !== null : this.#multiple ? this.#chips.length > 0 : (input?.value ?? "") !== ""
     for (const el of this.clearTargets) {
       el.hidden = !clearable
       el.toggleAttribute("data-visible", clearable)
@@ -879,9 +981,12 @@ export default class PhemComboboxController extends Controller {
       trigger.toggleAttribute("data-popup-open", open)
     }
 
+    // The input group has `data-placeholder` while no item is selected, as in Base UI.
+    const placeholder = this.#selecting ? this.#selectedItem === null : this.#selectingMany && this.values.length === 0
     for (const group of this.inputGroupTargets) {
       if (!group.hasAttribute("role")) group.setAttribute("role", "group")
       group.toggleAttribute("data-popup-open", open)
+      if (this.#selecting || this.#selectingMany) group.toggleAttribute("data-placeholder", placeholder)
     }
 
     // A group of items gets the name of its `groupLabel`, as the GroupLabel of Base UI.
@@ -898,6 +1003,47 @@ export default class PhemComboboxController extends Controller {
     if (opening && active && active === this.#selection(items)) active.scrollIntoView?.({ block: "nearest" })
   }
 
+  // The `multiple` selection mode: the chips of the chosen values show, in the order of the
+  // choices, and the input and the `chips` targets show the number of the values.
+  #renderChips() {
+    if (!this.#selectingMany) return
+
+    const chips = this.chipTargets.filter((el) => el.hasAttribute("data-value"))
+    for (const chip of chips) chip.hidden = !this.values.includes(chip.getAttribute("data-value"))
+
+    // The chosen chips go after the last chip (before the input), in the order of the choices.
+    const shown = this.values.map((value) => chips.find((el) => el.getAttribute("data-value") === value)).filter(Boolean)
+    const order = chips.filter((el) => !el.hidden)
+    const last = chips.at(-1)
+    if (last && order.some((el, i) => el !== shown[i])) {
+      const after = last.nextSibling
+      for (const chip of shown) last.parentNode.insertBefore(chip, after)
+    }
+
+    const count = this.values.length
+    const input = this.#input
+    if (input) {
+      this.#label(input, "placeholder", count > 0)
+
+      const template = input.getAttribute("data-phem-combobox-description")
+      if (template && count > 0) input.setAttribute("aria-description", template.replaceAll("{count}", String(count)))
+      else if (template) input.removeAttribute("aria-description")
+    }
+
+    for (const el of this.chipsTargets) this.#label(el, "aria-label", count === 0)
+  }
+
+  // Removes an attribute of the server render, or gives it back.
+  #label(el, name, remove) {
+    if (!this.labels.has(el)) this.labels.set(el, el.getAttribute(name))
+
+    const value = this.labels.get(el)
+    if (value === null) return
+
+    if (remove) el.removeAttribute(name)
+    else el.setAttribute(name, value)
+  }
+
   // The attributes of the state.
   #owns(el, name) {
     if (this.popupTargets.includes(el) && name === "aria-busy") return true
@@ -906,12 +1052,15 @@ export default class PhemComboboxController extends Controller {
     if (el === this.#input) {
       // A client list: the text of an input with no `phem:bind` belongs to the client.
       if (name === "value" && this.#clientList && !el.hasAttribute("data-phem-bind")) return true
+      if ((name === "placeholder" || name === "aria-description") && this.#selectingMany) return true
 
       return ["aria-expanded", "aria-activedescendant", "aria-haspopup", "data-popup-open", "data-list-empty"].includes(name)
     }
     if (this.triggerTargets.includes(el)) return ["aria-expanded", "aria-haspopup", "data-popup-open"].includes(name)
-    if (this.inputGroupTargets.includes(el)) return name === "role" || name === "data-popup-open"
-    if (this.itemTargets.includes(el)) return (name === "aria-selected" && !this.multipleValue) || name === "data-highlighted" || (name === "data-selected" && this.#selecting)
+    if (this.inputGroupTargets.includes(el)) return name === "role" || name === "data-popup-open" || (name === "data-placeholder" && (this.#selecting || this.#selectingMany))
+    if (this.itemTargets.includes(el)) return (name === "aria-selected" && (!this.#multiple || this.#selectingMany)) || name === "data-highlighted" || (name === "data-selected" && (this.#selecting || this.#selectingMany))
+    if (this.chipTargets.includes(el)) return name === "hidden" && this.#selectingMany && el.hasAttribute("data-value")
+    if (this.chipsTargets.includes(el)) return name === "role" || (name === "aria-label" && this.#selectingMany)
     if (this.emptyTargets.includes(el)) return name === "role" || name === "aria-live" || name === "aria-atomic"
     if (this.clearTargets.includes(el)) return name === "hidden" || name === "data-visible"
     if (this.valueTargets.includes(el)) return name === "value" && this.#selecting
@@ -950,12 +1099,22 @@ export default class PhemComboboxController extends Controller {
 
   // No selected item: the Autocomplete of Base UI. `multiple` is a selection of more than one item.
   get #autocomplete() {
-    return this.selectionModeValue === "none" && !this.multipleValue
+    return this.selectionModeValue === "none" && !this.#multiple
+  }
+
+  // More than one chosen item: the `multiple` value, or the `multiple` selection mode.
+  get #multiple() {
+    return this.multipleValue || this.selectionModeValue === "multiple"
+  }
+
+  // The browser keeps the chosen items: the `multiple` selection mode, with a list of the client.
+  get #selectingMany() {
+    return this.selectionModeValue === "multiple" && this.#clientList
   }
 
   // One selected item: the `single` selection mode, with a list of the client.
   get #selecting() {
-    return this.selectionModeValue === "single" && !this.multipleValue && this.#clientList
+    return this.selectionModeValue === "single" && !this.#multiple && this.#clientList
   }
 
   // The selected item in the page: the same element, or the item with its id after a morph.
@@ -998,8 +1157,20 @@ export default class PhemComboboxController extends Controller {
     return this.itemTargets.find((item) => item.contains(el))
   }
 
+  // A press on the input group out of the input, the chips and the buttons.
+  #inGroupSpace(el) {
+    if (!(el instanceof Element) || !this.inputGroupTargets.some((group) => group.contains(el))) return false
+
+    return !el.closest('input, textarea, select, button, a, [contenteditable]:not([contenteditable="false"])') && !this.chipTargets.some((chip) => chip.contains(el))
+  }
+
   #chipOf(el) {
     return this.chipTargets.find((chip) => chip === el)
+  }
+
+  // The chips that show: the `multiple` selection mode hides the chips of the other values.
+  get #chips() {
+    return this.chipTargets.filter((el) => !el.hidden)
   }
 
   #removeOf(chip) {
@@ -1009,6 +1180,11 @@ export default class PhemComboboxController extends Controller {
   get #rtl() {
     return getComputedStyle(this.element).direction === "rtl"
   }
+}
+
+// The value of an item: its `data-value` attribute.
+function valueOf(item) {
+  return item.getAttribute("data-value") ?? ""
 }
 
 // The `aria-activedescendant` of the input: the id of the item, or an element reference when the
