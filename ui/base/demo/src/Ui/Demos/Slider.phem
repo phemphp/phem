@@ -194,10 +194,8 @@ function SliderThumbAlignmentDemo(): Node
 #[Component]
 function SliderVerticalDemo(): Node
 {
-    $vertical = Orientation::Vertical;
-
     return (
-        <Slider orientation={{ vertical }} defaultValue={{ 35 }}>
+        <Slider orientation={{ Orientation.Vertical }} defaultValue={{ 35 }}>
             <SliderControl className="h-32">
                 <SliderTrack>
                     <SliderIndicator />

@@ -163,9 +163,6 @@ function NavigationMenuNestedDemo(): Node
             'Base UI components can be replaced and composed with your own existing components.',
         ],
     ];
-    $vertical = Orientation::Vertical;
-    $right = Side::Right;
-    $end = Align::End;
 
     return (
         <NavigationMenu collisionPaddingInline={{ 20 }}>
@@ -186,7 +183,7 @@ function NavigationMenuNestedDemo(): Node
                                 </li>
                             {% endfor %}
                             <li>
-                                <NavigationMenu orientation={{ vertical }} side={{ right }} align={{ end }} sideOffset={{ 8 }} alignOffset={{ -8 }}>
+                                <NavigationMenu orientation={{ Orientation.Vertical }} side={{ Side.Right }} align={{ Align.End }} sideOffset={{ 8 }} alignOffset={{ -8 }}>
                                     <NavigationMenuList className="block">
                                         <NavigationMenuItem value="handbook">
                                             <NavigationMenuTrigger className="relative block h-full w-full border-0 bg-transparent p-2 min-[501px]:p-2 text-left text-inherit no-underline hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800">
@@ -353,7 +350,6 @@ function NavigationMenuInlineDemo(): Node
             'description' => 'Apply tokens and state styles without fighting the underlying markup.',
         ],
     ];
-    $vertical = Orientation::Vertical;
 
     return (
         <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
@@ -364,7 +360,7 @@ function NavigationMenuInlineDemo(): Node
                         <NavigationMenuIcon />
                     </NavigationMenuTrigger>
                     <NavigationMenuContent className="h-full w-[calc(100vw_-_40px)] transition-[opacity,translate] duration-[calc(var(--duration)*0.5),var(--duration)] ease-[ease,cubic-bezier(0.4,0,0.2,1)] data-starting-style:data-[activation-direction=left]:opacity-0 data-starting-style:data-[activation-direction=right]:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-[calc(var(--duration)*0.5)] data-ending-style:ease-[ease] data-starting-style:data-[activation-direction=left]:translate-x-[-2rem] data-starting-style:data-[activation-direction=right]:translate-x-[2rem] data-ending-style:data-[activation-direction=left]:translate-x-[2rem] data-ending-style:data-[activation-direction=right]:translate-x-[-2rem] p-0 min-[700px]:[width:min(675px,calc(100vw-40px))] min-[500px]:w-[calc(100vw_-_40px)] min-[500px]:max-w-none">
-                        <NavigationMenu orientation={{ vertical }} defaultValue="developers" className="overflow-hidden overflow-clip text-neutral-950 dark:text-white">
+                        <NavigationMenu orientation={{ Orientation.Vertical }} defaultValue="developers" className="overflow-hidden overflow-clip text-neutral-950 dark:text-white">
                             <div className="grid grid-cols-1 overflow-hidden overflow-clip min-[700px]:grid-cols-[13rem_minmax(0,1fr)]">
                                 <NavigationMenuList className="m-0 flex list-none flex-row gap-1 overflow-x-auto p-2 min-[700px]:h-[var(--popup-height)] min-[700px]:flex-col min-[700px]:gap-px min-[700px]:overflow-x-visible min-[700px]:overflow-y-clip min-[700px]:border-r min-[700px]:border-r-neutral-950 min-[700px]:transition-[height] min-[700px]:duration-[var(--duration)] min-[700px]:ease-[var(--easing)] dark:min-[700px]:border-r-white">
                                     {% for menu in audiences %}

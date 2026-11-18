@@ -884,13 +884,12 @@ final class AutocompleteGridDemo
                 );
             }
         }
-        $end = Align::End;
 
         return (
             <div className="mx-auto w-[16rem]">
                 <div className="relative flex w-full">
                     <input type="text" aria-label="Message" placeholder="iMessage" phem:bind={{ message }} className="-mr-px h-8 flex-1 border border-r-0 border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:relative focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white" />
-                    <Autocomplete id="emoji" grid align={{ end }}>
+                    <Autocomplete id="emoji" grid align={{ Align.End }}>
                         <ComboboxTrigger tabindex="0" aria-label="Choose emoji" className="size-8 w-8 border border-neutral-950 text-xl leading-none hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 active:bg-neutral-200 data-popup-open:bg-neutral-100 dark:border-white dark:hover:bg-neutral-800 dark:focus-visible:outline-white dark:active:bg-neutral-700 dark:data-popup-open:bg-neutral-800">😀</ComboboxTrigger>
                         <ComboboxPopup aria-label="Select emoji" className="w-auto border-0 [--input-container-height:2rem]">
                             <ComboboxInput phem:bind={{ search }} aria-label="Search emojis" placeholder="Search emojis…" className="h-8 w-64 max-w-full border border-neutral-950 px-2 focus:outline-2 focus:-outline-offset-2 focus:outline-neutral-950 dark:border-white dark:focus:outline-white" />

@@ -72,8 +72,6 @@ function ImageActions(): Node
 #[Component]
 function ContextMenuWithMenuDemo(): Node
 {
-    $end = Align::End;
-
     return (
         <div className="group relative w-full max-w-64 overflow-hidden border border-neutral-950 bg-white text-left text-neutral-950 select-none dark:border-white dark:bg-neutral-950 dark:text-white">
             <ContextMenu>
@@ -86,7 +84,7 @@ function ContextMenuWithMenuDemo(): Node
                 </ContextMenuTrigger>
                 <ImageActions />
             </ContextMenu>
-            <Menu align={{ end }} sideOffset={{ 8 }}>
+            <Menu align={{ Align.End }} sideOffset={{ 8 }}>
                 <MenuTrigger caret={{ false }} aria-label="Image actions" className="absolute top-2 right-2 size-8 justify-center p-0 opacity-0 group-hover:opacity-100 data-pressed:opacity-100 any-pointer-coarse:opacity-100 focus-visible:opacity-100">
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M9.5 13c0 .8284-.67157 1.5-1.5 1.5s-1.5-.6716-1.5-1.5.67157-1.5 1.5-1.5 1.5.6716 1.5 1.5m0-5c0 .82843-.67157 1.5-1.5 1.5S6.5 8.82843 6.5 8 7.17157 6.5 8 6.5s1.5.67157 1.5 1.5m0-5c0 .82843-.67157 1.5-1.5 1.5S6.5 3.82843 6.5 3 7.17157 1.5 8 1.5s1.5.67157 1.5 1.5" />
