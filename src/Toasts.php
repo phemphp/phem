@@ -17,7 +17,7 @@ namespace Phem;
  * Shows toast messages after the response of an event: it sends a `phem:toast` browser event
  * (see Phem\BrowserEventDispatcher), and the `phem-toast` controller shows it.
  *
- * A handler calls `$e->toast()`. A component or a service that the handler calls gets this class
+ * A handler calls `$reply->toast()`. A component or a service that the handler calls gets this class
  * with autowiring (the `phem.toasts` service):
  *
  *     public function __construct(private readonly Toasts $toasts) {}

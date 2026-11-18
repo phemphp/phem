@@ -80,31 +80,6 @@ final class EventTest extends TestCase
         self::assertStringContainsString('const TRANSFERRED_FILES = "'.Event::FILES.'[]"', $client, 'the client and the server use the same part name');
     }
 
-    public function testClearFilesTellsThatTheHandlerTookTheFiles(): void
-    {
-        $event = Event::fromArray(['type' => 'submit'], files: ['photo' => 'x']);
-        self::assertFalse($event->clearsFiles());
-
-        $event->clearFiles();
-        self::assertTrue($event->clearsFiles());
-    }
-
-    public function testAnnounceDispatchesTheMessageForScreenReaders(): void
-    {
-        $event = new Event('click');
-        $event->announce('3 results');
-
-        self::assertSame([['name' => 'announce', 'detail' => ['message' => '3 results']]], $event->dispatcher->dispatched());
-    }
-
-    public function testAnnounceRejectsAnEmptyMessage(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('The message of an announcement cannot be empty.');
-
-        new Event('click')->announce(' ');
-    }
-
     public function testTheMessageOfAnAnnouncementIsReadAsTheBrowserReadsIt(): void
     {
         self::assertSame('3 results', Announcements::messageOf(['message' => '3 results']));

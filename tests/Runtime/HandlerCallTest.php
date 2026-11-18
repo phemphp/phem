@@ -18,6 +18,7 @@ use Phem\Event;
 use Phem\Handler\HandlerCall;
 use Phem\Handler\HandlerFingerprint;
 use Phem\Handler\HandlerInvoker;
+use Phem\Tests\Fixtures\Replies;
 use Phem\Tests\Fixtures\Rows;
 use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\Size;
@@ -94,7 +95,7 @@ final class HandlerCallTest extends TestCase
         self::assertSame($component, new \ReflectionFunction($call)->getClosureThis(), 'the object is the owner of the handler');
         self::assertSame([$component->pick(...)::class, ['menu', Size::Small]], [HandlerCall::unwrap($call)[0]::class, HandlerCall::unwrap($call)[1]]);
 
-        new HandlerInvoker()->invoke($call, new Event('click'));
+        new HandlerInvoker()->invoke($call, new Event('click'), Replies::make());
 
         self::assertSame([['menu', Size::Small, 'click']], $component->calls);
     }

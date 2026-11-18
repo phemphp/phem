@@ -19,7 +19,7 @@ use function Playwright\Testing\expect;
 
 /**
  * The scroll position through the morph (`phem:keep-scroll`, `phem:scroll-into-view`) and the
- * messages for screen readers (`$e->announce()`). The page turns off the scroll anchoring of
+ * messages for screen readers (`$reply->announce()`). The page turns off the scroll anchoring of
  * the browser.
  */
 final class ScrollTest extends E2eTestCase

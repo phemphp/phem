@@ -7,6 +7,7 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 use Phem\Toasts;
 use Phem\ToastType;
 use Phem\Tests\Fixtures\Greeter;
@@ -28,14 +29,14 @@ final class Notifier
     ) {
     }
 
-    public function save(Event $e): void
+    public function save(Reply $reply): void
     {
         ++$this->count;
-        $e->dispatcher->dispatch('toast', ['message' => 'Saved '.$this->count]);
-        $e->dispatcher->dispatch('saved', $this->count);
+        $reply->dispatch('toast', ['message' => 'Saved '.$this->count]);
+        $reply->dispatch('saved', $this->count);
     }
 
-    // No Event parameter: the injected dispatcher, and a service that has it too.
+    // No Reply parameter: the injected dispatcher, and a service that has it too.
     public function greet(): void
     {
         ++$this->count;
@@ -43,39 +44,39 @@ final class Notifier
         $this->greeter->greet('Hello');
     }
 
-    // Messages for screen readers, with no toast: of the event and of the injected service. The
+    // Messages for screen readers, with no toast: of the reply and of the injected service. The
     // browser does not announce an empty message.
-    public function announce(Event $e): void
+    public function announce(Reply $reply): void
     {
-        $e->announce('3 results');
+        $reply->announce('3 results');
         $this->announcements->announce('Saved');
-        $e->dispatcher->dispatch('announce', ['message' => ' ']);
+        $reply->dispatch('announce', ['message' => ' ']);
     }
 
-    public function toast(Event $e): void
+    public function toast(Reply $reply): void
     {
-        $e->toast('Saved', ToastType::Success);
+        $reply->toast('Saved', ToastType::Success);
     }
 
-    // No Event parameter: the injected toasts service.
+    // No Reply parameter: the injected toasts service.
     public function remind(): void
     {
         $this->toasts->warning('Check the stock', 0);
     }
 
     // A toast with a title.
-    public function export(Event $e): void
+    public function export(Reply $reply): void
     {
-        $e->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
+        $reply->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
     }
 
     // Toast details that the phem-toast controller reads in its own way.
-    public function raw(Event $e): void
+    public function raw(Reply $reply): void
     {
-        $e->dispatcher->dispatch('toast', 'Plain');
-        $e->dispatcher->dispatch('toast', ['message' => 'Odd', 'type' => 'danger']);
-        $e->dispatcher->dispatch('toast', ['message' => ['a', 'b']]);
-        $e->dispatcher->dispatch('toast');
+        $reply->dispatch('toast', 'Plain');
+        $reply->dispatch('toast', ['message' => 'Odd', 'type' => 'danger']);
+        $reply->dispatch('toast', ['message' => ['a', 'b']]);
+        $reply->dispatch('toast');
     }
 
     public function quiet(): void
@@ -83,21 +84,21 @@ final class Notifier
         ++$this->count;
     }
 
-    public function leave(Event $e): RedirectResponse
+    public function leave(Reply $reply): RedirectResponse
     {
-        $e->dispatcher->dispatch('toast', ['message' => 'Bye']);
+        $reply->dispatch('toast', ['message' => 'Bye']);
 
         return new RedirectResponse('/about');
     }
 
-    public function clicked(Event $e): void
+    public function clicked(Reply $reply): void
     {
-        $e->dispatcher->dispatch('clicked');
+        $reply->dispatch('clicked');
     }
 
-    public function submitted(Event $e): void
+    public function submitted(Event $e, Reply $reply): void
     {
-        $e->dispatcher->dispatch('submitted', $e->form);
+        $reply->dispatch('submitted', $e->form);
     }
 
     public function render(): Node

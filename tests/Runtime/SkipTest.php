@@ -108,6 +108,35 @@ final class SkipTest extends TestCase
         self::assertStringNotContainsString('data-phem-keep', $data['streams']);
     }
 
+    public function testAnEventWithManyHandlersRendersTheFullPageWhenOneOfThemRefreshes(): void
+    {
+        // Each handler has its own Reply: only the second one asks for the full page.
+        $data = $this->load('clicker', 'refresh');
+
+        self::assertSame(21, Renders::of('Probe'), 'the second pass renders the full page');
+        self::assertStringContainsString('Clicks 1', $data['streams']);
+        self::assertStringContainsString('Impure 1', $data['streams']);
+    }
+
+    public function testAHandlerAfterTheOneThatRefreshesDoesNotCancelTheRefresh(): void
+    {
+        // The Reply of the second handler does not refresh: the refresh of the first one stays.
+        $data = $this->load('refresh', 'clicker');
+
+        self::assertSame(21, Renders::of('Probe'), 'the second pass renders the full page');
+        self::assertStringContainsString('Clicks 1', $data['streams']);
+        self::assertStringContainsString('Impure 1', $data['streams']);
+    }
+
+    public function testAnEventWithManyHandlersAndNoRefreshRendersOnlyWhatCanChange(): void
+    {
+        $data = $this->load('clicker', 'bump');
+
+        self::assertSame(1, Renders::of('Probe'), 'only the probe of "n"');
+        self::assertStringContainsString('Clicks 1', $data['streams']);
+        self::assertStringContainsString('Bump 1', $data['streams']);
+    }
+
     public function testTheStateOfTheKeptComponentsStays(): void
     {
         $this->click('clicker');

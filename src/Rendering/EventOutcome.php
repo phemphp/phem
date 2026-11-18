@@ -25,7 +25,7 @@ final class EventOutcome
 {
     /**
      * @param list<string> $warnings   the warnings of the dev-mode check (see SkippedRenderCheck)
-     * @param bool         $clearFiles whether a handler took the files of the form (see Phem\Event::clearFiles())
+     * @param bool         $clearFiles whether a handler took the files of the form (see Phem\Reply::clearFiles())
      */
     private function __construct(
         public readonly bool $reload = false,

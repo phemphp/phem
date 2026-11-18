@@ -2,7 +2,7 @@ import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
 // Listens on each page: the keyboard of a field that gets the focus after a server round trip.
 import "./phem_keyboard.js"
-// Listens on each page: the messages of `$e->announce()` for screen readers.
+// Listens on each page: the messages of `$reply->announce()` for screen readers.
 import "./phem_announcer.js"
 // Listens on each page: the keyboard shortcuts of `phem:shortcut`.
 import "./phem_shortcut.js"
@@ -2765,7 +2765,7 @@ export default class PhemController extends Controller {
     return null
   }
 
-  // After the morph of a handler that took the files of its submit (`$e->clearFiles()`): empties
+  // After the morph of a handler that took the files of its submit (`$reply->clearFiles()`): empties
   // the file inputs that sent them, as a full page POST does. An input whose files the user
   // changed after the request left keeps its new files.
   clearFiles(event) {

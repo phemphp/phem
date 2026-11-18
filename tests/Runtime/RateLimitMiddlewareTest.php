@@ -18,6 +18,7 @@ use Phem\Handler\RateLimitMiddleware;
 use Phem\Tests\Fixtures\ClosureKeyLimited;
 use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\TestCase;
+use Phem\Tests\Fixtures\Replies;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -36,10 +37,10 @@ final class RateLimitMiddlewareTest extends TestCase
         $middleware = new RateLimitMiddleware(new ServiceLocator(['phem_events' => static fn (): RateLimiterFactory => $limiters]), requests: $requests);
         $component = new ClosureKeyLimited();
 
-        self::assertSame('ran', $middleware->handle($component->like(...), new Event('click'), static fn (): string => 'ran'));
+        self::assertSame('ran', $middleware->handle($component->like(...), new Event('click'), Replies::make(), static fn (): string => 'ran'));
         self::assertFalse($limiters->create('ip-10.0.0.1~'.ClosureKeyLimited::class)->consume()->isAccepted(), 'the closure gives the key');
 
         $this->expectException(TooManyRequestsHttpException::class);
-        $middleware->handle($component->like(...), new Event('click'), static fn (): string => 'ran');
+        $middleware->handle($component->like(...), new Event('click'), Replies::make(), static fn (): string => 'ran');
     }
 }

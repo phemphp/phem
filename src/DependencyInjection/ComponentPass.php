@@ -16,6 +16,7 @@ namespace Phem\DependencyInjection;
 use Phem\Event;
 use Phem\Manifest\ComponentKind;
 use Phem\Manifest\Manifest;
+use Phem\Reply;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\Config\Resource\FileResource;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -133,7 +134,7 @@ final class ComponentPass implements CompilerPassInterface
                 continue;
             }
 
-            if (!$type instanceof \ReflectionNamedType || $type->isBuiltin() || \in_array($type->getName(), [Request::class, SessionInterface::class, Response::class, Event::class, FlattenException::class], true) || is_subclass_of($type->getName(), \UnitEnum::class) || is_a($type->getName(), \Throwable::class, true)) {
+            if (!$type instanceof \ReflectionNamedType || $type->isBuiltin() || \in_array($type->getName(), [Request::class, SessionInterface::class, Response::class, Event::class, Reply::class, FlattenException::class], true) || is_subclass_of($type->getName(), \UnitEnum::class) || is_a($type->getName(), \Throwable::class, true)) {
                 continue;
             }
 

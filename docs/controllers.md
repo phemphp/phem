@@ -2723,22 +2723,23 @@ The marks belong to the client, so they stay after the morph of an event.
 <div data-controller="phem-toast"></div>
 ```
 
-It shows the toasts from handlers, failed events (`phem:error`) and rate limits (`phem:rate-limited`). A handler shows a toast with `$e->toast()`:
+It shows the toasts from handlers, failed events (`phem:error`) and rate limits (`phem:rate-limited`). A handler shows a toast with `$reply->toast()`:
 
 ```php
+use Phem\Reply;
 use Phem\ToastType;
 
-public function save(Event $e): void
+public function save(Reply $reply): void
 {
     $this->orders->save($this->order);
-    $e->toast('Saved', ToastType::Success);
+    $reply->toast('Saved', ToastType::Success);
 }
 ```
 
 The types are `ToastType::Info`, `Success`, `Warning` and `Error`. The browser also knows the `loading` type (see [Update a toast with its id](#update-a-toast-with-its-id)). With no type (the default), the toast gets no `data-type`, as in Base UI. A third argument sets the duration of this toast in milliseconds. `0` keeps the toast until the user closes it:
 
 ```php
-$e->toast('The order has no stock.', ToastType::Error, 0);
+$reply->toast('The order has no stock.', ToastType::Error, 0);
 ```
 
 A component or a service that the handler calls injects `Phem\Toasts`. It has a method for each type:
@@ -2767,7 +2768,7 @@ The `show` action shows the detail of another browser event as a toast. A [brows
 
 Each toast has these parts: the root (`data-phem-toast`), the content (`[data-phem-toast-content]`), the title (`[data-phem-toast-title]`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). A toast with no title has no title part. The newest toast is first in the DOM, as in Base UI, so Tab goes to the newest toast first. `phem.css` shows the newest toast at the bottom (`flex-direction: column-reverse`). The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the newest toast). A toast of a `phem:toast` event with no type, or with a type that is not `info`, `success`, `warning` or `error`, has no `data-type`. A toast gets `data-limited` and `inert` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it (a toast with no `class`). The title, the description and the close button also get `data-type`. The close button gets `aria-hidden="true"` while the stack is not expanded and the button has no focus, as in Base UI. A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. 
 
-A toast with the same type, title and message as a toast on the screen does not show again: the toast on the screen starts its full time again. A toast with no type and a toast with the `info` type are not the same. This is different from Base UI, which shows a new toast for each `add` call unless the `id` is the same. So two `$e->toast('Saved')` in a short time show one "Saved" toast, not two. A toast with the same message as a toast that goes shows as a new toast.
+A toast with the same type, title and message as a toast on the screen does not show again: the toast on the screen starts its full time again. A toast with no type and a toast with the `info` type are not the same. This is different from Base UI, which shows a new toast for each `add` call unless the `id` is the same. So two `$reply->toast('Saved')` in a short time show one "Saved" toast, not two. A toast with the same message as a toast that goes shows as a new toast.
 
 The element is a landmark and a live region, as the viewport of Base UI: it gets `role="region"`, `aria-label` ("Notifications", or `data-phem-toast-label-value`), `tabindex="-1"`, `aria-live="polite"`, `aria-atomic="false"` and `aria-relevant="additions text"`. An attribute that your markup gives stays. Each toast is a dialog that can have the focus: it gets `role="dialog"`, `tabindex="0"`, `aria-modal="false"`, and `aria-labelledby` and `aria-describedby` for its title and its description:
 
@@ -2825,7 +2826,7 @@ The default styles in `phem.css` use `:where()`, so a rule of your app replaces 
 Give the `title` argument for a short title above the message:
 
 ```php
-$e->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
+$reply->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
 $this->toasts->error('The card was declined.', title: 'Payment failed');
 ```
 
@@ -2882,7 +2883,7 @@ A shorter swipe removes `data-swipe-direction`, gives the toast its place again,
 Give a toast an `id`. A toast with the id of a toast on the screen updates it: its message, its title, its type, its action and its data change, and its full time starts again. The controller makes the parts again from the template, so an update can add a title or an action that the first toast did not have, and an update with no title removes the title. This is the `id` of `toastManager.add()` of Base UI:
 
 ```php
-$e->toast('Click again while it is visible to replay the pulse.', title: 'Draft saved', id: 'save-status');
+$reply->toast('Click again while it is visible to replay the pulse.', title: 'Draft saved', id: 'save-status');
 ```
 
 A toast with an id is not the same as a toast with the same text and no id. The root gets `data-update-key` (`1` after the first update, then `2`, …) and `data-updated`. The controller removes `data-updated` and adds it again for each update, so a CSS animation on it plays again:
@@ -2899,10 +2900,10 @@ The `loading` type is the type of a toast that waits for the answer of the serve
 ```
 
 ```php
-public function run(Event $e): void
+public function run(Reply $reply): void
 {
     $this->jobs->run();
-    $e->toast('Success: operation completed', ToastType::Success, id: 'job');
+    $reply->toast('Success: operation completed', ToastType::Success, id: 'job');
 }
 ```
 
@@ -2921,16 +2922,16 @@ A click on an element with `data-phem-toast-show` shows its toast at once, befor
 The `action` option gives the label of an action button, as the `actionProps` of Base UI. Put a `[data-phem-toast-action]` part in the template: the controller removes it from a toast with no action. A click on the button closes the toast, and dispatches a `phem:call` event on it, so the [`onCall` handler](events.md#call-a-handler-from-your-javascript) around the `phem-toast` element runs. `$e->detail` has the `action`, the `id` and the `data` of the toast:
 
 ```php
-public function delete(Event $e): void
+public function delete(Reply $reply): void
 {
     $this->items->delete($this->id);
-    $e->toast('You can undo this action.', ToastType::Success, 10000, 'Action performed', id: 'delete-'.$this->id, action: 'Undo', data: ['item' => $this->id]);
+    $reply->toast('You can undo this action.', ToastType::Success, 10000, 'Action performed', id: 'delete-'.$this->id, action: 'Undo', data: ['item' => $this->id]);
 }
 
-public function undo(Event $e): void
+public function undo(Event $e, Reply $reply): void
 {
     $this->items->restore($e->detail['data']['item']);
-    $e->toast('Action undone');
+    $reply->toast('Action undone');
 }
 ```
 
@@ -2949,10 +2950,10 @@ The browser dispatches `phem:call` with this detail: `{"action": "Undo", "id": "
 
 ### Show data in a toast
 
-The `data` option is an array of names and values, as the `data` of Base UI. A value is a text, a number, a boolean or `null`: `Toasts::show()` and `$e->toast()` throw an `InvalidArgumentException` for a list or for a value that is an array or an object. Each `[data-phem-toast-data="name"]` part of the template shows the value of its `name`. The controller removes a part with no value:
+The `data` option is an array of names and values, as the `data` of Base UI. A value is a text, a number, a boolean or `null`: `Toasts::show()` and `$reply->toast()` throw an `InvalidArgumentException` for a list or for a value that is an array or an object. Each `[data-phem-toast-data="name"]` part of the template shows the value of its `name`. The controller removes a part with no value:
 
 ```php
-$e->toast('Toast with custom data', data: ['userId' => '123']);
+$reply->toast('Toast with custom data', data: ['userId' => '123']);
 ```
 
 ```html
@@ -2964,7 +2965,7 @@ $e->toast('Toast with custom data', data: ['userId' => '123']);
 The `anchor` option is the `id` of an element: the toast shows next to it, as the `positionerProps` of Base UI, for feedback such as "Copied" next to a copy button. The toast gets `data-anchored`, and the position of a popover (see [Position](#position)): `position: fixed`, `data-side` and the CSS variables. The `side` value of the element (`top` by default) and its `side-offset` value place it. An `[data-phem-toast-arrow]` part of the template points to the anchor:
 
 ```php
-$e->toast('Copied', duration: 1500, anchor: 'copy-button', viewport: 'anchored');
+$reply->toast('Copied', duration: 1500, anchor: 'copy-button', viewport: 'anchored');
 ```
 
 ```html
@@ -3048,7 +3049,7 @@ After the user selects `beach.jpg`, the preview has:
 | Controller | `data-phem-image-input-type-value` | The media type of the new images, such as `image/webp` |
 | Controller | `data-phem-image-input-quality-value` | The quality of a JPEG or a WebP, from `0` to `1` (`0.85`) |
 
-The controller element has `data-resizing` while the browser resizes, and a submit waits for the end. The previews belong to the client: the morph of an event keeps them, and they go when the handler calls `$e->clearFiles()`. The controller dispatches `phem-image-input:resized` with the new `files`. For the rules of the resize, see [Make the images smaller before the upload](forms.md#make-the-images-smaller-before-the-upload).
+The controller element has `data-resizing` while the browser resizes, and a submit waits for the end. The previews belong to the client: the morph of an event keeps them, and they go when the handler calls `$reply->clearFiles()`. The controller dispatches `phem-image-input:resized` with the new `files`. For the rules of the resize, see [Make the images smaller before the upload](forms.md#make-the-images-smaller-before-the-upload).
 
 ## Show the text of a password
 

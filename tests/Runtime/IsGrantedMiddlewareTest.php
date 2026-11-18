@@ -24,6 +24,7 @@ use Phem\Tests\Fixtures\GrantedHandlers\Post;
 use Phem\Tests\Fixtures\GrantedHandlers\PostCard;
 use Phem\Tests\Fixtures\GrantedHandlers\PostVoter;
 use PHPUnit\Framework\TestCase;
+use Phem\Tests\Fixtures\Replies;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -220,7 +221,7 @@ final class IsGrantedMiddlewareTest extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('The #[IsGranted] attribute of an event handler needs the security of Symfony.');
 
-        new IsGrantedMiddleware(requests: $this->requests)->handle(new PostCard()->delete(...), new Event('click'), static fn (): string => 'ran');
+        new IsGrantedMiddleware(requests: $this->requests)->handle(new PostCard()->delete(...), new Event('click'), Replies::make(), static fn (): string => 'ran');
     }
 
     /**
@@ -240,6 +241,6 @@ final class IsGrantedMiddlewareTest extends TestCase
         $tokens->setToken(new UsernamePasswordToken(new InMemoryUser($user, null, $roles), 'main', $roles));
         $authorization = new AuthorizationChecker($tokens, new AccessDecisionManager([new RoleVoter(), new PostVoter()]));
 
-        return new HandlerInvoker([new IsGrantedMiddleware($authorization, requests: $this->requests)])->invoke($handler, new Event('click'));
+        return new HandlerInvoker([new IsGrantedMiddleware($authorization, requests: $this->requests)])->invoke($handler, new Event('click'), Replies::make());
     }
 }

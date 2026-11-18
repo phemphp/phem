@@ -5,6 +5,7 @@ namespace App\Ui\Upload;
 use Phem\Attribute\{Component, Page, State};
 use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -20,7 +21,7 @@ final class Uploader
     #[State] public bool $moved = false;
     #[State] public int $version = 0;
 
-    public function save(Event $e, Request $request): void
+    public function save(Event $e, Reply $reply, Request $request): void
     {
         $this->uploaded = [];
         $files = $e->files;
@@ -39,11 +40,11 @@ final class Uploader
         // The handler took the files: the browser empties the file inputs. The same with a
         // render of the full page.
         if (\in_array($e->form['action'] ?? null, ['store', 'refresh'], true)) {
-            $e->clearFiles();
+            $reply->clearFiles();
         }
 
         if ('refresh' === ($e->form['action'] ?? null)) {
-            $e->refresh();
+            $reply->refresh();
         }
 
         // A new id: the morph replaces the element of the avatar input, and its files go away.

@@ -1142,6 +1142,7 @@ fn hover_for_twig_filters_functions_tests_tags_and_html() {
     assert!(h("<p>{% component 'A' %}{% endcomp‸onent %}</p>").contains("end of the {% component %} block"));
     assert!(h("<sec‸tion />").contains("A generic section"));
     assert!(h("<button onCl‸ick={{ x }} />").contains("Phem event"));
+    assert!(h("<button onCl‸ick={{ x }} />").contains("`Phem\\Reply`"));
 }
 
 #[test]

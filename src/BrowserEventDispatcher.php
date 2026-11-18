@@ -20,17 +20,18 @@ namespace Phem;
  * Stimulus controllers and plain JS listen to it on an ancestor (`data-action="phem:saved->chart#reload"`)
  * or on `window` (`data-action="phem:saved@window->chart#reload"`).
  *
- * A handler gets it from its event:
+ * A handler sends them with its reply (see Phem\Reply), and the reply sends them with this
+ * dispatcher:
  *
- *     public function save(Event $e): void
+ *     public function save(Reply $reply): void
  *     {
- *         $e->dispatcher->dispatch('saved', ['id' => $this->order->id]);
+ *         $reply->dispatch('saved', ['id' => $this->order->id]);
  *     }
  *
- * For a toast message, use `$e->toast()` or Phem\Toasts: they dispatch a `toast` event.
+ * For a toast message, use `$reply->toast()` or Phem\Toasts: they dispatch a `toast` event.
  *
  * It is also a service (`phem.browser_event_dispatcher`), so a component or a service that the
- * handler calls can get it with autowiring. `$e->dispatcher` is the same object.
+ * handler calls can get it with autowiring. The reply of each handler sends to the same object.
  *
  * The events go in their order. A handler that fails or that returns a redirect sends none.
  * The events of the render before the handler are not sent.

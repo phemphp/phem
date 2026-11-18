@@ -15,6 +15,7 @@ namespace Phem\Handler;
 
 use Phem\Attribute\Validated;
 use Phem\Event;
+use Phem\Reply;
 use Phem\State\StateValidator;
 
 /**
@@ -32,7 +33,7 @@ final class ValidationMiddleware implements HandlerMiddleware
     ) {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         $validated = $this->attributes->of($handler, Validated::class)[0] ?? null;
         if (null === $validated) {

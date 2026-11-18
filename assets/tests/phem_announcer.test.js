@@ -164,7 +164,7 @@ describe("phem:announce", () => {
     await vi.waitFor(() => expect(messages()).toEqual(["Saved", "3 results"]))
   })
 
-  it("announces with the messages of $e->announce() of the same answer", async () => {
+  it("announces with the messages of $reply->announce() of the same answer", async () => {
     await mount(grid("3 results"))
 
     respond(grid("12 results"), {}, { events: [{ name: "announce", detail: { message: "Filter added" } }] })

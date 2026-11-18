@@ -133,6 +133,19 @@ final class AsyncTest extends KernelTestCase
         self::assertSame(['warning: The async work of "App\Ui\Async\AsyncExport::notify()" of the page "App\Ui\Async\AsyncPage" sent the browser events "toast": the worker has no response, so the browser does not get them. Show the result of the work with Streams.'], $warnings);
     }
 
+    public function testARefreshOfTheWorkLogsAWarning(): void
+    {
+        $logger = static::getContainer()->get('logger');
+        \assert($logger instanceof RecordingLogger);
+
+        // The refresh of the method body goes with the request, with no warning.
+        $page = $this->visit('/async/lobby')->click('#reload');
+        $page->settle();
+
+        $warnings = array_values(array_filter($logger->logs, static fn (string $log): bool => str_starts_with($log, 'warning: ')));
+        self::assertSame(['warning: The async work of "App\Ui\Async\AsyncExport::reload()" of the page "App\Ui\Async\AsyncPage" called refresh() and clearFiles() on its reply: the worker has no response, so the browser does not get them. Show the result of the work with Streams.'], $warnings);
+    }
+
     public function testSettleFailsWhenNoWorkWaits(): void
     {
         $this->expectException(AssertionFailedError::class);

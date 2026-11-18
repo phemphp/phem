@@ -88,7 +88,7 @@ final class ComponentTester
     /**
      * The files that the user selected in the file inputs: input => paths. As in a browser, the
      * files belong to the element: the morph keeps them when it keeps the element (see
-     * moveFiles()), and a handler that calls `$e->clearFiles()` empties them.
+     * moveFiles()), and a handler that calls `$reply->clearFiles()` empties them.
      *
      * @var \SplObjectStorage<Element, list<string>>
      */

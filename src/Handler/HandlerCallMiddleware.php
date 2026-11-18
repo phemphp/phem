@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Handler;
 
 use Phem\Event;
+use Phem\Reply;
 
 /**
  * A middleware that needs the arguments of the call of the handler in the markup:
@@ -28,5 +29,5 @@ interface HandlerCallMiddleware extends HandlerMiddleware
      * @param array<string, mixed> $arguments the arguments of the call, by parameter name
      * @param \Closure(): mixed    $next      runs the next middleware, then the handler
      */
-    public function handleCall(\Closure $handler, array $arguments, Event $event, \Closure $next): mixed;
+    public function handleCall(\Closure $handler, array $arguments, Event $event, Reply $reply, \Closure $next): mixed;
 }

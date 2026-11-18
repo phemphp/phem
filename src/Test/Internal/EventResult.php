@@ -25,7 +25,7 @@ final class EventResult
      * @param array<string, string>                    $updates    fiber id => the new HTML of its element (see Phem\Rendering\Fiber::wrapped())
      * @param list<array{name: string, detail: mixed}> $dispatched the browser events of the handler (see Phem\BrowserEventDispatcher)
      * @param string|null                              $sender     the token of the refreshes of the event (see Phem\Stream\SenderToken)
-     * @param bool                                     $clearFiles whether the handler took the files of the form (see Phem\Event::clearFiles())
+     * @param bool                                     $clearFiles whether the handler took the files of the form (see Phem\Reply::clearFiles())
      * @param list<string>                             $rendered   the ids of the fibers that the event rendered, with a sender
      * @param string                                   $streams    the Turbo Streams of the feeds, after the morphs (see Phem\Http\FeedStreams)
      */

@@ -5,6 +5,7 @@ namespace App\Ui\Upload;
 use Phem\Attribute\{Component, Page, State};
 use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 use Phem\Upload\DirectFile;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +18,7 @@ final class UploadForm
 {
     #[State] public array $got = [];
 
-    public function save(Event $e): void
+    public function save(Event $e, Reply $reply): void
     {
         $files = $e->files;
         $this->got = [];
@@ -26,7 +27,7 @@ final class UploadForm
                 ? 'direct '.$file->name.' '.$file->size
                 : (str_contains($file->getPathname(), 'phem_uploads') ? 'chunked ' : 'post ').$file->getClientOriginalName().' '.file_get_contents($file->getPathname());
         });
-        $e->clearFiles();
+        $reply->clearFiles();
     }
 
     public function render(): Node

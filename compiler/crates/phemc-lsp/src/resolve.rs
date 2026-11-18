@@ -29,7 +29,7 @@ re!(TEST_HEAD, r"(?:^|[^\w.])is\s+(?:not\s+)?$");
 re!(CHAIN_HEAD, r"([A-Za-z_][\w.]*(?:\[[^\]]*\])*(?:\s*\|\s*\w+)*)\s*\.\s*$");
 re!(RANGE_HEAD, r"\.\.\s*$");
 
-const EVENT_DOC: &str = "Phem event: the handler runs on the server. It receives a `Phem\\Event`.";
+const EVENT_DOC: &str = "Phem event: the handler runs on the server. It receives a `Phem\\Event`, and a `Phem\\Reply` to reply.";
 
 /// A place in a file.
 #[derive(Clone, Debug, PartialEq)]

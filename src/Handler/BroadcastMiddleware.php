@@ -17,6 +17,7 @@ use Phem\Async\Promise;
 use Phem\Event;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Renderer;
+use Phem\Reply;
 use Phem\Stream\BroadcastKeys;
 use Phem\Stream\Streams;
 
@@ -50,7 +51,7 @@ final class BroadcastMiddleware implements HandlerMiddleware
     ) {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         $result = $next();
 

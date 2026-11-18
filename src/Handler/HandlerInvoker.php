@@ -15,13 +15,14 @@ namespace Phem\Handler;
 
 use Phem\Argument\CallableArguments;
 use Phem\Event;
+use Phem\Reply;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Runs an event handler through the HandlerMiddleware chain. The first middleware is the
  * outermost one. At the end of the chain, the handler gets its arguments as a Symfony
  * controller (see CallableArguments): the arguments of its call in the markup (see HandlerCall),
- * the event, the request, the services.
+ * the event, the reply, the request, the services.
  *
  * The middlewares get the handler of a call, not the closure of the call: they read the
  * attributes and the object of the handler.
@@ -38,33 +39,34 @@ final class HandlerInvoker
     }
 
     /**
+     * @param Reply                                       $reply   the reply of this handler call (see Phem\Reply)
      * @param Request|null                                $request the request of the event (see Phem\Http\EventRequest)
      * @param \Closure(\Closure, list<mixed>): mixed|null $call    runs the handler with its arguments at the end of
      *                                                             the chain, in place of `$handler(...$arguments)`
      *                                                             (the work of an #[Async] handler, see
      *                                                             Phem\Async\AsyncHandler)
      */
-    public function invoke(\Closure $handler, Event $event, ?Request $request = null, ?\Closure $call = null): mixed
+    public function invoke(\Closure $handler, Event $event, Reply $reply, ?Request $request = null, ?\Closure $call = null): mixed
     {
         [$handler, $bound] = HandlerCall::unwrap($handler);
         $call ??= static fn (\Closure $handler, array $arguments): mixed => $handler(...$arguments);
         // After the middlewares: a handler that a middleware stops resolves no arguments.
-        $next = fn (): mixed => $call($handler, $this->arguments->of($handler, $request, $event, bound: $bound));
+        $next = fn (): mixed => $call($handler, $this->arguments->of($handler, $request, $event, $reply, bound: $bound));
         $middlewares = $this->middlewares instanceof \Traversable ? iterator_to_array($this->middlewares, false) : $this->middlewares;
 
         // The arguments of the call in the markup, for the middlewares that need them.
         $named = null;
         foreach (array_reverse($middlewares) as $middleware) {
             if ($middleware instanceof HandlerCallMiddleware) {
-                $next = static function () use ($middleware, $handler, $bound, $event, $next, &$named): mixed {
+                $next = static function () use ($middleware, $handler, $bound, $event, $reply, $next, &$named): mixed {
                     $named ??= CallableArguments::call(new \ReflectionFunction($handler), $bound);
 
-                    return $middleware->handleCall($handler, $named, $event, $next);
+                    return $middleware->handleCall($handler, $named, $event, $reply, $next);
                 };
                 continue;
             }
 
-            $next = static fn (): mixed => $middleware->handle($handler, $event, $next);
+            $next = static fn (): mixed => $middleware->handle($handler, $event, $reply, $next);
         }
 
         return $next();

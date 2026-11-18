@@ -3,8 +3,8 @@
 namespace App\Ui\Toast;
 
 use Phem\Attribute\Page;
-use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 use Phem\ToastType;
 
 use function App\Ui\Layout\Document;
@@ -14,9 +14,9 @@ use function App\Ui\Layout\Document;
 #[Page('/toast')]
 final class ToastPage
 {
-    public function export(Event $e): void
+    public function export(Reply $reply): void
     {
-        $e->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
+        $reply->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
     }
 
     public function render(): Node

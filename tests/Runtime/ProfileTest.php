@@ -22,6 +22,7 @@ use Phem\Profiler\ProfilerMiddleware;
 use Phem\Rendering\Fiber;
 use Phem\Rendering\Tree;
 use PHPUnit\Framework\TestCase;
+use Phem\Tests\Fixtures\Replies;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 final class ProfileTest extends TestCase
@@ -54,7 +55,7 @@ final class ProfileTest extends TestCase
         $profile = new Profile($stopwatch = new Stopwatch());
         $component = new ProfiledComponent();
 
-        $result = new HandlerInvoker([new ProfilerMiddleware($profile)])->invoke($component->save(...), Event::fromArray([]));
+        $result = new HandlerInvoker([new ProfilerMiddleware($profile)])->invoke($component->save(...), Event::fromArray([]), Replies::make());
 
         self::assertSame('saved', $result);
         self::assertSame('ProfiledComponent::save()', $profile->handled()['name'] ?? null);
@@ -69,7 +70,7 @@ final class ProfileTest extends TestCase
         $component = new ProfiledComponent();
 
         try {
-            new HandlerInvoker([new ProfilerMiddleware($profile)])->invoke($component->closure(), Event::fromArray([]));
+            new HandlerInvoker([new ProfilerMiddleware($profile)])->invoke($component->closure(), Event::fromArray([]), Replies::make());
             self::fail('The handler throws.');
         } catch (\DomainException) {
         }

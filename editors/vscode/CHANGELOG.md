@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0
+
+- A handler call in the markup that gives an argument to a `Phem\Reply` parameter shows the
+  E047 error, as for a `Phem\Event` parameter. The hover of an `on*` attribute names
+  `Phem\Reply`, and the help of an impure `render()` names `$reply->refresh()`.
+
 ## 0.9.0
 
 - Completion for `phem:lock`, which disables the element of a handler while its

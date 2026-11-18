@@ -271,7 +271,7 @@ public function add(Request $request): void
 
 PHP deletes the uploaded file at the end of the request, so move it in the handler. Check its size and type with `#[Assert\File]`.
 
-The files stay in the input after the submit, so a form with a validation error keeps them. Once the handler stores the files, call `$e->clearFiles()` to empty the input in the browser.
+The files stay in the input after the submit, so a form with a validation error keeps them. Once the handler stores the files, call `$reply->clearFiles()` to empty the input in the browser (see [Respond to a click, a key or a change](events.md#respond-to-a-click-a-key-or-a-change)).
 
 ### Accept dropped and pasted files
 
@@ -327,7 +327,7 @@ A `preview` target that is an `<img>` shows the first image, for example a new a
 <img src={{ user.avatarUrl }} alt="" data-phem-image-input-target="preview" />
 ```
 
-The previews belong to the browser: the morph of an event keeps them. When the handler calls `$e->clearFiles()`, the input is empty and the previews go. See [Select images with a preview](controllers.md#select-images-with-a-preview).
+The previews belong to the browser: the morph of an event keeps them. When the handler calls `$reply->clearFiles()`, the input is empty and the previews go. See [Select images with a preview](controllers.md#select-images-with-a-preview).
 
 ### Make the images smaller before the upload
 
@@ -374,12 +374,12 @@ final class VideoForm
 {
     #[State] public ?string $saved = null;
 
-    public function save(Event $e): void
+    public function save(Event $e, Reply $reply): void
     {
         $video = $e->files['video'];
         $video->move($this->videoDir, $name = uniqid().'.mp4');
         $this->saved = $name;
-        $e->clearFiles();
+        $reply->clearFiles();
     }
 
     public function render(): Node
@@ -414,7 +414,7 @@ The rules:
 - The browser uploads up to 3 files at the same time. The event sends their tokens in the order of the files.
 - The handler gets an `UploadedFile`, in `$e->files` and in the `Request`, at the name of the input. A Symfony form with a `FileType` field gets it as a regular file.
 - The file goes after the event, as a PHP upload. Move it in the handler. An upload with no event goes after 24 hours. A next submit of the same file, for example after a validation error, uploads it again.
-- `$e->clearFiles()`, `phem:progress` and `phem:upload-progress` work as for the other files. The progress counts the chunks.
+- `$reply->clearFiles()`, `phem:progress` and `phem:upload-progress` work as for the other files. The progress counts the chunks.
 - On the element of an `onDrop` or an `onPaste`, `data-phem-upload` sends the dropped and the pasted files the same way.
 
 The chunk size is the `upload_chunk_size` option (2 MiB by default). Keep it under `post_max_size`. The server keeps the chunks in `upload_dir` until the event. All the servers of the app must share this directory. Against a full disk, the uploads in `upload_dir` have limits:

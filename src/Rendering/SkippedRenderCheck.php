@@ -72,7 +72,7 @@ final class SkippedRenderCheck
                 continue;
             }
 
-            $warning = \sprintf('<%s> did not render again after the event, but its HTML is not the same now. Its render() reads data that is not a prop or state (a service, the time, a global). Read the data in mount() or in a handler, or call $e->refresh() in the handler.', ComponentName::short($fqcn));
+            $warning = \sprintf('<%s> did not render again after the event, but its HTML is not the same now. Its render() reads data that is not a prop or state (a service, the time, a global). Read the data in mount() or in a handler, or call $reply->refresh() in the handler.', ComponentName::short($fqcn));
             $this->logger?->warning('[phem] '.$warning, ['component' => $fqcn, 'fiber' => $id]);
             $warnings[] = $warning;
         }

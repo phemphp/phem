@@ -3,8 +3,8 @@
 namespace App\Ui\MapForm;
 
 use Phem\Attribute\{Component, MapForm, Page, State};
-use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 use Phem\Tests\Fixtures\ClosedDates;
 use Phem\Validation;
 
@@ -75,7 +75,7 @@ final class Holidays
 
     public function render(): Node
     {
-        $add = fn (#[MapForm(name: 'holiday')] ClosedDates $dates, Event $e) => $e->dispatcher->dispatch('holiday', $dates->from?->format('Y-m-d'));
+        $add = fn (#[MapForm(name: 'holiday')] ClosedDates $dates, Reply $reply) => $reply->dispatch('holiday', $dates->from?->format('Y-m-d'));
 
         return (
             <form id="holidays" onSubmit={{ add }}>

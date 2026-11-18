@@ -23,6 +23,7 @@ use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\Manifest;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Node;
+use Phem\Reply;
 use Phem\Root;
 use Phem\Slot;
 use Phem\State\StateObjects;
@@ -128,9 +129,9 @@ final class Renderer implements ResetInterface
      *
      * @return mixed the result of the handler (for example a Phem\RedirectTo)
      */
-    public function dispatch(Tree $tree, \Closure $handler, Event $event, ?Request $request = null): mixed
+    public function dispatch(Tree $tree, \Closure $handler, Event $event, Reply $reply, ?Request $request = null): mixed
     {
-        return $this->within($tree, fn (): mixed => $this->handlers->invoke($handler, $event, $request));
+        return $this->within($tree, fn (): mixed => $this->handlers->invoke($handler, $event, $reply, $request));
     }
 
     /**

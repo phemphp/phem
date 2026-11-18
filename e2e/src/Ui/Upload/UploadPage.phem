@@ -6,6 +6,7 @@ use App\FakeStorage;
 use Phem\Attribute\{Page, State};
 use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 use Phem\Upload\DirectFile;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -26,7 +27,7 @@ final class UploadPage
     {
     }
 
-    public function saveVideo(Event $e): void
+    public function saveVideo(Event $e, Reply $reply): void
     {
         $file = $e->files['video'] ?? null;
         if (!$file instanceof UploadedFile) {
@@ -34,10 +35,10 @@ final class UploadPage
         }
 
         $this->video = self::describe($file);
-        $e->clearFiles();
+        $reply->clearFiles();
     }
 
-    public function savePhoto(Event $e): void
+    public function savePhoto(Event $e, Reply $reply): void
     {
         $file = $e->files['photo'] ?? null;
         if (!$file instanceof UploadedFile) {
@@ -46,18 +47,18 @@ final class UploadPage
 
         [$width, $height] = getimagesize($file->getPathname()) ?: [0, 0];
         $this->photo = $file->getClientOriginalName().' '.$width.'x'.$height.' '.$file->getClientMimeType();
-        $e->clearFiles();
+        $reply->clearFiles();
     }
 
     // A file of the storage: the handler checks its bytes there.
-    public function saveDirect(Event $e): void
+    public function saveDirect(Event $e, Reply $reply): void
     {
         $this->direct = implode(', ', array_map(function (DirectFile $file): string {
             $bytes = $this->storage->read($file->key);
 
             return $file->name.' '.$file->type.' '.$file->size.' '.(null === $bytes ? 'missing' : md5($bytes));
         }, $e->files['docs'] ?? []));
-        $e->clearFiles();
+        $reply->clearFiles();
     }
 
     public function drop(Event $e): void

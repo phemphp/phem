@@ -893,13 +893,16 @@ fn a_handler_call_gets_its_arguments_with_no_call_during_render() {
 
 #[test]
 fn a_handler_call_has_the_arguments_of_the_method() {
-    let base = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\nuse Phem\\Event;\n#[Component]\nfinal class Slots {\n    public array $slots = [];\n    public function remove(int $index, Event $e): void {}\n    public function pick(?string $name, float $weight, bool $flag, \\App\\Size $size, mixed ...$rest): void {}\n    public function render() { return <div><button ATTR /></div>; }\n}\n";
+    let base = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\nuse Phem\\Event;\nuse Phem\\Reply;\n#[Component]\nfinal class Slots {\n    public array $slots = [];\n    public function remove(int $index, Event $e): void {}\n    public function save(int $index, Reply $reply): void {}\n    public function pick(?string $name, float $weight, bool $flag, \\App\\Size $size, mixed ...$rest): void {}\n    public function render() { return <div><button ATTR /></div>; }\n}\n";
     let src = |attr: &str| base.replace("ATTR", attr);
 
-    // Too many arguments, an argument for the Event, a literal of another type, a named argument.
+    // Too many arguments, an argument for the Event or the Reply, a literal of another type, a named argument.
     let (_, diags) = compile(vec![SourceInput::app("Slots.phem", &src("onClick={{ remove(1, 2) }}"))]);
     let d: Vec<_> = diags.iter().flat_map(|f| &f.diags).collect();
     assert_eq!(d.iter().map(|d| (d.code, d.message.as_str())).collect::<Vec<_>>(), [("E047", "`onClick` gives the argument `2` to the `Event` parameter `$e` of `remove()`")]);
+    let (_, diags) = compile(vec![SourceInput::app("Slots.phem", &src("onClick={{ save(1, 2) }}"))]);
+    let d: Vec<_> = diags.iter().flat_map(|f| &f.diags).collect();
+    assert_eq!(d.iter().map(|d| (d.code, d.message.as_str(), d.help.as_deref())).collect::<Vec<_>>(), [("E047", "`onClick` gives the argument `2` to the `Reply` parameter `$reply` of `save()`", Some("put the parameters of the arguments first: `save(…, Reply $reply)`"))]);
     assert_eq!(codes(&src("onClick={{ remove('first') }}")), ["E047"]);
     assert_eq!(codes(&src("onClick={{ remove(index: 1) }}")), ["E047"]);
     assert_eq!(codes(&src("onClick={{ pick(null, 1, true, 'small') }}")), ["E047"], "a literal is not an object");
@@ -907,6 +910,7 @@ fn a_handler_call_has_the_arguments_of_the_method() {
 
     // The right arguments, a variadic parameter, and the values that phemc does not know.
     assert!(codes(&src("onClick={{ remove(1) }}")).is_empty());
+    assert!(codes(&src("onClick={{ save(1) }}")).is_empty());
     assert!(codes(&src("onClick={{ pick(null, 1, false, slots|first, 'a', 2) }}")).is_empty());
     assert!(codes(&src("onClick={{ remove(slots|length) }}")).is_empty());
     assert!(codes(&src("onClick={{ remove() }}")).is_empty(), "the event of the browser does not give the index: the runtime reports it");

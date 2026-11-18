@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Handler;
 
 use Phem\Event;
+use Phem\Reply;
 use Phem\Stream\Streams;
 
 /**
@@ -28,7 +29,7 @@ final class StreamsMiddleware implements HandlerMiddleware
     ) {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         $mark = $this->streams->mark();
         try {

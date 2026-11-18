@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Handler;
 
 use Phem\Event;
+use Phem\Reply;
 use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -48,12 +49,12 @@ final class RateLimitMiddleware implements HandlerCallMiddleware
     ) {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
-        return $this->handleCall($handler, [], $event, $next);
+        return $this->handleCall($handler, [], $event, $reply, $next);
     }
 
-    public function handleCall(\Closure $handler, array $arguments, Event $event, \Closure $next): mixed
+    public function handleCall(\Closure $handler, array $arguments, Event $event, Reply $reply, \Closure $next): mixed
     {
         $function = new \ReflectionFunction($handler);
         $class = $function->getClosureScopeClass();

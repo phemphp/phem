@@ -401,7 +401,15 @@ final class LeadTimeSettings
 
 ### Render the full page after a shared change
 
-When a handler changes data that other components read, call `$e->refresh()`. Phem then renders the full page again.
+When a handler changes data that other components read, call `$reply->refresh()`. Phem then renders the full page again:
+
+```php
+public function add(Reply $reply): void
+{
+    $this->todos->add($this->title);
+    $reply->refresh();
+}
+```
 
 ### Find impure renders
 

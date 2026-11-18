@@ -6,6 +6,7 @@ use Phem\Async\Promise;
 use Phem\Attribute\{Async, Component, Page, Path, Prop, State, Broadcast};
 use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 use Phem\Stream\Streams;
 use Phem\Tests\Fixtures\Guestbook;
 use Phem\Toasts;
@@ -67,13 +68,25 @@ final class AsyncExport
 
     // The toast of the method body goes with the request. The toast of the work has no response.
     #[Async]
-    public function notify(Event $e): Promise
+    public function notify(Reply $reply): Promise
     {
-        $e->toast('Started');
-        $e->dispatcher->dispatch('started');
+        $reply->toast('Started');
+        $reply->dispatch('started');
 
         return new Promise(function (): void {
             $this->toasts->success('Exported');
+        });
+    }
+
+    // The refresh of the method body goes with the request. The refresh of the work has no response.
+    #[Async]
+    public function reload(Reply $reply): Promise
+    {
+        $reply->refresh();
+
+        return new Promise(static function () use ($reply): void {
+            $reply->refresh();
+            $reply->clearFiles();
         });
     }
 
@@ -94,6 +107,7 @@ final class AsyncExport
                 {{ ships }}
                 <button id="crash" type="button" onClick={{ crash }}>Crash</button>
                 <button id="notify" type="button" onClick={{ notify }}>Notify</button>
+                <button id="reload" type="button" onClick={{ reload }}>Reload</button>
             </form>
         );
     }

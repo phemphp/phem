@@ -44,7 +44,7 @@ use Symfony\Contracts\Service\ResetInterface;
  *   markup: a component in it renders with no fiber id, and an event handler or a `phem:bind`
  *   throws. For interactive content, use refresh(): each browser renders the component of the
  *   target again with a normal event, with its own state and its access rules, as after
- *   Event::refresh(): a component with no #[State] reads its data again in mount().
+ *   Reply::refresh(): a component with no #[State] reads its data again in mount().
  * - The streams go to the hub at the end of the request (see flush()), after the transaction of
  *   the event: a refresh reads the new data. When an event handler throws, its streams are
  *   dropped (see Phem\Handler\StreamsMiddleware).

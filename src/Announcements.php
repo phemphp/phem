@@ -18,7 +18,7 @@ namespace Phem;
  * screen: it sends an `announce` browser event (see Phem\BrowserEventDispatcher), and the
  * browser puts the message in a hidden live region (assets/dist/phem_announcer.js).
  *
- * A handler calls `$e->announce()`. A component or a service that the handler calls gets this
+ * A handler calls `$reply->announce()`. A component or a service that the handler calls gets this
  * class with autowiring (the `phem.announcements` service):
  *
  *     public function __construct(private readonly Announcements $announcements) {}

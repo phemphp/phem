@@ -6,9 +6,9 @@ use App\Chat;
 use App\ChatMessage;
 use App\Guestbook;
 use Phem\Attribute\{Broadcast, BroadcastKey, Component, Page, Path, Prop, State};
-use Phem\Event;
 use Phem\Feed;
 use Phem\Node;
+use Phem\Reply;
 use Phem\Stream\Streams;
 
 use function App\Ui\Layout\Document;
@@ -70,11 +70,11 @@ final class ScrollThread
     {
     }
 
-    public function sign(Event $e): void
+    public function sign(Reply $reply): void
     {
         $this->added = $this->guestbook->add($this->room, $this->text)['id'];
         $this->text = '';
-        $e->announce('Message added');
+        $reply->announce('Message added');
     }
 
     public function render(): Node

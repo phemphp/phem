@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Handler;
 
 use Phem\Event;
+use Phem\Reply;
 
 /**
  * Runs code around the event handlers (a transaction, a security check, a log entry).
@@ -26,9 +27,11 @@ interface HandlerMiddleware
 {
     /**
      * @param \Closure          $handler the event handler. Its bound object is the component (a method, or a closure in `render()`).
+     * @param Reply             $reply   the reply of the handler call: a middleware can show a toast or
+     *                                   ask for a refresh, as the handler (see Phem\Reply)
      * @param \Closure(): mixed $next    runs the next middleware, then the handler
      *
      * @return mixed the result of the handler (for example a Phem\RedirectTo)
      */
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed;
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed;
 }

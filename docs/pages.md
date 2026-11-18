@@ -376,6 +376,6 @@ In an event, a page redirects only when it renders, and then the browser visits 
 
 - A page with `#[State]` runs `mount()` only on the first render, so it doesn’t redirect in an event.
 - A function page, or a page with no `#[State]`, renders before the handler. If it returns a `RedirectTo` then, the handler doesn’t run.
-- After the handler, the page renders again only when the handler is a method of the page, or when the handler calls `$e->refresh()`. A handler of a child component doesn’t make the page redirect.
+- After the handler, the page renders again only when the handler is a method of the page, or when the handler calls `$reply->refresh()`. A handler of a child component doesn’t make the page redirect.
 
 Only a page can redirect from `mount()`. A component that isn’t a page throws a `LogicException`, so return the `RedirectTo` from a handler instead.

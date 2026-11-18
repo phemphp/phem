@@ -1041,7 +1041,7 @@ impl<'a> Lowerer<'a> {
 
     /// E047: the arguments of a handler call go to the first parameters of the method. A call
     /// with named arguments, with more arguments than the method has parameters, with an
-    /// argument for an `Event` parameter, or with a literal of another type never runs. Only a
+    /// argument for an `Event` or a `Reply` parameter, or with a literal of another type never runs. Only a
     /// method of the class in the sources: a variable or a prop can be any function.
     fn check_handler_call(&mut self, name: &str, call: &phemc_twig_scan::Call, span: Span) {
         if let Some((arg, _)) = call.args.iter().find(|(a, _)| named_argument(a).is_some()) {
@@ -1071,9 +1071,9 @@ impl<'a> Lowerer<'a> {
 
         for ((arg, _), param) in call.args.iter().zip(&params) {
             let class_ty = self.info.class_type(&param.ty);
-            if class_ty.as_deref().is_some_and(|c| c.trim_start_matches('\\') == "Phem\\Event") {
-                self.error(codes::INVALID_HANDLER_CALL, format!("`{name}` gives the argument `{arg}` to the `Event` parameter `${}` of `{}()`", param.name, method.name), span).help =
-                    Some(format!("put the parameters of the arguments first: `{}(…, Event ${})`", method.name, param.name));
+            if let Some(short) = class_ty.as_deref().and_then(server_argument) {
+                self.error(codes::INVALID_HANDLER_CALL, format!("`{name}` gives the argument `{arg}` to the `{short}` parameter `${}` of `{}()`", param.name, method.name), span).help =
+                    Some(format!("put the parameters of the arguments first: `{}(…, {short} ${})`", method.name, param.name));
                 return;
             }
 
@@ -2643,6 +2643,16 @@ fn member_code(code: &str) -> String {
         Some((object, member)) if ident(member) && object.split('.').all(ident) => format!("phem_method({object}, {})", php_str(member)),
         _ => code.to_string(),
     }
+}
+
+/// The classes that Phem gives to a handler after the arguments of its call in the markup, with
+/// their short names.
+const SERVER_ARGUMENTS: &[(&str, &str)] = &[("Phem\\Event", "Event"), ("Phem\\Reply", "Reply")];
+
+/// The short name of a class that Phem gives to a handler (`Event`, `Reply`), or none.
+fn server_argument(class: &str) -> Option<&'static str> {
+    let class = class.trim_start_matches('\\');
+    SERVER_ARGUMENTS.iter().find(|(fqcn, _)| *fqcn == class).map(|(_, short)| *short)
 }
 
 /// The name of a named argument (`reason: r`, `reason = r`).

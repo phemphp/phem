@@ -56,7 +56,7 @@ final class FunctionPageRenderer implements ComponentRenderer
             throw new \LogicException(\sprintf('The function page "%s" is not loaded. Run `phemc build` again.', $function));
         }
 
-        $result = $function(...$this->arguments->of($function, $this->requests?->getCurrentRequest(), null, $fiber->props));
+        $result = $function(...$this->arguments->of($function, $this->requests?->getCurrentRequest(), path: $fiber->props));
         if ($result instanceof RedirectTo) {
             if (\in_array($function, $this->manifest->errorPages(), true)) {
                 throw new \LogicException(\sprintf('The error page "%s" returns a RedirectTo, but an error page cannot redirect: it renders for the URL that failed. Return its markup.', $function));

@@ -23,6 +23,7 @@ use Phem\Rendering\FeedItem;
 use Phem\Rendering\PageRedirect;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\Tree;
+use Phem\Reply;
 use Phem\State\PageState;
 use Phem\Stream\Streams;
 use Psr\Log\LoggerInterface;
@@ -112,13 +113,16 @@ final class AsyncHandler
                 return;
             }
 
-            $event = Event::fromArray($message->event, $this->dispatcher);
+            $event = Event::fromArray($message->event);
+            $reply = new Reply($this->dispatcher);
 
-            $this->renderer->inside($tree, fn (): mixed => $this->handlers->invoke($handler, $event, EventRequest::of($request, $message->event), function (\Closure $handler, array $arguments) use ($message): void {
+            $work = function (\Closure $handler, array $arguments) use ($message, $reply): void {
                 $mark = $this->streams->mark();
                 $promise = $handler(...$arguments);
                 $this->streams->rollback($mark);
+                // The reply of the method body went with the request.
                 $this->dispatcher->reset();
+                $reply->reset();
 
                 if (!$promise instanceof Promise) {
                     // A retry runs the method body again, and it returns the same thing.
@@ -126,13 +130,16 @@ final class AsyncHandler
                 }
 
                 ($promise->work)();
-            }));
+            };
+
+            $this->renderer->inside($tree, fn (): mixed => $this->handlers->invoke($handler, $event, $reply, EventRequest::of($request, $message->event), $work));
         } finally {
             $this->requests?->pop();
         }
 
         $this->streams->flush();
         $this->dropBrowserEvents($message, $handler);
+        $this->dropReply($message, $handler, $reply);
     }
 
     /**
@@ -152,5 +159,22 @@ final class AsyncHandler
         $name = ($function->getClosureScopeClass()?->getName() ?? '').'::'.$function->getName().'()';
 
         $this->logger?->warning('The async work of "{handler}" of the page "{page}" sent the browser events "{events}": the worker has no response, so the browser does not get them. Show the result of the work with Streams.', ['handler' => $name, 'page' => $message->page, 'events' => implode('", "', $names)]);
+    }
+
+    /**
+     * The worker has no response: a refresh() or a clearFiles() of the work does nothing in the
+     * browser. The calls of the method body went with the request.
+     */
+    private function dropReply(AsyncHandlerMessage $message, \Closure $handler, Reply $reply): void
+    {
+        $calls = array_keys(array_filter(['refresh()' => $reply->refreshes(), 'clearFiles()' => $reply->clearsFiles()]));
+        if ([] === $calls) {
+            return;
+        }
+
+        $function = new \ReflectionFunction($handler);
+        $name = ($function->getClosureScopeClass()?->getName() ?? '').'::'.$function->getName().'()';
+
+        $this->logger?->warning('The async work of "{handler}" of the page "{page}" called {calls} on its reply: the worker has no response, so the browser does not get them. Show the result of the work with Streams.', ['handler' => $name, 'page' => $message->page, 'calls' => implode(' and ', $calls)]);
     }
 }

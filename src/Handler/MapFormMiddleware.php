@@ -17,6 +17,7 @@ use Phem\Attribute\MapForm;
 use Phem\Event;
 use Phem\Form\FormMapper;
 use Phem\Form\InvalidForm;
+use Phem\Reply;
 use Phem\State\StateValidator;
 use Phem\ToastType;
 
@@ -35,7 +36,7 @@ final class MapFormMiddleware implements HandlerMiddleware
     ) {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         $parameters = $this->attributes->ofParameters($handler, MapForm::class);
         if ([] === $parameters) {
@@ -53,7 +54,7 @@ final class MapFormMiddleware implements HandlerMiddleware
             $message = array_find($e->errors, static fn (string $error): bool => '' !== trim($error));
 
             if (!$this->validator->mapped($component, $e->errors) && null !== $message) {
-                $event->toast($message, ToastType::Error);
+                $reply->toast($message, ToastType::Error);
             }
 
             return null;

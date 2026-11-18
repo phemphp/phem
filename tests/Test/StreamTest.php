@@ -26,6 +26,7 @@ use Phem\Stream\Streams;
 use Phem\Stream\Topics;
 use Phem\Test\InteractsWithPhem;
 use Phem\Tests\Fixtures\Guestbook;
+use Phem\Tests\Fixtures\Replies;
 use Phem\Tests\Fixtures\TestKernel;
 use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -309,7 +310,7 @@ final class StreamTest extends KernelTestCase
             }
         };
 
-        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), static fn (): mixed => null);
+        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), Replies::make(), static fn (): mixed => null);
     }
 
     public function testAHandlerWithNoBroadcastDoesNotRefreshWhenOtherHandlersHaveIt(): void
@@ -533,7 +534,7 @@ final class StreamTest extends KernelTestCase
             }
         };
 
-        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), static fn (): mixed => null);
+        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), Replies::make(), static fn (): mixed => null);
     }
 
     public function testAClosureCannotHaveHandlersFalse(): void
@@ -548,7 +549,7 @@ final class StreamTest extends KernelTestCase
             }
         };
 
-        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), static fn (): mixed => null);
+        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), Replies::make(), static fn (): mixed => null);
     }
 
     public function testTheStreamsOfAComponentRefreshItsReplacement(): void
@@ -604,7 +605,7 @@ final class StreamTest extends KernelTestCase
             }
         };
 
-        $this->broadcastMiddleware()->handle($component->like(...), new Event('click'), static fn (): mixed => null);
+        $this->broadcastMiddleware()->handle($component->like(...), new Event('click'), Replies::make(), static fn (): mixed => null);
     }
 
     public function testReceiveNeedsAPageWithBroadcast(): void

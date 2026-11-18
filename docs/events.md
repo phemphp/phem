@@ -18,7 +18,50 @@ A handler can take a `Phem\Event` argument with these properties:
 | `$e->files` | The files of the form, or the list of the files of a drop or a paste (see [Accept file uploads](forms.md#accept-file-uploads)) |
 | `$e->text` | The text of a drop or a paste, or `null` for other events |
 
-By default, only the component of the handler, the components whose state changed and their children with new props render again. Call `$e->refresh()` in a handler to render the full page after it, for example when a form adds a row to a list in another component.
+To reply, a handler takes a `Phem\Reply` argument. Each call of a handler gets its own reply, with these methods:
+
+| Method | Effect |
+|---|---|
+| `$reply->toast('Saved')` | Shows a toast message after the morph (see [Show toast messages](controllers.md#show-toast-messages)) |
+| `$reply->announce('3 results')` | Tells a screen reader, with no toast on the screen (see [Announce a change to screen readers](#announce-a-change-to-screen-readers)) |
+| `$reply->dispatch('saved', ['id' => 1])` | Sends a browser event to your JavaScript (see [Send events to your JavaScript](#send-events-to-your-javascript)) |
+| `$reply->refresh()` | Renders the full page after the handler |
+| `$reply->clearFiles()` | Empties the file inputs of the submit in the browser (see [Accept file uploads](forms.md#accept-file-uploads)) |
+
+A handler declares the `Event`, the `Reply`, both or none, at any position:
+
+```php
+use Phem\{Event, Node, Reply};
+
+#[Component]
+final class PhotoForm
+{
+    public function __construct(private readonly PhotoStore $photos)
+    {
+    }
+
+    public function save(Event $e, Reply $reply): void
+    {
+        $this->photos->store($e->files['photo']);
+
+        $reply->clearFiles();
+        $reply->refresh();
+        $reply->dispatch('saved', ['id' => 1]);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ save }}>
+                <input type="file" name="photo" />
+                <button>Save</button>
+            </form>
+        );
+    }
+}
+```
+
+By default, only the component of the handler, the components whose state changed and their children with new props render again. Call `$reply->refresh()` in a handler to render the full page after it, for example when a form adds a row to a list in another component.
 
 `onChange` on a text field fires as the user types. The browser waits until the user stops typing for 150 ms before it sends the event (see [Control when typing sends an event](#control-when-typing-sends-an-event)).
 
@@ -125,9 +168,21 @@ final class CancelOrder
 
 A click on “Out of stock” runs `pickReason(CancelReason::OutOfStock)`, and a click on “Clear” runs `pickReason(null)`. The handler gets the enum case, not the string `'out_of_stock'`.
 
-The arguments go to the first parameters of the handler, in order. The other parameters get the event, the services and the user, as before: `pickReason(?CancelReason $reason, Event $e)` also gets the event. An argument keeps its PHP value: an enum case stays an enum case, and an entity stays an entity.
+The arguments go to the first parameters of the handler, in order. The other parameters get the event, the reply, the services and the user, as before: `pickReason(?CancelReason $reason, Event $e)` also gets the event. An argument keeps its PHP value: an enum case stays an enum case, and an entity stays an entity.
 
 The browser can’t change an argument. The browser sends only the handler id, and the id contains a fingerprint of the arguments. The server renders the component again and finds the handler with the same id. A handler that read `$e->value` from a `value` attribute had to check the value again. A handler with arguments doesn’t.
+
+Phem gives the `Event` and the `Reply` after the arguments of the call:
+
+```php
+public function remove(int $index, Reply $reply): void
+{
+    unset($this->slots[$index]);
+    $reply->announce('Slot removed');
+}
+
+// <button onClick={{ remove(loop.index0) }}>Remove</button>
+```
 
 A call also works for a closure prop. The child adds its arguments after the arguments of the parent. Here, a shirt has a print on the front and on the back, and each print gets its own size picker:
 
@@ -171,20 +226,31 @@ final class ShirtOrder
 
 A click on “Large” in the second picker runs `pickSize('back', Size::Large)`. The state keeps the value of the case (`'l'`): a property typed as one enum gets its case back after an event, but the items of an array stay strings.
 
-`phemc` checks a call of a method of the class component (error E047): the number of arguments, an argument for an `Event` parameter, a named argument, and a literal of another type (`pickReason('out_of_stock')` gives a string to a `?CancelReason` parameter).
+`phemc` checks a call of a method of the class component (error E047): the number of arguments, an argument for an `Event` or a `Reply` parameter, a named argument, and a literal of another type (`pickReason('out_of_stock')` gives a string to a `?CancelReason` parameter):
+
+```php
+public function remove(Reply $reply, int $index): void {}
+// <button onClick={{ remove(1) }}>x</button>
+```
+
+```
+E047 `onClick` gives the argument `1` to the `Reply` parameter `$reply` of `remove()`
+help: put the parameters of the arguments first: `remove(…, Reply $reply)`
+```
 
 ## Get services and the user in a handler
 
-A handler receives its arguments the way a Symfony controller action does. The event is one of them, at any position, and you can leave it out. A class method can also take the `Request`, services, `#[CurrentUser]` and any other value resolver:
+A handler receives its arguments the way a Symfony controller action does. The event and the reply are two of them, at any position, and you can leave them out. A class method can also take the `Request`, services, `#[CurrentUser]` and any other value resolver:
 
 ```php
-public function save(Event $e, NoteRepository $notes, #[CurrentUser] User $user): void
+public function save(Event $e, Reply $reply, NoteRepository $notes, #[CurrentUser] User $user): void
 {
     $notes->add($user, $e->value);
+    $reply->toast('Saved');
 }
 ```
 
-A closure in `render()` receives the same arguments, except the services: the event, the `Request`, `#[CurrentUser]`, `#[MapForm]` and the other value resolvers. Type its parameter, as in `fn (Event $e) => ...`, and inject services through the constructor.
+A closure in `render()` receives the same arguments, except the services: the event, the reply, the `Request`, `#[CurrentUser]`, `#[MapForm]` and the other value resolvers. Type its parameter, as in `fn (Event $e) => ...` or `fn (Reply $reply) => $reply->toast('Copied')`, and inject services through the constructor.
 
 ## Show a loading state
 
@@ -397,13 +463,13 @@ In an event, the headers and the cookies of the redirect go with the answer of t
 
 ## Send events to your JavaScript
 
-A handler can dispatch events to the JavaScript on the page:
+A handler can dispatch events to the JavaScript on the page with its reply:
 
 ```php
-public function save(Event $e): void
+public function save(Reply $reply): void
 {
     $this->scientists->save($this->scientist);
-    $e->dispatcher->dispatch('saved', ['id' => $this->scientist->id]);
+    $reply->dispatch('saved', ['id' => $this->scientist->id]);
 }
 ```
 
@@ -413,11 +479,11 @@ After the morph, the browser dispatches a `phem:saved` event. A Stimulus control
 <div data-controller="chart" data-action="phem:saved@window->chart#reload"></div>
 ```
 
-The event starts on the component’s element and bubbles up to `window`. A service can dispatch events too: inject `Phem\BrowserEventDispatcher`. A handler that fails or redirects dispatches no events.
+The event starts on the component’s element and bubbles up to `window`. A service can dispatch events too: inject `Phem\BrowserEventDispatcher`. The replies of the handlers and the services send to the same dispatcher, so the events keep their order. A handler that fails or redirects dispatches no events.
 
 The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `call`, `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited`, `upload-progress` and `clear-files`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
 
-To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](controllers.md#show-toast-messages). To tell only a screen reader, call `$e->announce()`. See [Announce a change to screen readers](#announce-a-change-to-screen-readers).
+To show a message to the user, call `$reply->toast('Saved')`. See [Show toast messages](controllers.md#show-toast-messages). To tell only a screen reader, call `$reply->announce()`. See [Announce a change to screen readers](#announce-a-change-to-screen-readers).
 
 ## Scroll to a new item after an event
 
@@ -454,13 +520,13 @@ Only an event of the user scrolls. The browser does not scroll on page load, for
 
 ## Announce a change to screen readers
 
-A screen reader does not see all the changes of a morph, for example the new number of results of a search. Call `$e->announce()` to tell the user with no toast on the screen:
+A screen reader does not see all the changes of a morph, for example the new number of results of a search. Call `$reply->announce()` to tell the user with no toast on the screen:
 
 ```php
-public function search(Event $e): void
+public function search(Reply $reply): void
 {
     $this->results = $this->products->search($this->query);
-    $e->announce(\sprintf('%d results', \count($this->results)));
+    $reply->announce(\sprintf('%d results', \count($this->results)));
 }
 ```
 
@@ -486,7 +552,7 @@ $this->announcements->announce('3 results');
 
 ### Announce the new text of an element
 
-A component with no handler cannot call `$e->announce()`. For example, a grid with no `#[State]` loads its products in `mount()`, and its parent has the handler. Do not announce in `mount()`: it also runs on the page load and in a refresh. Add `phem:announce` to the element with the text instead:
+A component with no handler cannot call `$reply->announce()`. For example, a grid with no `#[State]` loads its products in `mount()`, and its parent has the handler. Do not announce in `mount()`: it also runs on the page load and in a refresh. Add `phem:announce` to the element with the text instead:
 
 ```php
 #[Component]
@@ -533,7 +599,7 @@ The element gets the attribute:
 <p data-phem-announce>3 results</p>
 ```
 
-After the morph of an event of the user, the browser compares the texts of the `phem:announce` elements in the components that the answer renders with their texts before the morph. It announces each text that is new, in the same live region as `$e->announce()`:
+After the morph of an event of the user, the browser compares the texts of the `phem:announce` elements in the components that the answer renders with their texts before the morph. It announces each text that is new, in the same live region as `$reply->announce()`:
 
 | Change | Announces |
 |---|---|
@@ -542,7 +608,7 @@ After the morph of an event of the user, the browser compares the texts of the `
 | `3 results` → `3 results`, for example after an event of another button | Nothing |
 | An empty text | Nothing |
 
-The browser compares the texts, not the elements: a morph that replaces the element with the same text announces nothing. To announce the same text again, call `$e->announce()` in the handler.
+The browser compares the texts, not the elements: a morph that replaces the element with the same text announces nothing. To announce the same text again, call `$reply->announce()` in the handler.
 
 The text is the text that a screen reader reads:
 
@@ -613,7 +679,7 @@ For a sortable list, the built-in `phem-sortable` controller dispatches this eve
 
 The browser makes the detail, so a user can change it. Check it in the handler, as you check `$e->value`. The event goes in the queue as the other events: `phem:debounce`, `phem:throttle`, `phem:loading` and `phem:before-queue` work the same. Its type is `call`.
 
-A handler can’t dispatch a `phem:call` browser event: `$e->dispatcher->dispatch('call')` throws an `InvalidArgumentException`. In a test, `call()` sends the event also to a disabled element, as the browser does.
+A handler can’t dispatch a `phem:call` browser event: `$reply->dispatch('call')` throws an `InvalidArgumentException`. In a test, `call()` sends the event also to a disabled element, as the browser does.
 
 ## Load more when an element comes into view
 
@@ -719,7 +785,7 @@ final class LoginRequired implements HandlerMiddleware
     ) {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         if (null === $this->security->getUser()) {
             return new RedirectTo(LoginPage::class);
@@ -732,7 +798,30 @@ final class LoginRequired implements HandlerMiddleware
 
 `$next()` runs the next middleware and then the handler. Return without calling `$next()` to stop the event. The middleware runs for every handler, so check `$handler` or `$event` to apply it to some handlers only.
 
-To read the arguments of the call in the markup (`onClick={{ delete(todo) }}`), implement `Phem\Handler\HandlerCallMiddleware` instead. Phem calls its `handleCall()` with the arguments by parameter name, `['todo' => $todo]`. The other arguments, such as the services, come after the middleware. `#[IsGranted]` and `#[RateLimit]` use it.
+A middleware gets the `Reply` of the handler call, as the handler does. It can show a toast, send a browser event, or call `$reply->refresh()`, before or after `$next()`:
+
+```php
+final class ReadOnlyMode implements HandlerMiddleware
+{
+    public function __construct(
+        private readonly Maintenance $maintenance,
+    ) {
+    }
+
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
+    {
+        if ($this->maintenance->isOn()) {
+            $reply->toast('The site is read-only for a few minutes.', ToastType::Warning);
+
+            return null;
+        }
+
+        return $next();
+    }
+}
+```
+
+To read the arguments of the call in the markup (`onClick={{ delete(todo) }}`), implement `Phem\Handler\HandlerCallMiddleware` instead. Phem calls its `handleCall()` with the arguments by parameter name, `['todo' => $todo]`, then the event and the reply. The other arguments, such as the services, come after the middleware. `#[IsGranted]` and `#[RateLimit]` use it.
 
 The `RedirectTo` middleware (priority 10) changes a returned `RedirectTo` into the redirect response. A middleware with a priority above 10 runs outside it, so its `RedirectTo` does nothing. In such a middleware, return a Symfony `RedirectResponse`.
 

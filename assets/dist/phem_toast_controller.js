@@ -38,7 +38,7 @@ const OWNED = "data-phem-toast-owned"
 //
 // It listens on `window`:
 //
-// - `phem:toast`, from `$e->toast('Saved')` or `Phem\Toasts`. The detail is the message, or an
+// - `phem:toast`, from `$reply->toast('Saved')` or `Phem\Toasts`. The detail is the message, or an
 //   object with `message`, and an optional `type`, `duration` and `title`;
 // - `phem:error`: it shows the error message in place of the default message of Phem. The message
 //   is the `errorMessage` value, or else the `data-phem-error-message-value` of the root element;

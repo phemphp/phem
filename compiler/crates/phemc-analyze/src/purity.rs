@@ -20,7 +20,7 @@ const CLOCK_AND_RANDOM: &[&str] = &[
 const DATE_CLASSES: &[&str] = &["datetime", "datetimeimmutable"];
 
 pub const HELP: &str = "`render()` must be pure: read the data in `mount()` or in a handler, and keep it in a `#[State]` property; \
-                        or call `$e->refresh()` in the handler that changes the data";
+                        or call `$reply->refresh()` in the handler that changes the data";
 
 pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
     let mut diags = Vec::new();

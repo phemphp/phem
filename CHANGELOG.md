@@ -8,6 +8,18 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: The reply of a handler moves from `Phem\Event` to the new `Phem\Reply` class. A
+  handler declares `Reply $reply`, at any position, alone or with `Event $e`, and calls
+  `$reply->toast()`, `$reply->announce()`, `$reply->refresh()`, `$reply->clearFiles()` and
+  `$reply->dispatch('saved', ['id' => 1])`. `Phem\Event` has only the input of the event now:
+  `toast()`, `announce()`, `refresh()`, `refreshes()`, `clearFiles()`, `clearsFiles()` and the
+  `dispatcher` property are removed, and `Event::fromArray()` has no `$dispatcher` parameter.
+  `HandlerMiddleware::handle()` and `HandlerCallMiddleware::handleCall()` get the `Reply` after
+  the event: `handle(\Closure $handler, Event $event, Reply $reply, \Closure $next)`. A unit test
+  of a handler checks `$reply->refreshes()` and `$reply->clearsFiles()`. The work of an
+  `#[Async]` handler logs a warning for a `$reply->refresh()` or a `$reply->clearFiles()`, as for
+  a toast. `phemc` gives the error E047 for a handler call in the markup that gives an argument
+  to a `Reply` parameter, as for an `Event` parameter.
 - A `phem-navigation-menu` in a content of another navigation menu (a nested menu) gives its
   arrow keys to that content, as in Base UI. The arrow keys in the content move the focus
   between its links and the triggers and the links of the nested menu, from the last one to the

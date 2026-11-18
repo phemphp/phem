@@ -16,9 +16,9 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 use Phem\Announcements;
 use Phem\Argument\CallableArguments;
 use Phem\Argument\CallValueResolver;
-use Phem\Argument\EventValueResolver;
 use Phem\Argument\MapFormValueResolver;
 use Phem\Argument\PathValueResolver;
+use Phem\Argument\RequestAttributeValueResolver;
 use Phem\Argument\ServiceValueResolver;
 use Phem\Async\AsyncDispatcher;
 use Phem\Async\AsyncMiddleware;
@@ -32,6 +32,7 @@ use Phem\Controller\PageController;
 use Phem\Dom\ClassAttribute;
 use Phem\Dom\ClassMerger;
 use Phem\Dom\UniqueClassMerger;
+use Phem\Event;
 use Phem\EventListener\PageAttributesListener;
 use Phem\EventListener\PageStreamListener;
 use Phem\EventListener\SourceMapListener;
@@ -80,6 +81,7 @@ use Phem\Rendering\RootElement;
 use Phem\Rendering\SuspenseRenderer;
 use Phem\Rendering\SuspenseStream;
 use Phem\Rendering\TemplateComponentRenderer;
+use Phem\Reply;
 use Phem\Routing\ControllersLoader;
 use Phem\Routing\PageLoader;
 use Phem\Routing\PageRoutes;
@@ -226,8 +228,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set('phem.argument_resolver.call', CallValueResolver::class)
         ->tag('controller.argument_value_resolver', ['priority' => 200, 'name' => CallValueResolver::class]);
 
-    $services->set('phem.argument_resolver.event', EventValueResolver::class)
-        ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => EventValueResolver::class]);
+    $services->set('phem.argument_resolver.event', RequestAttributeValueResolver::class)
+        ->args([Event::class, CallableArguments::EVENT])
+        ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => 'phem.argument_resolver.event']);
+
+    $services->set('phem.argument_resolver.reply', RequestAttributeValueResolver::class)
+        ->args([Reply::class, CallableArguments::REPLY])
+        ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => 'phem.argument_resolver.reply']);
 
     // The object of the form that the map_form middleware mapped and validated.
     $services->set('phem.argument_resolver.map_form', MapFormValueResolver::class)

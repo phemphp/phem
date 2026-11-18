@@ -15,6 +15,7 @@ namespace Phem\Profiler;
 
 use Phem\Event;
 use Phem\Handler\HandlerMiddleware;
+use Phem\Reply;
 
 /**
  * Keeps the handler of an event in the Profile: its name, its time and its exception. It is
@@ -26,7 +27,7 @@ final class ProfilerMiddleware implements HandlerMiddleware
     {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         return $this->profile->handler($handler, $next);
     }

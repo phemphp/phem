@@ -1,4 +1,4 @@
-// The live region of `$e->announce('3 results')` (see Phem\Announcements). The server sends the
+// The live region of `$reply->announce('3 results')` (see Phem\Announcements). The server sends the
 // `announce` browser event after the morph, and this module puts its message in a hidden live
 // region, so a screen reader reads it. There is no toast on the screen.
 //

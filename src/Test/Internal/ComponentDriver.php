@@ -155,7 +155,7 @@ final class ComponentDriver implements Driver
 
             // As the browser sends them: JSON values.
             $bound = json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
-            $outcome = $this->events->run($tree, $handlers, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $this->dispatcher, $uploads->files), $stale, EventRequest::of($request, $event));
+            $outcome = $this->events->run($tree, $handlers, $bound, $this->dispatcher, static fn (): Event => Event::fromArray($event, $uploads->files), $stale, EventRequest::of($request, $event));
             if ($outcome->reload) {
                 return EventResult::reload();
             }

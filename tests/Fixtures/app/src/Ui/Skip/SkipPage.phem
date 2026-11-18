@@ -3,8 +3,8 @@
 namespace App\Ui\Skip;
 
 use Phem\Attribute\{Component, Page, State};
-use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 use Phem\Tests\Fixtures\Renders;
 
 use function App\Ui\Layout\Document;
@@ -119,10 +119,10 @@ final class SkipPage
         ++Renders::$external;
     }
 
-    public function refresh(Event $e): void
+    public function refresh(Reply $reply): void
     {
         ++Renders::$external;
-        $e->refresh();
+        $reply->refresh();
     }
 
     public function render(): Node

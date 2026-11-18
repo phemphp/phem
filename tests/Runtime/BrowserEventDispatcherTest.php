@@ -14,23 +14,10 @@ declare(strict_types=1);
 namespace Phem\Tests\Runtime;
 
 use Phem\BrowserEventDispatcher;
-use Phem\Event;
 use PHPUnit\Framework\TestCase;
 
 final class BrowserEventDispatcherTest extends TestCase
 {
-    public function testEachEventHasItsOwnDispatcher(): void
-    {
-        self::assertNotSame((new Event('click'))->dispatcher, Event::fromArray(['type' => 'click'])->dispatcher);
-    }
-
-    public function testAnEventCanUseTheDispatcherService(): void
-    {
-        $dispatcher = new BrowserEventDispatcher();
-
-        self::assertSame($dispatcher, Event::fromArray(['type' => 'click'], $dispatcher)->dispatcher);
-    }
-
     public function testResetRemovesTheBrowserEvents(): void
     {
         $dispatcher = new BrowserEventDispatcher();

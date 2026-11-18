@@ -15,6 +15,7 @@ namespace Phem\Handler;
 
 use Phem\Event;
 use Phem\RedirectTo;
+use Phem\Reply;
 use Phem\Routing\PageUrlGenerator;
 
 /**
@@ -28,7 +29,7 @@ final class RedirectMiddleware implements HandlerMiddleware
     ) {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         $result = $next();
 

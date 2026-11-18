@@ -107,7 +107,7 @@ Each action finds an element with a CSS selector and sends the event the way the
 
 The files of an input with `data-phem-upload` go up before the event, as in the browser: `chunked` sends them in chunks to the server, and the handler gets a file of `upload_dir`. `direct` gets the URL of your `DirectUploader`, but the test sends no file to the storage: the handler gets the `DirectFile`, so give the test a `DirectUploader` that does not need a storage. An upload that the server refuses (a `413`, a `507`) makes the event fail with its status.
 
-As in a browser, the files of an input stay in the input after an event, even when the morph renders the input again. They’re cleared when the handler calls `$e->clearFiles()`, or when the page gets a new element for the input: a morph that gives the input another `id`, or a push that isn’t a morph.
+As in a browser, the files of an input stay in the input after an event, even when the morph renders the input again. They’re cleared when the handler calls `$reply->clearFiles()`, or when the page gets a new element for the input: a morph that gives the input another `id`, or a push that isn’t a morph.
 
 ### Load Suspense boundaries
 
@@ -234,9 +234,9 @@ Each assertion returns the tester, so you can chain actions and assertions:
 | `assertRedirect($url)`, `assertNoRedirect()` | A handler that returns a `RedirectTo` or a `RedirectResponse`, or a page that redirects (for example a `mount()` that returns a `RedirectTo`) |
 | `assertReload()` | The last event answered 409, so the browser loads the page again |
 | `assertQuery($key, $value)` | A query string key of the URL (`#[Url]`) after the last action: a string, a list, or null for no key |
-| `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | A browser event of the last action (`$e->dispatcher->dispatch()`), with its detail as JSON gives it |
-| `assertToast($message)`, `assertToast($message, ToastType::Error)`, `assertToast($message, title: 'Export complete')` | A toast of the last action (`$e->toast()` or `Phem\Toasts`), with its type and its title, as the `phem-toast` controller shows it. A `phem:toast` detail with no type, or with a type that the controller does not know, gives a toast with no type: `assertToast($message, ToastType::Info)` fails for it |
-| `assertAnnounced($message)` | A message for screen readers of the last action: a message of `$e->announce()` or `Phem\Announcements`, or a new text of a `phem:announce` element. An empty message does not count: the browser does not announce it |
+| `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | A browser event of the last action (`$reply->dispatch()`), with its detail as JSON gives it |
+| `assertToast($message)`, `assertToast($message, ToastType::Error)`, `assertToast($message, title: 'Export complete')` | A toast of the last action (`$reply->toast()` or `Phem\Toasts`), with its type and its title, as the `phem-toast` controller shows it. A `phem:toast` detail with no type, or with a type that the controller does not know, gives a toast with no type: `assertToast($message, ToastType::Info)` fails for it |
+| `assertAnnounced($message)` | A message for screen readers of the last action: a message of `$reply->announce()` or `Phem\Announcements`, or a new text of a `phem:announce` element. An empty message does not count: the browser does not announce it |
 
 To read values directly, use `html()`, `text()`, `state()`, `url()`, `cookies()` (pages only), and `document()` (a `Dom\HTMLDocument`). `url()` returns the URL that the browser shows: the page URL (`/` for a component), with the query string of the `#[Url]` properties after the last action.
 
@@ -252,6 +252,20 @@ $this->visit('/')
 ```
 
 `state(in: '#toggle')` returns all the properties of that component.
+
+### Check the reply of a handler without the tester
+
+A unit test can call a handler method directly. Give it a `Reply`, then check what the handler asked for with `refreshes()` and `clearsFiles()`:
+
+```php
+$reply = new Reply(new BrowserEventDispatcher());
+new TodoList($todos)->add($reply);
+
+self::assertTrue($reply->refreshes());
+self::assertFalse($reply->clearsFiles());
+```
+
+To check the toasts and the browser events, use the tester: `assertToast()` and `assertDispatched()`.
 
 ## Test an error page
 

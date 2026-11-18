@@ -3,8 +3,8 @@
 namespace App\Ui\Common;
 
 use Phem\Attribute\{Component, State};
-use Phem\Event;
 use Phem\Node;
+use Phem\Reply;
 
 #[Component]
 final class Scroll
@@ -14,11 +14,11 @@ final class Scroll
     #[State] public ?int $added = null;
     #[State] public bool $chat = true;
 
-    public function add(Event $e): void
+    public function add(Reply $reply): void
     {
         $this->added = \count($this->comments) + 1;
         $this->comments[] = $this->added;
-        $e->announce('Comment added');
+        $reply->announce('Comment added');
     }
 
     public function render(): Node

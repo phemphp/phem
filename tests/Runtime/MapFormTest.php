@@ -18,6 +18,7 @@ use Phem\Argument\MapFormValueResolver;
 use Phem\Attribute\MapForm;
 use Phem\Attribute\State;
 use Phem\Attribute\Transactional;
+use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Form\FormMapper;
 use Phem\Form\InvalidForm;
@@ -30,6 +31,7 @@ use Phem\Handler\TransactionalMiddleware;
 use Phem\Handler\TransactionRunner;
 use Phem\State\StateValidator;
 use Phem\Tests\Fixtures\ClosedDates;
+use Phem\Tests\Fixtures\Replies;
 use Phem\Tests\Fixtures\Size;
 use Phem\Validation;
 use PHPUnit\Framework\TestCase;
@@ -137,7 +139,7 @@ final class MapFormTest extends TestCase
     {
         $component = new MappedComponent();
 
-        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '2026-12-24']));
+        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '2026-12-24']), Replies::make());
 
         self::assertSame('2026-12-24', $component->saved);
     }
@@ -147,7 +149,7 @@ final class MapFormTest extends TestCase
         $component = new MappedComponent();
         $transactions = new CountingTransactions();
 
-        self::invoker(new TransactionalMiddleware($transactions))->invoke($component->add(...), new Event('submit', form: ['from' => '', 'guests' => '0']));
+        self::invoker(new TransactionalMiddleware($transactions))->invoke($component->add(...), new Event('submit', form: ['from' => '', 'guests' => '0']), Replies::make());
 
         self::assertSame('', $component->saved);
         self::assertSame(['from' => 'Choose the first day.', 'guests' => 'This value should be positive.'], $component->validation->errors());
@@ -161,7 +163,7 @@ final class MapFormTest extends TestCase
         $component = new MappedComponent();
         $validator = new StateValidator(SymfonyValidation::createValidator());
 
-        self::invoker(validator: $validator)->invoke($component->add(...), new Event('submit', form: ['from' => '']));
+        self::invoker(validator: $validator)->invoke($component->add(...), new Event('submit', form: ['from' => '']), Replies::make());
         $validator->settle($component);
 
         self::assertSame(['from' => 'Choose the first day.'], $component->validation->errors());
@@ -171,8 +173,8 @@ final class MapFormTest extends TestCase
     {
         $component = new MappedComponent();
 
-        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '']));
-        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '2026-12-24', 'guests' => '0']));
+        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '']), Replies::make());
+        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '2026-12-24', 'guests' => '0']), Replies::make());
 
         // The first day is valid now: its error of the first submit is gone.
         self::assertSame(['guests' => 'This value should be positive.'], $component->validation->errors());
@@ -183,12 +185,12 @@ final class MapFormTest extends TestCase
         $component = new MappedComponent();
         $component->validation = new Validation(['email'], null, ['email' => 'Too short.']);
 
-        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '']));
+        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '']), Replies::make());
         self::assertSame(['email' => 'Too short.', 'from' => 'Choose the first day.'], $component->validation->errors());
         self::assertFalse($component->validation->valid());
 
         // No validation of the #[State] properties runs after it: the map removes the errors.
-        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '2026-12-24']));
+        self::invoker()->invoke($component->add(...), new Event('submit', form: ['from' => '2026-12-24']), Replies::make());
         self::assertSame(['email' => 'Too short.'], $component->validation->errors());
         self::assertSame('2026-12-24', $component->saved);
     }
@@ -248,33 +250,33 @@ final class MapFormTest extends TestCase
 
     public function testWithoutAValidationPropertyTheFirstErrorIsAToast(): void
     {
-        $event = new Event('submit', form: ['guests' => '0']);
+        $dispatcher = new BrowserEventDispatcher();
         $called = false;
 
-        self::invoker()->invoke(static function (#[MapForm] ClosedDates $dates) use (&$called): void { $called = true; }, $event);
+        self::invoker()->invoke(static function (#[MapForm] ClosedDates $dates) use (&$called): void { $called = true; }, new Event('submit', form: ['guests' => '0']), Replies::make($dispatcher));
 
         self::assertFalse($called);
-        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Choose the first day.', 'type' => 'error']]], $event->dispatcher->dispatched());
+        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Choose the first day.', 'type' => 'error']]], $dispatcher->dispatched());
     }
 
     public function testTheToastTakesTheFirstErrorWithAMessage(): void
     {
-        $event = new Event('submit', form: ['code' => '', 'name' => '']);
+        $dispatcher = new BrowserEventDispatcher();
 
-        self::invoker()->invoke(static function (#[MapForm] SilentForm $form): void {}, $event);
+        self::invoker()->invoke(static function (#[MapForm] SilentForm $form): void {}, new Event('submit', form: ['code' => '', 'name' => '']), Replies::make($dispatcher));
 
-        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Give a name.', 'type' => 'error']]], $event->dispatcher->dispatched());
+        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Give a name.', 'type' => 'error']]], $dispatcher->dispatched());
     }
 
     public function testErrorsWithNoMessageShowNoToast(): void
     {
-        $event = new Event('submit', form: ['code' => '']);
+        $dispatcher = new BrowserEventDispatcher();
         $called = false;
 
-        self::invoker()->invoke(static function (#[MapForm] SilentForm $form) use (&$called): void { $called = true; }, $event);
+        self::invoker()->invoke(static function (#[MapForm] SilentForm $form) use (&$called): void { $called = true; }, new Event('submit', form: ['code' => '']), Replies::make($dispatcher));
 
         self::assertFalse($called);
-        self::assertSame([], $event->dispatcher->dispatched());
+        self::assertSame([], $dispatcher->dispatched());
     }
 
     private static function mapper(): FormMapper

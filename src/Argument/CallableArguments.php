@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Argument;
 
 use Phem\Event;
+use Phem\Reply;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
@@ -23,8 +24,9 @@ use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
  * Symfony argument resolver gives the Request, the services, `#[CurrentUser]`,
  * `#[MapQueryParameter]` and the other controller arguments.
  *
- * Phem gives the arguments of a handler call in the markup (see CallValueResolver), the event of
- * a handler (see EventValueResolver), the object of a #[MapForm] form (see MapFormValueResolver), the route values of a function page (see
+ * Phem gives the arguments of a handler call in the markup (see CallValueResolver), the event and
+ * the reply of a handler (see RequestAttributeValueResolver), the object
+ * of a #[MapForm] form (see MapFormValueResolver), the route values of a function page (see
  * PathValueResolver), and the services of a function page (see ServiceValueResolver).
  * The services of a method come from the Symfony locator of its class component (see
  * Phem\DependencyInjection\ComponentPass). The values go in the attributes of a copy of the
@@ -34,6 +36,9 @@ final class CallableArguments
 {
     /** The request attribute of the event of a handler. */
     public const EVENT = '_phem_event';
+
+    /** The request attribute of the reply of a handler call. */
+    public const REPLY = '_phem_reply';
 
     /** The request attribute of the route values of a function page, by parameter name. */
     public const PATH = '_phem_path';
@@ -52,7 +57,7 @@ final class CallableArguments
      */
     public function __construct(?ArgumentResolverInterface $resolver = null)
     {
-        $this->resolver = $resolver ?? new ArgumentResolver(null, [new CallValueResolver(), new MapFormValueResolver(), new PathValueResolver(), new EventValueResolver(), ...ArgumentResolver::getDefaultArgumentValueResolvers()]);
+        $this->resolver = $resolver ?? new ArgumentResolver(null, [new CallValueResolver(), new MapFormValueResolver(), new PathValueResolver(), new RequestAttributeValueResolver(Event::class, self::EVENT), new RequestAttributeValueResolver(Reply::class, self::REPLY), ...ArgumentResolver::getDefaultArgumentValueResolvers()]);
     }
 
     /**
@@ -65,7 +70,7 @@ final class CallableArguments
      *
      * @throws \ArgumentCountError when the call has more arguments than the handler has parameters
      */
-    public function of(\Closure|string $callable, ?Request $request = null, ?Event $event = null, array $path = [], array $bound = []): array
+    public function of(\Closure|string $callable, ?Request $request = null, ?Event $event = null, ?Reply $reply = null, array $path = [], array $bound = []): array
     {
         $function = new \ReflectionFunction($callable);
         $call = self::call($function, $bound);
@@ -80,6 +85,7 @@ final class CallableArguments
         $attributes = [
             '_controller' => $method,
             self::EVENT => $event,
+            self::REPLY => $reply,
             self::PATH => $path,
             self::SERVICES => \is_string($callable) ? ltrim($callable, '\\') : null,
             self::CALL => $call,

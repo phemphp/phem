@@ -724,6 +724,17 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertDispatched('submitted', ['action' => 'send']);
     }
 
+    public function testAHandlerRepliesWithOnlyTheReplyOrWithTheEventToo(): void
+    {
+        // `toast(Reply $reply)`: only the reply.
+        $tester = $this->mount(self::NOTIFIER)
+            ->click('#toast')
+            ->assertToast('Saved', ToastType::Success);
+
+        // `submitted(Event $e, Reply $reply)`: the form of the event goes in the reply.
+        $tester->click('#send')->assertDispatched('submitted', ['action' => 'send']);
+    }
+
     public function testAHandlerThatRedirectsDispatchesNoBrowserEvents(): void
     {
         $this->mount(self::NOTIFIER)->click('#leave')->assertRedirect('/about')->assertNotDispatched('toast');

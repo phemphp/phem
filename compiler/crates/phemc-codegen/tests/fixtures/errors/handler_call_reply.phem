@@ -1,0 +1,9 @@
+<?phem // expect: E047
+use Phem\Attribute\Component;
+use Phem\Reply;
+#[Component]
+final class Slots {
+    public array $slots = [];
+    public function remove(Reply $reply, int $index): void { unset($this->slots[$index]); }
+    public function render() { return <button onClick={{ remove(1) }}>x</button>; }
+}

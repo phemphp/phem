@@ -12,7 +12,7 @@ import { Controller } from "@hotwired/stimulus"
 // A `preview` target that is an `<img>` shows the first image (an avatar). Another element gets an
 // `<img>` for each image, with the `preview` class and the name of the file as its `alt`. The
 // previews belong to the client: the morph of an event keeps them. When a handler calls
-// `$e->clearFiles()`, the input is empty, and the previews go away.
+// `$reply->clearFiles()`, the input is empty, and the previews go away.
 //
 // With the `maxWidth` or the `maxHeight` value (in pixels, 0 for no limit), a larger JPEG, PNG or
 // WebP image gets the largest size in the limits, with the same ratio. The `type` value changes

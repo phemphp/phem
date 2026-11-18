@@ -9,7 +9,7 @@ Add `#[Transactional]` to a handler method to run it in a Doctrine transaction, 
 ```php
 use Doctrine\ORM\EntityManagerInterface;
 use Phem\Attribute\{Component, Prop, Transactional};
-use Phem\{Event, Node};
+use Phem\{Node, Reply};
 
 #[Component, Transactional]
 final class TodoItem
@@ -26,10 +26,10 @@ final class TodoItem
         $this->todo->done = !$this->todo->done;   // saved at the commit
     }
 
-    public function delete(Event $e): void
+    public function delete(Reply $reply): void
     {
         $this->em->remove($this->todo);           // deleted at the commit
-        $e->refresh();                            // the list renders again without the row
+        $reply->refresh();                        // the list renders again without the row
     }
 
     public function render(): Node
@@ -149,7 +149,7 @@ final class BuildReport
 
 In the request, the method runs as a regular handler and the event renders. The worker then rebuilds the page from the event’s state, calls the method again and runs the closure of the `Promise`. **The method body runs twice**, so keep it fast. The worker drops the pushes of the method body, because they went out with the request, but another side effect, such as a database write or an email, happens twice. Put it in the closure. Pass the values the work needs to the closure, as `use ($ticket)` does: the worker gets the ticket of the event, not the new one.
 
-The worker has no response, so the closure shows its result with `Streams` (see [Push updates to other browsers](real-time.md)). A toast or another browser event of the closure doesn't reach the browser, and the worker logs a warning. The worker has the user of the request, but no session, no cookies and no files. An `#[Async]` handler in an event with files throws a `LogicException`, so move the files in a regular handler. Messenger can retry the closure, so make it safe to run again.
+The worker has no response, so the closure shows its result with `Streams` (see [Push updates to other browsers](real-time.md)). A toast, another browser event, a `$reply->refresh()` or a `$reply->clearFiles()` of the closure doesn't reach the browser, and the worker logs a warning. The worker has the user of the request, but no session, no cookies and no files. An `#[Async]` handler in an event with files throws a `LogicException`, so move the files in a regular handler. Messenger can retry the closure, so make it safe to run again.
 
 ### Run the Messenger worker
 

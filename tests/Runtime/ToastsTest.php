@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Phem\Tests\Runtime;
 
 use Phem\BrowserEventDispatcher;
-use Phem\Event;
 use Phem\Toast;
 use Phem\Toasts;
 use Phem\ToastType;
@@ -82,13 +81,6 @@ final class ToastsTest extends TestCase
         ], $dispatcher->dispatched());
     }
 
-    public function testAnEventShowsAToastWithTheOptions(): void
-    {
-        $event = new Event('click');
-        $event->toast('Draft saved', id: 'save-status');
-
-        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Draft saved', 'id' => 'save-status']]], $event->dispatcher->dispatched());
-    }
 
     public function testShowRejectsAnEmptyOption(): void
     {
@@ -122,13 +114,6 @@ final class ToastsTest extends TestCase
         new Toasts(new BrowserEventDispatcher())->info('Saved', title: ' ');
     }
 
-    public function testAnEventShowsAToastWithItsDispatcher(): void
-    {
-        $event = new Event('click');
-        $event->toast('Saved', ToastType::Success, 8000);
-
-        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Saved', 'type' => 'success', 'duration' => 8000]]], $event->dispatcher->dispatched());
-    }
 
     public function testShowRejectsAnEmptyMessage(): void
     {

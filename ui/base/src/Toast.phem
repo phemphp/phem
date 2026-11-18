@@ -14,8 +14,8 @@ enum ToastPosition: string
 
 /**
  * The place of the toasts: Base UI Toast.Viewport, on the `phem-toast` controller. Put one in the
- * layout of the app. A handler shows a toast with `$e->toast('Saved', ToastType::Success)`, and a
- * toast with a title with `$e->toast('The file is ready.', title: 'Export complete')`.
+ * layout of the app. A handler shows a toast with `$reply->toast('Saved', ToastType::Success)`,
+ * and a toast with a title with `$reply->toast('The file is ready.', title: 'Export complete')`.
  *
  * Each toast is a copy of the template: a stack in the corner of the viewport that expands on hover,
  * and closes with a swipe. The template has the parts of Base UI: ToastRoot, ToastContent (its
@@ -26,7 +26,7 @@ enum ToastPosition: string
  * `position` places the stack: at the bottom right (the default), or at the top center (a swipe up
  * closes a toast). With `anchored`, each toast shows next to the element of its `anchor`, as Base
  * UI Toast.Positioner, on the `side` with the `sideOffset`. A `name` takes only the toasts with
- * this `viewport`: `$e->toast('Copied', anchor: 'copy', viewport: 'anchored')`.
+ * this `viewport`: `$reply->toast('Copied', anchor: 'copy', viewport: 'anchored')`.
  */
 #[Component, Provide]
 class ToastViewport

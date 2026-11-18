@@ -16,6 +16,7 @@ namespace Phem\Async;
 use Phem\Attribute\Async;
 use Phem\Event;
 use Phem\Handler\HandlerMiddleware;
+use Phem\Reply;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -38,7 +39,7 @@ final class AsyncMiddleware implements HandlerMiddleware
     ) {
     }
 
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         $method = self::methodOf($handler);
         $async = null !== $method && [] !== $method->getAttributes(Async::class);

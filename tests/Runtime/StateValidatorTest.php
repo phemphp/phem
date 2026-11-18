@@ -21,6 +21,7 @@ use Phem\Handler\ValidationMiddleware;
 use Phem\Metadata\ComponentMetadata;
 use Phem\State\StateAccessor;
 use Phem\State\StateValidator;
+use Phem\Tests\Fixtures\Replies;
 use Phem\Validation;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -226,11 +227,11 @@ final class StateValidatorTest extends TestCase
         $invoker = new HandlerInvoker([new ValidationMiddleware($this->validator())]);
 
         // Another event keeps them.
-        $invoker->invoke($form->check(...), new Event('click'));
+        $invoker->invoke($form->check(...), new Event('click'), Replies::make());
         self::assertSame(['' => 'Taken.', 'email' => 'Taken.'], $form->checked);
 
         // The handler runs with no old error, and finds them again.
-        $invoker->invoke($form->check(...), new Event('submit'));
+        $invoker->invoke($form->check(...), new Event('submit'), Replies::make());
         self::assertSame([], $form->checked);
         self::assertTrue($form->validation->valid());
     }
@@ -287,12 +288,12 @@ final class StateValidatorTest extends TestCase
         $form = new ValidatedForm();
         $invoker = new HandlerInvoker([new ValidationMiddleware($this->validator())]);
 
-        self::assertNull($invoker->invoke($form->save(...), new Event('submit')));
+        self::assertNull($invoker->invoke($form->save(...), new Event('submit'), Replies::make()));
         self::assertFalse($form->saved);
 
         $form->email = 'ada@example.com';
         $form->rows = [['name' => 'Ada'], ['name' => 'Bob']];
-        $invoker->invoke($form->save(...), new Event('submit'));
+        $invoker->invoke($form->save(...), new Event('submit'), Replies::make());
         self::assertTrue($form->saved);
     }
 
@@ -301,7 +302,7 @@ final class StateValidatorTest extends TestCase
         $form = new ValidatedForm();
         $invoker = new HandlerInvoker([new ValidationMiddleware($this->validator())]);
 
-        self::assertNull($invoker->invoke($form->quickSave(), new Event('submit')));
+        self::assertNull($invoker->invoke($form->quickSave(), new Event('submit'), Replies::make()));
         self::assertFalse($form->saved);
     }
 
@@ -310,7 +311,7 @@ final class StateValidatorTest extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('#[State] property of the type Phem\Validation');
 
-        new HandlerInvoker([new ValidationMiddleware($this->validator())])->invoke(new UnvalidatedForm()->save(...), new Event('submit'));
+        new HandlerInvoker([new ValidationMiddleware($this->validator())])->invoke(new UnvalidatedForm()->save(...), new Event('submit'), Replies::make());
     }
 
     private function validator(): StateValidator

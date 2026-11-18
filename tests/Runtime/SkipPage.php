@@ -17,7 +17,7 @@ use Phem\State\StateJson;
 use Phem\Tests\Fixtures\Renders;
 use PHPUnit\Framework\TestCase;
 
-/** Loads the /skip page, and clicks its buttons. */
+/** Loads the /skip page, and clicks its buttons, or sends their handlers in one load event. */
 trait SkipPage
 {
     private string $html = '';
@@ -40,9 +40,36 @@ trait SkipPage
     /** @return array<string, mixed> */
     private function click(string $id): array
     {
+        return $this->send($this->handlerOf($id), ['type' => 'click']);
+    }
+
+    /**
+     * Sends one load event with the handlers of many buttons, as the browser sends the handlers
+     * of the `<Suspense>` boundaries that load together.
+     *
+     * @return array<string, mixed>
+     */
+    private function load(string ...$ids): array
+    {
+        return $this->send(array_values(array_map($this->handlerOf(...), $ids)), ['type' => 'load', 'value' => null, 'checked' => null, 'key' => null, 'form' => null]);
+    }
+
+    private function handlerOf(string $id): string
+    {
         TestCase::assertSame(1, preg_match('/<button id="'.$id.'"[^>]*data-phem-on-click="([^"]+)"/', $this->html, $h), $id);
 
-        $response = $this->event('/skip', ['state' => $this->state, 'signature' => $this->signature, 'handler' => $h[1], 'event' => ['type' => 'click']]);
+        return $h[1];
+    }
+
+    /**
+     * @param string|list<string>  $handler
+     * @param array<string, mixed> $event
+     *
+     * @return array<string, mixed>
+     */
+    private function send(string|array $handler, array $event): array
+    {
+        $response = $this->event('/skip', ['state' => $this->state, 'signature' => $this->signature, 'handler' => $handler, 'event' => $event]);
         $data = json_decode((string) $response->getContent(), true);
         TestCase::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
 

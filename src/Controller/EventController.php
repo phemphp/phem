@@ -212,7 +212,7 @@ final class EventController
         $this->sender->startEvent([] === $payload->handlers);
 
         try {
-            $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $uploads->files), $payload->stale, EventRequest::of($request, $payload->event));
+            $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, static fn (): Event => Event::fromArray($payload->event, $uploads->files), $payload->stale, EventRequest::of($request, $payload->event));
         } catch (HttpExceptionInterface $e) {
             // A refresh (an event with no handler, after a push) of a page that this user cannot
             // see now: the browser loads the page again, and shows the error page of the server.
@@ -262,7 +262,7 @@ final class EventController
         }
 
         if ($outcome->clearFiles) {
-            // The browser empties the file inputs that sent files (see Event::clearFiles()).
+            // The browser empties the file inputs that sent files (see Reply::clearFiles()).
             $data['clearFiles'] = true;
         }
 

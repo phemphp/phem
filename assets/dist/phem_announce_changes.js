@@ -16,7 +16,7 @@
 // another one is part of the text of the outer element: it does not announce again.
 //
 // The message goes to the live region of the page (phem_announcer.js), with the messages of
-// `$e->announce()` of the same answer.
+// `$reply->announce()` of the same answer.
 
 const ANNOUNCE = "[data-phem-announce]"
 

@@ -105,7 +105,7 @@ final class PageStreams
 
     /**
      * Renders the component around the target again in each browser, with a normal event, with
-     * its subtree: its own state and its access rules. As after Event::refresh(), a component
+     * its subtree: its own state and its access rules. As after Reply::refresh(), a component
      * with no #[State] reads its data again in mount(), and a #[State] keeps the value of the
      * browser. The browser sends one event for all the refreshes that come together, and none for
      * a target that the page does not show. In an event request, the browser that sent the event

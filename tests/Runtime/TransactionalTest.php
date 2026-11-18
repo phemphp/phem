@@ -22,6 +22,7 @@ use Phem\Handler\TransactionRunner;
 use Phem\RedirectTo;
 use Phem\Routing\PageUrlGenerator;
 use PHPUnit\Framework\TestCase;
+use Phem\Tests\Fixtures\Replies;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\RequestContext;
@@ -123,7 +124,7 @@ final class TransactionalTest extends TestCase
             array_unshift($middleware, new RedirectMiddleware(new PageUrlGenerator(new UrlGenerator($routes, new RequestContext()))));
         }
 
-        return new HandlerInvoker($middleware)->invoke($handler, new Event('click'));
+        return new HandlerInvoker($middleware)->invoke($handler, new Event('click'), Replies::make());
     }
 }
 

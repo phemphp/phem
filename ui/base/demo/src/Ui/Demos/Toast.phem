@@ -3,7 +3,7 @@
 namespace App\Ui\Demos;
 
 use Phem\Attribute\{Component, Page, State};
-use Phem\{Event, Node, ToastType};
+use Phem\{Event, Node, Reply, ToastType};
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{ToastClose, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle, TooltipArrow, TooltipPopup, TooltipTrigger, Tooltip};
@@ -74,10 +74,10 @@ final class ToastHeroDemo
 {
     #[State] public int $count = 0;
 
-    public function create(Event $e): void
+    public function create(Reply $reply): void
     {
         ++$this->count;
-        $e->toast(
+        $reply->toast(
             'This is a toast notification.',
             title: 'Toast '.$this->count.' created',
         );
@@ -98,9 +98,9 @@ final class ToastHeroDemo
 final class ToastAnchoredDemo
 {
     /** A toast next to the copy button. */
-    public function copy(Event $e): void
+    public function copy(Reply $reply): void
     {
-        $e->toast(
+        $reply->toast(
             'Copied',
             duration: 1500,
             anchor: 'toast-copy',
@@ -108,9 +108,9 @@ final class ToastAnchoredDemo
         );
     }
 
-    public function stacked(Event $e): void
+    public function stacked(Reply $reply): void
     {
-        $e->toast('Copied');
+        $reply->toast('Copied');
     }
 
     public function render(): Node
@@ -144,10 +144,10 @@ final class ToastPositionDemo
     #[State] public int $count = 0;
 
     /** A toast at the top of the screen. */
-    public function create(Event $e): void
+    public function create(Reply $reply): void
     {
         ++$this->count;
-        $e->toast(
+        $reply->toast(
             'This is a toast notification.',
             title: 'Toast '.$this->count.' created',
             viewport: 'top',
@@ -169,9 +169,9 @@ final class ToastPositionDemo
 final class ToastUndoDemo
 {
     /** A toast with an action button. */
-    public function perform(Event $e): void
+    public function perform(Reply $reply): void
     {
-        $e->toast(
+        $reply->toast(
             'You can undo this action.',
             ToastType::Success,
             10000,
@@ -182,10 +182,10 @@ final class ToastUndoDemo
     }
 
     /** The action button of a toast calls the `onCall` handler of the viewport. */
-    public function undo(Event $e): void
+    public function undo(Event $e, Reply $reply): void
     {
         if ('Undo' === ($e->detail['action'] ?? null)) {
-            $e->toast('Action undone', viewport: 'undo');
+            $reply->toast('Action undone', viewport: 'undo');
         }
     }
 
@@ -207,7 +207,7 @@ final class ToastPromiseDemo
     #[State] public int $promises = 0;
 
     /** The loading toast of the click becomes the toast of the answer. */
-    public function run(Event $e): void
+    public function run(Reply $reply): void
     {
         $id = 'promise-'.++$this->promises;
 
@@ -215,9 +215,9 @@ final class ToastPromiseDemo
         usleep(2_000_000);
 
         if (random_int(1, 10) <= 7) {
-            $e->toast('Success: operation completed', ToastType::Success, id: $id);
+            $reply->toast('Success: operation completed', ToastType::Success, id: $id);
         } else {
-            $e->toast('Error: operation failed', ToastType::Error, id: $id);
+            $reply->toast('Error: operation failed', ToastType::Error, id: $id);
         }
     }
 
@@ -240,9 +240,9 @@ final class ToastPromiseDemo
 final class ToastCustomDemo
 {
     /** A toast with data for the template. */
-    public function create(Event $e): void
+    public function create(Reply $reply): void
     {
-        $e->toast(
+        $reply->toast(
             'Toast with custom data',
             data: ['userId' => '123'],
             viewport: 'custom',
@@ -274,9 +274,9 @@ final class ToastCustomDemo
 final class ToastDeduplicatedDemo
 {
     /** The same id updates the toast on the screen. */
-    public function save(Event $e): void
+    public function save(Reply $reply): void
     {
-        $e->toast(
+        $reply->toast(
             'Click again while it is visible to replay the pulse.',
             title: 'Draft saved',
             id: 'save-status',
@@ -318,10 +318,10 @@ final class ToastVaryingHeightsDemo
 
     #[State] public int $count = 0;
 
-    public function create(Event $e): void
+    public function create(Reply $reply): void
     {
         ++$this->count;
-        $e->toast(
+        $reply->toast(
             self::TEXTS[random_int(0, \count(self::TEXTS) - 1)],
             title: 'Toast '.$this->count.' created',
         );

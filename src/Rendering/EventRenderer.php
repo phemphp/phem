@@ -16,6 +16,7 @@ namespace Phem\Rendering;
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Metadata\ComponentMetadata;
+use Phem\Reply;
 use Phem\Routing\PageUrlGenerator;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
@@ -49,7 +50,7 @@ use Symfony\Component\HttpFoundation\Request;
  *
  * The render from before the handler is the shape that the browser sent (see TreeShape): the
  * tree compares the second pass with it. When the shape does not know a fiber of the paths, or
- * when the handler calls Event::refresh(), the full page renders, in the two passes.
+ * when the handler calls Reply::refresh(), the full page renders, in the two passes.
  *
  * A page that mounts in each render (no #[State]), or a function page, can return a
  * Phem\RedirectTo when it renders in an event: the browser visits the URL (see PageRedirect).
@@ -75,8 +76,9 @@ final class EventRenderer
     /**
      * @param list<string>            $handlers   the handler ids: none for an event with only bound values (`phem:live`) or a refresh, more than one for a load of many boundaries
      * @param array<array-key, mixed> $bound      the bound values: "<fiber>.<property>" => value (see BoundValues)
-     * @param \Closure(): Event       $event      makes the event for a handler
-     * @param BrowserEventDispatcher  $dispatcher it gets only the browser events of the handlers
+     * @param BrowserEventDispatcher  $dispatcher it gets only the browser events of the handlers: the
+     *                                            Reply of each handler sends to it
+     * @param \Closure(): Event       $event      makes the event that the handlers get: once, and only for an event with a handler
      * @param list<string>            $stale      the ids of the stale fibers (see Tree::markStale())
      * @param Request|null            $request    the request that the handlers get (see Phem\Http\EventRequest)
      */
@@ -123,15 +125,19 @@ final class EventRenderer
 
         $refresh = !$scoped;
         $clearFiles = false;
+        $e = null;
         foreach ($closures as $closure) {
-            $e = $event();
-            $result = $this->renderer->dispatch($tree, $closure, $e, $request);
+            // All the handlers get the same event. Each handler call has its own reply, with the
+            // dispatcher of the event.
+            $e ??= $event();
+            $reply = new Reply($dispatcher);
+            $result = $this->renderer->dispatch($tree, $closure, $e, $reply, $request);
             if ($result instanceof RedirectResponse) {
                 return EventOutcome::redirect($result);
             }
 
-            $refresh = $refresh || $e->refreshes();
-            $clearFiles = $clearFiles || $e->clearsFiles();
+            $refresh = $refresh || $reply->refreshes();
+            $clearFiles = $clearFiles || $reply->clearsFiles();
         }
 
         $this->settle($tree, $before, $touched);
