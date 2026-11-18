@@ -8,6 +8,17 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A popup of `phem-popover`, `phem-tooltip`, `phem-menu`, `phem-context-menu`, `phem-combobox`,
+  `phem-select` and `phem-navigation-menu` goes to its place at once, also with a CSS transition
+  of `top` and `left`.
+  The transition animates only the move of an open popup to another trigger, as in Base UI.
+  Before, the transition also moved the popup from the corner of the viewport on the open, and
+  delayed the popup behind its trigger on a scroll.
+- A popup in the top layer (an open `popover`) gets `position: absolute` and a place in the
+  page, as in Base UI. A scroll of the page moves it with its anchor in the same frame. Before,
+  it had `position: fixed`, and the client moved it after the scroll, so a fast scroll showed
+  the popup behind its trigger. A popup with an anchor in a `fixed` or `sticky` box, or at the
+  point of the pointer, keeps `position: fixed`.
 - Nested drawers of `phem-dialog` work as in Base UI:
   - Each dialog around an open dialog counts the open dialogs at all levels in
     `--nested-dialogs` and `--nested-drawers`. With three open drawers, the first one gets `2`

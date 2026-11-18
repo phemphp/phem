@@ -443,7 +443,7 @@ export default class PhemNavigationMenuController extends Controller {
       if (switching) {
         this.size.change(from)
         this.#surface?.removeAttribute("data-instant")
-        this.popup.render(true)
+        this.popup.reanchor()
       } else {
         // The size of the content, and the popup in the positioner shows first: the first
         // placement of the arrow uses its size, and the arrow does not move after it.

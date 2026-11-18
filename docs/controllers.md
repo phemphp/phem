@@ -124,7 +124,7 @@ A popup, a dialog that is not a modal and a navigation menu close at a press out
 
 ### Position
 
-`phem-popover`, `phem-tooltip`, `phem-menu`, `phem-context-menu`, `phem-combobox`, `phem-select` and `phem-navigation-menu` place their popup next to their anchor (the trigger, or the input). The popup gets `position: fixed` and its `top` and `left`, so a `transform` of the popup stays free for an animation. These values set the position:
+`phem-popover`, `phem-tooltip`, `phem-menu`, `phem-context-menu`, `phem-combobox`, `phem-select` and `phem-navigation-menu` place their popup next to their anchor (the trigger, or the input). The popup gets its `top` and `left`, so a `transform` of the popup stays free for an animation. A popup in the top layer (an open `popover`) gets `position: absolute` and a place in the page, as in Base UI: a scroll of the page moves it with its anchor in the same frame. Other popups, and a popup with an anchor in a `fixed` or `sticky` box or at the point of the pointer (`phem-context-menu`), get `position: fixed` and a place in the viewport. These values set the position:
 
 | Value | Default | Effect |
 |---|---|---|
@@ -137,7 +137,7 @@ A popup, a dialog that is not a modal and a navigation menu close at a press out
 | `flip` | `true` | `false` keeps the popup on its side when it does not fit |
 | `arrow-padding` | `5` | The space (px) between the arrow and the corners of the popup |
 
-When the popup does not fit on its side, it goes to the other side (a flip). On the other axis, it moves to stay in the viewport (a shift). It follows its anchor on a scroll and on a resize. The popup gets these CSS variables:
+When the popup does not fit on its side, it goes to the other side (a flip). On the other axis, it moves to stay in the viewport (a shift). It follows its anchor on a scroll and on a resize. It goes to its place at once: a CSS transition of `top` and `left` does not animate the first place, or a move after a scroll or a resize, as in Base UI. The transition animates only the move of an open popup to another trigger (see [Open one tooltip from several triggers](#open-one-tooltip-from-several-triggers)). The popup gets these CSS variables:
 
 - `--anchor-width` and `--anchor-height`: the size of the anchor, for example for a list as wide as its input
 - `--available-width` and `--available-height`: the space from the anchor to the edge of the viewport, for a `max-height`

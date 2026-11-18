@@ -89,10 +89,11 @@ export class Popup {
   }
 
   // The anchor changed (another trigger): the open popup goes next to the new anchor. A CSS
-  // transition of `top` and `left` animates the move.
+  // transition of `top` and `left` animates the move. It does not animate the other places (the
+  // first place, a scroll).
   reanchor() {
     const popup = this.#parts.popup()
-    if (this.#open && popup) this.#start(popup)
+    if (this.#open && popup) this.#start(popup, { animate: true })
   }
 
   // After the morph: the morph resets the `style` attribute of the popup and of the arrow.
@@ -116,7 +117,7 @@ export class Popup {
     this.#placing = null
   }
 
-  #start(popup) {
+  #start(popup, { animate = false } = {}) {
     if (!this.#undismiss && this.#parts.dismiss) {
       this.#undismiss = dismissable({
         inside: this.#parts.inside,
@@ -131,7 +132,7 @@ export class Popup {
 
     this.#placing?.abort()
     this.#placing = new AbortController()
-    this.#update = position(anchor, popup, () => ({ ...this.#parts.options(), arrow: this.#parts.arrow(), mirror: this.#parts.mirror() }), this.#placing.signal)
+    this.#update = position(anchor, popup, () => ({ ...this.#parts.options(), arrow: this.#parts.arrow(), mirror: this.#parts.mirror() }), this.#placing.signal, { animate })
   }
 
   #stop(popup) {

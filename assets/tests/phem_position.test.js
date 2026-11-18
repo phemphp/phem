@@ -29,6 +29,24 @@ afterEach(() => {
   document.documentElement.removeAttribute("dir")
 })
 
+// jsdom does not expand the `transition` shorthand.
+function transition(el, properties, durations) {
+  el.style.transitionProperty = properties
+  el.style.transitionDuration = durations
+}
+
+// Each change of `top`, with the transition properties at this time.
+function record(el) {
+  const moves = []
+  const set = el.style.setProperty.bind(el.style)
+  el.style.setProperty = (name, value, priority) => {
+    if (name === "top") moves.push([value, el.style.transitionProperty])
+    set(name, value, priority)
+  }
+
+  return moves
+}
+
 function at() {
   return { left: popup.style.left, top: popup.style.top }
 }
@@ -308,6 +326,74 @@ describe("position() and unposition()", () => {
     window.dispatchEvent(new Event("resize"))
     await new Promise((resolve) => requestAnimationFrame(resolve))
     expect(at().top).toBe("140px")
+  })
+
+  it("places a popup of the top layer in the page", () => {
+    popup.matches = (selector) => selector === ":popover-open"
+    Object.defineProperty(window, "scrollY", { value: 100, configurable: true })
+
+    place(anchor, popup, { side: "bottom" })
+
+    expect(popup.style.position).toBe("absolute")
+    expect(at()).toEqual({ left: "350px", top: "440px" })
+    Object.defineProperty(window, "scrollY", { value: 0, configurable: true })
+  })
+
+  it("places a popup of the top layer in the viewport when its anchor is in a fixed box", () => {
+    popup.matches = (selector) => selector === ":popover-open"
+    document.body.style.position = "fixed"
+
+    place(anchor, popup, { side: "bottom" })
+
+    expect(popup.style.position).toBe("fixed")
+    expect(at()).toEqual({ left: "350px", top: "340px" })
+    document.body.style.position = ""
+  })
+
+  it("places the popup at once, and keeps its other transitions", () => {
+    transition(popup, "top, opacity, left", "0.35s, 0.1s")
+    const moves = record(popup)
+
+    place(anchor, popup, { side: "bottom" })
+
+    expect(at()).toEqual({ left: "350px", top: "340px" })
+    expect(moves).toEqual([
+      ["0px", "opacity"],
+      ["340px", "opacity"],
+    ])
+    expect(popup.style.transitionProperty).toBe("top, opacity, left")
+    expect(popup.style.transitionDuration).toBe("0.35s, 0.1s")
+  })
+
+  it("animates the move from the last place with animate", () => {
+    transition(popup, "top, left", "0.35s")
+    place(anchor, popup, { side: "bottom" })
+    box(anchor, { left: 400, top: 100, width: 100, height: 40 })
+    const moves = record(popup)
+
+    place(anchor, popup, { side: "bottom", animate: true })
+
+    expect(at().top).toBe("140px")
+    // The measure at the corner and the way back to the last place do not move the popup, and
+    // the transition moves it from the last place to the new one.
+    expect(moves).toEqual([
+      ["0px", "none"],
+      ["340px", "none"],
+      ["140px", "top, left"],
+    ])
+  })
+
+  it("places the popup again with animate when a transition moves it", () => {
+    const moving = { transitionProperty: "top" }
+    popup.getAnimations = () => [moving]
+    const placing = new AbortController()
+    const moves = record(popup)
+
+    position(anchor, popup, () => ({ side: "bottom" }), placing.signal)
+    placing.abort()
+
+    // The popup keeps its place for the measure, and goes to the new place with the transition.
+    expect(moves).toEqual([["340px", ""]])
   })
 
   it("removes the styles and the attributes of the position", () => {

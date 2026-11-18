@@ -1,8 +1,11 @@
 // Places a popup next to its anchor (a trigger, an input), for `phem-popover`, `phem-tooltip`,
 // `phem-menu` and `phem-combobox`.
 //
-// The popup gets `position: fixed` and its `top` and `left`, so a transform of the popup stays
-// free for an animation. It goes on the `side` of the anchor (`top`, `bottom`, `left`, `right`,
+// The popup gets its `top` and `left`, so a transform of the popup stays free for an animation.
+// A popup in the top layer (an open `popover`) gets `position: absolute` and a place in the page,
+// as in Base UI: a scroll of the page moves it with its anchor at once, in the same frame. Else,
+// and for a virtual anchor or an anchor in a `fixed` or `sticky` box, it gets `position: fixed`
+// and a place in the viewport. It goes on the `side` of the anchor (`top`, `bottom`, `left`, `right`,
 // `inline-start` or `inline-end`), with the `align` (`start`, `center` or `end`) on the other
 // axis. When there is no space on the side, the popup goes to the other side (a flip). On the
 // other axis, it moves to stay in the viewport (a shift). `collisionPadding` is the space to keep
@@ -37,7 +40,10 @@
 // (`phem-context-menu`).
 //
 // The popup follows its anchor on a scroll, a resize of the window and a resize of the anchor or
-// of the popup, until the signal aborts. The morph resets the `style` attribute: the controllers
+// of the popup, until the signal aborts. It goes to its place at once: a CSS transition of `top`
+// and `left` does not animate the first place or a move after a scroll. It animates only a move
+// to a new anchor (`animate: true`, as in Base UI when one menu moves between its triggers), and
+// the updates during this move. The morph resets the `style` attribute: the controllers
 // call the update again after it.
 
 const SIDES = new Set(["top", "bottom", "left", "right", "inline-start", "inline-end"])
@@ -81,9 +87,11 @@ export function positionValues(side = "bottom", align = "center") {
 
 // Places `popup` next to `anchor` now, and again on each change until `signal` aborts. Returns
 // the function that places it again. `options` is a function, so a change of a value applies.
-export function position(anchor, popup, options, signal) {
+// With `animate: true`, a CSS transition of `top` and `left` animates the first place (the move
+// from the last place to a new anchor).
+export function position(anchor, popup, options, signal, { animate = false } = {}) {
   let frame = 0
-  const update = () => place(anchor, popup, options())
+  const update = (move = false) => place(anchor, popup, { ...options(), animate: move || moving(popup) })
   const later = () => {
     if (frame) return
 
@@ -93,7 +101,7 @@ export function position(anchor, popup, options, signal) {
     })
   }
 
-  update()
+  update(animate)
 
   addEventListener("scroll", later, { capture: true, passive: true, signal })
   addEventListener("resize", later, { signal })
@@ -107,7 +115,7 @@ export function position(anchor, popup, options, signal) {
 
   signal.addEventListener("abort", () => cancelAnimationFrame(frame), { once: true })
 
-  return update
+  return () => update()
 }
 
 // Removes the position of `popup`, of its arrow and of its `mirror` elements.
@@ -128,20 +136,32 @@ export function unposition(popup, arrow = null, mirror = []) {
   if (arrow.getAttribute("style") === "") arrow.removeAttribute("style")
 }
 
-export function place(anchor, popup, { side = "bottom", align = "center", sideOffset = 0, alignOffset = 0, collisionPadding = 5, collisionPaddingInline = -1, flip = true, arrowPadding = 5, arrow = null, mirror = [], collision = "flip" } = {}) {
+// With `animate: true`, a CSS transition of `top` and `left` animates the move from the last place
+// of the popup. Else the popup goes to its place at once, and its other transitions keep running.
+export function place(anchor, popup, { side = "bottom", align = "center", sideOffset = 0, alignOffset = 0, collisionPadding = 5, collisionPaddingInline = -1, flip = true, arrowPadding = 5, arrow = null, mirror = [], collision = "flip", animate = false } = {}) {
   side = SIDES.has(side) ? side : "bottom"
   align = ALIGNS.has(align) ? align : "center"
 
   const rtl = getComputedStyle(anchor.contextElement ?? anchor).direction === "rtl"
   const a = anchor.getBoundingClientRect()
 
+  // A popup that a transition moves now goes to its new place with the same transition. It keeps
+  // its place for the measure.
+  const retarget = animate && moving(popup)
+
+  // The measure at the corner of the viewport, and a place at once, do not start a transition.
+  const release = retarget ? () => {} : holdMove(popup)
+  const last = { position: popup.style.getPropertyValue("position"), top: popup.style.getPropertyValue("top"), left: popup.style.getPropertyValue("left") }
+
   // The size of a fixed box at the corner of the viewport: a popup that is a block in the page is
   // as wide as its container, and a popup at its last place near an edge wraps its text.
-  popup.style.setProperty("position", "fixed")
-  popup.style.setProperty("top", "0px")
-  popup.style.setProperty("left", "0px")
-  popup.style.setProperty("right", "auto")
-  popup.style.setProperty("bottom", "auto")
+  if (!retarget) {
+    popup.style.setProperty("position", "fixed")
+    popup.style.setProperty("top", "0px")
+    popup.style.setProperty("left", "0px")
+    popup.style.setProperty("right", "auto")
+    popup.style.setProperty("bottom", "auto")
+  }
 
   // The size with no transform: a scale animation does not change the place.
   const size = { width: popup.offsetWidth, height: popup.offsetHeight }
@@ -184,9 +204,20 @@ export function place(anchor, popup, { side = "bottom", align = "center", sideOf
     : { width: space[finalPhysical], height: view.height - 2 * pad.block }
 
   const style = popup.style
-  style.setProperty("position", "fixed")
-  style.setProperty("top", `${y}px`)
-  style.setProperty("left", `${x}px`)
+
+  // The move from the last place: the popup goes back to it, and the transition starts from it.
+  if (animate && !retarget) {
+    restore(style, "position", last.position)
+    restore(style, "top", last.top)
+    restore(style, "left", last.left)
+    release()
+  }
+
+  // A place in the page starts at the top left corner of the page, not of the viewport.
+  const page = inPage(anchor, popup)
+  style.setProperty("position", page ? "absolute" : "fixed")
+  style.setProperty("top", `${page ? y + scrollY : y}px`)
+  style.setProperty("left", `${page ? x + scrollX : x}px`)
   style.setProperty("right", "auto")
   style.setProperty("bottom", "auto")
   style.setProperty("--anchor-width", `${a.width}px`)
@@ -206,7 +237,79 @@ export function place(anchor, popup, { side = "bottom", align = "center", sideOf
 
   if (arrow) placeArrow(arrow, popup, a, size, x, y, finalPhysical, finalSide, align, arrowPadding)
 
+  if (!animate) release()
+
   return { side: finalSide, align, x, y }
+}
+
+// The transition properties that move the popup.
+const MOVE_PROPERTIES = new Set(["top", "left", "right", "bottom", "inset"])
+const TRANSITION_STYLES = ["transition-property", "transition-duration", "transition-timing-function", "transition-delay"]
+
+// Removes the move properties from the transition of `popup`, and returns the function that
+// puts them back. This function first applies the styles, so the new place does not start a
+// transition when the move properties come back.
+function holdMove(popup) {
+  const computed = getComputedStyle(popup)
+  const properties = computed.transitionProperty.split(",").map((name) => name.trim())
+  const kept = properties.map((name, i) => [name, i]).filter(([name]) => !MOVE_PROPERTIES.has(name))
+  if (kept.length === properties.length) return () => {}
+
+  const style = popup.style
+  const saved = TRANSITION_STYLES.map((name) => [name, style.getPropertyValue(name)])
+
+  // Each list of the transition repeats for each property: the kept properties keep their values.
+  const values = TRANSITION_STYLES.slice(1).map((name) => {
+    const items = computed.getPropertyValue(name).split(/,(?![^(]*\))/).map((item) => item.trim())
+
+    return [name, kept.map(([, i]) => items[i % items.length]).join(", ")]
+  })
+
+  if (kept.length === 0) style.setProperty("transition-property", "none")
+  else {
+    style.setProperty("transition-property", kept.map(([name]) => name).join(", "))
+    for (const [name, value] of values) style.setProperty(name, value)
+  }
+
+  return () => {
+    // The styles apply with no transition of the move.
+    void popup.offsetWidth
+
+    for (const [name, value] of saved) restore(style, name, value)
+    if (popup.getAttribute("style") === "") popup.removeAttribute("style")
+  }
+}
+
+// Whether `popup` goes in the page: it is in the top layer, where `position: absolute` starts at
+// the corner of the page, and its anchor scrolls with the page.
+function inPage(anchor, popup) {
+  if (!(anchor instanceof Element) || !topLayered(popup)) return false
+
+  for (let el = anchor; el; el = el.parentElement) {
+    const { position } = getComputedStyle(el)
+    if (position === "fixed" || position === "sticky") return false
+  }
+
+  return true
+}
+
+function topLayered(el) {
+  try {
+    return el.matches(":popover-open")
+  } catch {
+    return false
+  }
+}
+
+// Whether a CSS transition moves `popup` now: an update during the move to a new anchor moves it
+// to the new place with the transition.
+function moving(popup) {
+  return popup.getAnimations?.().some((animation) => MOVE_PROPERTIES.has(animation.transitionProperty)) ?? false
+}
+
+function restore(style, name, value) {
+  if (value === "") style.removeProperty(name)
+  else style.setProperty(name, value)
 }
 
 function placeArrow(arrow, popup, a, size, x, y, physical, side, align, padding) {
