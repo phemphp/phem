@@ -245,6 +245,36 @@ describe("phem-dialog", () => {
     expect(outer.style.getPropertyValue("--nested-dialogs")).toBe("0")
   })
 
+  it("counts the open dialogs at all the levels in a dialog, and counts a dialog that closes no more", async () => {
+    await mount(`<div data-controller="phem-dialog">
+        <dialog id="outer" data-phem-dialog-target="popup">
+          <div data-controller="phem-dialog">
+            <button id="middle-open" data-phem-dialog-target="trigger">More</button>
+            <dialog id="middle" data-phem-dialog-target="popup">
+              <div data-controller="phem-dialog">
+                <button id="inner-open" data-phem-dialog-target="trigger">More</button>
+                <dialog id="inner" data-phem-dialog-target="popup"><button id="inner-close" data-phem-dialog-target="close">Close</button></dialog>
+              </div>
+            </dialog>
+          </div>
+        </dialog>
+      </div>`)
+    const $ = (id) => document.getElementById(id)
+    $("outer").showModal()
+    click("#middle-open")
+    click("#inner-open")
+    expect($("outer").style.getPropertyValue("--nested-dialogs")).toBe("2")
+    expect($("middle").style.getPropertyValue("--nested-dialogs")).toBe("1")
+
+    // The close starts: the dialog still shows during its animation, but it does not count.
+    $("inner").getAnimations = () => [{ finished: new Promise(() => {}) }]
+    click("#inner-close")
+    expect($("inner").open).toBe(true)
+    expect($("outer").style.getPropertyValue("--nested-dialogs")).toBe("1")
+    expect($("middle").style.getPropertyValue("--nested-dialogs")).toBe("0")
+    expect($("middle").hasAttribute("data-nested-dialog-open")).toBe(false)
+  })
+
   it("stays open after the morph of an event", async () => {
     await mount(edit())
     respond(edit("", `<p id="new">New</p>`))
@@ -995,6 +1025,31 @@ describe("phem-dialog: a drawer in a drawer", () => {
     // The drawer in it still closes: its animation is not at its end.
     expect($("inner").open).toBe(true)
     expect($("outer").style.getPropertyValue("--drawer-frontmost-height")).toBe("400px")
+  })
+
+  it("gives the drawer around a drawer its own height while the drawer in it is open or closes", async () => {
+    await drawers()
+    click("#outer-open")
+    expect($("outer").style.getPropertyValue("--drawer-height")).toBe("")
+
+    click("#inner-open")
+    expect($("outer").style.getPropertyValue("--drawer-height")).toBe("400px")
+    // Its own value: it does not inherit the height of the drawer around it.
+    expect($("inner").style.getPropertyValue("--drawer-height")).toBe("initial")
+
+    // The close of the drawer in it: the two drawers keep their height until its end.
+    let finish
+    $("inner").getAnimations = () => [{ finished: new Promise((resolve) => (finish = resolve)) }]
+    click("#inner-close")
+    expect($("outer").style.getPropertyValue("--drawer-height")).toBe("400px")
+    expect($("inner").style.getPropertyValue("--drawer-height")).toBe("200px")
+
+    finish()
+    await nextTask()
+    await nextTask()
+    expect($("inner").open).toBe(false)
+    expect($("outer").style.getPropertyValue("--drawer-height")).toBe("")
+    expect($("inner").style.getPropertyValue("--drawer-height")).toBe("")
   })
 
   it("marks the drawer around a drawer during its swipe, and does not swipe it", async () => {

@@ -17,6 +17,9 @@ const NESTED_ATTRIBUTES = new Set(["data-nested", "data-nested-dialog-open", "da
 // The popups that got `tabindex="-1"` for the focus of a touch open.
 const focused = new WeakSet()
 
+// The popups of drawers that keep their height in `--drawer-height` (see holdHeight()).
+const held = new WeakSet()
+
 // The attributes of a drawer.
 const DRAWER_ATTRIBUTES = new Set(["data-expanded", "data-swipe-direction"])
 
@@ -74,12 +77,15 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // `aria-describedby` (the `description` target), with their ids or with element references. A
 // close waits for the animations of `[data-ending-style]` of the popup before `close()`. A
 // trigger gets `aria-haspopup="dialog"`, `aria-expanded`, `data-popup-open`, and `aria-controls`
-// while the dialog is open. A dialog in an
-// open dialog gets `data-nested`, and the dialog around it gets `data-nested-dialog-open` and the
-// `--nested-dialogs` CSS variable (the number of open dialogs in it), for a stack of dialogs. A
-// drawer around it also gets `data-nested-drawer-open` and `--nested-drawers`, and
-// `data-nested-drawer-swiping` during the swipe of a drawer in it. The popup of a drawer gets
-// `--drawer-frontmost-height`: the height of the last open drawer in it, or else its own height.
+// while the dialog is open. A dialog in an open dialog gets `data-nested`, and each dialog around
+// it gets `data-nested-dialog-open` and the `--nested-dialogs` CSS variable (the number of open
+// dialogs in it, at all levels), for a stack of dialogs. The count changes when the close of a
+// dialog in it starts. A drawer around it also gets `data-nested-drawer-open` and
+// `--nested-drawers`, and `data-nested-drawer-swiping` during the swipe of a drawer in it. The
+// popup of a drawer gets `--drawer-frontmost-height`: the height of the last open drawer in it, or
+// else its own height. It gets `--drawer-height` (its own height) while a drawer in it is open or
+// closes, and while it closes, as Base UI: from this height, its height can change with a
+// transition.
 //
 // With the `swipeDirection` value (`up`, `down`, `left` or `right`), the dialog is a drawer: a
 // swipe in that direction closes it (see phem_swipe.js). The popup gets `data-swipe-direction`.
@@ -480,9 +486,10 @@ export default class PhemDialogController extends Controller {
 
       for (const part of this.#parts(el)) if (part !== popup) hide(part, { hidden: false })
 
-      // The drawers around a drawer that closes get their own height back when the close starts,
-      // so they change with its animation.
-      for (let drawer = el.parentElement?.closest("dialog"); drawer; drawer = drawer.parentElement?.closest("dialog")) this.#renderFrontmost(drawer, el)
+      // The dialogs around a dialog that closes get their count and their height back when the
+      // close starts, so they change with its animation. A drawer keeps its height while it closes.
+      if (AXES[this.swipeDirectionValue]) holdHeight(popup)
+      this.#renderAround(el, el)
 
       closing++
       hide(popup, {
@@ -657,12 +664,42 @@ export default class PhemDialogController extends Controller {
   #renderNesting(el, open) {
     const parent = el.parentElement?.closest("dialog")
     for (const part of this.#parts(el)) part.toggleAttribute("data-nested", open && Boolean(parent))
+    const popup = this.#popupOf(el)
+    if (!open) releaseHeight(popup)
     if (!parent) return
 
-    if (open) renderNestedCount(el, el.querySelectorAll("dialog[open]").length)
-    renderNestedCount(parent, [...parent.querySelectorAll("dialog[open]")].filter((d) => d !== el || open).length)
+    // A drawer in a drawer has its own `--drawer-height`: it does not inherit the height of the
+    // drawer around it.
+    if (open && AXES[this.swipeDirectionValue] && !popup.style.getPropertyValue("--drawer-height")) popup.style.setProperty("--drawer-height", "initial")
 
-    for (let drawer = parent; drawer; drawer = drawer.parentElement?.closest("dialog")) this.#renderFrontmost(drawer, open ? null : el)
+    // The drawers around it keep their height before they get the height of this drawer, and get
+    // the auto height again when no drawer in them is open.
+    for (let drawer = parent; drawer; drawer = drawer.parentElement?.closest("dialog")) {
+      const around = popupsOf(drawer).at(-1)
+      if (!around.hasAttribute("data-swipe-direction")) continue
+
+      if (open) holdHeight(around)
+      else if (![...drawer.querySelectorAll("dialog[open]")].some((d) => d !== el && !el.contains(d))) releaseHeight(around)
+    }
+
+    if (open) renderNestedCount(el, el.querySelectorAll("dialog[open]").length)
+    this.#renderAround(el, open ? null : el)
+  }
+
+  // The dialogs around a dialog: the number of open dialogs in each one (all the levels, as Base
+  // UI), and the height of the last open drawer. `closing` is a dialog that does not count: its
+  // `open` attribute goes after its animation.
+  #renderAround(el, closing = null) {
+    for (let dialog = el.parentElement?.closest("dialog"); dialog; dialog = dialog.parentElement?.closest("dialog")) {
+      // A drawer that opens in it: the drawer around it gets its count with its current height
+      // first, and the height of the new drawer after this style. Its height changes with a
+      // transition, also from `auto`, as Base UI.
+      const popup = !closing && keepFrontmost(dialog)
+
+      renderNestedCount(dialog, [...dialog.querySelectorAll("dialog[open]")].filter((d) => d !== closing && !closing?.contains(d)).length)
+      if (popup) void popup.offsetHeight
+      this.#renderFrontmost(dialog, closing)
+    }
   }
 
   // The popup of a drawer gets the height of the last open drawer in it, or else its own height.
@@ -672,8 +709,9 @@ export default class PhemDialogController extends Controller {
     if (!parts.some((part) => part.hasAttribute("data-swipe-direction"))) return
 
     const open = [...dialog.querySelectorAll("dialog[open]")].filter((el) => el !== closing && !closing?.contains(el))
+    // A drawer that keeps its height can still change to it: its height is the one it keeps.
     const frontmost = popupsOf(open.at(-1) ?? dialog).at(-1)
-    const height = frontmost.offsetHeight
+    const height = held.has(frontmost) ? parseFloat(frontmost.style.getPropertyValue("--drawer-height")) : frontmost.offsetHeight
     for (const part of parts) {
       if (height > 0) part.style.setProperty("--drawer-frontmost-height", `${height}px`)
       else part.style.removeProperty("--drawer-frontmost-height")
@@ -822,6 +860,44 @@ function renderNestedCount(dialog, nested) {
     part.toggleAttribute("data-nested-drawer-open", nested > 0)
     part.style.setProperty("--nested-drawers", String(nested))
   }
+}
+
+// The popup of a drawer gets its current height in `--drawer-frontmost-height`. It returns the
+// popup, or null for a dialog that is not a drawer.
+function keepFrontmost(dialog) {
+  const parts = popupsOf(dialog)
+  const popup = parts.at(-1)
+  if (!popup.hasAttribute("data-swipe-direction")) return null
+
+  const height = popup.offsetHeight
+  if (height > 0) for (const part of parts) part.style.setProperty("--drawer-frontmost-height", `${height}px`)
+
+  return popup
+}
+
+// The popup of a drawer keeps its height in `--drawer-height`: a CSS transition of its height
+// can start or end at this height, not at `auto`. A drawer with snap points has its own
+// `--drawer-height` (see #renderDrawer()).
+function holdHeight(popup) {
+  const own = popup.style.getPropertyValue("--drawer-height")
+  if (held.has(popup) || (own && own !== "initial")) return
+
+  const height = popup.offsetHeight
+  if (height <= 0) return
+
+  popup.style.setProperty("--drawer-height", `${height}px`)
+  held.add(popup)
+}
+
+// The height goes back to `auto`. An open drawer in a drawer keeps `initial`, so it does not
+// inherit the height of the drawer around it.
+function releaseHeight(popup) {
+  if (!held.delete(popup) && popup.style.getPropertyValue("--drawer-height") !== "initial") return
+
+  const dialog = popup instanceof HTMLDialogElement ? popup : popup.closest("dialog")
+  if (dialog?.open && dialog.parentElement?.closest("dialog")) popup.style.setProperty("--drawer-height", "initial")
+  else popup.style.removeProperty("--drawer-height")
+  if (popup.getAttribute("style") === "") popup.removeAttribute("style")
 }
 
 // A dialog and its popup, when the popup is an element in it (a `viewport` target).

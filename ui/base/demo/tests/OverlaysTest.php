@@ -157,6 +157,9 @@ final class OverlaysTest extends DemoTestCase
         expect($dialog('Advanced')->getByRole('textbox', ['name' => 'Device name']))->toHaveValue('Personal laptop');
         expect($dialog('Account'))->toHaveAttribute('data-nested-drawer-open', '');
         expect($dialog('Security'))->toHaveAttribute('data-nested-drawer-open', '');
+        // The count of each drawer behind: all the open drawers in it.
+        self::assertSame('2', $dialog('Account')->evaluate('el => el.style.getPropertyValue("--nested-drawers")'));
+        self::assertSame('1', $dialog('Security')->evaluate('el => el.style.getPropertyValue("--nested-drawers")'));
         $dialog('Advanced')->getByRole('button', ['name' => 'Done'])->click();
         expect($dialog('Advanced'))->toBeHidden();
         $page->keyboard()->press('Escape');

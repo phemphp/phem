@@ -187,57 +187,63 @@ function DrawerNestedDemo(): Node
     return (
         <Drawer>
             <DrawerTrigger>Open drawer stack</DrawerTrigger>
-            <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] group/popup -mx-px w-[calc(100%+2px)] [height:var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
-                <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100 dark:bg-neutral-700" />
-                <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100">
-                    <DrawerTitle className="text-center">Account</DrawerTitle>
-                    <DrawerDescription className="text-center">Nested drawers can be styled to stack, while each drawer remains independently focus managed.</DrawerDescription>
-                    <div className="flex items-center justify-end gap-4">
-                        <div className="mr-auto">
-                            <Drawer>
-                                <DrawerTrigger>Security settings</DrawerTrigger>
-                                <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] group/popup -mx-px w-[calc(100%+2px)] [height:var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
-                                    <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100 dark:bg-neutral-700" />
-                                    <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100">
-                                        <DrawerTitle className="text-center">Security</DrawerTitle>
-                                        <DrawerDescription className="text-center">Review sign-in activity and update your security preferences.</DrawerDescription>
-                                        <ul className="mb-6 list-disc pl-5 text-neutral-700 dark:text-neutral-300">
-                                            <li>Passkeys enabled</li>
-                                            <li>2FA via authenticator app</li>
-                                            <li>3 signed-in devices</li>
-                                        </ul>
-                                        <div className="flex items-center justify-end gap-4">
-                                            <div className="mr-auto">
-                                                <Drawer>
-                                                    <DrawerTrigger>Advanced options</DrawerTrigger>
-                                                    <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] group/popup -mx-px w-[calc(100%+2px)] [height:var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
-                                                        <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100 dark:bg-neutral-700" />
-                                                        <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100">
-                                                            <DrawerTitle className="text-center">Advanced</DrawerTitle>
-                                                            <DrawerDescription className="text-center">This drawer is taller to demonstrate variable-height stacking.</DrawerDescription>
-                                                            <div className="mb-4 grid gap-2">
-                                                                <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300" htmlFor="device-name">Device name</label>
-                                                                <input id="device-name" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400" value="Personal laptop" />
-                                                            </div>
-                                                            <div className="mb-4 grid gap-2">
-                                                                <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300" htmlFor="device-notes">Notes</label>
-                                                                <textarea id="device-notes" rows="3" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 h-auto min-h-32 resize-y p-2">Rotate recovery codes and revoke older sessions.</textarea>
-                                                            </div>
-                                                            <div className="flex justify-end"><DrawerClose>Done</DrawerClose></div>
-                                                        </DrawerContent>
-                                                    </DrawerPopup>
-                                                </Drawer>
-                                            </div>
-                                            <DrawerClose>Close</DrawerClose>
-                                        </div>
-                                    </DrawerContent>
-                                </DrawerPopup>
-                            </Drawer>
+            <DrawerViewport>
+                <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] relative -mx-px w-[calc(100%+2px)] max-h-[calc(80%+3rem)] supports-[-webkit-touch-callout:none]:max-h-[calc(80vh+3rem)] h-[var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
+                    <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] [[data-nested-drawer-open]:not([data-nested-drawer-swiping])>&]:opacity-0 dark:bg-neutral-700" />
+                    <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] [[data-nested-drawer-open]:not([data-nested-drawer-swiping])>&]:opacity-0">
+                        <DrawerTitle className="text-center">Account</DrawerTitle>
+                        <DrawerDescription className="text-center">Nested drawers can be styled to stack, while each drawer remains independently focus managed.</DrawerDescription>
+                        <div className="flex items-center justify-end gap-4">
+                            <div className="mr-auto">
+                                <Drawer>
+                                    <DrawerTrigger>Security settings</DrawerTrigger>
+                                    <DrawerViewport className="backdrop:bg-transparent">
+                                        <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] relative -mx-px w-[calc(100%+2px)] max-h-[calc(80%+3rem)] supports-[-webkit-touch-callout:none]:max-h-[calc(80vh+3rem)] h-[var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
+                                            <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] [[data-nested-drawer-open]:not([data-nested-drawer-swiping])>&]:opacity-0 dark:bg-neutral-700" />
+                                            <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] [[data-nested-drawer-open]:not([data-nested-drawer-swiping])>&]:opacity-0">
+                                                <DrawerTitle className="text-center">Security</DrawerTitle>
+                                                <DrawerDescription className="text-center">Review sign-in activity and update your security preferences.</DrawerDescription>
+                                                <ul className="mb-6 list-disc pl-5 text-neutral-700 dark:text-neutral-300">
+                                                    <li>Passkeys enabled</li>
+                                                    <li>2FA via authenticator app</li>
+                                                    <li>3 signed-in devices</li>
+                                                </ul>
+                                                <div className="flex items-center justify-end gap-4">
+                                                    <div className="mr-auto">
+                                                        <Drawer>
+                                                            <DrawerTrigger>Advanced options</DrawerTrigger>
+                                                            <DrawerViewport className="backdrop:bg-transparent">
+                                                                <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] relative -mx-px w-[calc(100%+2px)] max-h-[calc(80%+3rem)] supports-[-webkit-touch-callout:none]:max-h-[calc(80vh+3rem)] h-[var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
+                                                                    <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] [[data-nested-drawer-open]:not([data-nested-drawer-swiping])>&]:opacity-0 dark:bg-neutral-700" />
+                                                                    <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] [[data-nested-drawer-open]:not([data-nested-drawer-swiping])>&]:opacity-0">
+                                                                        <DrawerTitle className="text-center">Advanced</DrawerTitle>
+                                                                        <DrawerDescription className="text-center">This drawer is taller to demonstrate variable-height stacking.</DrawerDescription>
+                                                                        <div className="mb-4 grid gap-2">
+                                                                            <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300" htmlFor="device-name">Device name</label>
+                                                                            <input id="device-name" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400" value="Personal laptop" />
+                                                                        </div>
+                                                                        <div className="mb-4 grid gap-2">
+                                                                            <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300" htmlFor="device-notes">Notes</label>
+                                                                            <textarea id="device-notes" rows="3" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 h-auto min-h-32 resize-y p-2">Rotate recovery codes and revoke older sessions.</textarea>
+                                                                        </div>
+                                                                        <div className="flex justify-end"><DrawerClose>Done</DrawerClose></div>
+                                                                    </DrawerContent>
+                                                                </DrawerPopup>
+                                                            </DrawerViewport>
+                                                        </Drawer>
+                                                    </div>
+                                                    <DrawerClose>Close</DrawerClose>
+                                                </div>
+                                            </DrawerContent>
+                                        </DrawerPopup>
+                                    </DrawerViewport>
+                                </Drawer>
+                            </div>
+                            <DrawerClose>Close</DrawerClose>
                         </div>
-                        <DrawerClose>Close</DrawerClose>
-                    </div>
-                </DrawerContent>
-            </DrawerPopup>
+                    </DrawerContent>
+                </DrawerPopup>
+            </DrawerViewport>
         </Drawer>
     );
 }

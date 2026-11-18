@@ -143,7 +143,8 @@ function DialogClose(bool $disabled = false, ?Html $children = null, mixed ...$r
 
 /**
  * The container that places the popup, as the Viewport of Base UI: a `<dialog>` that fills the
- * screen. A tap on it outside the popup closes the dialog. Its `::backdrop` is the Backdrop.
+ * screen. A tap on it outside the popup closes the dialog. Its `::backdrop` is the Backdrop. With
+ * `z-50`, a dialog that is not modal (not in the top layer) is above the page.
  */
 #[Component, Provide]
 class DialogViewport
@@ -158,7 +159,7 @@ class DialogViewport
         return (
             <dialog
                 data-phem-dialog-target="viewport"
-                className={{ classes('m-0 p-0 fixed inset-0 size-full max-w-none max-h-none border-0 bg-transparent overflow-hidden backdrop:bg-black/20 dark:backdrop:bg-black/50 backdrop:transition-opacity backdrop:duration-150 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0') }}
+                className={{ classes('m-0 p-0 fixed z-50 inset-0 size-full max-w-none max-h-none border-0 bg-transparent overflow-hidden backdrop:bg-black/20 dark:backdrop:bg-black/50 backdrop:transition-opacity backdrop:duration-150 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0') }}
                 {{ ...attrs }}
             >
                 {{ children }}

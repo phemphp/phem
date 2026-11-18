@@ -114,7 +114,8 @@ function DrawerTrigger(?Html $children = null, mixed ...$rest): Node
 
 /**
  * The panel. Its `::backdrop` is the Backdrop of Base UI: it fades with the swipe. In a
- * DrawerViewport, it is a `div`, and the viewport has the `::backdrop`.
+ * DrawerViewport, it is a `div`, and the viewport has the `::backdrop`. A drawer that is not modal
+ * is not in the top layer: `z-50` puts it above the page, as the Portal of Base UI.
  */
 #[Component]
 function DrawerPopup(#[Context] Drawer $drawer, #[Context] ?DrawerViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
@@ -129,7 +130,7 @@ function DrawerPopup(#[Context] Drawer $drawer, #[Context] ?DrawerViewport $view
     return (
         <dialog
             data-phem-dialog-target="popup"
-            className={{ classes('fixed m-0 inset-0 h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
+            className={{ classes('fixed z-50 m-0 inset-0 h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
             {{ ...rest }}
         >
             {{ children }}
@@ -172,7 +173,8 @@ function DrawerPayload(?Html $children = null, mixed ...$rest): Node
 /**
  * The container that places the popup, as the Viewport of Base UI: a `<dialog>` that fills the
  * screen, with the popup on the edge of the `swipeDirection`. Its `::backdrop` is the Backdrop: it
- * fades with the swipe. A tap on it outside the popup closes the drawer.
+ * fades with the swipe. A tap on it outside the popup closes the drawer. With `z-50`, a drawer that
+ * is not modal (not in the top layer) is above the page.
  */
 #[Component, Provide]
 class DrawerViewport
@@ -189,7 +191,7 @@ class DrawerViewport
         return (
             <dialog
                 data-phem-dialog-target="viewport"
-                className={{ classes('fixed m-0 p-0 inset-0 size-full max-w-none max-h-none border-0 bg-transparent overflow-hidden open:flex backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', place) }}
+                className={{ classes('fixed z-50 m-0 p-0 inset-0 size-full max-w-none max-h-none border-0 bg-transparent overflow-hidden open:flex backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', place) }}
                 {{ ...attrs }}
             >
                 {{ children }}

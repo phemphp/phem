@@ -8,6 +8,18 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Nested drawers of `phem-dialog` work as in Base UI:
+  - Each dialog around an open dialog counts the open dialogs at all levels in
+    `--nested-dialogs` and `--nested-drawers`. With three open drawers, the first one gets `2`
+    and the second one gets `1`. Before, only the dialog directly around it changed, so the
+    first drawer did not go back in the stack.
+  - The count changes when the close of a dialog starts. Before, it changed at the end of the
+    close animation, so the dialogs behind moved only after it.
+  - The popup of a drawer gets `--drawer-height` (its own height) while a drawer in it is open
+    or closes, and while it closes. With `height: var(--drawer-height, auto)`, the drawer behind
+    gets its own height back with an animation. A drawer in a drawer gets
+    `--drawer-height: initial` when it keeps no height, so it does not inherit the value of the
+    drawer around it. Before, only a drawer with snap points got `--drawer-height`.
 - A dialog of `phem-dialog` in an open dialog gets its own `--nested-dialogs` (and
   `--nested-drawers` for a drawer): `0` when no dialog is open in it, as in Base UI. Before, it
   inherited the value of the dialog around it, so a stack style moved and scaled the two dialogs

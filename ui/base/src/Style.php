@@ -17,8 +17,11 @@ final class Style
     /** A popup: the box of a popover, a menu, a select… */
     public const string POPUP = 'border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 text-neutral-950 dark:text-white shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none';
 
-    /** The box of a modal dialog, centered in the viewport. The `<dialog>` resets come first. */
-    public const string DIALOG = 'm-0 inset-auto max-h-none fixed top-1/2 left-1/2 -mt-8 open:flex w-96 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 bg-white dark:bg-neutral-950 p-4 text-neutral-950 dark:text-white border border-neutral-950 dark:border-white shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0 backdrop:bg-black/20 dark:backdrop:bg-black/50 backdrop:transition-opacity backdrop:duration-150 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0';
+    /**
+     * The box of a dialog, centered in the viewport. The `<dialog>` resets come first. `z-50` puts a
+     * dialog that is not modal (not in the top layer) above the page.
+     */
+    public const string DIALOG = 'm-0 inset-auto max-h-none fixed z-50 top-1/2 left-1/2 -mt-8 open:flex w-96 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 bg-white dark:bg-neutral-950 p-4 text-neutral-950 dark:text-white border border-neutral-950 dark:border-white shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0 backdrop:bg-black/20 dark:backdrop:bg-black/50 backdrop:transition-opacity backdrop:duration-150 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0';
 
     /** The arrow of a popover or a tooltip: a square turned 45 degrees, on the side of the anchor. */
     public const string ARROW = "absolute block w-3 h-1.5 overflow-clip data-[side=bottom]:top-[-6px] data-[side=left]:right-[-9px] data-[side=left]:rotate-90 data-[side=right]:left-[-9px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-6px] data-[side=top]:rotate-180 before:content-[''] before:absolute before:bottom-0 before:left-1/2 before:w-[calc(6px*sqrt(2))] before:h-[calc(6px*sqrt(2))] before:bg-white dark:before:bg-neutral-950 before:border before:border-neutral-950 dark:before:border-white before:[transform:translate(-50%,50%)_rotate(45deg)]";
