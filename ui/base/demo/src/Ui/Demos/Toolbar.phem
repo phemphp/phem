@@ -58,11 +58,20 @@ function ToolbarHeroDemo(): Node
             </ToolbarGroup>
             <ToolbarSeparator />
             <Select defaultValue="Helvetica" sideOffset={{ 4 }}>
-                <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
+                <SelectTrigger>
+                    <SelectValue />
+                    <SelectIcon />
+                </SelectTrigger>
                 <SelectPopup>
                     <SelectList>
-                        <SelectItem value="Helvetica"><SelectItemIndicator /><SelectItemText>Helvetica</SelectItemText></SelectItem>
-                        <SelectItem value="Arial"><SelectItemIndicator /><SelectItemText>Arial</SelectItemText></SelectItem>
+                        <SelectItem value="Helvetica">
+                            <SelectItemIndicator />
+                            <SelectItemText>Helvetica</SelectItemText>
+                        </SelectItem>
+                        <SelectItem value="Arial">
+                            <SelectItemIndicator />
+                            <SelectItemText>Arial</SelectItemText>
+                        </SelectItem>
                     </SelectList>
                 </SelectPopup>
             </Select>
@@ -96,11 +105,15 @@ function ToolbarTooltipDemo(): Node
     return (
         <Toolbar aria-label="Text formatting">
             <Tooltip sideOffset={{ 10 }}>
-                <TooltipTrigger aria-label="Bold"><BoldIcon /></TooltipTrigger>
+                <TooltipTrigger aria-label="Bold">
+                    <BoldIcon />
+                </TooltipTrigger>
                 <TooltipPopup>Bold</TooltipPopup>
             </Tooltip>
             <Tooltip sideOffset={{ 10 }}>
-                <TooltipTrigger aria-label="Italic"><ItalicIcon /></TooltipTrigger>
+                <TooltipTrigger aria-label="Italic">
+                    <ItalicIcon />
+                </TooltipTrigger>
                 <TooltipPopup>Italic</TooltipPopup>
             </Tooltip>
         </Toolbar>

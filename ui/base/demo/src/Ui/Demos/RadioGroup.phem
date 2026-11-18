@@ -44,13 +44,22 @@ function RadioGroupPage(): Node
 #[Component]
 function RadioGroupHeroDemo(): Node
 {
-    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
+    $apples = [
+        'fuji-apple' => 'Fuji',
+        'gala-apple' => 'Gala',
+        'granny-smith-apple' => 'Granny Smith',
+    ];
 
     return (
         <RadioGroup aria-labelledby="best-apple" defaultValue="fuji-apple" name="apple">
             <div className="text-sm font-bold" id="best-apple">Best apple</div>
             {% for value, name in apples %}
-                <label key={{ value }} className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white"><Radio value={{ value }}><RadioIndicator /></Radio>{{ name }}</label>
+                <label key={{ value }} className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+                    <Radio value={{ value }}>
+                        <RadioIndicator />
+                    </Radio>
+                    {{ name }}
+                </label>
             {% endfor %}
         </RadioGroup>
     );
@@ -65,7 +74,12 @@ function RadioGroupLabelingDemo(): Node
         <RadioGroup aria-labelledby="storage-type-label" defaultValue="ssd">
             <div id="storage-type-label" className="text-sm font-bold">Storage type</div>
             {% for value, name in types %}
-                <label key={{ value }} className="flex items-center gap-2 text-sm"><Radio value={{ value }}><RadioIndicator /></Radio>{{ name }}</label>
+                <label key={{ value }} className="flex items-center gap-2 text-sm">
+                    <Radio value={{ value }}>
+                        <RadioIndicator />
+                    </Radio>
+                    {{ name }}
+                </label>
             {% endfor %}
         </RadioGroup>
     );
@@ -81,7 +95,9 @@ function RadioGroupNativeButtonDemo(): Node
             <div id="storage-type" className="text-sm font-bold">Storage type</div>
             {% for value, name in types %}
                 <div key={{ value }} className="flex items-center gap-2 text-sm">
-                    <Radio id="storage-type-{{ value }}" value={{ value }} nativeButton><RadioIndicator /></Radio>
+                    <Radio id="storage-type-{{ value }}" value={{ value }} nativeButton>
+                        <RadioIndicator />
+                    </Radio>
                     <label htmlFor="storage-type-{{ value }}">{{ name }}</label>
                 </div>
             {% endfor %}
@@ -103,7 +119,9 @@ function RadioGroupFormDemo(): Node
                         {% for value, name in types %}
                             <FieldItem key={{ value }}>
                                 <FieldLabel className="flex items-center gap-2 font-normal">
-                                    <Radio value={{ value }}><RadioIndicator /></Radio>
+                                    <Radio value={{ value }}>
+                                        <RadioIndicator />
+                                    </Radio>
                                     {{ name }}
                                 </FieldLabel>
                             </FieldItem>

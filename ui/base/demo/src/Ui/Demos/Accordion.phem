@@ -43,15 +43,21 @@ function AccordionHeroDemo(): Node
     return (
         <Accordion>
             <AccordionItem value="what">
-                <AccordionHeader><AccordionTrigger>What is Base UI?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>What is Base UI?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Base UI is a library of high-quality unstyled React components for design systems and web apps.</AccordionPanel>
             </AccordionItem>
             <AccordionItem value="start">
-                <AccordionHeader><AccordionTrigger>How do I get started?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>How do I get started?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Head to the “Quick start” guide in the docs. If you’ve used unstyled libraries before, you’ll feel at home.</AccordionPanel>
             </AccordionItem>
             <AccordionItem value="use">
-                <AccordionHeader><AccordionTrigger>Can I use it for my project?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>Can I use it for my project?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Of course! Base UI is free and open source.</AccordionPanel>
             </AccordionItem>
         </Accordion>
@@ -64,15 +70,21 @@ function AccordionMultipleDemo(): Node
     return (
         <Accordion id="multiple" multiple>
             <AccordionItem value="what">
-                <AccordionHeader><AccordionTrigger>What is Base UI?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>What is Base UI?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Base UI is a library of high-quality unstyled React components for design systems and web apps.</AccordionPanel>
             </AccordionItem>
             <AccordionItem value="start">
-                <AccordionHeader><AccordionTrigger>How do I get started?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>How do I get started?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Head to the “Quick start” guide in the docs. If you’ve used unstyled libraries before, you’ll feel at home.</AccordionPanel>
             </AccordionItem>
             <AccordionItem value="use">
-                <AccordionHeader><AccordionTrigger>Can I use it for my project?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>Can I use it for my project?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Of course! Base UI is free and open source.</AccordionPanel>
             </AccordionItem>
         </Accordion>
@@ -85,19 +97,27 @@ function AccordionHiddenUntilFoundDemo(): Node
     return (
         <Accordion id="shipping" hiddenUntilFound>
             <AccordionItem value="time">
-                <AccordionHeader><AccordionTrigger>How long does shipping take?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>How long does shipping take?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Standard shipping takes 3–5 business days. Express delivery arrives in 1–2 business days.</AccordionPanel>
             </AccordionItem>
             <AccordionItem value="returns">
-                <AccordionHeader><AccordionTrigger>What is your return policy?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>What is your return policy?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>You can return any item within 30 days of delivery. Opened items may be subject to a 10% restocking fee.</AccordionPanel>
             </AccordionItem>
             <AccordionItem value="international">
-                <AccordionHeader><AccordionTrigger>Do you ship internationally?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>Do you ship internationally?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Yes, we ship to over 40 countries. International orders typically arrive within 7–14 business days.</AccordionPanel>
             </AccordionItem>
             <AccordionItem value="tracking">
-                <AccordionHeader><AccordionTrigger>How can I track my order?</AccordionTrigger></AccordionHeader>
+                <AccordionHeader>
+                    <AccordionTrigger>How can I track my order?</AccordionTrigger>
+                </AccordionHeader>
                 <AccordionPanel>Once your order ships, you’ll receive a tracking link by email. Tracking updates can take up to 24 hours to appear.</AccordionPanel>
             </AccordionItem>
         </Accordion>

@@ -171,7 +171,7 @@ final class Gallery
             }
 
             sort($names, \SORT_FLAG_CASE | \SORT_STRING);
-            $uses[null === $kind ? 0 : 1][] = 'use '.($kind ?? '').self::group($names).';';
+            $uses[null === $kind ? 0 : 1][] = self::statement($kind ?? '', $names);
         }
 
         ksort($uses);
@@ -184,19 +184,20 @@ final class Gallery
     }
 
     /**
-     * The names of one `use` statement: `Phem\Node`, or `Phem\Ui\Base\{Accordion, AccordionItem}`.
+     * One `use` statement: `use Phem\Node;`, or `use Phem\Ui\Base\{Accordion, AccordionItem};`. A
+     * group stays on one line, also when it is longer than the code box.
      *
      * @param list<string> $names
      */
-    private static function group(array $names): string
+    private static function statement(string $kind, array $names): string
     {
         if (1 === \count($names)) {
-            return $names[0];
+            return 'use '.$kind.$names[0].';';
         }
 
         $prefix = substr($names[0], 0, (int) strrpos($names[0], '\\'));
         $short = array_map(static fn (string $name): string => substr($name, \strlen($prefix) + 1), $names);
 
-        return $prefix.'\{'.implode(', ', $short).'}';
+        return 'use '.$kind.$prefix.'\{'.implode(', ', $short).'};';
     }
 }

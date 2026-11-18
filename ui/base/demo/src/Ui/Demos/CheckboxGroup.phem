@@ -61,13 +61,22 @@ function CheckboxGroupPage(): Node
 #[Component]
 function CheckboxGroupHeroDemo(): Node
 {
-    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
+    $apples = [
+        'fuji-apple' => 'Fuji',
+        'gala-apple' => 'Gala',
+        'granny-smith-apple' => 'Granny Smith',
+    ];
 
     return (
         <CheckboxGroup aria-labelledby="apples-caption" defaultValue={{ ['fuji-apple'] }}>
             <div className="text-sm font-bold" id="apples-caption">Apples</div>
             {% for value, name in apples %}
-                <label key={{ value }} className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white"><Checkbox name="apple" value={{ value }}><CheckboxIndicator /></Checkbox>{{ name }}</label>
+                <label key={{ value }} className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+                    <Checkbox name="apple" value={{ value }}>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    {{ name }}
+                </label>
             {% endfor %}
         </CheckboxGroup>
     );
@@ -82,7 +91,12 @@ function CheckboxGroupLabelingDemo(): Node
         <CheckboxGroup aria-labelledby="protocols-label">
             <div id="protocols-label" className="text-sm font-bold">Allowed network protocols</div>
             {% for value, name in protocols %}
-                <label key={{ value }} className="flex items-center gap-2 text-sm"><Checkbox value={{ value }}><CheckboxIndicator /></Checkbox>{{ name }}</label>
+                <label key={{ value }} className="flex items-center gap-2 text-sm">
+                    <Checkbox value={{ value }}>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    {{ name }}
+                </label>
             {% endfor %}
         </CheckboxGroup>
     );
@@ -98,7 +112,9 @@ function CheckboxGroupNativeButtonDemo(): Node
             <div id="native-protocols-label" className="text-sm font-bold">Allowed network protocols</div>
             {% for value, name in protocols %}
                 <div key={{ value }} className="flex items-center gap-2 text-sm">
-                    <Checkbox id="protocol-{{ value }}" value={{ value }} nativeButton><CheckboxIndicator /></Checkbox>
+                    <Checkbox id="protocol-{{ value }}" value={{ value }} nativeButton>
+                        <CheckboxIndicator />
+                    </Checkbox>
                     <label htmlFor="protocol-{{ value }}">{{ name }}</label>
                 </div>
             {% endfor %}
@@ -120,7 +136,9 @@ function CheckboxGroupFormDemo(): Node
                         {% for value, name in protocols %}
                             <FieldItem key={{ value }}>
                                 <FieldLabel className="flex items-center gap-2 font-normal">
-                                    <Checkbox name="allowedNetworkProtocols[]" value={{ value }}><CheckboxIndicator /></Checkbox>
+                                    <Checkbox name="allowedNetworkProtocols[]" value={{ value }}>
+                                        <CheckboxIndicator />
+                                    </Checkbox>
                                     {{ name }}
                                 </FieldLabel>
                             </FieldItem>
@@ -135,13 +153,27 @@ function CheckboxGroupFormDemo(): Node
 #[Component]
 function CheckboxGroupParentDemo(): Node
 {
-    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
+    $apples = [
+        'fuji-apple' => 'Fuji',
+        'gala-apple' => 'Gala',
+        'granny-smith-apple' => 'Granny Smith',
+    ];
 
     return (
         <CheckboxGroup aria-labelledby="parent-apples" allValues={{ apples|keys }} className="ml-4">
-            <label id="parent-apples" className="-ml-4 flex items-center gap-2 text-sm"><Checkbox parent><CheckboxIndicator /></Checkbox>Apples</label>
+            <label id="parent-apples" className="-ml-4 flex items-center gap-2 text-sm">
+                <Checkbox parent>
+                    <CheckboxIndicator />
+                </Checkbox>
+                Apples
+            </label>
             {% for value, name in apples %}
-                <label key={{ value }} className="flex items-center gap-2 text-sm"><Checkbox value={{ value }}><CheckboxIndicator /></Checkbox>{{ name }}</label>
+                <label key={{ value }} className="flex items-center gap-2 text-sm">
+                    <Checkbox value={{ value }}>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    {{ name }}
+                </label>
             {% endfor %}
         </CheckboxGroup>
     );
@@ -150,17 +182,47 @@ function CheckboxGroupParentDemo(): Node
 #[Component]
 function CheckboxGroupNestedDemo(): Node
 {
-    $users = ['create-user' => 'Create User', 'edit-user' => 'Edit User', 'delete-user' => 'Delete User', 'assign-roles' => 'Assign Roles'];
+    $users = [
+        'create-user' => 'Create User',
+        'edit-user' => 'Edit User',
+        'delete-user' => 'Delete User',
+        'assign-roles' => 'Assign Roles',
+    ];
 
     return (
         <CheckboxGroup aria-labelledby="user-permissions" allValues={{ ['view-dashboard', 'manage-users', 'access-reports'] }} className="ml-4">
-            <label id="user-permissions" className="-ml-4 flex items-center gap-2 text-sm"><Checkbox parent><CheckboxIndicator /></Checkbox>User Permissions</label>
-            <label className="flex items-center gap-2 text-sm"><Checkbox value="view-dashboard"><CheckboxIndicator /></Checkbox>View Dashboard</label>
-            <label className="flex items-center gap-2 text-sm"><Checkbox value="access-reports"><CheckboxIndicator /></Checkbox>Access Reports</label>
+            <label id="user-permissions" className="-ml-4 flex items-center gap-2 text-sm">
+                <Checkbox parent>
+                    <CheckboxIndicator />
+                </Checkbox>
+                User Permissions
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+                <Checkbox value="view-dashboard">
+                    <CheckboxIndicator />
+                </Checkbox>
+                View Dashboard
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+                <Checkbox value="access-reports">
+                    <CheckboxIndicator />
+                </Checkbox>
+                Access Reports
+            </label>
             <CheckboxGroup value="manage-users" aria-labelledby="manage-users-caption" allValues={{ users|keys }} className="ml-4">
-                <label id="manage-users-caption" className="-ml-4 flex items-center gap-2 text-sm"><Checkbox parent><CheckboxIndicator /></Checkbox>Manage Users</label>
+                <label id="manage-users-caption" className="-ml-4 flex items-center gap-2 text-sm">
+                    <Checkbox parent>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    Manage Users
+                </label>
                 {% for value, name in users %}
-                    <label key={{ value }} className="flex items-center gap-2 text-sm"><Checkbox value={{ value }}><CheckboxIndicator /></Checkbox>{{ name }}</label>
+                    <label key={{ value }} className="flex items-center gap-2 text-sm">
+                        <Checkbox value={{ value }}>
+                            <CheckboxIndicator />
+                        </Checkbox>
+                        {{ name }}
+                    </label>
                 {% endfor %}
             </CheckboxGroup>
         </CheckboxGroup>

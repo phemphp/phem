@@ -11,27 +11,90 @@ use Phem\Ui\Base\{Align, Dialog, DialogViewport, Field, Menu};
 
 // The sections of the scroll examples of base-ui.com.
 const DIALOG_SECTIONS = [
-    ['What a dialog is for', 'Use a dialog when you need the user to complete a focused task or read something important without navigating away. It opens on top of the page and returns focus back where it started when closed.'],
-    ['Anatomy at a glance', 'Root, Trigger, Portal, Backdrop, Viewport, Popup, Title, Description, Close. Keep the title short and the first paragraph specific so screen readers announce something meaningful.'],
-    ['Opening and closing', 'Control it using external state via the `open` and `onOpenChange` props, or let it manage state for you internally.'],
-    ['Keyboard and focus behavior', 'Focus moves inside the dialog when it opens. Tab and Shift+Tab loop within, and Esc requests close.'],
-    ['Accessible labeling', 'Set an explicit title and description using the `Dialog.Title` and `Dialog.Description` components.'],
-    ['Backdrop and page scrolling', 'The backdrop visually separates layers while background content is inert. Don’t rely on dimness alone—keep copy clear and buttons obvious so actions are easy to choose.'],
-    ['Portals and stacking', 'Dialogs render in a portal so they sit above the `isolation: isolate` app content and avoid local z-index wars.'],
-    ['Viewport overflow', 'Let long content overflow the bottom edge and reveal as you scroll the page container. Keep generous padding at the top and bottom so the dialog doesn’t feel jammed against the edges.'],
-    ['Nested dialogs and confirmations', 'If closing a dialog needs confirmation, open a child alert dialog rather than mutating the current one. The parent stays visible behind it; only the topmost layer should feel interactive.'],
-    ['Transitions that respect motion settings', 'Use small, fast transitions (opacity plus a few pixels of Y translation or scale). Subtle motion helps people notice what changed without slowing them down.'],
-    ['Controlled vs. uncontrolled', 'Controlled state is best when other parts of the page need to react to open/close. Uncontrolled is fine for local cases where only the dialog matters.'],
-    ['Close affordances', 'Always offer a visible close button in the corner. Don’t rely only on Esc or the backdrop for pointer outside presses. Touch screen readers and accessibility users benefit from a clear, targetable control to click to close the dialog.'],
-    ['Forms inside dialogs', 'Keep forms short; longer flows usually deserve a full page. Validate inline, keep button text specific (“Create project”), and disable destructive actions until the input is valid.'],
-    ['Content guidelines', 'Lead with the outcome (“Rename project?”) and follow with one or two short, concrete sentences. Avoid long prose; link out for details instead.'],
-    ['SSR and hydration notes', 'Because dialogs render in a portal, make sure your portal container exists on the client.'],
-    ['Mobile ergonomics', 'Use larger touch targets and keep the close button reachable with the thumb. Avoid full-screen modals unless the task truly needs a whole screen.'],
-    ['Theming and density', 'Match spacing and corner radius to your system. Use a slightly denser layout than pages so the dialog feels purpose-built, not like a mini web page.'],
-    ['Internationalization', 'Plan for longer text. Buttons can grow to two lines; titles should wrap gracefully. Keep destructive terms consistent across locales.'],
-    ['Performance', 'Children are mounted lazily when the dialog opens. If the dialog can reopen often, consider the `keepMounted` prop sparingly to perform the work only once on mount to avoid re-initializing complex React trees on each open.'],
-    ['When a popover is better', 'If the content is a small hint or a few quick actions anchored to a control, use a popover or menu instead of a dialog. Dialogs interrupt on purpose—use that sparingly.'],
-    ['Follow-up and cleanup', 'After a successful action, close the dialog and show confirmation in context (toast, inline message, or updated UI) so people can see the result of what they just did.'],
+    [
+        'What a dialog is for',
+        'Use a dialog when you need the user to complete a focused task or read something important without navigating away. It opens on top of the page and returns focus back where it started when closed.',
+    ],
+    [
+        'Anatomy at a glance',
+        'Root, Trigger, Portal, Backdrop, Viewport, Popup, Title, Description, Close. Keep the title short and the first paragraph specific so screen readers announce something meaningful.',
+    ],
+    [
+        'Opening and closing',
+        'Control it using external state via the `open` and `onOpenChange` props, or let it manage state for you internally.',
+    ],
+    [
+        'Keyboard and focus behavior',
+        'Focus moves inside the dialog when it opens. Tab and Shift+Tab loop within, and Esc requests close.',
+    ],
+    [
+        'Accessible labeling',
+        'Set an explicit title and description using the `Dialog.Title` and `Dialog.Description` components.',
+    ],
+    [
+        'Backdrop and page scrolling',
+        'The backdrop visually separates layers while background content is inert. Don’t rely on dimness alone—keep copy clear and buttons obvious so actions are easy to choose.',
+    ],
+    [
+        'Portals and stacking',
+        'Dialogs render in a portal so they sit above the `isolation: isolate` app content and avoid local z-index wars.',
+    ],
+    [
+        'Viewport overflow',
+        'Let long content overflow the bottom edge and reveal as you scroll the page container. Keep generous padding at the top and bottom so the dialog doesn’t feel jammed against the edges.',
+    ],
+    [
+        'Nested dialogs and confirmations',
+        'If closing a dialog needs confirmation, open a child alert dialog rather than mutating the current one. The parent stays visible behind it; only the topmost layer should feel interactive.',
+    ],
+    [
+        'Transitions that respect motion settings',
+        'Use small, fast transitions (opacity plus a few pixels of Y translation or scale). Subtle motion helps people notice what changed without slowing them down.',
+    ],
+    [
+        'Controlled vs. uncontrolled',
+        'Controlled state is best when other parts of the page need to react to open/close. Uncontrolled is fine for local cases where only the dialog matters.',
+    ],
+    [
+        'Close affordances',
+        'Always offer a visible close button in the corner. Don’t rely only on Esc or the backdrop for pointer outside presses. Touch screen readers and accessibility users benefit from a clear, targetable control to click to close the dialog.',
+    ],
+    [
+        'Forms inside dialogs',
+        'Keep forms short; longer flows usually deserve a full page. Validate inline, keep button text specific (“Create project”), and disable destructive actions until the input is valid.',
+    ],
+    [
+        'Content guidelines',
+        'Lead with the outcome (“Rename project?”) and follow with one or two short, concrete sentences. Avoid long prose; link out for details instead.',
+    ],
+    [
+        'SSR and hydration notes',
+        'Because dialogs render in a portal, make sure your portal container exists on the client.',
+    ],
+    [
+        'Mobile ergonomics',
+        'Use larger touch targets and keep the close button reachable with the thumb. Avoid full-screen modals unless the task truly needs a whole screen.',
+    ],
+    [
+        'Theming and density',
+        'Match spacing and corner radius to your system. Use a slightly denser layout than pages so the dialog feels purpose-built, not like a mini web page.',
+    ],
+    [
+        'Internationalization',
+        'Plan for longer text. Buttons can grow to two lines; titles should wrap gracefully. Keep destructive terms consistent across locales.',
+    ],
+    [
+        'Performance',
+        'Children are mounted lazily when the dialog opens. If the dialog can reopen often, consider the `keepMounted` prop sparingly to perform the work only once on mount to avoid re-initializing complex React trees on each open.',
+    ],
+    [
+        'When a popover is better',
+        'If the content is a small hint or a few quick actions anchored to a control, use a popover or menu instead of a dialog. Dialogs interrupt on purpose—use that sparingly.',
+    ],
+    [
+        'Follow-up and cleanup',
+        'After a successful action, close the dialog and show confirmation in context (toast, inline message, or updated UI) so people can see the result of what they just did.',
+    ],
 ];
 
 #[Page('/components/dialog')]
@@ -233,7 +296,10 @@ function DialogNestedDemo(): Node
     );
 }
 
-/** Close confirmation: a request to close the tweet with a text opens the alert dialog. */
+/**
+ * Close confirmation: a request to close the tweet with a text opens the alert
+ * dialog.
+ */
 #[Component]
 function DialogCloseConfirmationDemo(): Node
 {
@@ -266,7 +332,10 @@ function DialogCloseConfirmationDemo(): Node
     );
 }
 
-/** Custom focus management: the feedback field gets the first focus, and the button after the dialog the last one. */
+/**
+ * Custom focus management: the feedback field gets the first focus, and the button
+ * after the dialog the last one.
+ */
 #[Component]
 function DialogFocusDemo(): Node
 {
@@ -299,7 +368,9 @@ function DialogFocusDemo(): Node
     );
 }
 
-/** Outside scroll: the viewport scrolls, and the popup can be taller than the screen. */
+/**
+ * Outside scroll: the viewport scrolls, and the popup can be taller than the screen.
+ */
 #[Component]
 function DialogOutsideScrollDemo(): Node
 {
@@ -316,12 +387,12 @@ function DialogOutsideScrollDemo(): Node
                                 <div className="relative flex flex-col gap-1 pr-8">
                                     <DialogTitle>Dialog</DialogTitle>
                                     <DialogDescription>This layout keeps an outer container scrollable while the dialog can extend past the bottom edge.</DialogDescription>
-                                    <DialogClose aria-label="Close" className="inline-flex items-center justify-center w-8 h-8 border-none bg-transparent p-0 text-neutral-950 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white absolute -top-1 -right-1"><DialogXIcon /></DialogClose>
+                                    <DialogClose aria-label="Close" className="inline-flex items-center justify-center w-8 h-8 border-none bg-transparent p-0 text-neutral-950 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white absolute -top-1 -right-1">
+                                        <DialogXIcon />
+                                    </DialogClose>
                                 </div>
                                 <DialogSections sections={{ sections }} />
-                                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                                    Related docs: <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/scroll-area">Scroll Area</a>, <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/drawer">Drawer</a>, <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/popover">Popover</a>.
-                                </p>
+                                <p className="text-sm text-neutral-600 dark:text-neutral-400">Related docs: <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/scroll-area">Scroll Area</a>, <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/drawer">Drawer</a>, <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/popover">Popover</a>.</p>
                             </DialogPopup>
                         </ScrollAreaContent>
                     </ScrollAreaViewport>
@@ -335,7 +406,11 @@ function DialogOutsideScrollDemo(): Node
 }
 
 #[Component]
-function DialogSections(array $sections, string $className = 'flex flex-col gap-4', string $itemClass = 'flex flex-col gap-1'): Node
+function DialogSections(
+    array $sections,
+    string $className = 'flex flex-col gap-4',
+    string $itemClass = 'flex flex-col gap-1',
+): Node
 {
     return (
         <div className={{ className }}>
@@ -383,7 +458,9 @@ function DialogInsideScrollDemo(): Node
     );
 }
 
-/** Placing elements outside the popup: the close button is next to the colored box. */
+/**
+ * Placing elements outside the popup: the close button is next to the colored box.
+ */
 #[Component]
 function DialogUncontainedDemo(): Node
 {
@@ -392,7 +469,9 @@ function DialogUncontainedDemo(): Node
             <DialogTrigger>Open dialog</DialogTrigger>
             <DialogViewport className="open:grid place-items-center px-4 py-12 xl:py-6">
                 <DialogPopup className="group/popup relative flex h-full w-full max-w-[70rem] xl:max-w-none justify-center pointer-events-none transition-opacity duration-150 data-starting-style:opacity-0 data-ending-style:opacity-0">
-                    <DialogClose aria-label="Close" className="absolute right-0 -top-10 flex h-8 w-8 items-center justify-center p-0 shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none xl:top-0 pointer-events-auto"><DialogXIcon /></DialogClose>
+                    <DialogClose aria-label="Close" className="absolute right-0 -top-10 flex h-8 w-8 items-center justify-center p-0 shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none xl:top-0 pointer-events-auto">
+                        <DialogXIcon />
+                    </DialogClose>
                     <div className="pointer-events-auto h-full w-full max-w-[70rem] bg-white dark:bg-neutral-950 p-4 text-neutral-950 dark:text-white border border-neutral-950 dark:border-white shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105"></div>
                 </DialogPopup>
             </DialogViewport>
@@ -445,7 +524,10 @@ function DialogMultipleDemo(): Node
     );
 }
 
-/** Controlled mode: three triggers in the root, and a button that opens the dialog for the second one. */
+/**
+ * Controlled mode: three triggers in the root, and a button that opens the dialog for
+ * the second one.
+ */
 #[Component]
 function DialogControlledDemo(): Node
 {
@@ -458,7 +540,9 @@ function DialogControlledDemo(): Node
                 <button type="button" data-action="phem-dialog#open" data-phem-dialog-trigger-id-param="dialog-trigger-2" className="flex h-8 items-center justify-center border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 px-3 text-sm text-neutral-950 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Open programmatically</button>
             </div>
             <DialogPopup>
-                <DialogTitle><DialogPayload /></DialogTitle>
+                <DialogTitle>
+                    <DialogPayload />
+                </DialogTitle>
                 <div className="flex justify-end gap-3">
                     <DialogClose>Close</DialogClose>
                 </div>

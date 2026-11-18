@@ -11,18 +11,90 @@ use Phem\Ui\Base\{Align, Button, Combobox, Dialog};
 
 // The people of the Async search demos of Base UI.
 const PEOPLE = [
-    ['id' => 'leslie-alexander', 'name' => 'Leslie Alexander', 'username' => 'leslie', 'email' => 'leslie.alexander@example.com', 'title' => 'Product Manager'],
-    ['id' => 'kathryn-murphy', 'name' => 'Kathryn Murphy', 'username' => 'kathryn', 'email' => 'kathryn.murphy@example.com', 'title' => 'Marketing Lead'],
-    ['id' => 'courtney-henry', 'name' => 'Courtney Henry', 'username' => 'courtney', 'email' => 'courtney.henry@example.com', 'title' => 'Design Systems'],
-    ['id' => 'michael-foster', 'name' => 'Michael Foster', 'username' => 'michael', 'email' => 'michael.foster@example.com', 'title' => 'Engineering Manager'],
-    ['id' => 'lindsay-walton', 'name' => 'Lindsay Walton', 'username' => 'lindsay', 'email' => 'lindsay.walton@example.com', 'title' => 'Product Designer'],
-    ['id' => 'tom-cook', 'name' => 'Tom Cook', 'username' => 'tom', 'email' => 'tom.cook@example.com', 'title' => 'Frontend Engineer'],
-    ['id' => 'whitney-francis', 'name' => 'Whitney Francis', 'username' => 'whitney', 'email' => 'whitney.francis@example.com', 'title' => 'Customer Success'],
-    ['id' => 'jacob-jones', 'name' => 'Jacob Jones', 'username' => 'jacob', 'email' => 'jacob.jones@example.com', 'title' => 'Security Engineer'],
-    ['id' => 'arlene-mccoy', 'name' => 'Arlene McCoy', 'username' => 'arlene', 'email' => 'arlene.mccoy@example.com', 'title' => 'Data Analyst'],
-    ['id' => 'marvin-mckinney', 'name' => 'Marvin McKinney', 'username' => 'marvin', 'email' => 'marvin.mckinney@example.com', 'title' => 'QA Specialist'],
-    ['id' => 'eleanor-pena', 'name' => 'Eleanor Pena', 'username' => 'eleanor', 'email' => 'eleanor.pena@example.com', 'title' => 'Operations'],
-    ['id' => 'jerome-bell', 'name' => 'Jerome Bell', 'username' => 'jerome', 'email' => 'jerome.bell@example.com', 'title' => 'DevOps Engineer'],
+    [
+        'id' => 'leslie-alexander',
+        'name' => 'Leslie Alexander',
+        'username' => 'leslie',
+        'email' => 'leslie.alexander@example.com',
+        'title' => 'Product Manager',
+    ],
+    [
+        'id' => 'kathryn-murphy',
+        'name' => 'Kathryn Murphy',
+        'username' => 'kathryn',
+        'email' => 'kathryn.murphy@example.com',
+        'title' => 'Marketing Lead',
+    ],
+    [
+        'id' => 'courtney-henry',
+        'name' => 'Courtney Henry',
+        'username' => 'courtney',
+        'email' => 'courtney.henry@example.com',
+        'title' => 'Design Systems',
+    ],
+    [
+        'id' => 'michael-foster',
+        'name' => 'Michael Foster',
+        'username' => 'michael',
+        'email' => 'michael.foster@example.com',
+        'title' => 'Engineering Manager',
+    ],
+    [
+        'id' => 'lindsay-walton',
+        'name' => 'Lindsay Walton',
+        'username' => 'lindsay',
+        'email' => 'lindsay.walton@example.com',
+        'title' => 'Product Designer',
+    ],
+    [
+        'id' => 'tom-cook',
+        'name' => 'Tom Cook',
+        'username' => 'tom',
+        'email' => 'tom.cook@example.com',
+        'title' => 'Frontend Engineer',
+    ],
+    [
+        'id' => 'whitney-francis',
+        'name' => 'Whitney Francis',
+        'username' => 'whitney',
+        'email' => 'whitney.francis@example.com',
+        'title' => 'Customer Success',
+    ],
+    [
+        'id' => 'jacob-jones',
+        'name' => 'Jacob Jones',
+        'username' => 'jacob',
+        'email' => 'jacob.jones@example.com',
+        'title' => 'Security Engineer',
+    ],
+    [
+        'id' => 'arlene-mccoy',
+        'name' => 'Arlene McCoy',
+        'username' => 'arlene',
+        'email' => 'arlene.mccoy@example.com',
+        'title' => 'Data Analyst',
+    ],
+    [
+        'id' => 'marvin-mckinney',
+        'name' => 'Marvin McKinney',
+        'username' => 'marvin',
+        'email' => 'marvin.mckinney@example.com',
+        'title' => 'QA Specialist',
+    ],
+    [
+        'id' => 'eleanor-pena',
+        'name' => 'Eleanor Pena',
+        'username' => 'eleanor',
+        'email' => 'eleanor.pena@example.com',
+        'title' => 'Operations',
+    ],
+    [
+        'id' => 'jerome-bell',
+        'name' => 'Jerome Bell',
+        'username' => 'jerome',
+        'email' => 'jerome.bell@example.com',
+        'title' => 'DevOps Engineer',
+    ],
 ];
 
 // The 183 countries of the Input inside popup demo of Base UI.
@@ -288,11 +360,11 @@ function ComboboxPage(): Node
                     </Example.description>
                     <ComboboxCreatableDemo />
                 </Example>
-                <Example title="Virtualized" source="ComboboxVirtualizedDemo">
+                <Example title="Large datasets" source="ComboboxLargeDatasetDemo">
                     <Example.description>
-                        <p>A virtualization library renders only the visible rows of a large dataset in the browser. In phem, the server searches the dataset, and renders only the first matches with a status of the total.</p>
+                        <p>For a large dataset, render only the first matches in the popup, and show the total in the status. The server searches the dataset at each change of the input.</p>
                     </Example.description>
-                    <ComboboxVirtualizedDemo />
+                    <ComboboxLargeDatasetDemo />
                 </Example>
                 <Example title="Grouped" source="ComboboxGroupedDemo">
                     <Example.description>
@@ -365,12 +437,24 @@ function ComboboxIdsDemo(): Node
     );
 }
 
-// The chosen languages are a state of the server: a click on an item adds or removes it, and a
-// chip removes its language.
+// The chosen languages are a state of the server: a click on an item adds or removes
+// it, and a chip removes its language.
 #[Component]
 final class ComboboxMultipleDemo
 {
-    public const array LANGUAGES = ['js' => 'JavaScript', 'ts' => 'TypeScript', 'py' => 'Python', 'java' => 'Java', 'cpp' => 'C++', 'cs' => 'C#', 'php' => 'PHP', 'ruby' => 'Ruby', 'go' => 'Go', 'rust' => 'Rust', 'swift' => 'Swift'];
+    public const array LANGUAGES = [
+        'js' => 'JavaScript',
+        'ts' => 'TypeScript',
+        'py' => 'Python',
+        'java' => 'Java',
+        'cpp' => 'C++',
+        'cs' => 'C#',
+        'php' => 'PHP',
+        'ruby' => 'Ruby',
+        'go' => 'Go',
+        'rust' => 'Rust',
+        'swift' => 'Swift',
+    ];
 
     /** @var list<string> */
     #[State] public array $selected = [];
@@ -424,8 +508,26 @@ final class ComboboxMultipleDemo
 function ComboboxGroupedDemo(): Node
 {
     $groups = [
-        'Fruits' => ['Apple', 'Banana', 'Mango', 'Kiwi', 'Grape', 'Orange', 'Strawberry', 'Watermelon'],
-        'Vegetables' => ['Broccoli', 'Carrot', 'Cauliflower', 'Cucumber', 'Kale', 'Bell pepper', 'Spinach', 'Zucchini'],
+        'Fruits' => [
+            'Apple',
+            'Banana',
+            'Mango',
+            'Kiwi',
+            'Grape',
+            'Orange',
+            'Strawberry',
+            'Watermelon',
+        ],
+        'Vegetables' => [
+            'Broccoli',
+            'Carrot',
+            'Cauliflower',
+            'Cucumber',
+            'Kale',
+            'Bell pepper',
+            'Spinach',
+            'Zucchini',
+        ],
     ];
 
     return (
@@ -471,7 +573,7 @@ function ComboboxInputInsidePopupDemo(): Node
                 <ComboboxValue placeholder="Select country" />
                 <ComboboxIcon />
             </ComboboxTrigger>
-            <ComboboxPopup aria-label="Select country" className="[--input-container-height:2rem] max-h-[24.5rem] max-w-[var(--available-width)] origin-[var(--transform-origin)] bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0_rgb(0_0_0_/_12%)] transition-[scale,opacity] duration-150 data-starting-style:scale-90 data-starting-style:opacity-0 data-ending-style:scale-90 data-ending-style:opacity-0  dark:bg-neutral-950 dark:text-white dark:shadow-none">
+            <ComboboxPopup aria-label="Select country" className="[--input-container-height:2rem] max-h-[24.5rem] max-w-[var(--available-width)] origin-[var(--transform-origin)] bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0_rgb(0_0_0_/_12%)] transition-[scale,opacity] duration-150 data-starting-style:scale-90 data-starting-style:opacity-0 data-ending-style:scale-90 data-ending-style:opacity-0 dark:bg-neutral-950 dark:text-white dark:shadow-none">
                 <ComboboxInput placeholder="e.g. United Kingdom" className="h-8 w-full min-w-80 border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-2 focus:outline-neutral-950 any-pointer-coarse:text-base dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:border-white dark:focus:outline-white" />
                 <div className="border-x border-b border-neutral-950 dark:border-white">
                     <ComboboxEmpty className="py-4 pr-4 pl-2 text-sm leading-4 text-neutral-500 dark:text-neutral-400">No countries found.</ComboboxEmpty>
@@ -489,8 +591,8 @@ function ComboboxInputInsidePopupDemo(): Node
     );
 }
 
-// The search runs on the server at each change of the input. A choice keeps the person, and the
-// input shows their name.
+// The search runs on the server at each change of the input. A choice keeps the
+// person, and the input shows their name.
 #[Component]
 final class ComboboxAsyncSingleDemo
 {
@@ -503,30 +605,62 @@ final class ComboboxAsyncSingleDemo
         $this->query = self::person($id)['name'];
     }
 
-    /** @return array{id: string, name: string, username: string, email: string, title: string} */
+    /**
+     * @return array{
+     *     id: string,
+     *     name: string,
+     *     username: string,
+     *     email: string,
+     *     title: string,
+     * }
+     */
     public static function person(string $id): array
     {
-        return array_values(array_filter(PEOPLE, static fn (array $p): bool => $p['id'] === $id))[0];
+        return array_values(array_filter(
+            PEOPLE,
+            static fn (array $p): bool => $p['id'] === $id,
+        ))[0];
     }
 
-    /** @return list<array{id: string, name: string, username: string, email: string, title: string}> */
+    /**
+     * @return list<array{
+     *     id: string,
+     *     name: string,
+     *     username: string,
+     *     email: string,
+     *     title: string,
+     * }>
+     */
     public static function search(string $query): array
     {
         $query = mb_strtolower(trim($query));
 
-        return '' === $query ? [] : array_values(array_filter(PEOPLE, static fn (array $p): bool => [] !== array_filter([$p['name'], $p['username'], $p['email'], $p['title']], static fn (string $v): bool => str_contains(mb_strtolower($v), $query))));
+        return '' === $query ? [] : array_values(array_filter(
+            PEOPLE,
+            static fn (array $p): bool => [] !== array_filter(
+                [$p['name'], $p['username'], $p['email'], $p['title']],
+                static fn (string $v): bool => str_contains(
+                    mb_strtolower($v),
+                    $query,
+                ),
+            ),
+        ));
     }
 
     public function render(): Node
     {
         $chosen = null === $this->selected ? null : self::person($this->selected);
-        $searching = null !== $chosen && $this->query === $chosen['name'] ? '' : trim($this->query);
+        $searching = null !== $chosen && $this->query === $chosen['name']
+            ? ''
+            : trim($this->query);
         $results = self::search($searching);
         if (null !== $chosen && !\in_array($chosen, $results, true)) {
             $results[] = $chosen;
         }
         $status = match (true) {
-            '' === $searching => null === $chosen ? 'Start typing to search people…' : null,
+            '' === $searching => null === $chosen
+                ? 'Start typing to search people…'
+                : null,
             [] === self::search($searching) => 'No matches for "'.$searching.'".',
             default => null,
         };
@@ -550,7 +684,10 @@ final class ComboboxAsyncSingleDemo
                                 <span className="col-start-2 flex flex-col gap-1">
                                     <span className="text-sm leading-5 font-bold">{{ person.name }}</span>
                                     <span className="text-xs">{{ person.email }}</span>
-                                    <span className="flex flex-wrap gap-2 text-xs opacity-70"><span>@{{ person.username }}</span><span>{{ person.title }}</span></span>
+                                    <span className="flex flex-wrap gap-2 text-xs opacity-70">
+                                        <span>@{{ person.username }}</span>
+                                        <span>{{ person.title }}</span>
+                                    </span>
                                 </span>
                             </ComboboxItem>
                         {% endfor %}
@@ -561,7 +698,8 @@ final class ComboboxAsyncSingleDemo
     }
 }
 
-// The search of the server with more than one choice: the chips keep the chosen people.
+// The search of the server with more than one choice: the chips keep the chosen
+// people.
 #[Component]
 final class ComboboxAsyncMultipleDemo
 {
@@ -571,7 +709,9 @@ final class ComboboxAsyncMultipleDemo
 
     public function toggle(string $id): void
     {
-        $this->selected = \in_array($id, $this->selected, true) ? array_values(array_diff($this->selected, [$id])) : [...$this->selected, $id];
+        $this->selected = \in_array($id, $this->selected, true)
+            ? array_values(array_diff($this->selected, [$id]))
+            : [...$this->selected, $id];
         $this->query = '';
     }
 
@@ -591,8 +731,11 @@ final class ComboboxAsyncMultipleDemo
         }
         $trimmed = trim($this->query);
         $status = match (true) {
-            '' === $trimmed => [] === $chosen ? 'Start typing to search people…' : null,
-            [] === ComboboxAsyncSingleDemo::search($trimmed) => 'No matches for "'.$trimmed.'".',
+            '' === $trimmed => [] === $chosen
+                ? 'Start typing to search people…'
+                : null,
+            [] === ComboboxAsyncSingleDemo::search($trimmed) =>
+                'No matches for "'.$trimmed.'".',
             default => null,
         };
         $count = \count($chosen);
@@ -628,13 +771,19 @@ final class ComboboxAsyncMultipleDemo
     }
 }
 
-// The labels of the Creatable demo of Base UI. A text that matches no label shows a "Create"
-// item, which opens a dialog to name the new label.
+// The labels of the Creatable demo of Base UI. A text that matches no label shows a
+// "Create" item, which opens a dialog to name the new label.
 #[Component]
 final class ComboboxCreatableDemo
 {
     /** @var array<string, string> */
-    #[State] public array $labels = ['bug' => 'bug', 'docs' => 'documentation', 'enhancement' => 'enhancement', 'help-wanted' => 'help wanted', 'good-first-issue' => 'good first issue'];
+    #[State] public array $labels = [
+        'bug' => 'bug',
+        'docs' => 'documentation',
+        'enhancement' => 'enhancement',
+        'help-wanted' => 'help wanted',
+        'good-first-issue' => 'good first issue',
+    ];
     /** @var list<string> */
     #[State] public array $selected = [];
     #[State] public string $query = '';
@@ -642,7 +791,9 @@ final class ComboboxCreatableDemo
 
     public function toggle(string $id): void
     {
-        $this->selected = \in_array($id, $this->selected, true) ? array_values(array_diff($this->selected, [$id])) : [...$this->selected, $id];
+        $this->selected = \in_array($id, $this->selected, true)
+            ? array_values(array_diff($this->selected, [$id]))
+            : [...$this->selected, $id];
         $this->query = '';
     }
 
@@ -665,9 +816,15 @@ final class ComboboxCreatableDemo
             return;
         }
 
-        $existing = array_search(mb_strtolower($value), array_map(mb_strtolower(...), $this->labels), true);
+        $existing = array_search(
+            mb_strtolower($value),
+            array_map(mb_strtolower(...), $this->labels),
+            true,
+        );
         if (false !== $existing) {
-            $this->selected = array_values(array_unique([...$this->selected, (string) $existing]));
+            $this->selected = array_values(
+                array_unique([...$this->selected, (string) $existing]),
+            );
 
             return;
         }
@@ -683,7 +840,11 @@ final class ComboboxCreatableDemo
     public function render(): Node
     {
         $trimmed = trim($this->query);
-        $exists = \in_array(mb_strtolower($trimmed), array_map(mb_strtolower(...), $this->labels), true);
+        $exists = \in_array(
+            mb_strtolower($trimmed),
+            array_map(mb_strtolower(...), $this->labels),
+            true,
+        );
         $creatable = '' !== $trimmed && !$exists;
         $count = \count($this->selected);
         $open = null !== $this->creating;
@@ -738,11 +899,14 @@ final class ComboboxCreatableDemo
 
 // 10,000 items: the server finds the matches, and renders the first 50 of them.
 #[Component]
-final class ComboboxVirtualizedDemo
+final class ComboboxLargeDatasetDemo
 {
     #[State] public string $query = '';
 
-    /** @return array{array<string, string>, int} the first 50 matches, and the number of matches */
+    /**
+     * @return array{array<string, string>, int} the first 50 matches, and the
+     *                                           number of matches
+     */
     public static function search(string $query): array
     {
         $needle = mb_strtolower(trim($query));
@@ -766,7 +930,9 @@ final class ComboboxVirtualizedDemo
     public function render(): Node
     {
         [$matches, $total] = self::search($this->query);
-        $status = $total > 50 ? 'Showing 50 of '.number_format($total).' items. Type to refine.' : null;
+        $status = $total > 50
+            ? 'Showing 50 of '.number_format($total).' items. Type to refine.'
+            : null;
 
         return (
             <Combobox id="items">

@@ -66,8 +66,15 @@ function TooltipHeroDemo(): Node
         <div className="flex border border-neutral-950 bg-white dark:border-white dark:bg-neutral-950">
             {% for label, path in tools %}
                 <Tooltip key={{ label }} sideOffset={{ 11 }}>
-                    <TooltipTrigger aria-label={{ label }}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="block"><path d={{ path }} /></svg></TooltipTrigger>
-                    <TooltipPopup><TooltipArrow />{{ label }}</TooltipPopup>
+                    <TooltipTrigger aria-label={{ label }}>
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="block">
+                            <path d={{ path }} />
+                        </svg>
+                    </TooltipTrigger>
+                    <TooltipPopup>
+                        <TooltipArrow />
+                        {{ label }}
+                    </TooltipPopup>
                 </Tooltip>
             {% endfor %}
         </div>
@@ -114,9 +121,14 @@ function TooltipDetachedDemo(): Node
 {
     return (
         <div>
-            <TooltipTrigger handle="delete-tooltip" aria-label="Delete" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950"><TooltipTrashIcon /></TooltipTrigger>
+            <TooltipTrigger handle="delete-tooltip" aria-label="Delete" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950">
+                <TooltipTrashIcon />
+            </TooltipTrigger>
             <Tooltip handle="delete-tooltip" sideOffset={{ 11 }}>
-                <TooltipPopup><TooltipArrow />Delete</TooltipPopup>
+                <TooltipPopup>
+                    <TooltipArrow />
+                    Delete
+                </TooltipPopup>
             </Tooltip>
         </div>
     );
@@ -131,13 +143,19 @@ function TooltipMultipleDemo(): Node
             <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 1" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">Trigger 1</TooltipTrigger>
             <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 2" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">Trigger 2</TooltipTrigger>
             <Tooltip handle="multiple-tooltip" sideOffset={{ 8 }}>
-                <TooltipPopup><TooltipArrow /><TooltipViewport /></TooltipPopup>
+                <TooltipPopup>
+                    <TooltipArrow />
+                    <TooltipViewport />
+                </TooltipPopup>
             </Tooltip>
         </div>
     );
 }
 
-/** Controlled mode: three triggers in the root, and a button that opens the tooltip on the second one. */
+/**
+ * Controlled mode: three triggers in the root, and a button that opens the tooltip on
+ * the second one.
+ */
 #[Component]
 function TooltipControlledDemo(): Node
 {
@@ -145,18 +163,30 @@ function TooltipControlledDemo(): Node
         <Tooltip sideOffset={{ 11 }}>
             <div className="flex flex-wrap justify-center gap-2">
                 <div className="flex">
-                    <TooltipTrigger id="trigger-1" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950"><TooltipHeadphonesIcon /></TooltipTrigger>
-                    <TooltipTrigger id="trigger-2" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950 border-l-0"><TooltipStopwatchIcon /></TooltipTrigger>
-                    <TooltipTrigger id="trigger-3" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950 border-l-0"><TooltipTrashIcon /></TooltipTrigger>
+                    <TooltipTrigger id="trigger-1" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950">
+                        <TooltipHeadphonesIcon />
+                    </TooltipTrigger>
+                    <TooltipTrigger id="trigger-2" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950 border-l-0">
+                        <TooltipStopwatchIcon />
+                    </TooltipTrigger>
+                    <TooltipTrigger id="trigger-3" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950 border-l-0">
+                        <TooltipTrashIcon />
+                    </TooltipTrigger>
                 </div>
                 <button type="button" data-action="phem-tooltip#show" data-phem-tooltip-trigger-id-param="trigger-2" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">Open programmatically</button>
             </div>
-            <TooltipPopup className="max-w-[var(--available-width)]"><TooltipArrow />Controlled tooltip</TooltipPopup>
+            <TooltipPopup className="max-w-[var(--available-width)]">
+                <TooltipArrow />
+                Controlled tooltip
+            </TooltipPopup>
         </Tooltip>
     );
 }
 
-/** Animating the Tooltip: its position, its size and its content move from one trigger to the next. */
+/**
+ * Animating the Tooltip: its position, its size and its content move from one trigger
+ * to the next.
+ */
 #[Component]
 function TooltipAnimatedDemo(): Node
 {
@@ -170,7 +200,13 @@ function TooltipAnimatedDemo(): Node
         <div className="flex">
             {% for trigger in triggers %}
                 <TooltipTrigger key={{ trigger[1] }} handle="animated-tooltip" payload={{ trigger[0] }} aria-label={{ trigger[0] }} className={{ 'border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950' ~ (loop.first ? '' : ' border-l-0') }}>
-                    {% if trigger[1] == 'headphones' %}<TooltipHeadphonesIcon />{% elseif trigger[1] == 'stopwatch' %}<TooltipStopwatchIcon />{% else %}<TooltipTrashIcon />{% endif %}
+                    {% if trigger[1] == 'headphones' %}
+                        <TooltipHeadphonesIcon />
+                    {% elseif trigger[1] == 'stopwatch' %}
+                        <TooltipStopwatchIcon />
+                    {% else %}
+                        <TooltipTrashIcon />
+                    {% endif %}
                 </TooltipTrigger>
             {% endfor %}
             <Tooltip handle="animated-tooltip" sideOffset={{ 11 }}>

@@ -69,8 +69,35 @@ const MORE_TAGS = [
 
 // The commands of the Base UI command palette demo.
 const PALETTE = [
-    'Suggestions' => ['linear' => 'Linear', 'figma' => 'Figma', 'slack' => 'Slack', 'youtube' => 'YouTube', 'raycast' => 'Raycast', 'notion' => 'Notion', 'github' => 'GitHub', 'jira' => 'Jira', 'calendar' => 'Google Calendar', 'chrome' => 'Google Chrome', 'mail' => 'Apple Mail', 'terminal' => 'Terminal'],
-    'Commands' => ['clipboard-history' => 'Clipboard History', 'import-extension' => 'Import Extension', 'create-snippet' => 'Create Snippet', 'system-preferences' => 'System Preferences', 'window-management' => 'Window Management', 'toggle-dark-mode' => 'Toggle Dark Mode', 'new-window' => 'New Window', 'new-tab' => 'New Tab', 'search-docs' => 'Search Documentation', 'capture-screen' => 'Capture Screenshot', 'close-sidebar' => 'Toggle Sidebar', 'toggle-terminal' => 'Toggle Integrated Terminal', 'run-script' => 'Run Script'],
+    'Suggestions' => [
+        'linear' => 'Linear',
+        'figma' => 'Figma',
+        'slack' => 'Slack',
+        'youtube' => 'YouTube',
+        'raycast' => 'Raycast',
+        'notion' => 'Notion',
+        'github' => 'GitHub',
+        'jira' => 'Jira',
+        'calendar' => 'Google Calendar',
+        'chrome' => 'Google Chrome',
+        'mail' => 'Apple Mail',
+        'terminal' => 'Terminal',
+    ],
+    'Commands' => [
+        'clipboard-history' => 'Clipboard History',
+        'import-extension' => 'Import Extension',
+        'create-snippet' => 'Create Snippet',
+        'system-preferences' => 'System Preferences',
+        'window-management' => 'Window Management',
+        'toggle-dark-mode' => 'Toggle Dark Mode',
+        'new-window' => 'New Window',
+        'new-tab' => 'New Tab',
+        'search-docs' => 'Search Documentation',
+        'capture-screen' => 'Capture Screenshot',
+        'close-sidebar' => 'Toggle Sidebar',
+        'toggle-terminal' => 'Toggle Integrated Terminal',
+        'run-script' => 'Run Script',
+    ],
 ];
 
 // The top 100 IMDb movies of the Base UI async demo.
@@ -80,16 +107,32 @@ const MOVIES = [
     ['id' => '3', 'title' => 'The Dark Knight', 'year' => 2008],
     ['id' => '4', 'title' => 'The Godfather Part II', 'year' => 1974],
     ['id' => '5', 'title' => '12 Angry Men', 'year' => 1957],
-    ['id' => '6', 'title' => 'The Lord of the Rings: The Return of the King', 'year' => 2003],
+    [
+        'id' => '6',
+        'title' => 'The Lord of the Rings: The Return of the King',
+        'year' => 2003,
+    ],
     ['id' => '7', 'title' => 'Schindler\'s List', 'year' => 1993],
     ['id' => '8', 'title' => 'Pulp Fiction', 'year' => 1994],
-    ['id' => '9', 'title' => 'The Lord of the Rings: The Fellowship of the Ring', 'year' => 2001],
+    [
+        'id' => '9',
+        'title' => 'The Lord of the Rings: The Fellowship of the Ring',
+        'year' => 2001,
+    ],
     ['id' => '10', 'title' => 'The Good, the Bad and the Ugly', 'year' => 1966],
     ['id' => '11', 'title' => 'Forrest Gump', 'year' => 1994],
-    ['id' => '12', 'title' => 'The Lord of the Rings: The Two Towers', 'year' => 2002],
+    [
+        'id' => '12',
+        'title' => 'The Lord of the Rings: The Two Towers',
+        'year' => 2002,
+    ],
     ['id' => '13', 'title' => 'Fight Club', 'year' => 1999],
     ['id' => '14', 'title' => 'Inception', 'year' => 2010],
-    ['id' => '15', 'title' => 'Star Wars: Episode V – The Empire Strikes Back', 'year' => 1980],
+    [
+        'id' => '15',
+        'title' => 'Star Wars: Episode V – The Empire Strikes Back',
+        'year' => 1980,
+    ],
     ['id' => '16', 'title' => 'The Matrix', 'year' => 1999],
     ['id' => '17', 'title' => 'Goodfellas', 'year' => 1990],
     ['id' => '18', 'title' => 'Interstellar', 'year' => 2014],
@@ -152,11 +195,19 @@ const MOVIES = [
     ['id' => '75', 'title' => 'High and Low', 'year' => 1963],
     ['id' => '76', 'title' => 'Amadeus', 'year' => 1984],
     ['id' => '77', 'title' => 'Good Will Hunting', 'year' => 1997],
-    ['id' => '78', 'title' => 'Star Wars: Episode VI – Return of the Jedi', 'year' => 1983],
+    [
+        'id' => '78',
+        'title' => 'Star Wars: Episode VI – Return of the Jedi',
+        'year' => 1983,
+    ],
     ['id' => '79', 'title' => 'The Hunt', 'year' => 2012],
     ['id' => '80', 'title' => 'Capharnaüm', 'year' => 2018],
     ['id' => '81', 'title' => 'Reservoir Dogs', 'year' => 1992],
-    ['id' => '82', 'title' => 'Eternal Sunshine of the Spotless Mind', 'year' => 2004],
+    [
+        'id' => '82',
+        'title' => 'Eternal Sunshine of the Spotless Mind',
+        'year' => 2004,
+    ],
     ['id' => '83', 'title' => 'Requiem for a Dream', 'year' => 2000],
     ['id' => '84', 'title' => 'Come and See', 'year' => 1985],
     ['id' => '85', 'title' => 'Ikiru', 'year' => 1952],
@@ -165,7 +216,11 @@ const MOVIES = [
     ['id' => '88', 'title' => 'Citizen Kane', 'year' => 1941],
     ['id' => '89', 'title' => 'Memento', 'year' => 2000],
     ['id' => '90', 'title' => 'North by Northwest', 'year' => 1959],
-    ['id' => '91', 'title' => 'Star Wars: Episode III – Revenge of the Sith', 'year' => 2005],
+    [
+        'id' => '91',
+        'title' => 'Star Wars: Episode III – Revenge of the Sith',
+        'year' => 2005,
+    ],
     ['id' => '92', 'title' => '2001: A Space Odyssey', 'year' => 1968],
     ['id' => '93', 'title' => 'Amélie', 'year' => 2001],
     ['id' => '94', 'title' => 'Singin\' in the Rain', 'year' => 1952],
@@ -179,21 +234,81 @@ const MOVIES = [
 
 // The documentation of the Base UI fuzzy matching demo.
 const DOCS = [
-    ['title' => 'React Hooks Guide', 'description' => 'Learn how to use React Hooks like useState, useEffect, and custom hooks', 'category' => 'React'],
-    ['title' => 'JavaScript Array Methods', 'description' => 'Master array methods like map, filter, reduce, and forEach in JavaScript', 'category' => 'JavaScript'],
-    ['title' => 'CSS Flexbox Layout', 'description' => 'Complete guide to CSS Flexbox for responsive web design', 'category' => 'CSS'],
-    ['title' => 'TypeScript Interfaces', 'description' => 'Understanding TypeScript interfaces and type definitions', 'category' => 'TypeScript'],
-    ['title' => 'React Performance Optimization', 'description' => 'Tips and techniques for optimizing React application performance', 'category' => 'React'],
-    ['title' => 'HTML Semantic Elements', 'description' => 'Using semantic HTML elements for better accessibility and SEO', 'category' => 'HTML'],
-    ['title' => 'Node.js Express Server', 'description' => 'Building RESTful APIs with Node.js and Express framework', 'category' => 'Node.js'],
-    ['title' => 'Vue Composition API', 'description' => 'Modern Vue.js development using the Composition API', 'category' => 'Vue.js'],
-    ['title' => 'Angular Components', 'description' => 'Creating reusable Angular components with TypeScript', 'category' => 'Angular'],
-    ['title' => 'Python Django Framework', 'description' => 'Web development with Python Django framework', 'category' => 'Python'],
-    ['title' => 'CSS Grid Layout', 'description' => 'Advanced CSS Grid techniques for complex layouts', 'category' => 'CSS'],
-    ['title' => 'React Testing Library', 'description' => 'Testing React components with React Testing Library', 'category' => 'React'],
-    ['title' => 'MongoDB Queries', 'description' => 'Advanced MongoDB queries and aggregation pipelines', 'category' => 'Database'],
-    ['title' => 'Webpack Configuration', 'description' => 'Optimizing webpack configuration for production builds', 'category' => 'Build Tools'],
-    ['title' => 'SASS/SCSS Guide', 'description' => 'Writing maintainable CSS with SASS and SCSS', 'category' => 'CSS'],
+    [
+        'title' => 'React Hooks Guide',
+        'description' => 'Learn how to use React Hooks like useState, useEffect, and custom hooks',
+        'category' => 'React',
+    ],
+    [
+        'title' => 'JavaScript Array Methods',
+        'description' => 'Master array methods like map, filter, reduce, and forEach in JavaScript',
+        'category' => 'JavaScript',
+    ],
+    [
+        'title' => 'CSS Flexbox Layout',
+        'description' => 'Complete guide to CSS Flexbox for responsive web design',
+        'category' => 'CSS',
+    ],
+    [
+        'title' => 'TypeScript Interfaces',
+        'description' => 'Understanding TypeScript interfaces and type definitions',
+        'category' => 'TypeScript',
+    ],
+    [
+        'title' => 'React Performance Optimization',
+        'description' => 'Tips and techniques for optimizing React application performance',
+        'category' => 'React',
+    ],
+    [
+        'title' => 'HTML Semantic Elements',
+        'description' => 'Using semantic HTML elements for better accessibility and SEO',
+        'category' => 'HTML',
+    ],
+    [
+        'title' => 'Node.js Express Server',
+        'description' => 'Building RESTful APIs with Node.js and Express framework',
+        'category' => 'Node.js',
+    ],
+    [
+        'title' => 'Vue Composition API',
+        'description' => 'Modern Vue.js development using the Composition API',
+        'category' => 'Vue.js',
+    ],
+    [
+        'title' => 'Angular Components',
+        'description' => 'Creating reusable Angular components with TypeScript',
+        'category' => 'Angular',
+    ],
+    [
+        'title' => 'Python Django Framework',
+        'description' => 'Web development with Python Django framework',
+        'category' => 'Python',
+    ],
+    [
+        'title' => 'CSS Grid Layout',
+        'description' => 'Advanced CSS Grid techniques for complex layouts',
+        'category' => 'CSS',
+    ],
+    [
+        'title' => 'React Testing Library',
+        'description' => 'Testing React components with React Testing Library',
+        'category' => 'React',
+    ],
+    [
+        'title' => 'MongoDB Queries',
+        'description' => 'Advanced MongoDB queries and aggregation pipelines',
+        'category' => 'Database',
+    ],
+    [
+        'title' => 'Webpack Configuration',
+        'description' => 'Optimizing webpack configuration for production builds',
+        'category' => 'Build Tools',
+    ],
+    [
+        'title' => 'SASS/SCSS Guide',
+        'description' => 'Writing maintainable CSS with SASS and SCSS',
+        'category' => 'CSS',
+    ],
 ];
 
 // The emojis of the Base UI grid demo, by category.
@@ -296,7 +411,9 @@ const EMOJIS = [
     ],
 ];
 
-/** Whether a text has the query, with no case: the `contains` filter of the browser. */
+/**
+ * Whether a text has the query, with no case: the `contains` filter of the browser.
+ */
 function autocompleteContains(string $text, string $query): bool
 {
     return str_contains(mb_strtolower($text), mb_strtolower(trim($query)));
@@ -362,11 +479,11 @@ function AutocompletePage(): Node
                     </Example.description>
                     <AutocompleteGridDemo />
                 </Example>
-                <Example title="Virtualized" source="AutocompleteVirtualizedDemo">
+                <Example title="Large datasets" source="AutocompleteLargeDatasetDemo">
                     <Example.description>
-                        <p>A virtualization library renders only the visible rows of a large dataset in the browser. In phem, the server searches the dataset, and renders only the first matches with a status of the total.</p>
+                        <p>For a large dataset, render only the first matches in the popup, and show the total in the status. The server searches the dataset at each change of the input.</p>
                     </Example.description>
-                    <AutocompleteVirtualizedDemo />
+                    <AutocompleteLargeDatasetDemo />
                 </Example>
             </Examples>
         </DemoPage>
@@ -395,7 +512,8 @@ function AutocompleteHeroDemo(): Node
     );
 }
 
-// The server searches the movies by name or year. The spinner shows while the search runs.
+// The server searches the movies by name or year. The spinner shows while the search
+// runs.
 #[Component]
 final class AutocompleteAsyncDemo
 {
@@ -403,19 +521,28 @@ final class AutocompleteAsyncDemo
 
     public function choose(string $id): void
     {
-        $this->query = array_values(array_filter(MOVIES, static fn (array $m): bool => $m['id'] === $id))[0]['title'];
+        $this->query = array_values(array_filter(
+            MOVIES,
+            static fn (array $m): bool => $m['id'] === $id
+        ))[0]['title'];
     }
 
     public function render(): Node
     {
         $searching = trim($this->query);
         $error = 'will_error' === $searching;
-        $results = '' === $searching || $error ? [] : array_values(array_filter(MOVIES, static fn (array $m): bool => autocompleteContains($m['title'], $searching) || autocompleteContains((string) $m['year'], $searching)));
+        $results = '' === $searching || $error ? [] : array_values(array_filter(
+            MOVIES,
+            static fn (array $m): bool =>
+                autocompleteContains($m['title'], $searching)
+                || autocompleteContains((string) $m['year'], $searching)
+        ));
         $count = \count($results);
         $status = match (true) {
             $error => 'Failed to fetch movies. Please try again.',
             '' === $searching => null,
-            0 === $count => 'Movie or year "'.$searching.'" does not exist in the Top 100 IMDb movies',
+            0 === $count => 'Movie or year "'.$searching
+                .'" does not exist in the Top 100 IMDb movies',
             default => $count.' result'.(1 === $count ? '' : 's').' found',
         };
 
@@ -471,8 +598,16 @@ function AutocompleteInlineDemo(): Node
 function AutocompleteGroupedDemo(): Node
 {
     $groups = [
-        'Type' => array_filter(TAGS, static fn (string $id): bool => !str_starts_with($id, 'c-'), \ARRAY_FILTER_USE_KEY),
-        'Component' => array_filter(TAGS, static fn (string $id): bool => str_starts_with($id, 'c-'), \ARRAY_FILTER_USE_KEY),
+        'Type' => array_filter(
+            TAGS,
+            static fn (string $id): bool => !str_starts_with($id, 'c-'),
+            \ARRAY_FILTER_USE_KEY
+        ),
+        'Component' => array_filter(
+            TAGS,
+            static fn (string $id): bool => str_starts_with($id, 'c-'),
+            \ARRAY_FILTER_USE_KEY
+        ),
     ];
 
     return (
@@ -496,8 +631,8 @@ function AutocompleteGroupedDemo(): Node
     );
 }
 
-// The server matches the characters of the query in order (as the `MATCHES` ranking of
-// match-sorter), and marks the text that has the query.
+// The server matches the characters of the query in order (as the `MATCHES` ranking
+// of match-sorter), and marks the text that has the query.
 #[Component]
 final class AutocompleteFuzzyDemo
 {
@@ -530,7 +665,10 @@ final class AutocompleteFuzzyDemo
         return false;
     }
 
-    /** @return list<array{text: string, mark: bool}> the parts of the text, with the parts that have the query */
+    /**
+     * @return list<array{text: string, mark: bool}> the parts of the text, with the
+     *                                                parts that have the query
+     */
     public static function highlight(string $text, string $query): array
     {
         $needle = mb_substr(trim($query), 0, 100);
@@ -538,9 +676,18 @@ final class AutocompleteFuzzyDemo
             return [['text' => $text, 'mark' => false]];
         }
 
-        $parts = preg_split('/('.preg_quote($needle, '/').')/iu', $text, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY);
+        $parts = preg_split(
+            '/('.preg_quote($needle, '/').')/iu',
+            $text,
+            -1,
+            \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY
+        );
 
-        return array_map(static fn (string $part): array => ['text' => $part, 'mark' => 0 === mb_strpos(mb_strtolower($part), mb_strtolower($needle)) && mb_strlen($part) === mb_strlen($needle)], $parts);
+        return array_map(static fn (string $part): array => [
+            'text' => $part,
+            'mark' => 0 === mb_strpos(mb_strtolower($part), mb_strtolower($needle))
+                && mb_strlen($part) === mb_strlen($needle),
+        ], $parts);
     }
 
     public function render(): Node
@@ -548,7 +695,13 @@ final class AutocompleteFuzzyDemo
         $results = [];
         foreach (DOCS as $index => $doc) {
             if (self::matches($doc, $this->query)) {
-                $results[$index] = ['title' => self::highlight($doc['title'], $this->query), 'description' => self::highlight($doc['description'], $this->query)];
+                $results[$index] = [
+                    'title' => self::highlight($doc['title'], $this->query),
+                    'description' => self::highlight(
+                        $doc['description'],
+                        $this->query
+                    ),
+                ];
             }
         }
 
@@ -574,7 +727,8 @@ final class AutocompleteFuzzyDemo
     }
 }
 
-// The browser filters and limits the tags. The server counts the matches for the status.
+// The browser filters and limits the tags. The server counts the matches for the
+// status.
 #[Component]
 final class AutocompleteLimitDemo
 {
@@ -592,9 +746,15 @@ final class AutocompleteLimitDemo
     {
         $tags = self::tags();
         $limit = self::LIMIT;
-        $matches = '' === trim($this->query) ? \count($tags) : \count(array_filter($tags, fn (string $tag): bool => autocompleteContains($tag, $this->query)));
+        $matches = '' === trim($this->query) ? \count($tags) : \count(array_filter(
+            $tags,
+            fn (string $tag): bool => autocompleteContains($tag, $this->query)
+        ));
         $more = max(0, $matches - $limit);
-        $status = $more > 0 ? 'Hiding '.$more.' results (type a more specific query to narrow results)' : null;
+        $status = $more > 0
+            ? 'Hiding '.$more
+                .' results (type a more specific query to narrow results)'
+            : null;
 
         return (
             <Autocomplete id="limited-tags" filter="contains" limit={{ limit }}>
@@ -647,7 +807,10 @@ function AutocompleteCommandPaletteDemo(): Node
             <DialogPopup aria-label="Command palette" className="top-18 mt-0 max-h-[min(36rem,calc(100dvh-5rem))] w-[calc(100vw-1rem)] max-w-md translate-y-0 gap-0 p-0 data-ending-style:-translate-y-4 data-ending-style:scale-95 data-starting-style:-translate-y-4 data-starting-style:scale-95 transition-[translate,scale,opacity] duration-150">
                 <Autocomplete id="palette" filter="contains" autoHighlight="always" keepHighlight className="min-h-0 gap-0">
                     <div className="relative z-1 flex cursor-text items-center gap-2 bg-white pl-3 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-neutral-950 dark:bg-neutral-950 dark:focus-within:outline-white">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeLinecap="square" strokeLinejoin="round" aria-hidden="true" className="block h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400"><path d="m11 11 3.5 3.5" /><circle cx="7" cy="7" r="5.5" /></svg>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeLinecap="square" strokeLinejoin="round" aria-hidden="true" className="block h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400">
+                            <path d="m11 11 3.5 3.5" />
+                            <circle cx="7" cy="7" r="5.5" />
+                        </svg>
                         <ComboboxInput aria-label="Search commands" aria-describedby="palette-shortcuts" placeholder="Search for apps and commands…" autofocus className="h-10 bg-transparent pr-3 pl-0 dark:bg-transparent" />
                     </div>
                     <DialogClose className="sr-only">Close command palette</DialogClose>
@@ -706,9 +869,19 @@ final class AutocompleteGridDemo
     {
         $groups = [];
         foreach (EMOJIS as $category => $emojis) {
-            $matches = array_values(array_filter($emojis, fn (array $e): bool => autocompleteContains($e[1], $this->search)));
+            $matches = array_values(array_filter(
+                $emojis,
+                fn (array $e): bool => autocompleteContains($e[1], $this->search)
+            ));
             if ([] !== $matches) {
-                $groups[$category] = array_chunk(array_map(static fn (array $e): array => ['emoji' => $e[0], 'name' => $e[1], 'value' => str_replace(' ', '-', $e[1])], $matches), self::COLUMNS);
+                $groups[$category] = array_chunk(
+                    array_map(static fn (array $e): array => [
+                        'emoji' => $e[0],
+                        'name' => $e[1],
+                        'value' => str_replace(' ', '-', $e[1]),
+                    ], $matches),
+                    self::COLUMNS
+                );
             }
         }
         $end = Align::End;
@@ -752,7 +925,7 @@ final class AutocompleteGridDemo
 
 // 10,000 items: the server finds the matches, and renders the first 50 of them.
 #[Component]
-final class AutocompleteVirtualizedDemo
+final class AutocompleteLargeDatasetDemo
 {
     #[State] public string $query = '';
 
@@ -763,8 +936,10 @@ final class AutocompleteVirtualizedDemo
 
     public function render(): Node
     {
-        [$matches, $total] = ComboboxVirtualizedDemo::search($this->query);
-        $status = $total > 50 ? 'Showing 50 of '.number_format($total).' items. Type to refine.' : null;
+        [$matches, $total] = ComboboxLargeDatasetDemo::search($this->query);
+        $status = $total > 50
+            ? 'Showing 50 of '.number_format($total).' items. Type to refine.'
+            : null;
         $open = true;
 
         return (

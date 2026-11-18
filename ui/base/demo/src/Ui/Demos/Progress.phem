@@ -21,7 +21,8 @@ function ProgressPage(): Node
     );
 }
 
-// The value grows each second, as in the Base UI demo: a poll adds a random step, up to 100.
+// The value grows each second, as in the Base UI demo: a poll adds a random step, up
+// to 100.
 #[Component]
 final class ProgressHeroDemo
 {
@@ -38,7 +39,9 @@ final class ProgressHeroDemo
             <Progress id="export" value={{ value }}>
                 <ProgressLabel>Export data</ProgressLabel>
                 <ProgressValue />
-                <ProgressTrack><ProgressIndicator /></ProgressTrack>
+                <ProgressTrack>
+                    <ProgressIndicator />
+                </ProgressTrack>
             </Progress>
         );
 

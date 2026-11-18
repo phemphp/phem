@@ -55,7 +55,9 @@ function ScrollAreaHeroDemo(): Node
                     <p>This type of architecture usually serves immediate, local needs, is constrained by the materials available in its particular region and reflects local traditions and cultural practices. The study of vernacular architecture does not examine formally schooled architects, but instead that of the design skills and tradition of local builders, who were rarely given any attribution for the work. More recently, vernacular architecture has been examined by designers and the building industry in an effort to be more energy conscious with contemporary design and construction—part of a broader interest in sustainable design.</p>
                 </ScrollAreaContent>
             </ScrollAreaViewport>
-            <ScrollAreaScrollbar><ScrollAreaThumb /></ScrollAreaScrollbar>
+            <ScrollAreaScrollbar>
+                <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
         </ScrollArea>
     );
 }
@@ -76,8 +78,12 @@ function ScrollAreaBothDemo(): Node
                     </ul>
                 </ScrollAreaContent>
             </ScrollAreaViewport>
-            <ScrollAreaScrollbar><ScrollAreaThumb /></ScrollAreaScrollbar>
-            <ScrollAreaScrollbar orientation={{ horizontal }}><ScrollAreaThumb /></ScrollAreaScrollbar>
+            <ScrollAreaScrollbar>
+                <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+            <ScrollAreaScrollbar orientation={{ horizontal }}>
+                <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
             <ScrollAreaCorner />
         </ScrollArea>
     );
@@ -94,16 +100,27 @@ function ScrollAreaFadeDemo(): Node
                     <p>This type of architecture usually serves immediate, local needs, is constrained by the materials available in its particular region and reflects local traditions and cultural practices. The study of vernacular architecture does not examine formally schooled architects, but instead that of the design skills and tradition of local builders, who were rarely given any attribution for the work. More recently, vernacular architecture has been examined by designers and the building industry in an effort to be more energy conscious with contemporary design and construction—part of a broader interest in sustainable design.</p>
                 </ScrollAreaContent>
             </ScrollAreaViewport>
-            <ScrollAreaScrollbar className="bg-black/8"><ScrollAreaThumb /></ScrollAreaScrollbar>
+            <ScrollAreaScrollbar className="bg-black/8">
+                <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
         </ScrollArea>
     );
 }
 
-// A tab list wider than its box: the viewport scrolls it, and its overflow variables fade its edges.
+// A tab list wider than its box: the viewport scrolls it, and its overflow variables
+// fade its edges.
 #[Component]
 function ScrollAreaTabsDemo(): Node
 {
-    $tabs = ['overview' => 'Overview', 'projects' => 'Projects', 'account' => 'Account', 'billing' => 'Billing', 'integrations' => 'Integrations', 'security' => 'Security', 'notifications' => 'Notifications'];
+    $tabs = [
+        'overview' => 'Overview',
+        'projects' => 'Projects',
+        'account' => 'Account',
+        'billing' => 'Billing',
+        'integrations' => 'Integrations',
+        'security' => 'Security',
+        'notifications' => 'Notifications',
+    ];
 
     return (
         <Tabs id="scroll-tabs" defaultValue="overview" className="w-72">
@@ -119,7 +136,9 @@ function ScrollAreaTabsDemo(): Node
             </ScrollArea>
             <div className="grid min-h-24 w-full grid-cols-1 border border-neutral-950 dark:border-white">
                 {% for value, name in tabs %}
-                    <TabsPanel key={{ value }} value={{ value }}><p>{{ name }}</p></TabsPanel>
+                    <TabsPanel key={{ value }} value={{ value }}>
+                        <p>{{ name }}</p>
+                    </TabsPanel>
                 {% endfor %}
             </div>
         </Tabs>

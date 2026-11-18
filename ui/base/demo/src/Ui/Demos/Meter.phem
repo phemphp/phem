@@ -28,7 +28,9 @@ function MeterHeroDemo(): Node
         <Meter id="storage" value={{ 24 }}>
             <MeterLabel>Storage Used</MeterLabel>
             <MeterValue />
-            <MeterTrack><MeterIndicator /></MeterTrack>
+            <MeterTrack>
+                <MeterIndicator />
+            </MeterTrack>
         </Meter>
     );
 }

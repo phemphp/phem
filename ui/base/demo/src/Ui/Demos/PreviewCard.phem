@@ -57,9 +57,7 @@ function PreviewCardHeroDemo(): Node
 {
     return (
         <PreviewCard>
-            <p className="text-base text-neutral-950 text-balance dark:text-white">
-                The principles of good <PreviewCardTrigger href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.
-            </p>
+            <p className="text-base text-neutral-950 text-balance dark:text-white">The principles of good <PreviewCardTrigger href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.</p>
             <PreviewCardPopup>
                 <PreviewCardArrow />
                 <PreviewCardTypography long />
@@ -68,7 +66,10 @@ function PreviewCardHeroDemo(): Node
     );
 }
 
-/** The card of the typography link, with the long text of the hero or the short text of the other examples. */
+/**
+ * The card of the typography link, with the long text of the hero or the short text
+ * of the other examples.
+ */
 #[Component]
 function PreviewCardTypography(bool $long = false): Node
 {
@@ -86,11 +87,18 @@ function PreviewCardTypography(bool $long = false): Node
 
 /** The three cards of the controlled and the animated examples. */
 #[Component]
-function PreviewCardPayloads(int $designWidth, int $designHeight, int $artWidth, int $artHeight): Node
+function PreviewCardPayloads(
+    int $designWidth,
+    int $designHeight,
+    int $artWidth,
+    int $artHeight,
+): Node
 {
     return (
         <>
-            <PreviewCardPayload name="typography"><PreviewCardTypography /></PreviewCardPayload>
+            <PreviewCardPayload name="typography">
+                <PreviewCardTypography />
+            </PreviewCardPayload>
             <PreviewCardPayload name="design">
                 <div className="flex w-min flex-col gap-2 p-2">
                     <img width={{ designWidth }} height={{ designHeight }} className="block max-w-none" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Braun_ABW30_%28schwarz%29.jpg/250px-Braun_ABW30_%28schwarz%29.jpg" alt="Braun ABW30" />
@@ -113,9 +121,7 @@ function PreviewCardDetachedDemo(): Node
 {
     return (
         <div>
-            <p className="text-base text-neutral-950 text-balance dark:text-white">
-                The principles of good <PreviewCardTrigger handle="detached-card" href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.
-            </p>
+            <p className="text-base text-neutral-950 text-balance dark:text-white">The principles of good <PreviewCardTrigger handle="detached-card" href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.</p>
             <PreviewCard handle="detached-card">
                 <PreviewCardPopup>
                     <PreviewCardArrow />
@@ -132,15 +138,17 @@ function PreviewCardMultipleDemo(): Node
 {
     return (
         <div>
-            <p className="text-base text-neutral-950 dark:text-white">
-                Open <PreviewCardTrigger handle="multiple-card" payload="trigger-1" href="#">Trigger 1</PreviewCardTrigger> or <PreviewCardTrigger handle="multiple-card" payload="trigger-2" href="#">Trigger 2</PreviewCardTrigger>.
-            </p>
+            <p className="text-base text-neutral-950 dark:text-white">Open <PreviewCardTrigger handle="multiple-card" payload="trigger-1" href="#">Trigger 1</PreviewCardTrigger> or <PreviewCardTrigger handle="multiple-card" payload="trigger-2" href="#">Trigger 2</PreviewCardTrigger>.</p>
             <PreviewCard handle="multiple-card">
                 <PreviewCardPopup>
                     <PreviewCardArrow />
                     <PreviewCardViewport className="p-2 text-sm">
-                        <PreviewCardPayload name="trigger-1"><span>Preview card opened by Trigger 1</span></PreviewCardPayload>
-                        <PreviewCardPayload name="trigger-2"><span>Preview card opened by Trigger 2</span></PreviewCardPayload>
+                        <PreviewCardPayload name="trigger-1">
+                            <span>Preview card opened by Trigger 1</span>
+                        </PreviewCardPayload>
+                        <PreviewCardPayload name="trigger-2">
+                            <span>Preview card opened by Trigger 2</span>
+                        </PreviewCardPayload>
                     </PreviewCardViewport>
                 </PreviewCardPopup>
             </PreviewCard>
@@ -148,16 +156,17 @@ function PreviewCardMultipleDemo(): Node
     );
 }
 
-/** Controlled mode: three links in the root, and a button that opens the card on the second one. */
+/**
+ * Controlled mode: three links in the root, and a button that opens the card on the
+ * second one.
+ */
 #[Component]
 function PreviewCardControlledDemo(): Node
 {
     return (
         <PreviewCard>
             <div className="flex flex-wrap items-baseline justify-center gap-2">
-                <p className="text-base text-neutral-950 text-balance dark:text-white">
-                    Discover <PreviewCardTrigger id="card-trigger-1" payload="typography" href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger>, <PreviewCardTrigger id="card-trigger-2" payload="design" href="https://en.wikipedia.org/wiki/Industrial_design">design</PreviewCardTrigger>, or <PreviewCardTrigger id="card-trigger-3" payload="art" href="https://en.wikipedia.org/wiki/Art">art</PreviewCardTrigger>.
-                </p>
+                <p className="text-base text-neutral-950 text-balance dark:text-white">Discover <PreviewCardTrigger id="card-trigger-1" payload="typography" href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger>, <PreviewCardTrigger id="card-trigger-2" payload="design" href="https://en.wikipedia.org/wiki/Industrial_design">design</PreviewCardTrigger>, or <PreviewCardTrigger id="card-trigger-3" payload="art" href="https://en.wikipedia.org/wiki/Art">art</PreviewCardTrigger>.</p>
                 <button type="button" data-action="phem-popover#open" data-phem-popover-trigger-id-param="card-trigger-2" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 font-[inherit] text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Open programmatically</button>
             </div>
             <PreviewCardPopup className="max-w-[var(--available-width)]">
@@ -170,15 +179,16 @@ function PreviewCardControlledDemo(): Node
     );
 }
 
-/** Animating the Preview Card: the card moves from one link to the next with its new content. */
+/**
+ * Animating the Preview Card: the card moves from one link to the next with its new
+ * content.
+ */
 #[Component]
 function PreviewCardAnimatedDemo(): Node
 {
     return (
         <div>
-            <p className="text-base text-neutral-950 text-balance dark:text-white">
-                Discover <PreviewCardTrigger handle="animated-card" payload="typography" href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger>, <PreviewCardTrigger handle="animated-card" payload="design" href="https://en.wikipedia.org/wiki/Design">design</PreviewCardTrigger>, or <PreviewCardTrigger handle="animated-card" payload="art" href="https://en.wikipedia.org/wiki/Art">art</PreviewCardTrigger>.
-            </p>
+            <p className="text-base text-neutral-950 text-balance dark:text-white">Discover <PreviewCardTrigger handle="animated-card" payload="typography" href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger>, <PreviewCardTrigger handle="animated-card" payload="design" href="https://en.wikipedia.org/wiki/Design">design</PreviewCardTrigger>, or <PreviewCardTrigger handle="animated-card" payload="art" href="https://en.wikipedia.org/wiki/Art">art</PreviewCardTrigger>.</p>
             <PreviewCard handle="animated-card">
                 <PreviewCardPopup className="max-w-[var(--available-width)] transition-[top,left,width,height,opacity,transform] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)]">
                     <PreviewCardArrow className="transition-[left] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)]" />

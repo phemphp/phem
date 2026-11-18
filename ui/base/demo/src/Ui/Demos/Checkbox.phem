@@ -46,7 +46,9 @@ function CheckboxHeroDemo(): Node
 {
     return (
         <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
-            <Checkbox defaultChecked><CheckboxIndicator /></Checkbox>
+            <Checkbox defaultChecked>
+                <CheckboxIndicator />
+            </Checkbox>
             Enable notifications
         </label>
     );
@@ -57,7 +59,9 @@ function CheckboxLabelingDemo(): Node
 {
     return (
         <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
-            <Checkbox><CheckboxIndicator /></Checkbox>
+            <Checkbox>
+                <CheckboxIndicator />
+            </Checkbox>
             Accept terms and conditions
         </label>
     );
@@ -69,7 +73,9 @@ function CheckboxNativeButtonDemo(): Node
     return (
         <div className="flex items-center gap-2">
             <label htmlFor="notifications-checkbox" className="text-sm text-neutral-950 dark:text-white">Enable notifications</label>
-            <Checkbox id="notifications-checkbox" nativeButton><CheckboxIndicator /></Checkbox>
+            <Checkbox id="notifications-checkbox" nativeButton>
+                <CheckboxIndicator />
+            </Checkbox>
         </div>
     );
 }
@@ -81,7 +87,9 @@ function CheckboxFormDemo(): Node
         <Form>
             <Field>
                 <FieldLabel className="flex items-center gap-2 font-normal">
-                    <Checkbox name="stayLoggedIn"><CheckboxIndicator /></Checkbox>
+                    <Checkbox name="stayLoggedIn">
+                        <CheckboxIndicator />
+                    </Checkbox>
                     Stay logged in for 7 days
                 </FieldLabel>
             </Field>

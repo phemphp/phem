@@ -34,7 +34,11 @@ function MenubarHeroDemo(): Node
                     <MenuItem>Save</MenuItem>
                     <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
                         <MenuSubmenuTrigger>Export</MenuSubmenuTrigger>
-                        <MenuPopup><MenuItem>PDF</MenuItem><MenuItem>PNG</MenuItem><MenuItem>SVG</MenuItem></MenuPopup>
+                        <MenuPopup>
+                            <MenuItem>PDF</MenuItem>
+                            <MenuItem>PNG</MenuItem>
+                            <MenuItem>SVG</MenuItem>
+                        </MenuPopup>
                     </MenuSubmenu>
                     <MenuSeparator />
                     <MenuItem>Print</MenuItem>
@@ -42,7 +46,11 @@ function MenubarHeroDemo(): Node
             </Menu>
             <Menu sideOffset={{ 4 }}>
                 <MenuTrigger>Edit</MenuTrigger>
-                <MenuPopup><MenuItem>Cut</MenuItem><MenuItem>Copy</MenuItem><MenuItem>Paste</MenuItem></MenuPopup>
+                <MenuPopup>
+                    <MenuItem>Cut</MenuItem>
+                    <MenuItem>Copy</MenuItem>
+                    <MenuItem>Paste</MenuItem>
+                </MenuPopup>
             </Menu>
             <Menu sideOffset={{ 4 }}>
                 <MenuTrigger>View</MenuTrigger>
@@ -51,13 +59,19 @@ function MenubarHeroDemo(): Node
                     <MenuItem>Zoom Out</MenuItem>
                     <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
                         <MenuSubmenuTrigger>Layout</MenuSubmenuTrigger>
-                        <MenuPopup><MenuItem>Single Page</MenuItem><MenuItem>Two Pages</MenuItem><MenuItem>Continuous</MenuItem></MenuPopup>
+                        <MenuPopup>
+                            <MenuItem>Single Page</MenuItem>
+                            <MenuItem>Two Pages</MenuItem>
+                            <MenuItem>Continuous</MenuItem>
+                        </MenuPopup>
                     </MenuSubmenu>
                     <MenuSeparator />
                     <MenuItem>Full Screen</MenuItem>
                 </MenuPopup>
             </Menu>
-            <Menu disabled><MenuTrigger>Help</MenuTrigger></Menu>
+            <Menu disabled>
+                <MenuTrigger>Help</MenuTrigger>
+            </Menu>
         </Menubar>
     );
 }

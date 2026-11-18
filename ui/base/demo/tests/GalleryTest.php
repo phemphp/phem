@@ -42,7 +42,7 @@ final class GalleryTest extends DemoTestCase
 
         // The constants, the demo, then the helpers that it calls, also through another helper.
         self::assertStringStartsWith("<?phem\n\nuse Phem\\Attribute\\Component;\n", $source);
-        self::assertLessThan(strpos($source, 'function MenuFilterDemo('), strpos($source, 'const MENU_FILTER_POPUP = '));
+        self::assertLessThan(strpos($source, 'function MenuFilterDemo('), strpos($source, 'const MENU_FILTER_SHARE = '));
         self::assertGreaterThan(strpos($source, 'function MenuFilterDemo('), strpos($source, 'function MenuFilterSubmenu('));
         self::assertStringContainsString('function MenuClearIcon(', $source);
 
@@ -59,6 +59,13 @@ final class GalleryTest extends DemoTestCase
         self::assertStringContainsString("#[Component]\nfinal class ButtonLoadingDemo\n{", $source);
         self::assertStringContainsString('use Phem\\Attribute\\Component;', $source);
         self::assertStringNotContainsString('ButtonHeroDemo', $source);
+    }
+
+    public function testTheSourceOfADemoKeepsALongUseGroupOnOneLine(): void
+    {
+        $source = Gallery::source('MenuCheckboxDemo');
+
+        self::assertMatchesRegularExpression('/^use function Phem\\\\Ui\\\\Base\\\\\{MenuCheckboxItem, [^\n]+\};$/m', $source);
     }
 
     public function testTheSourceOfAnUnknownDemo(): void

@@ -74,7 +74,10 @@ function PopoverHeroDemo(): Node
     );
 }
 
-/** Opening on hover: the `openOnHover` prop opens the popover when the pointer rests on the trigger. */
+/**
+ * Opening on hover: the `openOnHover` prop opens the popover when the pointer rests
+ * on the trigger.
+ */
 #[Component]
 function PopoverHoverDemo(): Node
 {
@@ -135,7 +138,10 @@ function PopoverMultipleDemo(): Node
     );
 }
 
-/** Controlled mode: three triggers in the root, and a button that opens the popover on the second one. */
+/**
+ * Controlled mode: three triggers in the root, and a button that opens the popover on
+ * the second one.
+ */
 #[Component]
 function PopoverControlledDemo(): Node
 {
@@ -156,7 +162,10 @@ function PopoverControlledDemo(): Node
     );
 }
 
-/** Animating the Popover: three panels, and the popup moves from one trigger to the next. */
+/**
+ * Animating the Popover: three panels, and the popup moves from one trigger to the
+ * next.
+ */
 #[Component]
 function PopoverAnimatedDemo(): Node
 {

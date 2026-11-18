@@ -129,14 +129,14 @@ final class PickersTest extends DemoTestCase
         expect($dialog)->toBeHidden();
         expect($creatable->getByRole('button', ['name' => 'Remove urgent']))->toBeVisible();
 
-        // Virtualized: the server renders the first 50 matches, and the status gives the total.
-        $virtual = $page->getByRole('region', ['name' => 'Virtualized'])->locator('[data-demo="preview"]');
-        $items = $virtual->getByRole('combobox', ['name' => 'Search 10,000 items']);
+        // Large datasets: the server renders the first 50 matches, and the status gives the total.
+        $large = $page->getByRole('region', ['name' => 'Large datasets'])->locator('[data-demo="preview"]');
+        $items = $large->getByRole('combobox', ['name' => 'Search 10,000 items']);
         $items->fill('1');
-        expect($virtual->locator('[data-phem-combobox-target="item"]'))->toHaveCount(50);
-        expect($virtual->locator('text=Showing 50 of'))->toBeVisible();
+        expect($large->locator('[data-phem-combobox-target="item"]'))->toHaveCount(50);
+        expect($large->locator('text=Showing 50 of'))->toBeVisible();
         $items->fill('Item 0042');
-        expect($virtual->getByRole('option', ['name' => 'Item 0042']))->toBeVisible();
+        expect($large->getByRole('option', ['name' => 'Item 0042']))->toBeVisible();
         $page->keyboard()->press('Escape');
 
         // Grouped: the filter hides a group with no match.
@@ -265,11 +265,11 @@ final class PickersTest extends DemoTestCase
         expect($emojis->getByRole('gridcell'))->toHaveCount(1);
         $page->keyboard()->press('Escape');
 
-        // Virtualized: a click on the input opens the first 50 items, with the total in the status.
-        $virtual = $page->getByRole('region', ['name' => 'Virtualized'])->locator('[data-demo="preview"]');
-        $virtual->getByRole('combobox', ['name' => 'Search 10,000 items'])->click();
-        expect($virtual->getByRole('option'))->toHaveCount(50);
-        expect($virtual->locator('text=Showing 50 of 10,000 items. Type to refine.'))->toBeVisible();
+        // Large datasets: a click on the input opens the first 50 items, with the total in the status.
+        $large = $page->getByRole('region', ['name' => 'Large datasets'])->locator('[data-demo="preview"]');
+        $large->getByRole('combobox', ['name' => 'Search 10,000 items'])->click();
+        expect($large->getByRole('option'))->toHaveCount(50);
+        expect($large->locator('text=Showing 50 of 10,000 items. Type to refine.'))->toBeVisible();
     }
 
     public function testSelect(): void

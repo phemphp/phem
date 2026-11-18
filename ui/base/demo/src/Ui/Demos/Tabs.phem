@@ -48,9 +48,15 @@ function TabsHeroDemo(): Node
                 <TabsIndicator />
             </TabsList>
             <div className="grid w-full min-h-32 grid-cols-1 border border-neutral-950 dark:border-white">
-                <TabsPanel value="overview"><p>Workspace stats and activity.</p></TabsPanel>
-                <TabsPanel value="projects"><p>Milestones and deadlines.</p></TabsPanel>
-                <TabsPanel value="account"><p>Profile and preferences.</p></TabsPanel>
+                <TabsPanel value="overview">
+                    <p>Workspace stats and activity.</p>
+                </TabsPanel>
+                <TabsPanel value="projects">
+                    <p>Milestones and deadlines.</p>
+                </TabsPanel>
+                <TabsPanel value="account">
+                    <p>Profile and preferences.</p>
+                </TabsPanel>
             </div>
         </Tabs>
     );
@@ -70,9 +76,15 @@ function TabsAnimatedPanelsDemo(): Node
                 <TabsIndicator />
             </TabsList>
             <div className="relative grid min-h-32 w-full grid-cols-1 overflow-hidden border border-neutral-950 bg-white dark:border-white dark:bg-neutral-950">
-                <TabsPanel value="overview" className={{ panel }}><p>Workspace stats and activity.</p></TabsPanel>
-                <TabsPanel value="projects" className={{ panel }}><p>Milestones and deadlines.</p></TabsPanel>
-                <TabsPanel value="account" className={{ panel }}><p>Profile and preferences.</p></TabsPanel>
+                <TabsPanel value="overview" className={{ panel }}>
+                    <p>Workspace stats and activity.</p>
+                </TabsPanel>
+                <TabsPanel value="projects" className={{ panel }}>
+                    <p>Milestones and deadlines.</p>
+                </TabsPanel>
+                <TabsPanel value="account" className={{ panel }}>
+                    <p>Profile and preferences.</p>
+                </TabsPanel>
             </div>
         </Tabs>
     );
@@ -91,9 +103,15 @@ function TabsLinksDemo(): Node
                 <TabsIndicator />
             </TabsList>
             <div className="grid w-full min-h-32 grid-cols-1 border border-neutral-950 dark:border-white">
-                <TabsPanel value="overview"><p>Workspace stats and activity.</p></TabsPanel>
-                <TabsPanel value="projects"><p>Milestones and deadlines.</p></TabsPanel>
-                <TabsPanel value="account"><p>Profile and preferences.</p></TabsPanel>
+                <TabsPanel value="overview">
+                    <p>Workspace stats and activity.</p>
+                </TabsPanel>
+                <TabsPanel value="projects">
+                    <p>Milestones and deadlines.</p>
+                </TabsPanel>
+                <TabsPanel value="account">
+                    <p>Profile and preferences.</p>
+                </TabsPanel>
             </div>
         </Tabs>
     );

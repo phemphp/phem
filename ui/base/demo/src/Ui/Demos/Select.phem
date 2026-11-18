@@ -63,17 +63,29 @@ function SelectPage(): Node
 #[Component]
 function SelectHeroDemo(): Node
 {
-    $apples = ['gala' => 'Gala', 'fuji' => 'Fuji', 'honeycrisp' => 'Honeycrisp', 'granny-smith' => 'Granny Smith', 'pink-lady' => 'Pink Lady'];
+    $apples = [
+        'gala' => 'Gala',
+        'fuji' => 'Fuji',
+        'honeycrisp' => 'Honeycrisp',
+        'granny-smith' => 'Granny Smith',
+        'pink-lady' => 'Pink Lady',
+    ];
 
     return (
         <Select id="apple" name="apple" sideOffset={{ 4 }}>
             <SelectLabel>Apple</SelectLabel>
-            <SelectTrigger><SelectValue placeholder="Select apple" /><SelectIcon /></SelectTrigger>
+            <SelectTrigger>
+                <SelectValue placeholder="Select apple" />
+                <SelectIcon />
+            </SelectTrigger>
             <SelectPopup>
                 <SelectScrollUpArrow />
                 <SelectList>
                     {% for value, name in apples %}
-                        <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
                     {% endfor %}
                 </SelectList>
                 <SelectScrollDownArrow />
@@ -90,11 +102,17 @@ function SelectFormattedDemo(): Node
     return (
         <Select id="formatted" defaultValue="system" sideOffset={{ 4 }}>
             <SelectLabel>Theme</SelectLabel>
-            <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
+            <SelectTrigger>
+                <SelectValue />
+                <SelectIcon />
+            </SelectTrigger>
             <SelectPopup>
                 <SelectList>
                     {% for value, name in themes %}
-                        <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
                     {% endfor %}
                 </SelectList>
             </SelectPopup>
@@ -110,11 +128,17 @@ function SelectLabeledDemo(): Node
     return (
         <Select id="labeled" defaultValue="light" sideOffset={{ 4 }}>
             <SelectLabel>Theme</SelectLabel>
-            <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
+            <SelectTrigger>
+                <SelectValue />
+                <SelectIcon />
+            </SelectTrigger>
             <SelectPopup>
                 <SelectList>
                     {% for value, name in themes %}
-                        <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
                     {% endfor %}
                 </SelectList>
             </SelectPopup>
@@ -130,11 +154,17 @@ function SelectPlaceholderDemo(): Node
     return (
         <Select id="placeholder" sideOffset={{ 4 }}>
             <SelectLabel>Theme</SelectLabel>
-            <SelectTrigger><SelectValue placeholder="Select theme" /><SelectIcon /></SelectTrigger>
+            <SelectTrigger>
+                <SelectValue placeholder="Select theme" />
+                <SelectIcon />
+            </SelectTrigger>
             <SelectPopup>
                 <SelectList>
                     {% for value, name in themes %}
-                        <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
                     {% endfor %}
                 </SelectList>
             </SelectPopup>
@@ -145,16 +175,33 @@ function SelectPlaceholderDemo(): Node
 #[Component]
 function SelectMultipleDemo(): Node
 {
-    $languages = ['javascript' => 'JavaScript', 'typescript' => 'TypeScript', 'python' => 'Python', 'java' => 'Java', 'csharp' => 'C#', 'php' => 'PHP', 'cpp' => 'C++', 'rust' => 'Rust', 'go' => 'Go', 'swift' => 'Swift'];
+    $languages = [
+        'javascript' => 'JavaScript',
+        'typescript' => 'TypeScript',
+        'python' => 'Python',
+        'java' => 'Java',
+        'csharp' => 'C#',
+        'php' => 'PHP',
+        'cpp' => 'C++',
+        'rust' => 'Rust',
+        'go' => 'Go',
+        'swift' => 'Swift',
+    ];
 
     return (
         <Select id="languages" multiple defaultValue={{ ['javascript', 'typescript'] }} alignItemWithTrigger={{ false }} sideOffset={{ 4 }}>
             <SelectLabel>Languages</SelectLabel>
-            <SelectTrigger className="min-w-56"><SelectValue placeholder="Select languages" template="{first} (+{others} more)" /><SelectIcon /></SelectTrigger>
+            <SelectTrigger className="min-w-56">
+                <SelectValue placeholder="Select languages" template="{first} (+{others} more)" />
+                <SelectIcon />
+            </SelectTrigger>
             <SelectPopup>
                 <SelectList>
                     {% for value, name in languages %}
-                        <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ name }}</SelectItemText></SelectItem>
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
                     {% endfor %}
                 </SelectList>
             </SelectPopup>
@@ -166,15 +213,33 @@ function SelectMultipleDemo(): Node
 function SelectObjectValuesDemo(): Node
 {
     $methods = [
-        ['id' => 'standard', 'name' => 'Standard', 'duration' => 'Delivers in 4-6 business days', 'price' => '$4.99'],
-        ['id' => 'express', 'name' => 'Express', 'duration' => 'Delivers in 2-3 business days', 'price' => '$9.99'],
-        ['id' => 'overnight', 'name' => 'Overnight', 'duration' => 'Delivers next business day', 'price' => '$19.99'],
+        [
+            'id' => 'standard',
+            'name' => 'Standard',
+            'duration' => 'Delivers in 4-6 business days',
+            'price' => '$4.99',
+        ],
+        [
+            'id' => 'express',
+            'name' => 'Express',
+            'duration' => 'Delivers in 2-3 business days',
+            'price' => '$9.99',
+        ],
+        [
+            'id' => 'overnight',
+            'name' => 'Overnight',
+            'duration' => 'Delivers next business day',
+            'price' => '$19.99',
+        ],
     ];
 
     return (
         <Select id="shipping" defaultValue="standard" sideOffset={{ 4 }}>
             <SelectLabel>Shipping method</SelectLabel>
-            <SelectTrigger className="h-auto min-h-8 min-w-[16rem] py-1.5"><SelectValue markup /><SelectIcon /></SelectTrigger>
+            <SelectTrigger className="h-auto min-h-8 min-w-[16rem] py-1.5">
+                <SelectValue markup />
+                <SelectIcon />
+            </SelectTrigger>
             <SelectPopup>
                 <SelectScrollUpArrow />
                 <SelectList>
@@ -200,14 +265,35 @@ function SelectObjectValuesDemo(): Node
 function SelectGroupedDemo(): Node
 {
     $groups = [
-        'Fruits' => ['apple' => 'Apple', 'banana' => 'Banana', 'mango' => 'Mango', 'kiwi' => 'Kiwi', 'grape' => 'Grape', 'orange' => 'Orange', 'strawberry' => 'Strawberry', 'watermelon' => 'Watermelon'],
-        'Vegetables' => ['broccoli' => 'Broccoli', 'carrot' => 'Carrot', 'cauliflower' => 'Cauliflower', 'cucumber' => 'Cucumber', 'kale' => 'Kale', 'bell-pepper' => 'Bell pepper', 'spinach' => 'Spinach', 'zucchini' => 'Zucchini'],
+        'Fruits' => [
+            'apple' => 'Apple',
+            'banana' => 'Banana',
+            'mango' => 'Mango',
+            'kiwi' => 'Kiwi',
+            'grape' => 'Grape',
+            'orange' => 'Orange',
+            'strawberry' => 'Strawberry',
+            'watermelon' => 'Watermelon',
+        ],
+        'Vegetables' => [
+            'broccoli' => 'Broccoli',
+            'carrot' => 'Carrot',
+            'cauliflower' => 'Cauliflower',
+            'cucumber' => 'Cucumber',
+            'kale' => 'Kale',
+            'bell-pepper' => 'Bell pepper',
+            'spinach' => 'Spinach',
+            'zucchini' => 'Zucchini',
+        ],
     ];
 
     return (
         <Select id="produce" sideOffset={{ 4 }}>
             <SelectLabel>Produce</SelectLabel>
-            <SelectTrigger><SelectValue placeholder="Select produce" /><SelectIcon /></SelectTrigger>
+            <SelectTrigger>
+                <SelectValue placeholder="Select produce" />
+                <SelectIcon />
+            </SelectTrigger>
             <SelectPopup>
                 <SelectScrollUpArrow />
                 <SelectList>
@@ -215,7 +301,10 @@ function SelectGroupedDemo(): Node
                         <SelectGroup key={{ name }}>
                             <SelectGroupLabel>{{ name }}</SelectGroupLabel>
                             {% for value, label in items %}
-                                <SelectItem key={{ value }} value={{ value }}><SelectItemIndicator /><SelectItemText>{{ label }}</SelectItemText></SelectItem>
+                                <SelectItem key={{ value }} value={{ value }}>
+                                    <SelectItemIndicator />
+                                    <SelectItemText>{{ label }}</SelectItemText>
+                                </SelectItem>
                             {% endfor %}
                         </SelectGroup>
                         {% if not loop.last %}<SelectSeparator />{% endif %}

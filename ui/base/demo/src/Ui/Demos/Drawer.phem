@@ -21,9 +21,20 @@ const DRAWER_DELIVERY = [
     ['Backup contact', 'Grace Hopper'],
 ];
 
-const DRAWER_NAV_ITEMS = ['Overview' => '/', 'Components' => '/components/accordion', 'Utilities' => '/', 'Releases' => '/'];
+const DRAWER_NAV_ITEMS = [
+    'Overview' => '/',
+    'Components' => '/components/accordion',
+    'Utilities' => '/',
+    'Releases' => '/',
+];
 
-const DRAWER_ACTIONS = ['Unfollow', 'Mute', 'Add to Favourites', 'Add to Close Friends', 'Restrict'];
+const DRAWER_ACTIONS = [
+    'Unfollow',
+    'Mute',
+    'Add to Favourites',
+    'Add to Close Friends',
+    'Restrict',
+];
 
 #[Page('/components/drawer')]
 function DrawerPage(): Node
@@ -134,7 +145,9 @@ function DrawerHeroDemo(): Node
                 <DrawerContent>
                     <DrawerTitle>Drawer</DrawerTitle>
                     <DrawerDescription>This is a drawer that slides in from the side. You can swipe to dismiss it.</DrawerDescription>
-                    <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                    <div className="flex justify-end gap-3">
+                        <DrawerClose>Close</DrawerClose>
+                    </div>
                 </DrawerContent>
             </DrawerPopup>
         </Drawer>
@@ -152,7 +165,9 @@ function DrawerStateDemo(): Node
                 <DrawerContent>
                     <DrawerTitle>Example drawer</DrawerTitle>
                     <DrawerDescription>The browser keeps the state of this drawer.</DrawerDescription>
-                    <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                    <div className="flex justify-end gap-3">
+                        <DrawerClose>Close</DrawerClose>
+                    </div>
                 </DrawerContent>
             </DrawerPopup>
         </Drawer>
@@ -172,7 +187,9 @@ function DrawerPositionDemo(): Node
                     <DrawerContent>
                         <DrawerTitle className="text-center">Notifications</DrawerTitle>
                         <DrawerDescription className="text-center">You are all caught up. Good job!</DrawerDescription>
-                        <div className="flex justify-center gap-3"><DrawerClose>Close</DrawerClose></div>
+                        <div className="flex justify-center gap-3">
+                            <DrawerClose>Close</DrawerClose>
+                        </div>
                     </DrawerContent>
                 </DrawerPopup>
             </DrawerViewport>
@@ -226,7 +243,9 @@ function DrawerNestedDemo(): Node
                                                                             <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300" htmlFor="device-notes">Notes</label>
                                                                             <textarea id="device-notes" rows="3" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 h-auto min-h-32 resize-y p-2">Rotate recovery codes and revoke older sessions.</textarea>
                                                                         </div>
-                                                                        <div className="flex justify-end"><DrawerClose>Done</DrawerClose></div>
+                                                                        <div className="flex justify-end">
+                                                                            <DrawerClose>Done</DrawerClose>
+                                                                        </div>
                                                                     </DrawerContent>
                                                                 </DrawerPopup>
                                                             </DrawerViewport>
@@ -271,7 +290,9 @@ function DrawerSnapPointsDemo(): Node
                                     <div key={{ i }} className="h-12 bg-neutral-200 dark:bg-neutral-700" />
                                 {% endfor %}
                             </div>
-                            <div className="flex items-center justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                            <div className="flex items-center justify-end gap-3">
+                                <DrawerClose>Close</DrawerClose>
+                            </div>
                         </div>
                     </DrawerContent>
                 </DrawerPopup>
@@ -280,7 +301,9 @@ function DrawerSnapPointsDemo(): Node
     );
 }
 
-/** Virtual keyboard aware: the footer field goes up with the keyboard of the device. */
+/**
+ * Virtual keyboard aware: the footer field goes up with the keyboard of the device.
+ */
 #[Component]
 function DrawerKeyboardDemo(): Node
 {
@@ -328,9 +351,9 @@ function DrawerKeyboardDemo(): Node
 }
 
 /**
- * Indent effect: the page gets smaller behind the drawer. The drawer goes around the indent, so
- * its backdrop and its viewport fill the provider and do not get smaller with the page, as the
- * Portal of Base UI in the provider.
+ * Indent effect: the page gets smaller behind the drawer. The drawer goes around the
+ * indent, so its backdrop and its viewport fill the provider and do not get smaller
+ * with the page, as the Portal of Base UI in the provider.
  */
 #[Component]
 function DrawerIndentDemo(): Node
@@ -351,7 +374,9 @@ function DrawerIndentDemo(): Node
                         <DrawerContent>
                             <DrawerTitle className="text-center">Notifications</DrawerTitle>
                             <DrawerDescription className="text-center">You are all caught up. Good job!</DrawerDescription>
-                            <div className="flex justify-center gap-3"><DrawerClose>Close</DrawerClose></div>
+                            <div className="flex justify-center gap-3">
+                                <DrawerClose>Close</DrawerClose>
+                            </div>
                         </DrawerContent>
                     </DrawerPopup>
                 </DrawerViewport>
@@ -360,7 +385,9 @@ function DrawerIndentDemo(): Node
     );
 }
 
-/** Non-modal: the page stays active, and a click outside does not close the drawer. */
+/**
+ * Non-modal: the page stays active, and a click outside does not close the drawer.
+ */
 #[Component]
 function DrawerNonModalDemo(): Node
 {
@@ -372,7 +399,9 @@ function DrawerNonModalDemo(): Node
                     <DrawerContent>
                         <DrawerTitle>Non-modal drawer</DrawerTitle>
                         <DrawerDescription>This drawer does not trap focus and ignores outside clicks. Use the close button or swipe to dismiss it.</DrawerDescription>
-                        <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                        <div className="flex justify-end gap-3">
+                            <DrawerClose>Close</DrawerClose>
+                        </div>
                     </DrawerContent>
                 </DrawerPopup>
             </DrawerViewport>
@@ -399,7 +428,9 @@ function DrawerMobileNavDemo(): Node
                                     <div className="grid grid-cols-[1fr_auto_1fr] items-start">
                                         <div aria-hidden="true" className="h-9 w-9" />
                                         <div className="h-1 w-12 justify-self-center bg-neutral-300 dark:bg-neutral-700" />
-                                        <DrawerClose aria-label="Close menu" className="h-8 w-8 justify-self-end border-0 bg-transparent px-0"><DialogXIcon /></DrawerClose>
+                                        <DrawerClose aria-label="Close menu" className="h-8 w-8 justify-self-end border-0 bg-transparent px-0">
+                                            <DialogXIcon />
+                                        </DrawerClose>
                                     </div>
                                     <DrawerContent className="max-w-none">
                                         <DrawerTitle>Menu</DrawerTitle>
@@ -407,12 +438,16 @@ function DrawerMobileNavDemo(): Node
                                         <div className="pb-8">
                                             <ul className="m-0 grid list-none gap-1 p-0">
                                                 {% for label, href in items %}
-                                                    <li key={{ label }} className="flex"><a href={{ href }} className="flex h-12 w-full items-center border border-neutral-950 bg-white px-4 text-sm text-neutral-950 no-underline hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">{{ label }}</a></li>
+                                                    <li key={{ label }} className="flex">
+                                                        <a href={{ href }} className="flex h-12 w-full items-center border border-neutral-950 bg-white px-4 text-sm text-neutral-950 no-underline hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">{{ label }}</a>
+                                                    </li>
                                                 {% endfor %}
                                             </ul>
                                             <ul aria-label="Component links" className="m-0 mt-6 grid list-none gap-1 p-0">
                                                 {% for slug, component in components %}
-                                                    <li key={{ slug }} className="flex"><a href={{ '/components/' ~ slug }} className="flex h-12 w-full items-center border border-neutral-950 bg-white px-4 text-sm text-neutral-950 no-underline hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">{{ component.name }}</a></li>
+                                                    <li key={{ slug }} className="flex">
+                                                        <a href={{ '/components/' ~ slug }} className="flex h-12 w-full items-center border border-neutral-950 bg-white px-4 text-sm text-neutral-950 no-underline hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">{{ component.name }}</a>
+                                                    </li>
                                                 {% endfor %}
                                             </ul>
                                         </div>
@@ -449,7 +484,9 @@ function DrawerSwipeAreaDemo(): Node
                         <DrawerContent>
                             <DrawerTitle>Library</DrawerTitle>
                             <DrawerDescription>Swipe from the edge whenever you want to jump back into your playlists.</DrawerDescription>
-                            <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                            <div className="flex justify-end gap-3">
+                                <DrawerClose>Close</DrawerClose>
+                            </div>
                         </DrawerContent>
                     </DrawerPopup>
                 </DrawerViewport>
@@ -509,7 +546,9 @@ function DrawerActionSheetDemo(): Node
                         <DrawerDescription className="sr-only">Choose an action for this user.</DrawerDescription>
                         <ul aria-label="Profile actions" className="m-0 list-none divide-y divide-neutral-950 p-0 dark:divide-white">
                             {% for item in actions %}
-                                <li key={{ item }}><DrawerClose className="h-10 w-full border-0 bg-transparent px-5 text-center text-sm text-neutral-950 select-none hover:bg-neutral-100 active:bg-neutral-200 focus-visible:bg-neutral-100 focus-visible:outline-none dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 dark:focus-visible:bg-neutral-800">{{ item }}</DrawerClose></li>
+                                <li key={{ item }}>
+                                    <DrawerClose className="h-10 w-full border-0 bg-transparent px-5 text-center text-sm text-neutral-950 select-none hover:bg-neutral-100 active:bg-neutral-200 focus-visible:bg-neutral-100 focus-visible:outline-none dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 dark:focus-visible:bg-neutral-800">{{ item }}</DrawerClose>
+                                </li>
                             {% endfor %}
                         </ul>
                     </DrawerContent>
@@ -533,9 +572,13 @@ function DrawerDetachedDemo(): Node
             <Drawer handle="detached-drawer" swipeDirection="right">
                 <DrawerPopup>
                     <DrawerContent>
-                        <DrawerTitle><DrawerPayload /></DrawerTitle>
+                        <DrawerTitle>
+                            <DrawerPayload />
+                        </DrawerTitle>
                         <DrawerDescription>The trigger that opened this drawer gave its title.</DrawerDescription>
-                        <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                        <div className="flex justify-end gap-3">
+                            <DrawerClose>Close</DrawerClose>
+                        </div>
                     </DrawerContent>
                 </DrawerPopup>
             </Drawer>

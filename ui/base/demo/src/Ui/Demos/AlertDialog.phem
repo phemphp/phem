@@ -133,7 +133,9 @@ function AlertDialogDetachedDemo(): Node
     );
 }
 
-/** Multiple triggers: two detached triggers of one alert dialog, with a payload each. */
+/**
+ * Multiple triggers: two detached triggers of one alert dialog, with a payload each.
+ */
 #[Component]
 function AlertDialogMultipleDemo(): Node
 {
@@ -156,7 +158,10 @@ function AlertDialogMultipleDemo(): Node
     );
 }
 
-/** Controlled mode: three triggers in the root, and a button that opens the alert dialog for the second one. */
+/**
+ * Controlled mode: three triggers in the root, and a button that opens the alert
+ * dialog for the second one.
+ */
 #[Component]
 function AlertDialogControlledDemo(): Node
 {
@@ -170,7 +175,9 @@ function AlertDialogControlledDemo(): Node
             </div>
             <AlertDialogPopup>
                 <div className="flex flex-col gap-1">
-                    <AlertDialogTitle><AlertDialogPayload>Are you sure?</AlertDialogPayload></AlertDialogTitle>
+                    <AlertDialogTitle>
+                        <AlertDialogPayload>Are you sure?</AlertDialogPayload>
+                    </AlertDialogTitle>
                     <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                 </div>
                 <div className="flex justify-end gap-3">

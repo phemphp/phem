@@ -36,9 +36,10 @@ function FormPage(): Node
     );
 }
 
-// The Server Function of the Base UI demo: the server answers after 1 second. "admin" is reserved,
-// and another name is unavailable one time out of two. While the request runs, phem locks the
-// button with `aria-disabled="true"`, and the Button has the disabled look.
+// The Server Function of the Base UI demo: the server answers after 1 second. "admin"
+// is reserved, and another name is unavailable one time out of two. While the request
+// runs, phem locks the button with `aria-disabled="true"`, and the Button has the
+// disabled look.
 #[Component]
 final class FormHeroDemo
 {
@@ -72,8 +73,9 @@ final class FormHeroDemo
     }
 }
 
-// The values of the form as an object, with the constraints of the Validator. When the object is
-// not valid, the handler does not run, and each error shows in the FieldError of its field.
+// The values of the form as an object, with the constraints of the Validator. When
+// the object is not valid, the handler does not run, and each error shows in the
+// FieldError of its field.
 final class Person
 {
     #[Assert\NotBlank(message: 'Name is required')]
@@ -97,7 +99,10 @@ final class FormMapFormDemo
 
     public function render(): Node
     {
-        $fields = ['name' => ['Name', 'Enter name'], 'age' => ['Age', 'Enter age']];
+        $fields = [
+            'name' => ['Name', 'Enter name'],
+            'age' => ['Age', 'Enter age'],
+        ];
 
         return (
             <Form onSubmit={{ submit }}>
@@ -109,7 +114,9 @@ final class FormMapFormDemo
                     </Field>
                 {% endfor %}
                 <Button type="submit">Submit</Button>
-                {% if saved %}<p role="status" className="m-0 text-sm">{{ saved }}</p>{% endif %}
+                {% if saved %}
+                    <p role="status" className="m-0 text-sm">{{ saved }}</p>
+                {% endif %}
             </Form>
         );
     }
