@@ -148,13 +148,13 @@ function DrawerContent(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function DrawerTitle(?Html $children = null, mixed ...$rest): Node
 {
-    return <DialogTitle className="mb-1" {{ ...rest }}>{{ children }}</DialogTitle>;
+    return <DialogTitle className={{ classes('mb-1') }} {{ ...rest }}>{{ children }}</DialogTitle>;
 }
 
 #[Component]
 function DrawerDescription(?Html $children = null, mixed ...$rest): Node
 {
-    return <DialogDescription className="mb-6" {{ ...rest }}>{{ children }}</DialogDescription>;
+    return <DialogDescription className={{ classes('mb-6') }} {{ ...rest }}>{{ children }}</DialogDescription>;
 }
 
 #[Component]

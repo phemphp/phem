@@ -327,31 +327,35 @@ function DrawerKeyboardDemo(): Node
     );
 }
 
-/** Indent effect: the page gets smaller behind the drawer. */
+/**
+ * Indent effect: the page gets smaller behind the drawer. The drawer goes around the indent, so
+ * its backdrop and its viewport fill the provider and do not get smaller with the page, as the
+ * Portal of Base UI in the provider.
+ */
 #[Component]
 function DrawerIndentDemo(): Node
 {
     return (
         <DrawerProvider className="relative w-full overflow-hidden [--bleed:3rem]">
             <DrawerIndentBackground className="absolute inset-0 bg-black dark:bg-neutral-300" />
-            <DrawerIndent className="[--indent-radius:calc(1rem*(1-var(--drawer-swipe-progress)))] [--indent-transition:calc(1-clamp(0,calc(var(--drawer-swipe-progress)*100000),1))] relative min-h-80 border border-neutral-950 bg-white p-4 text-neutral-950 [transition:transform_0.4s_cubic-bezier(0.32,0.72,0,1),border-radius_0.25s_cubic-bezier(0.32,0.72,0,1)] origin-[center_top] will-change-transform [transform:scale(1)_translateY(0)] [transition-duration:calc(400ms*var(--indent-transition)),calc(250ms*var(--indent-transition))] data-active:transform-[scale(calc(0.98+(0.02*var(--drawer-swipe-progress))))_translateY(calc(0.5rem*(1-var(--drawer-swipe-progress))))] data-active:rounded-tl-(--indent-radius) data-active:rounded-tr-(--indent-radius) dark:border-white dark:bg-neutral-950 dark:text-white">
-                <div className="flex min-h-80 items-center justify-center">
-                    <Drawer modal={{ false }}>
+            <Drawer modal={{ false }}>
+                <DrawerIndent className="[--indent-radius:calc(1rem*(1-var(--drawer-swipe-progress)))] [--indent-transition:calc(1-clamp(0,calc(var(--drawer-swipe-progress)*100000),1))] relative min-h-80 border border-neutral-950 bg-white p-4 text-neutral-950 [transition:transform_0.4s_cubic-bezier(0.32,0.72,0,1),border-radius_0.25s_cubic-bezier(0.32,0.72,0,1)] origin-[center_top] will-change-transform [transform:scale(1)_translateY(0)] [transition-duration:calc(400ms*var(--indent-transition)),calc(250ms*var(--indent-transition))] data-active:transform-[scale(calc(0.98+(0.02*var(--drawer-swipe-progress))))_translateY(calc(0.5rem*(1-var(--drawer-swipe-progress))))] data-active:rounded-tl-(--indent-radius) data-active:rounded-tr-(--indent-radius) dark:border-white dark:bg-neutral-950 dark:text-white">
+                    <div className="flex min-h-80 items-center justify-center">
                         <DrawerTrigger>Open drawer</DrawerTrigger>
-                        <DrawerBackdrop className="absolute min-h-0" />
-                        <DrawerViewport className="absolute inset-0 h-auto w-auto">
-                            <DrawerPopup className="max-h-[calc(80vh+var(--bleed))] pt-4">
-                                <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 dark:bg-neutral-700" />
-                                <DrawerContent>
-                                    <DrawerTitle className="text-center">Notifications</DrawerTitle>
-                                    <DrawerDescription className="text-center">You are all caught up. Good job!</DrawerDescription>
-                                    <div className="flex justify-center gap-3"><DrawerClose>Close</DrawerClose></div>
-                                </DrawerContent>
-                            </DrawerPopup>
-                        </DrawerViewport>
-                    </Drawer>
-                </div>
-            </DrawerIndent>
+                    </div>
+                </DrawerIndent>
+                <DrawerBackdrop className="absolute" />
+                <DrawerViewport className="absolute inset-0 h-auto w-auto">
+                    <DrawerPopup className="max-h-[calc(80vh+var(--bleed))] pt-4">
+                        <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 dark:bg-neutral-700" />
+                        <DrawerContent>
+                            <DrawerTitle className="text-center">Notifications</DrawerTitle>
+                            <DrawerDescription className="text-center">You are all caught up. Good job!</DrawerDescription>
+                            <div className="flex justify-center gap-3"><DrawerClose>Close</DrawerClose></div>
+                        </DrawerContent>
+                    </DrawerPopup>
+                </DrawerViewport>
+            </Drawer>
         </DrawerProvider>
     );
 }
