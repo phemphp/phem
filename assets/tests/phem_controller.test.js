@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest"
 import { Application } from "@hotwired/stimulus"
 import * as Turbo from "@hotwired/turbo"
 import PhemController from "../dist/phem_controller.js"
@@ -1548,17 +1548,50 @@ describe("the onPoll event", () => {
     document.dispatchEvent(new Event("visibilitychange"))
   }
 
+  // The tests of the period run on a fake clock: a slow machine does not change the times.
+  const fakeClock = () => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+  const mountOnClock = async (markup) => {
+    const mounted = mount(markup)
+    await vi.advanceTimersByTimeAsync(0)
+    await mounted
+  }
+  // Counts the events that ended (`phem:done`), until the end of the test.
+  const doneCount = () => {
+    const count = { ended: 0 }
+    const listening = new AbortController()
+    window.addEventListener("phem:done", () => count.ended++, { signal: listening.signal })
+    onTestFinished(() => listening.abort())
+
+    return count
+  }
+  // Runs the timers that are due now until `ended` events ended: the clock does not move. A real
+  // turn of the event loop (setImmediate is not fake) reads the body of the answer.
+  const settle = async (count, ended) => {
+    while (count.ended < ended) {
+      await new Promise((resolve) => setImmediate(resolve))
+      await vi.advanceTimersByTimeAsync(0)
+    }
+  }
+
   afterEach(() => {
     delete document.hidden
+    vi.useRealTimers()
   })
 
   it("sends the event at the interval of phem:poll", async () => {
+    fakeClock()
     // The last answer stops the poll: a next poll would have no answer.
     respond(status("Running"))
     respond(status("Done", 0))
-    await mount(status("Waiting"))
-    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+    await mountOnClock(status("Waiting"))
+    await vi.advanceTimersByTimeAsync(19)
+    expect(fetch).not.toHaveBeenCalled()
 
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(document.getElementById("status")?.textContent).toBe("Done"))
+
+    expect(fetch).toHaveBeenCalledTimes(2)
     expect(sent(0)).toMatchObject({ handler: "c1.refresh", event: { type: "poll" } })
     expect(sent(1).event.type).toBe("poll")
   })
@@ -1581,6 +1614,7 @@ describe("the onPoll event", () => {
   it("keeps the period of phem:poll when the server is slow", async () => {
     // The first poll takes 60 ms. The next poll starts 100 ms after the start of the first poll,
     // not 100 ms after its end.
+    fakeClock()
     const starts = []
     const json = (markup) => new Response(JSON.stringify(answer(markup)), { status: 200, headers: { "Content-Type": "application/json" } })
     fetch.mockImplementationOnce(() => {
@@ -1591,30 +1625,42 @@ describe("the onPoll event", () => {
       starts.push(performance.now())
       return Promise.resolve(json(status("Done", 0)))
     })
-    await mount(status("Waiting", 100))
-    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+    const done = doneCount()
+    await mountOnClock(status("Waiting", 100))
+    await vi.advanceTimersByTimeAsync(160)
+    await settle(done, 1)
+    await vi.advanceTimersByTimeAsync(40)
+    await settle(done, 2)
 
-    expect(starts[1] - starts[0]).toBeGreaterThanOrEqual(95)
-    expect(starts[1] - starts[0]).toBeLessThan(140)
+    expect(starts[1] - starts[0]).toBe(100)
+    expect(document.getElementById("status").textContent).toBe("Done")
   })
 
   it("sends the next poll at the end of a poll that takes longer than its interval", async () => {
+    // The first poll takes 240 ms, more than the interval (100 ms). The times are of the real clock,
+    // so the test measures from the end of the first poll, with a margin of one interval.
     const starts = []
+    let end = 0
     const json = (markup) => new Response(JSON.stringify(answer(markup)), { status: 200, headers: { "Content-Type": "application/json" } })
     fetch.mockImplementationOnce(() => {
       starts.push(performance.now())
-      return new Promise((resolve) => setTimeout(() => resolve(json(status("Running", 50))), 120))
+      return new Promise((resolve) =>
+        setTimeout(() => {
+          end = performance.now()
+          resolve(json(status("Running", 100)))
+        }, 240),
+      )
     })
     fetch.mockImplementationOnce(() => {
       starts.push(performance.now())
       return Promise.resolve(json(status("Done", 0)))
     })
-    await mount(status("Waiting", 50))
-    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+    await mount(status("Waiting", 100))
+    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"), { timeout: 5000 })
 
-    // At the end of the first poll (120 ms), not one more interval after it (170 ms).
-    expect(starts[1] - starts[0]).toBeGreaterThanOrEqual(115)
-    expect(starts[1] - starts[0]).toBeLessThan(165)
+    // At the end of the first poll, not one more interval after it.
+    expect(starts[1]).toBeGreaterThanOrEqual(end)
+    expect(starts[1] - end).toBeLessThan(100)
   })
 
   it("does not send a poll while the last poll runs", async () => {

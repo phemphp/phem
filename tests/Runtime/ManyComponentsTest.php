@@ -51,6 +51,9 @@ final class ManyComponentsTest extends TestCase
     private const LARGE_DEPTH = 400;
     private const MAX_DEPTH_FACTOR = 26;
 
+    /** The renders of each size: the test keeps the shortest time of each size. */
+    private const ROUNDS = 7;
+
     public function fixtureKernel(): TestKernel
     {
         if (null === $this->kernel) {
@@ -213,29 +216,31 @@ final class ManyComponentsTest extends TestCase
     {
         // The first request builds the container and compiles the templates.
         $this->renderTime($uri, 20);
-        $smallTime = $this->renderTime($uri, $small);
-        $largeTime = $this->renderTime($uri, $large);
+
+        // The two sizes take turns: a busy machine makes both renders slower, not only one.
+        $smallTime = $largeTime = \INF;
+        for ($i = 0; $i < self::ROUNDS; ++$i) {
+            $smallTime = min($smallTime, $this->renderTime($uri, $small));
+            $largeTime = min($largeTime, $this->renderTime($uri, $large));
+        }
 
         self::assertLessThan($maxFactor, $largeTime / $smallTime, \sprintf('%s: size %d in %.1f ms, size %d in %.1f ms (%.1f times).', $uri, $small, $smallTime * 1e3, $large, $largeTime * 1e3, $largeTime / $smallTime));
     }
 
-    /** The shortest time of five renders of a page with this size (its rows, or its levels), in seconds. */
+    /** The time of one render of a page with this size (its rows, or its levels), in seconds. */
     private function renderTime(string $uri, int $size): float
     {
         Many::$rows = Many::$levels = $size;
-        $best = \INF;
 
-        for ($i = 0; $i < 5; ++$i) {
-            // The fibers of a request are cycles: the collector frees them before the render, not in it.
-            gc_collect_cycles();
+        // The fibers of a request are cycles: the collector frees them before the render, not in it.
+        gc_collect_cycles();
 
-            $start = hrtime(true);
-            $response = $this->request('GET', $uri);
-            $best = min($best, hrtime(true) - $start);
-            self::assertSame(200, $response->getStatusCode());
-        }
+        $start = hrtime(true);
+        $response = $this->request('GET', $uri);
+        $time = hrtime(true) - $start;
+        self::assertSame(200, $response->getStatusCode());
 
-        return $best / 1e9;
+        return $time / 1e9;
     }
 
     /** @return array{0: string, 1: string, 2: string} the HTML, the state and its signature */
