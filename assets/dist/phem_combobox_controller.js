@@ -6,6 +6,7 @@ import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, leaveList, nextItem } from "./phem_roving.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
+import { textValue } from "./phem_fields.js"
 
 // The `phem-combobox` controller: a text field with a list of suggestions that the server gives,
 // for a search, a city or a user. The list stays open after the morph of an event.
@@ -39,9 +40,10 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 // To choose an item is a click on it: its handler (`onClick`) runs, or its link opens. The handler
 // sets the state (the text of the input, the selected value), and the morph shows it. Then the popup
 // closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail.
-// Escape closes the popup, and a second Escape clears the input. A click on the `clear` target
-// clears the input. A clear (the `clear` target or the second Escape) does not open a closed
-// popup. A click outside and the focus out of the combobox close the popup.
+// Escape closes the popup, and a second Escape clears the input, the selection and the chips, as
+// in Base UI (a shown `clear` target gets the click). A click on the `clear` target clears the
+// input. A clear (the `clear` target or the second Escape) does not open a closed popup. A click
+// outside and the focus out of the combobox close the popup.
 //
 // The input gets `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, `aria-controls`
 // and `aria-activedescendant`. The list (or the popup, with no list) gets `role="listbox"`, the
@@ -64,10 +66,14 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 //
 // With the `multiple` value, the user chooses more than one item. The server gives the chosen
 // items `aria-selected="true"`, and the list gets `aria-multiselectable="true"`. A choice keeps
-// the popup open and the highlight. The `chip` targets show the chosen values, each with a
+// the popup open and the highlight. With a list of the server, a choice while the input has a
+// text closes the popup, as in Base UI, and then the text goes: the event of the click goes to the
+// server first. The input has no free text: when the popup closes, the text goes. The `chip`
+// targets show the chosen values, each with a
 // `chipRemove` target whose handler removes its value. ArrowLeft at the start of the input goes
 // to the last chip, ArrowLeft and ArrowRight move between the chips and back to the input, and
-// Backspace or Delete on a chip clicks its `chipRemove`. Backspace in an empty input clicks the
+// Backspace or Delete on a chip clicks its `chipRemove`. An input that the user empties gives the
+// highlight to the first chosen item, as an open does. Backspace in an empty input clicks the
 // `chipRemove` of the last chip. The chips and their `chipRemove` targets get `tabindex="-1"`,
 // and a chosen item gets `data-selected`.
 //
@@ -99,7 +105,7 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 // item in the input, and Escape gives back the text of the user. With `inline` and `none`, the
 // client filter is off. With the `filter` value or a `mode` other than `list`, the list belongs to
 // the client: a choice also writes the label of the item in the input, and sends its `input` and
-// `change` events. The text of an input with no `phem:bind` then stays through the morph.
+// `change` events.
 //
 // With the `selectionMode` value `single` and a list of the client, the combobox has one selected
 // item, as the Combobox of Base UI. A click on an item selects it: the item gets `data-selected`
@@ -108,7 +114,34 @@ import { controlWhileOpen, link } from "./phem_aria.js"
 // its label, and a `value` target with no value gets its `data-value`. The input has no free
 // text: when the popup closes, the input gets the label of the selected item again, or no text.
 // When the popup opens with the label of the selection in the input, the list shows all the
-// items, until the user types, and the selected item has the highlight and is in view. A click on the `clear` target also removes the selection.
+// items, until the user types, and the selected item has the highlight and is in view. A click on
+// the `clear` target also removes the selection, and so does an input that the user empties (not
+// an input in the popup), as in Base UI.
+//
+// The `single` selection mode also works with a list of the server, as the Async search of Base
+// UI: the browser keeps the selection, and the server searches. A click on an item selects it,
+// writes its label in the input and sends the `input` and `change` events, and a bound `value`
+// target gets the value of the item. The label of the selection in the input is not a search:
+// phem sends no text for it (`phemValue` is empty, see phem_fields.js), so the handler of the
+// input and a `phem:bind` input get `""`. The text that the user types goes as it is.
+//
+// With a list of the server, the browser keeps the selected items in the list, as in Base UI: a
+// server render that does not have the selected item (the `single` selection mode) or a chosen
+// item (`multiple`, an item with `aria-selected="true"` and a `chip` target with its
+// `data-value`) keeps it, at the end of the list. A chosen item whose chip goes leaves the list,
+// and so does a kept item that is not selected any more (at once).
+// The text of an input with no `phem:bind` belongs to the browser: the morph keeps it.
+//
+// A `status` target shows the state of a search of the server with its parts: the elements with
+// a `data-phem-combobox-status` attribute. The part of the state shows, and the others get
+// `hidden`: `pending` while an event of the input runs (after the loading delay), `error` when the
+// last event of the input failed, `idle` when the list has no item and the input has no text to
+// search, and `empty` when no item matches the text (the items that the browser keeps do not
+// count). From the input of the user until the event of the input runs, the state of a text
+// stays: the parts do not show a result of the old text. The content with no attribute always shows. While
+// the `error` part shows, the items get `hidden`, and phem shows no error message for the event
+// (`phem:error` is cancelled). While the `pending`, `error` or `idle` part shows, the `empty`
+// targets have no content.
 //
 // The `clear` targets show only when there is something to clear: a selected item with the
 // `single` selection mode, a chip with the `multiple` value or selection mode, and else a text in the input. A
@@ -189,6 +222,19 @@ export default class PhemComboboxController extends Controller {
     this.clearing = false
     // The item that the pointer highlighted. A highlight of the keyboard is another item.
     this.pointerItem = null
+    // The selected items that the last morph did not remove (a list of the server), and all the
+    // items that the browser keeps until a server render has them again: they are not results.
+    this.kept = new Set()
+    this.held = new WeakSet()
+    // The handlers of the events of the input that run, and whether the last one failed (with an
+    // `error` part).
+    this.searches = new Set()
+    this.failed = false
+    // The state of the `status` parts. It stays from the input of the user until the event of the
+    // input runs: the parts do not show a result of the old text.
+    this.statusState = null
+    this.typing = false
+    this.awaiting = false
     this.popup = new Popup({
       anchor: () => (this.#inPopup ? this.triggerTargets[0] : null) ?? this.inputGroupTargets[0] ?? (this.hasInputTarget ? this.inputTarget : null),
       popup: () => (this.hasPopupTarget ? this.popupTarget : null),
@@ -202,6 +248,7 @@ export default class PhemComboboxController extends Controller {
     this.state = new ClientState(this, {
       owns: (el, name) => this.#owns(el, name),
       morphed: () => {
+        this.#placeKept()
         this.#takeServerSelection()
         this.#render()
         this.popup.reposition()
@@ -220,6 +267,11 @@ export default class PhemComboboxController extends Controller {
     this.element.addEventListener("focusout", this.onFocusOut, options)
     this.element.addEventListener("focusin", this.onFocusIn, options)
     this.element.addEventListener("turbo:before-morph-element", this.onBeforeMorph, options)
+    this.element.addEventListener("phem:queue", this.onQueue, options)
+    this.element.addEventListener("phem:send", this.onSend, options)
+    this.element.addEventListener("phem:done", this.onDone, options)
+    // phem dispatches `phem:error` on the element of the component, around the combobox.
+    document.addEventListener("phem:error", this.onError, options)
 
     // The loading state of phem on the input goes to the popup.
     this.busy = new MutationObserver((records) => {
@@ -289,7 +341,21 @@ export default class PhemComboboxController extends Controller {
     if (!this.clearing) this.wanted = true
     this.queryChanged = true
     this.highlighted = null
-    this.#render()
+    // The user deleted all the text: the selection goes, as in Base UI. A search in the popup
+    // keeps it.
+    if (this.#selecting && !this.#inPopup && event.target.value === "" && this.#selectedItem) this.#select(null)
+    // With `multiple`, an input that the user empties is as an open: the first chosen item gets
+    // the highlight, as in Base UI.
+    const emptied = this.#multiple && event.target.value === ""
+    if (emptied) this.queryChanged = false
+
+    this.typing = true
+    try {
+      this.#render()
+      if (emptied) this.#highlight(this.#selection(this.#items))
+    } finally {
+      this.typing = false
+    }
   }
 
   onKeydown = (event) => {
@@ -362,11 +428,21 @@ export default class PhemComboboxController extends Controller {
       return
     }
 
-    // Escape with no open popup clears the input. Escape on an open popup closes it (see
-    // phem_dismiss.js).
-    if (event.key === "Escape" && !this.#open && this.#input.value !== "") {
+    // Escape with no open popup clears the input, the selection and the chips, as in Base UI: a
+    // shown `clear` target gets the click, with its handler. Escape on an open popup closes it
+    // (see phem_dismiss.js).
+    if (event.key === "Escape" && !this.#open && (this.#clearable || this.#input.value !== "")) {
       event.preventDefault()
+      const clear = this.clearTargets.find((el) => !el.hidden)
+      if (clear) {
+        clear.click()
+
+        return
+      }
+
       this.#clear()
+      // `multiple` with a list of the server: the handlers of the chips remove the chosen items.
+      if (this.#multiple && !this.#selectingMany) for (const chip of this.#chips.reverse()) this.#removeOf(chip)?.click()
     }
   }
 
@@ -401,6 +477,14 @@ export default class PhemComboboxController extends Controller {
           this.highlighted = null
           this.#fill("")
         }
+      } else if (this.#multiple && !this.#clientList && (this.#input?.value ?? "") !== "") {
+        // With a list of the server, the handler of the item chooses, then the text goes: an
+        // `input` event first would send a new list with no item, and lose the click. phem takes
+        // the click after this listener.
+        this.wanted = false
+        this.queryChanged = false
+        this.highlighted = null
+        setTimeout(() => this.#fill(""))
       }
 
       // A choice of more than one item keeps the popup open, with its highlight.
@@ -411,7 +495,7 @@ export default class PhemComboboxController extends Controller {
         this.typed = null
         if (this.#input) delete this.#input.phemValue
         if (this.#selecting) this.#select(item)
-        if (this.#clientList) this.#fill(this.#inPopup ? "" : this.#labelOf(item))
+        if (this.#clientList || this.#selecting) this.#fill(this.#inPopup ? "" : this.#labelOf(item))
       }
 
       this.#render()
@@ -511,6 +595,17 @@ export default class PhemComboboxController extends Controller {
     // The morph compares the content of an `empty` target with the server render.
     if (this.emptyTargets.includes(item)) this.#renderEmpty(item, true)
 
+    // A list of the server that does not have a selected item: the item stays.
+    if (!event.detail.newElement && this.#keeps(item)) {
+      event.preventDefault()
+      this.kept.add(item)
+      this.held.add(item)
+
+      return
+    }
+
+    if (event.detail.newElement) this.held.delete(item)
+
     if (!(this.#selecting || this.#selectingMany) || !this.serverSelected.has(item)) return
 
     const next = event.detail.newElement?.hasAttribute("data-selected") ?? false
@@ -520,6 +615,54 @@ export default class PhemComboboxController extends Controller {
     if (this.#selectingMany) this.serverValues.set(valueOf(event.detail.newElement ?? item), next)
     else if (next) this.serverSelection = item
     else if (this.serverSelection === undefined) this.serverSelection = null
+  }
+
+  // An event of the input waits: the `status` parts keep their state.
+  onQueue = (event) => {
+    if (event.target === this.#input) this.awaiting = true
+  }
+
+  // An event of the input starts: the `pending` part shows with the loading state.
+  onSend = (event) => {
+    if (event.target === this.#input) this.searches.add(event.detail.handler)
+  }
+
+  // An event of the input ends: a failure shows the `error` part, and a success hides it.
+  onDone = (event) => {
+    if (event.target !== this.#input) return
+
+    this.searches.delete(event.detail.handler)
+    this.awaiting = false
+    this.failed = event.detail.ok === false && this.#hasPart("error")
+    this.#render()
+  }
+
+  // The `error` part shows the failure of an event of the input: phem shows no message.
+  onError = (event) => {
+    if (this.searches.has(event.detail?.handler) && this.#hasPart("error")) event.preventDefault()
+  }
+
+  // The item that a server render removes stays: the selected item of the `single` selection
+  // mode, or a chosen item of `multiple`, with a list of the server.
+  #keeps(item) {
+    if (this.#clientList || !this.itemTargets.includes(item)) return false
+    if (this.#selecting) return item === this.#selectedItem
+
+    return this.#multiple && item.getAttribute("aria-selected") === "true"
+  }
+
+  // After the morph: the kept items go to the end of the list. A chosen item of `multiple` with
+  // no chip leaves the list.
+  #placeKept() {
+    for (const item of this.kept) {
+      if (!item.isConnected) continue
+
+      const chosen = !this.#multiple || this.chipTargets.some((chip) => chip.getAttribute("data-value") === valueOf(item))
+      if (!chosen) item.remove()
+      else if (item.nextElementSibling) item.parentElement.append(item)
+    }
+
+    this.kept.clear()
   }
 
   // After a morph that changed the selection of the server: the selection, the text of the input
@@ -650,14 +793,15 @@ export default class PhemComboboxController extends Controller {
     if (refocus) this.triggerTargets[0]?.focus({ preventScroll: true })
   }
 
-  // The `single` selection mode has no free text: the input gets the label of the selected item
-  // again, or no text.
+  // A combobox with a selection has no free text, as in Base UI: the input gets the label of the
+  // selected item again (the `single` selection mode), or no text (`multiple`).
   #restore() {
     const input = this.#input
     if (!input) return
 
-    // An input in the popup is a search: it starts with no text at the next open.
-    if (this.#inPopup) {
+    // An input in the popup is a search: it starts with no text at the next open. The chips keep
+    // the choices of `multiple`.
+    if (this.#inPopup || this.#multiple) {
       if (input.value !== "") this.#fill("")
 
       return
@@ -671,6 +815,10 @@ export default class PhemComboboxController extends Controller {
 
   // Selects an item, or no item, and gives its value to the `value` targets.
   #select(item) {
+    // The browser kept the item of the old selection (a list of the server): it leaves the list.
+    const old = this.#selectedItem
+    if (old && old !== item && this.held.has(old)) old.remove()
+
     this.selected = item ?? null
     const value = item?.getAttribute("data-value") ?? ""
 
@@ -716,11 +864,57 @@ export default class PhemComboboxController extends Controller {
     this.filling = true
     try {
       input.value = value
+      this.#markLabel()
       input.dispatchEvent(new Event("input", { bubbles: true }))
       input.dispatchEvent(new Event("change", { bubbles: true }))
     } finally {
       this.filling = false
     }
+  }
+
+  // The `single` selection mode with a list of the server: the label of the selection in the
+  // input is not a search. phem sends no text for it (see phem_fields.js).
+  #markLabel() {
+    const input = this.#input
+    if (!input || !this.#selecting || this.#clientList) return
+
+    const selected = this.#selectedItem
+    if (selected && input.value === this.#labelOf(selected)) input.phemValue = ""
+    else delete input.phemValue
+  }
+
+  // The text that the input searches: the text of the user, with no label of the selection.
+  get #searchText() {
+    const input = this.#input
+
+    return (this.typed ?? (input ? textValue(input) : "")).trim()
+  }
+
+  // A `status` target has a part for this state.
+  #hasPart(state) {
+    return this.statusTargets.some((el) => el.querySelector(`[data-phem-combobox-status="${state}"]`) !== null)
+  }
+
+  // The parts of the `status` targets: the part of the state shows. Returns true when a part
+  // other than `empty` shows: the `empty` targets then have no content. From the input of the user
+  // until the loading state, the state stays.
+  #renderStatus(empty, noResult, busy) {
+    const text = this.#searchText
+    // No text to search: the state does not wait for the server.
+    const waiting = (this.typing || this.awaiting) && !busy && text !== ""
+    const state = waiting ? this.statusState : busy ? "pending" : this.failed ? "error" : empty && text === "" ? "idle" : noResult && text !== "" ? "empty" : null
+    this.statusState = state
+    let shown = false
+
+    for (const status of this.statusTargets) {
+      for (const part of status.querySelectorAll("[data-phem-combobox-status]")) {
+        const show = part.getAttribute("data-phem-combobox-status") === state
+        part.hidden = !show
+        if (show) shown = true
+      }
+    }
+
+    return shown && state !== "empty"
   }
 
   // An empty input sends its event, as when the user deletes the text. The selection goes too.
@@ -775,14 +969,15 @@ export default class PhemComboboxController extends Controller {
     // The same text and the same items (a highlight, an arrow key): the filter stays.
     const items = this.itemTargets
     const last = this.lastFilter
-    const same = last && last.filtering === filtering && last.query === query && last.limit === this.limitValue && last.items.length === items.length && last.items.every((el, i) => el === items[i] && el.hidden === last.hidden[i])
+    const same = last && last.failed === this.failed && last.filtering === filtering && last.query === query && last.limit === this.limitValue && last.items.length === items.length && last.items.every((el, i) => el === items[i] && el.hidden === last.hidden[i])
     if (same) return
 
     const matches = filtering ? this.#matcher() : null
     let shown = 0
 
     for (const item of this.itemTargets) {
-      const match = !filtering || ((query === "" || matches(this.#labelOf(item), query)) && (this.limitValue < 0 || shown < this.limitValue))
+      // A failed search shows no item.
+      const match = !this.failed && (!filtering || ((query === "" || matches(this.#labelOf(item), query)) && (this.limitValue < 0 || shown < this.limitValue)))
       if (match && filtering) shown++
       this.#hide(item, !match)
     }
@@ -792,7 +987,7 @@ export default class PhemComboboxController extends Controller {
       this.#hide(group, filtering && inGroup.length > 0 && inGroup.every((el) => el.hidden))
     }
 
-    this.lastFilter = { filtering, query, limit: this.limitValue, items, hidden: items.map((el) => el.hidden) }
+    this.lastFilter = { failed: this.failed, filtering, query, limit: this.limitValue, items, hidden: items.map((el) => el.hidden) }
   }
 
   // Hides or shows a part. The client shows again only the parts that it hid.
@@ -811,8 +1006,11 @@ export default class PhemComboboxController extends Controller {
   }
 
   // The selected item of a popup that opens, when the user did not type: it gets the highlight.
+  // With `multiple`, the first chosen item of the list gets it, as in Base UI.
   #selection(items) {
-    const selected = this.#selecting && !this.queryChanged ? this.#selectedItem : null
+    if (this.queryChanged) return null
+
+    const selected = this.#selecting ? this.#selectedItem : this.#multiple ? (items.find((el) => el.getAttribute("aria-selected") === "true") ?? null) : null
 
     return selected && items.includes(selected) && !isDisabled(selected) ? selected : null
   }
@@ -890,16 +1088,19 @@ export default class PhemComboboxController extends Controller {
       else el.removeAttribute("role")
     }
 
+    this.#markLabel()
+    const busy = input?.getAttribute("aria-busy") === "true"
+    const status = this.#renderStatus(empty, !items.some((el) => !this.held.has(el)), busy)
+
     for (const el of [...this.popupTargets, ...this.listTargets]) el.toggleAttribute("data-empty", empty)
     for (const el of this.emptyTargets) {
       if (!el.hasAttribute("role")) el.setAttribute("role", "status")
       if (!el.hasAttribute("aria-live")) el.setAttribute("aria-live", "polite")
       if (!el.hasAttribute("aria-atomic")) el.setAttribute("aria-atomic", "true")
-      this.#renderEmpty(el, empty)
+      this.#renderEmpty(el, empty && !status)
     }
     for (const el of this.statusTargets) if (!el.hasAttribute("role")) el.setAttribute("role", "status")
 
-    const busy = input?.getAttribute("aria-busy") === "true"
     for (const el of this.popupTargets) {
       if (busy && el.getAttribute("aria-busy") !== "true") el.setAttribute("aria-busy", "true")
       else if (!busy) el.removeAttribute("aria-busy")
@@ -961,7 +1162,7 @@ export default class PhemComboboxController extends Controller {
     }
 
     // A clear button shows only when there is something to clear.
-    const clearable = this.#selecting ? this.#selectedItem !== null : this.#multiple ? this.#chips.length > 0 : (input?.value ?? "") !== ""
+    const clearable = this.#clearable
     for (const el of this.clearTargets) {
       el.hidden = !clearable
       el.toggleAttribute("data-visible", clearable)
@@ -1058,9 +1259,10 @@ export default class PhemComboboxController extends Controller {
     if (this.popupTargets.includes(el) && name === "aria-busy") return true
     if (this.popup.owns(el, name)) return true
     if (name === "hidden" && this.filtered.has(el)) return true
+    if (name === "hidden" && el.hasAttribute("data-phem-combobox-status")) return true
     if (el === this.#input) {
-      // A client list: the text of an input with no `phem:bind` belongs to the client.
-      if (name === "value" && this.#clientList && !el.hasAttribute("data-phem-bind")) return true
+      // The text of an input with no `phem:bind` belongs to the client.
+      if (name === "value" && !el.hasAttribute("data-phem-bind")) return true
       if ((name === "placeholder" || name === "aria-description") && this.#selectingMany) return true
 
       return ["aria-expanded", "aria-activedescendant", "aria-haspopup", "data-popup-open", "data-list-empty"].includes(name)
@@ -1075,6 +1277,11 @@ export default class PhemComboboxController extends Controller {
     if (this.valueTargets.includes(el)) return name === "value" && this.#selecting
 
     return false
+  }
+
+  // There is something to clear: a selected item, a chip, or else a text in the input.
+  get #clearable() {
+    return this.#selecting ? this.#selectedItem !== null : this.#multiple ? this.#chips.length > 0 : (this.#input?.value ?? "") !== ""
   }
 
   // The list is open: an inline list (no popup) is open after the first render.
@@ -1135,9 +1342,9 @@ export default class PhemComboboxController extends Controller {
     return this.selectionModeValue === "multiple" && this.#clientList
   }
 
-  // One selected item: the `single` selection mode, with a list of the client.
+  // One selected item: the `single` selection mode, with a list of the client or of the server.
   get #selecting() {
-    return this.selectionModeValue === "single" && !this.#multiple && this.#clientList
+    return this.selectionModeValue === "single" && !this.#multiple
   }
 
   // The selected item in the page: the same element, or the item with its id after a morph.

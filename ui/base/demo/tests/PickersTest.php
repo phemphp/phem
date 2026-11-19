@@ -112,26 +112,125 @@ final class PickersTest extends DemoTestCase
         expect($country)->toBeFocused();
         $page->keyboard()->press('Escape');
 
-        // Async search: the server gives the results of the query.
+        // Async search: the handler of the input searches, and the browser keeps the selection
+        // and the selected person. A click on the input opens the popup.
         $async = $page->getByRole('region', ['name' => 'Async search (single)'])->locator('[data-demo="preview"]');
         $reviewer = $async->getByRole('combobox', ['name' => 'Assign reviewer']);
+        $clear = $async->getByRole('button', ['name' => 'Clear selection']);
         $reviewer->click();
-        $page->keyboard()->press('ArrowDown');
         expect($async->locator('text=Start typing to search people…'))->toBeVisible();
         $reviewer->fill('designer');
         $lindsay = $async->getByRole('option', ['name' => 'Lindsay Walton']);
+        // A text with no selection has no clear button.
+        expect($clear)->toBeHidden();
         $lindsay->click();
         expect($reviewer)->toHaveValue('Lindsay Walton');
+        expect($clear)->toBeVisible();
+        // The next open shows only the selected person, with the highlight, and no status.
+        $reviewer->click();
+        expect($async->getByRole('option'))->toHaveCount(1);
+        expect($async->locator('text=Start typing to search people…'))->toBeHidden();
+        expect($lindsay)->toHaveAttribute('aria-selected', 'true');
+        expect($lindsay)->toHaveAttribute('data-highlighted', '');
+        // The selected person stays in the list of a new search.
         $reviewer->fill('zzz');
         expect($async->locator('text=No matches for "zzz".'))->toBeVisible();
+        expect($lindsay)->toBeVisible();
+        expect($async->locator('text=Try a different search term.'))->toBeHidden();
+        // The input has no free text: Escape gives back the name of the selection.
         $page->keyboard()->press('Escape');
+        expect($reviewer)->toHaveValue('Lindsay Walton');
+        // A second Escape, on the closed popup, removes the text and the selection.
+        $page->keyboard()->press('Escape');
+        expect($reviewer)->toHaveValue('');
+        expect($clear)->toBeHidden();
+        $reviewer->fill('designer');
+        $lindsay->click();
+        // The clear button removes the text and the selection: a closed popup stays closed.
+        $clear->click();
+        expect($reviewer)->toHaveValue('');
+        expect($clear)->toBeHidden();
+        expect($reviewer)->toBeFocused();
+        expect($reviewer)->toHaveAttribute('aria-expanded', 'false');
+        // On an open popup, the popup stays open, with no person and the idle status.
+        $reviewer->fill('designer');
+        $lindsay->click();
+        $reviewer->fill('Lindsay Waltonx');
+        expect($async->locator('text=No matches for "Lindsay Waltonx".'))->toBeVisible();
+        $clear->click();
+        expect($reviewer)->toHaveValue('');
+        expect($reviewer)->toHaveAttribute('aria-expanded', 'true');
+        expect($async->getByRole('option'))->toHaveCount(0);
+        expect($async->locator('text=Start typing to search people…'))->toBeVisible();
+        $page->keyboard()->press('Escape');
+        // A text that the user deletes in one go removes the selection too.
+        $reviewer->fill('designer');
+        $lindsay->click();
+        expect($reviewer)->toHaveValue('Lindsay Walton');
+        $reviewer->fill('');
+        expect($clear)->toBeHidden();
+        expect($async->locator('text=Start typing to search people…'))->toBeVisible();
+        expect($async->getByRole('option'))->toHaveCount(0);
+        $page->keyboard()->press('Escape');
+        expect($reviewer)->toHaveValue('');
+        $reviewer->fill('zzz');
+        expect($async->locator('text=Try a different search term.'))->toBeVisible();
+        // The handler throws: the status shows the error, with no item and no message of phem.
+        $reviewer->fill('will_error');
+        expect($async->locator('text=Failed to fetch people. Please try again.'))->toBeVisible();
+        expect($async->getByRole('option'))->toHaveCount(0);
+        expect($page->locator('.phem-error'))->toHaveCount(0);
+        $reviewer->fill('tom');
+        expect($async->getByRole('option', ['name' => 'Tom Cook']))->toBeVisible();
+        expect($async->locator('text=Failed to fetch people. Please try again.'))->toBeHidden();
+        $page->keyboard()->press('Escape');
+        expect($reviewer)->toHaveValue('');
 
-        // Async search with chips.
+        // Async search with chips. A click on the input opens the popup.
         $multiple = $page->getByRole('region', ['name' => 'Async search (multiple)'])->locator('[data-demo="preview"]');
         $reviewers = $multiple->getByRole('combobox', ['name' => 'Assign reviewers']);
+        $reviewers->click();
+        expect($multiple->locator('text=Start typing to search people…'))->toBeVisible();
+        // A choice with a text clears the text and closes the popup.
         $reviewers->fill('lindsay');
         $multiple->getByRole('option', ['name' => 'Lindsay Walton'])->click();
         expect($multiple->getByRole('button', ['name' => 'Remove Lindsay Walton']))->toBeVisible();
+        expect($reviewers)->toHaveValue('');
+        expect($reviewers)->toHaveAttribute('aria-expanded', 'false');
+        expect($reviewers)->toHaveAttribute('aria-description', '1 selected. From the start of the input, press Left Arrow to focus the selected items');
+        // The next open shows the chosen people, with the highlight on the first one.
+        $reviewers->click();
+        $chosen = $multiple->getByRole('option', ['name' => 'Lindsay Walton']);
+        expect($multiple->getByRole('option'))->toHaveCount(1);
+        expect($chosen)->toHaveAttribute('aria-selected', 'true');
+        expect($chosen)->toHaveAttribute('data-highlighted', '');
+        // A text that the user deletes in one go keeps the chips: the popup shows the chosen
+        // people, with the highlight on the first one.
+        $reviewers->fill('tom');
+        expect($multiple->getByRole('option', ['name' => 'Tom Cook']))->toBeVisible();
+        expect($multiple->getByRole('option'))->toHaveCount(3);
+        $reviewers->fill('');
+        expect($multiple->getByRole('option'))->toHaveCount(1);
+        expect($chosen)->toHaveAttribute('data-highlighted', '');
+        expect($reviewers)->toHaveAttribute('aria-expanded', 'true');
+        expect($multiple->locator('text=Start typing to search people…'))->toBeHidden();
+        expect($multiple->getByRole('button', ['name' => 'Remove Lindsay Walton']))->toBeVisible();
+        // The input has no free text: Escape clears it, and the chips stay.
+        $reviewers->fill('zzz');
+        expect($multiple->locator('text=No matches for "zzz".'))->toBeVisible();
+        expect($chosen)->toBeVisible();
+        $page->keyboard()->press('Escape');
+        expect($reviewers)->toHaveValue('');
+        expect($multiple->getByRole('button', ['name' => 'Remove Lindsay Walton']))->toBeVisible();
+        // A second Escape, on the closed popup, removes all the chips.
+        $page->keyboard()->press('Escape');
+        expect($multiple->getByRole('button', ['name' => 'Remove Lindsay Walton']))->toHaveCount(0);
+        expect($reviewers)->toHaveAttribute('placeholder', 'e.g. Michael');
+        $reviewers->fill('zzz');
+        expect($multiple->locator('text=Try a different search term.'))->toBeVisible();
+        $reviewers->fill('will_error');
+        expect($multiple->locator('text=Failed to fetch people. Please try again.'))->toBeVisible();
+        expect($page->locator('.phem-error'))->toHaveCount(0);
         $page->keyboard()->press('Escape');
 
         // Creatable: a new text shows a Create item, which opens a dialog with the text.

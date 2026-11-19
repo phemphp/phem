@@ -504,6 +504,106 @@ describe("phem-combobox", () => {
       expect(document.activeElement.id).toBe("input")
     })
 
+    it("opens with the highlight on the first chosen item", async () => {
+      await mount(tags(["b", "c"]))
+      $("input").focus()
+      press("ArrowDown")
+
+      expect($("tag-b").hasAttribute("data-highlighted")).toBe(true)
+      expect($("input").getAttribute("aria-activedescendant")).toBe("tag-b")
+
+      // An open after the user typed has no highlight.
+      press("Escape")
+      $("input").value = "x"
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      expect($("popup").hidden).toBe(false)
+      expect(document.querySelector("[data-highlighted]")).toBe(null)
+    })
+
+    it("closes the popup after a choice while the input has a text, and clears the text after the click", async () => {
+      await mount(tags())
+      $("input").focus()
+      $("input").value = "c"
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      expect($("popup").hidden).toBe(false)
+
+      const inputs = vi.fn()
+      $("input").addEventListener("input", inputs)
+      $("tag-c").click()
+
+      // The click goes to the server first: its item is still in the list.
+      expect($("popup").hidden).toBe(true)
+      expect($("input").value).toBe("c")
+      expect(inputs).not.toHaveBeenCalled()
+      expect(document.activeElement.id).toBe("input")
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect($("input").value).toBe("")
+      expect(inputs).toHaveBeenCalledTimes(1)
+      expect($("popup").hidden).toBe(true)
+    })
+
+    it("keeps the chosen items that a server render does not have while their chip shows", async () => {
+      // The server gives the chips of the chosen tags, and the tags that match the text.
+      function chosen(chips, results) {
+        const chip = (t) => `<span id="chip-${t}" data-value="${t}" data-phem-combobox-target="chip">${t}</span>`
+        const item = (t) => `<li id="tag-${t}" data-value="${t}" data-phem-combobox-target="item" aria-selected="${chips.includes(t)}">${t}</li>`
+
+        return `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-multiple-value="true">
+            ${chips.map(chip).join("")}
+            <input id="input" data-phem-combobox-target="input" data-phem-on-input="c1.search" aria-label="Tags" />
+            <div id="popup" data-phem-combobox-target="popup" hidden>
+              <ul id="list" data-phem-combobox-target="list">${results.map(item).join("")}</ul>
+            </div>
+          </div>`
+      }
+
+      const ids = () => [...$("list").children].map((el) => el.id)
+      async function search(text, markup) {
+        respond(markup)
+        const done = nextDone()
+        $("input").focus()
+        $("input").value = text
+        $("input").dispatchEvent(new Event("input", { bubbles: true }))
+        await done
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      }
+
+      await mountField(chosen(["a", "b"], ["a", "b"]))
+      await search("c", chosen(["a", "b"], ["c"]))
+      expect(ids()).toEqual(["tag-c", "tag-a", "tag-b"])
+      expect($("tag-a").getAttribute("aria-selected")).toBe("true")
+      expect($("tag-c").getAttribute("aria-selected")).toBe("false")
+
+      // The chip of "b" goes: its item leaves the list.
+      await search("cc", chosen(["a"], ["c"]))
+      expect(ids()).toEqual(["tag-c", "tag-a"])
+
+      // The user deletes all the text: the popup stays open with the chosen item, and it gets the
+      // highlight, as at the open.
+      await search("", chosen(["a"], []))
+      expect(ids()).toEqual(["tag-a"])
+      expect($("popup").hidden).toBe(false)
+      expect($("tag-a").hasAttribute("data-highlighted")).toBe(true)
+      expect($("input").getAttribute("aria-activedescendant")).toBe("tag-a")
+    })
+
+    it("clears the text when the popup closes, with its input event", async () => {
+      await mount(tags())
+      $("input").focus()
+      $("input").value = "zz"
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      expect($("popup").hidden).toBe(false)
+
+      const inputs = vi.fn()
+      $("input").addEventListener("input", inputs)
+      press("Escape")
+
+      expect($("popup").hidden).toBe(true)
+      expect($("input").value).toBe("")
+      expect(inputs).toHaveBeenCalledTimes(1)
+    })
+
     it("moves between the chips and the input with the arrow keys", async () => {
       await mount(tags())
       $("input").focus()
@@ -545,6 +645,17 @@ describe("phem-combobox", () => {
       key($("chip-a"), "Delete")
       expect(removed).toEqual(["remove-b", "remove-a"])
       expect(document.activeElement.id).toBe("chip-b")
+    })
+
+    it("removes all the chips with Escape on a closed popup, as in Base UI", async () => {
+      await mount(tags())
+      const removed = log()
+      $("input").focus()
+
+      const event = press("Escape")
+      expect(event.defaultPrevented).toBe(true)
+      expect(removed).toEqual(["remove-b", "remove-a"])
+      expect($("popup").hidden).toBe(true)
     })
 
     it("removes the last chip with Backspace in an empty input", async () => {
@@ -1048,6 +1159,32 @@ describe("phem-combobox", () => {
         expect(changes).toEqual(["fruit-cherry"])
       })
 
+      it("removes the selection when the user deletes all the text, as in Base UI", async () => {
+        await mount(page())
+        const changes = []
+        $("combobox").addEventListener("phem-combobox:change", (event) => changes.push(event.detail.item?.id ?? null))
+        typeText("che")
+        $("fruit-cherry").click()
+
+        typeText("")
+        expect($("fruit-cherry").hasAttribute("data-selected")).toBe(false)
+        expect($("value").value).toBe("")
+        expect($("clear").hidden).toBe(true)
+        expect(changes).toEqual(["fruit-cherry", null])
+
+        // The input has no label to give back.
+        press("Escape")
+        expect($("input").value).toBe("")
+
+        // A part of the text keeps the selection.
+        typeText("che")
+        $("fruit-cherry").click()
+        typeText("Cher")
+        press("Escape")
+        expect($("input").value).toBe("Cherry")
+        expect($("value").value).toBe("x")
+      })
+
       it("shows all the items when the popup opens with the label of the selection", async () => {
         await mount(page())
         typeText("che")
@@ -1199,6 +1336,21 @@ describe("phem-combobox", () => {
       }
 
       const chips = () => [...$("chips").children].filter((el) => el.matches("[data-phem-combobox-target=chip]") && !el.hidden).map((el) => el.id)
+
+      it("removes all the values with Escape on a closed popup, as in Base UI", async () => {
+        await mount(languages({ chosen: ["js", "go"] }))
+        $("input").focus()
+        expect($("clear").hidden).toBe(false)
+
+        press("Escape")
+        expect(chips()).toEqual([])
+        expect($("lang-js").hasAttribute("data-selected")).toBe(false)
+        expect($("clear").hidden).toBe(true)
+        expect($("popup").hidden).toBe(true)
+
+        // Nothing to clear: Escape keeps its default action.
+        expect(press("Escape").defaultPrevented).toBe(false)
+      })
 
       it("shows the chips of the chosen items in the order of the choices, with no event of the server", async () => {
         await mount(languages())
@@ -1440,6 +1592,272 @@ describe("phem-combobox", () => {
     $("input").removeAttribute("aria-busy")
     await Promise.resolve()
     expect($("popup").hasAttribute("aria-busy")).toBe(false)
+  })
+
+  describe("the single selection mode with a list of the server", () => {
+    // The people that the server gives, the selected person and the text of the input.
+    function people(results, { selected = null, text = "" } = {}) {
+      const item = ([id, name]) => `<li id="person-${id}" data-value="${id}"${id === selected ? " data-selected" : ""} data-phem-combobox-target="item">${name}</li>`
+
+      return `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-selection-mode-value="single">
+          <input id="input" data-phem-combobox-target="input" data-phem-on-input="c1.search" aria-label="Reviewer" value="${text}" />
+          <button id="clear" data-phem-combobox-target="clear">Clear</button>
+          <input type="hidden" id="value" data-phem-combobox-target="value" value="${selected ?? ""}" />
+          <div id="popup" data-phem-combobox-target="popup" hidden>
+            <ul id="list" data-phem-combobox-target="list">${results.map(item).join("")}</ul>
+          </div>
+        </div>
+        <button id="outside">Outside</button>`
+    }
+
+    const lindsay = ["lindsay", "Lindsay Walton"]
+    const tom = ["tom", "Tom Cook"]
+
+    // The user types, and the server answers with the results.
+    async function search(text, results, selected = null) {
+      respond(people(results, { selected, text }))
+      const done = nextDone()
+      $("input").focus()
+      $("input").value = text
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      await done
+    }
+
+    it("selects the item of a click, writes its label in the input and sends the input event", async () => {
+      await mountField(people([]))
+      await search("o", [lindsay, tom])
+      expect($("clear").hidden).toBe(true)
+
+      respond(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+      const done = nextDone()
+      const calls = fetch.mock.calls.length
+      $("person-lindsay").click()
+
+      expect($("input").value).toBe("Lindsay Walton")
+      expect($("value").value).toBe("lindsay")
+      expect($("person-lindsay").hasAttribute("data-selected")).toBe(true)
+      expect($("person-lindsay").getAttribute("aria-selected")).toBe("true")
+      expect($("person-tom").getAttribute("aria-selected")).toBe("false")
+      expect($("clear").hidden).toBe(false)
+      expect($("popup").hidden).toBe(true)
+
+      await done
+      expect(fetch.mock.calls.length).toBe(calls + 1)
+      // The label of the selection is not a search: the event sends no text.
+      const { event } = JSON.parse(fetch.mock.calls.at(-1)[1].body)
+      expect(event.type).toBe("input")
+      expect(event.value).toBe("")
+      expect($("person-lindsay").getAttribute("aria-selected")).toBe("true")
+      expect($("input").value).toBe("Lindsay Walton")
+    })
+
+    it("keeps the label of the selection through a morph with no text in the input", async () => {
+      await mountField(people([lindsay, tom]))
+      respond(people([], { selected: "lindsay" }))
+      const done = nextDone()
+      $("person-lindsay").click()
+      await done
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // The server render has no selected item and no text: the browser keeps both.
+      expect($("input").value).toBe("Lindsay Walton")
+      expect([...$("list").children].map((el) => el.id)).toEqual(["person-lindsay"])
+      expect($("person-lindsay").getAttribute("aria-selected")).toBe("true")
+      expect($("value").value).toBe("lindsay")
+    })
+
+    it("sends the text that the user types after a selection", async () => {
+      await mountField(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+      await search("Lind", [lindsay], "lindsay")
+
+      expect(JSON.parse(fetch.mock.calls.at(-1)[1].body).event.value).toBe("Lind")
+    })
+
+    it("gives the input the label of the selection again when the popup closes", async () => {
+      await mountField(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+      await search("zzz", [lindsay], "lindsay")
+      expect($("popup").hidden).toBe(false)
+
+      respond(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+      const done = nextDone()
+      press("Escape")
+
+      expect($("popup").hidden).toBe(true)
+      expect($("input").value).toBe("Lindsay Walton")
+      await done
+      expect($("value").value).toBe("lindsay")
+    })
+
+    it("opens with the highlight on the selected item", async () => {
+      await mountField(people([lindsay, tom], { selected: "tom", text: "Tom Cook" }))
+      $("input").focus()
+      press("ArrowDown")
+
+      expect($("popup").hidden).toBe(false)
+      expect($("person-tom").hasAttribute("data-highlighted")).toBe(true)
+      expect($("input").getAttribute("aria-activedescendant")).toBe("person-tom")
+    })
+
+    it("shows the clear target only with a selected item, and a clear removes the text and the selection", async () => {
+      await mountField(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+      expect($("clear").hidden).toBe(false)
+
+      respond(people([], { text: "" }))
+      const done = nextDone()
+      $("clear").click()
+
+      expect($("input").value).toBe("")
+      expect($("value").value).toBe("")
+      expect($("person-lindsay").getAttribute("aria-selected")).toBe("false")
+      expect($("clear").hidden).toBe(true)
+      await done
+      expect($("clear").hidden).toBe(true)
+    })
+
+    it("keeps the selected item at the end of a server render that does not have it", async () => {
+      await mountField(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+      await search("tom", [tom])
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect([...$("list").children].map((el) => el.id)).toEqual(["person-tom", "person-lindsay"])
+      expect($("person-lindsay").getAttribute("aria-selected")).toBe("true")
+      expect($("value").value).toBe("lindsay")
+      expect($("clear").hidden).toBe(false)
+    })
+
+    describe("with the parts of a status", () => {
+      // The people of the server, with a status that shows the state of the search.
+      function searched(results, options = {}) {
+        const status = `<div id="status" data-phem-combobox-target="status">
+            <span id="pending" data-phem-combobox-status="pending" hidden>Searching…</span>
+            <span id="error" data-phem-combobox-status="error" hidden>Failed to search.</span>
+            <span id="idle" data-phem-combobox-status="idle" hidden>Start typing.</span>
+            <span id="no-match" data-phem-combobox-status="empty" hidden>No matches.</span>
+          </div>
+          <p id="empty" data-phem-combobox-target="empty">Try another text.</p>`
+
+        return people(results, options).replace('<ul id="list"', `${status}<ul id="list"`)
+      }
+
+      const shown = () => ["pending", "error", "idle", "no-match"].filter((id) => !$(id).hidden)
+
+      async function typeText(text) {
+        const done = nextDone()
+        $("input").focus()
+        $("input").value = text
+        $("input").dispatchEvent(new Event("input", { bubbles: true }))
+        await done
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      }
+
+      it("shows the idle part with no text and no item, and no empty content", async () => {
+        await mountField(searched([]))
+
+        expect(shown()).toEqual(["idle"])
+        expect($("empty").textContent).toBe("")
+      })
+
+      it("removes the selection when the user deletes all the text, and shows the idle part", async () => {
+        await mountField(searched([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+        respond(searched([]))
+        await typeText("")
+
+        expect($("value").value).toBe("")
+        expect($("clear").hidden).toBe(true)
+        // The server render has no person: the item that is not selected leaves the list.
+        expect($("list").children).toHaveLength(0)
+        expect(shown()).toEqual(["idle"])
+        expect(JSON.parse(fetch.mock.calls.at(-1)[1].body).event.value).toBe("")
+
+        press("Escape")
+        expect($("input").value).toBe("")
+      })
+
+      it("shows the idle part at once after a clear on the open popup, with no kept item", async () => {
+        await mountField(searched([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+        respond(searched([], { text: "zzz" }))
+        await typeText("zzz")
+        expect([...$("list").children].map((el) => el.id)).toEqual(["person-lindsay"])
+        expect($("popup").hidden).toBe(false)
+
+        // The server has not answered yet.
+        fetch.mockReturnValueOnce(new Promise(() => {}))
+        $("clear").click()
+
+        expect($("list").children).toHaveLength(0)
+        expect(shown()).toEqual(["idle"])
+        expect($("popup").hidden).toBe(false)
+        expect($("clear").hidden).toBe(true)
+        expect(document.activeElement.id).toBe("input")
+      })
+
+      it("shows no part when the list has the selected item", async () => {
+        await mountField(searched([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+
+        expect(shown()).toEqual([])
+      })
+
+      it("shows the empty part and the empty content when no item matches the text", async () => {
+        await mountField(searched([]))
+        respond(searched([], { text: "zzz" }))
+        await typeText("zzz")
+
+        expect(shown()).toEqual(["no-match"])
+        expect($("empty").textContent).toBe("Try another text.")
+      })
+
+      it("shows the empty part when nothing matches, also with the selected item that the browser keeps", async () => {
+        await mountField(searched([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+        respond(searched([], { text: "zzz" }))
+        await typeText("zzz")
+
+        expect(shown()).toEqual(["no-match"])
+        expect($("person-lindsay").hidden).toBe(false)
+        // The list has an item: the empty target has no content.
+        expect($("empty").textContent).toBe("")
+      })
+
+      it("shows the pending part while the event of the input runs", async () => {
+        await mountField(searched([]))
+        let answer
+        fetch.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
+        $("input").focus()
+        $("input").value = "lind"
+        $("input").dispatchEvent(new Event("input", { bubbles: true }))
+        // Before the loading state, the status keeps its state: no result of the old text.
+        expect(shown()).toEqual(["idle"])
+
+        await vi.waitFor(() => expect(shown()).toEqual(["pending"]))
+        expect($("empty").textContent).toBe("")
+
+        const done = nextDone()
+        answer(new Response(JSON.stringify({ streams: "", changes: {}, signature: "s2" }), { status: 200, headers: { "Content-Type": "application/json" } }))
+        await done
+        await vi.waitFor(() => expect(shown()).toEqual(["no-match"]))
+      })
+
+      it("shows the error part and no item when the event of the input fails, with no message of phem", async () => {
+        await mountField(searched([]))
+        respond(searched([lindsay], { text: "lind" }))
+        await typeText("lind")
+        expect($("person-lindsay").hidden).toBe(false)
+
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        fetch.mockResolvedValueOnce(new Response("Failed", { status: 500 }))
+        await typeText("will_error")
+
+        expect(shown()).toEqual(["error"])
+        expect($("person-lindsay").hidden).toBe(true)
+        expect($("empty").textContent).toBe("")
+        expect(document.querySelector(".phem-error")).toBe(null)
+
+        // The next search that the server takes hides the error.
+        respond(searched([lindsay], { text: "lin" }))
+        await typeText("lin")
+        expect(shown()).toEqual([])
+        expect($("person-lindsay").hidden).toBe(false)
+      })
+    })
   })
 
   describe("an inline list", () => {

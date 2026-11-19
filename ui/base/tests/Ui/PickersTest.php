@@ -50,6 +50,37 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorNotExists('[data-phem-combobox-open-on-input-click-value]');
     }
 
+    public function testAListOfTheServerWithABoundValueSelectsOneItem(): void
+    {
+        $this->mount(self::APP.'ComboboxServerSelectionDemo')
+            // `phem:bind` on the root, with no `multiple`, gives the `single` selection mode.
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-selection-mode-value="single"][data-phem-combobox-open-on-input-click-value="true"]')
+            // A hidden input binds the selected value, with no name.
+            ->assertSelectorExists('input[type="hidden"][data-phem-combobox-target="value"][data-phem-bind]:not([name])')
+            ->assertSelectorExists('input[type="hidden"][data-phem-combobox-target="value"][value="pear"]')
+            // The item with the bound value is selected.
+            ->assertSelectorExists('#server-item-pear[data-selected][data-label="Pear"]')
+            ->assertSelectorExists('#server-item-apple:not([data-selected])');
+    }
+
+    public function testTheStatusOfASearchHasAPartForEachState(): void
+    {
+        $this->mount(self::APP.'ComboboxServerSelectionDemo')
+            // The browser shows the part of the state: all the parts are hidden at first.
+            ->assertSelectorExists('[data-phem-combobox-target="status"] [data-phem-combobox-status="pending"][hidden] .animate-spin[aria-hidden="true"]')
+            ->assertSelectorTextContains('[data-phem-combobox-target="status"] [data-phem-combobox-status="pending"]', 'Searching…')
+            ->assertSelectorTextContains('[data-phem-combobox-status="idle"][hidden]', 'Start typing.')
+            ->assertSelectorTextContains('[data-phem-combobox-status="empty"][hidden]', 'No matches for "Pear".')
+            ->assertSelectorTextContains('[data-phem-combobox-status="error"][hidden]', 'Failed.');
+    }
+
+    public function testAListOfTheServerWithMultipleOpensOnAClickOnTheInput(): void
+    {
+        $this->mount(self::APP.'ComboboxServerMultipleDemo')
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-multiple-value="true"][data-phem-combobox-open-on-input-click-value="true"]:not([data-phem-combobox-selection-mode-value])')
+            ->assertSelectorExists('#team-item-a[data-selected][aria-selected="true"]');
+    }
+
     public function testTheHighlightPropsAndAGrid(): void
     {
         $this->mount(self::APP.'ComboboxHighlightDemo')

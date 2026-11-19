@@ -8,6 +8,46 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Escape on the closed popup of a `phem-combobox` clears the selected item and the chips too, as
+  in Base UI, not only the text: a shown `clear` part gets the click (with its handler), and with
+  `multiple` and a list of the server, the `chipRemove` of each chip gets a click. When the
+  selection goes, the item that the browser kept for it leaves the list at once, and the `status`
+  parts with no text to search do not wait for the server.
+- The `single` selection mode of `phem-combobox` removes the selection when the user deletes all
+  the text of the input, as in Base UI: the `value` part gets `""`, the `clear` part hides, and
+  the input stays empty when the popup closes. An input in the popup (a search) keeps the
+  selection.
+- The `single` selection mode of `phem-combobox`
+  (`data-phem-combobox-selection-mode-value="single"`) also works with a list of the server, as
+  the Async search of Base UI: the server searches, and the browser keeps the selection. A click
+  on an item selects it, writes its label in the input and sends the `input` and `change` events,
+  so a bound `value` part sends the value of the item. The label of the selection is not a
+  search: the event of the input gives `""` in `$e->value` (and a `phem:bind` input gets `""`).
+  The browser keeps the selected item in the list: a server render that does not have it keeps
+  it at the end of the list. When the popup closes, the input gets the label of the selection
+  again. The `clear` part shows only while an item is selected, and a popup that opens has the
+  highlight on the selected item. In `phem/ui-base`, `phem:bind` on `Combobox` (with no
+  `multiple`) gives the `single` selection mode, with a hidden input of the selected value,
+  `ComboboxItem` is selected when its `value` is the bound value, and the new `label` prop of
+  `ComboboxItem` gives its `data-label`. The Async search (single) demo searches in the
+  `onChange` handler of the input with a repository service.
+- A `phem-combobox` with `multiple` has no free text, as in Base UI: when the popup closes, the
+  text of the input goes (with its `input` event), and the chips stay. A popup that opens before
+  the user types has the highlight on the first chosen item, and so does an input that the user
+  empties. With a list of the server, a choice while the input has a text closes the popup, and
+  then the text goes: the event of the click goes first. The browser keeps the chosen items in
+  the list while their `chip` part (with the `data-value` of the item) shows. In `phem/ui-base`,
+  a `Combobox` with `multiple` opens on a click on the input. The Async search (multiple) demo
+  searches in the `onChange` handler of the input with a repository service.
+- The `status` part of `phem-combobox` shows the state of a search of the server with its parts
+  (the elements with `data-phem-combobox-status`): `pending` while the event of the input runs,
+  `error` when it failed (the items get `hidden`, and phem shows no error message), `idle` with no
+  text and no item, and `empty` when no item matches the text. The text of an input with no
+  `phem:bind` stays through the morph. In `phem/ui-base`, `ComboboxStatus` takes the `idle`,
+  `pending` (with a spinner), `empty` and `error` texts, and hides when it has no text to show.
+- The `value` of an event (`$e->value`) is the text of the user when a controller shows another
+  text in the field (`phemValue`, for example the inline completion of `phem-combobox`), as the
+  value of a bound field already was.
 - A `phem-combobox` with its input in the popup (a searchable select) gives the popup
   `role="dialog"`, as in Base UI. The trigger gets `aria-haspopup="dialog"`, `aria-controls` to
   the popup while it is open, and `data-placeholder` while no item is selected. In

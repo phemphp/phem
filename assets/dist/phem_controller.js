@@ -1635,7 +1635,8 @@ export default class PhemController extends Controller {
     const { fields, files } = form && this.element.contains(form) ? formFields(form, submit ? event.submitter : null) : { fields: null, files: [] }
     const payload = {
       type,
-      value: "value" in el ? el.value : null,
+      // The text of the user: a controller can show another text (see phem_fields.js).
+      value: "value" in el ? textValue(el) : null,
       checked: "checked" in el ? el.checked : null,
       key: event.key ?? null,
       form: fields,

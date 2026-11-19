@@ -1,0 +1,7 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # The repository of the Async search demos: the components get it in their constructor.
+    App\People\PersonRepository: ~

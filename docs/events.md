@@ -11,7 +11,7 @@ A handler can take a `Phem\Event` argument with these properties:
 | Property | Value |
 |---|---|
 | `$e->type` | The type of the DOM event, such as `click`, `change` or `submit`, or `visible`, `poll` or `call` for the events that the browser makes itself |
-| `$e->value` | The value of the element |
+| `$e->value` | The value of the element. A controller can show another text in a field: the input of `phem-combobox` gives the text of the user, and no text for the label of the selection (see [Select one item of a list of the server](controllers.md#select-one-item-of-a-list-of-the-server)) |
 | `$e->checked` | Whether a checkbox is checked |
 | `$e->key` | The key of a key event |
 | `$e->form` | The form fields, by name; a submit, a change or a click sends them (see [Map a form to an object](forms.md#map-a-form-to-an-object)) |

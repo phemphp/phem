@@ -14,8 +14,12 @@ use Phem\{Bound, Html, Node};
  * the chips of the chosen items show. For a long list,
  * the server filters: bind the input to a state (`phem:bind`), filter the items in the render, and
  * choose an item in the handler of its `onClick`. The server marks the chosen items with
- * `selected`. Give an `id`: the ids of the input and the items start with it, so the highlight stays
- * on its item through the morph.
+ * `selected`. For the Async search of Base UI, search in the `onChange` handler of the input, and
+ * bind the root to a state with `phem:bind`: the browser selects one item (`selectionMode` is
+ * `single`), and keeps the selected item in the list. With `multiple`, the browser keeps the items
+ * of the chips (a ComboboxChip with a `value`). A ComboboxStatus shows the state of the search.
+ * Give an `id`: the ids of the input and the items start with it, so the highlight stays on its
+ * item through the morph.
  *
  * `mode` is the `aria-autocomplete` of the input (`list`, `both`, `inline`, `none`).
  *
@@ -49,6 +53,11 @@ class Combobox
     #[Prop] public int $collisionPadding = 5;
     /** The name of the selected value in a form: a hidden input gets the `value` of the selected item. */
     #[Prop] public ?string $name = null;
+    /**
+     * The `value` of the selected item, bound to a state with `phem:bind`: the browser selects (the
+     * `single` selection mode, with no `multiple`), and the state gets the value with the next event.
+     */
+    #[Prop] public ?Bound $value = null;
     /** The `value` of the item that is selected at first (a list with `multiple`): Base UI `defaultValue`. */
     #[Prop] public string|array|null $defaultValue = null;
     /** The text of the input at first, for example the label of `defaultValue`: Base UI `defaultInputValue`. */
@@ -77,27 +86,38 @@ class Combobox
 
     /**
      * The selection of Base UI: a Combobox with a list of the browser has one selected item, and
-     * its input has no free text, or with `multiple` the chosen items. An Autocomplete has no
-     * selection.
+     * its input has no free text, or with `multiple` the chosen items. A bound `value` with no
+     * `multiple` is one selected item. An Autocomplete has no selection.
      */
     public function resolvedSelectionMode(): string
     {
-        return $this->selectionMode ?? ($this->hasClientList() ? ($this->multiple ? 'multiple' : 'single') : 'none');
+        if (null !== $this->selectionMode) {
+            return $this->selectionMode;
+        }
+
+        if ($this->hasClientList()) {
+            return $this->multiple ? 'multiple' : 'single';
+        }
+
+        return null !== $this->value && !$this->multiple ? 'single' : 'none';
     }
 
-    /** Whether the item with this `value` is selected at first (`defaultValue`). */
-    public function isDefault(string $value): bool
+    /** Whether the item with this `value` is selected: the bound value, or `defaultValue`. */
+    public function isSelected(string $value): bool
     {
-        return \in_array($value, array_map(strval(...), (array) ($this->defaultValue ?? [])), true);
+        $selected = null !== $this->value ? $this->value->value : $this->defaultValue;
+
+        return \in_array($value, array_map(strval(...), (array) ($selected ?? [])), true);
     }
 
     /**
-     * A click on the input opens the popup of a Combobox with a list of the browser. A list of the
-     * server has no item before the user types, and an Autocomplete opens only on a key.
+     * A click on the input opens the popup of a Combobox with a list of the browser, a `single`
+     * selection or `multiple`. A list of the server with no selection has no item before the user
+     * types, and an Autocomplete opens only on a key.
      */
     public function resolvedOpenOnInputClick(): bool
     {
-        return $this->openOnInputClick ?? $this->hasClientList();
+        return $this->openOnInputClick ?? ($this->hasClientList() || $this->multiple || 'single' === $this->resolvedSelectionMode());
     }
 
     /** The popup opens and closes with an animation. The popup of an Autocomplete has none, as in Base UI. */
@@ -136,7 +156,7 @@ class Combobox
                 {{ ...attrs }}
             >
                 {{ children }}
-                {% if name and 'single' === selectionMode %}<input type="hidden" name={{ name }} value={{ defaultValue }} data-phem-combobox-target="value" />{% endif %}
+                {% if (name or value) and 'single' === selectionMode %}<input type="hidden" name={{ name }} phem:bind={{ value }} value={{ defaultValue }} data-phem-combobox-target="value" />{% endif %}
             </div>
         );
     }
@@ -170,7 +190,9 @@ function ComboboxInputGroup(?Html $children = null, mixed ...$rest): Node
 }
 
 /**
- * The text field. Bind it to a state of the app with `phem:bind` and `phem:live`.
+ * The text field. Search in its `onChange` handler: the event gives the text of the user in
+ * `value` (no text while the input shows the label of the selection). Or bind it to a state of the
+ * app with `phem:bind`.
  *
  * With `multiple` and a list of the browser, the `placeholder` shows only when no item is chosen,
  * and `selectedDescription` is the `aria-description` while an item is chosen: `{count}` is the
@@ -299,18 +321,22 @@ function ComboboxRow(?Html $children = null, mixed ...$rest): Node
  * `multiple`, it adds or removes the item): it needs no handler, and the items with the
  * `defaultValue` of the root are selected at first. With a
  * list of the server, a click runs its `onClick` handler, which chooses it, and the server gives
- * `selected` to the chosen items.
+ * `selected` to the chosen items. With a list of the server and the `single` selection mode, a
+ * click selects the item in the browser, and the item with the bound `value` of the root is
+ * selected. `label` is the text of the item for the input and the filter, when it is not the text
+ * of the item.
  */
 #[Component]
-function ComboboxItem(#[Context] Combobox $combobox, string $value, bool $selected = false, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+function ComboboxItem(#[Context] Combobox $combobox, string $value, ?string $label = null, bool $selected = false, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
     $id = $combobox->partId('item-'.$value);
-    $selected = $selected || $combobox->isDefault($value);
+    $selected = $selected || $combobox->isSelected($value);
 
     return (
         <div
             id={{ id }}
             data-value={{ value }}
+            data-label={{ label }}
             aria-selected={{ combobox.multiple ? (selected ? 'true' : 'false') : null }}
             aria-disabled={{ disabled ? 'true' : null }}
             data-selected={{ selected ? '' : null }}
@@ -345,11 +371,37 @@ function ComboboxEmpty(?Html $children = null, mixed ...$rest): Node
     return <div data-phem-combobox-target="empty" className={{ classes('py-4 pr-4 pl-2 text-sm leading-4 font-normal text-neutral-500 dark:text-neutral-400 empty:m-0 empty:p-0') }} {{ ...rest }}>{{ children }}</div>;
 }
 
-/** A text for screen readers, such as the number of results (`role="status"`). */
+/**
+ * A text for screen readers, such as the number of results (`role="status"`).
+ *
+ * For a search of the server, give the texts of its states: `pending` shows with a spinner while
+ * the search runs, `error` when the search fails (the handler of the input throws), `idle` when the
+ * input has no text and the list has no item, and `empty` when no item matches the text. The
+ * browser shows one of them, and the content always shows. With no text to show, the status hides.
+ */
 #[Component]
-function ComboboxStatus(?Html $children = null, mixed ...$rest): Node
+function ComboboxStatus(?string $idle = null, ?string $pending = null, ?string $empty = null, ?string $error = null, ?Html $children = null, mixed ...$rest): Node
 {
-    return <div data-phem-combobox-target="status" className={{ classes('px-2 py-1 text-sm font-normal text-neutral-500 dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
+    if (null === $idle && null === $pending && null === $empty && null === $error) {
+        return <div data-phem-combobox-target="status" className={{ classes('px-2 py-1 text-sm font-normal text-neutral-500 dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
+    }
+
+    $part = 'flex items-center gap-2 [&[hidden]]:hidden';
+
+    return (
+        <div data-phem-combobox-target="status" className={{ classes('py-1 pr-5 pl-2 text-sm leading-5 font-normal text-neutral-500 dark:text-neutral-400 [&:not(:has(>:not([hidden]):not(:empty)))]:hidden') }} {{ ...rest }}>
+            {% if pending is not null %}
+                <span data-phem-combobox-status="pending" hidden className={{ part }}>
+                    <span aria-hidden="true" className="inline-block size-3 animate-spin rounded-full border border-current border-r-transparent"></span>
+                    {{ pending }}
+                </span>
+            {% endif %}
+            {% if error is not null %}<span data-phem-combobox-status="error" hidden className={{ part }}>{{ error }}</span>{% endif %}
+            {% if idle is not null %}<span data-phem-combobox-status="idle" hidden className={{ part }}>{{ idle }}</span>{% endif %}
+            {% if empty is not null %}<span data-phem-combobox-status="empty" hidden className={{ part }}>{{ empty }}</span>{% endif %}
+            {% if children %}<span className="empty:hidden">{{ children }}</span>{% endif %}
+        </div>
+    );
 }
 
 #[Component]
@@ -398,7 +450,7 @@ function ComboboxChips(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function ComboboxChip(#[Context] Combobox $combobox, ?string $value = null, ?Html $children = null, mixed ...$rest): Node
 {
-    $hidden = null !== $value && 'multiple' === $combobox->resolvedSelectionMode() && !$combobox->isDefault($value);
+    $hidden = null !== $value && 'multiple' === $combobox->resolvedSelectionMode() && !$combobox->isSelected($value);
 
     return (
         <div

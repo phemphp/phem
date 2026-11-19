@@ -198,8 +198,9 @@ final class ComboboxTest extends E2eTestCase
         $page->locator('#pick-2')->click();
         expect($input)->toHaveValue('Banana');
 
-        $input->fill('');
-        $input->pressSequentially('le');
+        // A new text in one step: an empty input would remove the selection, as in Base UI.
+        $input->fill('l');
+        $input->pressSequentially('e');
         expect($page->locator('#picker-popup'))->toBeVisible();
         self::assertNull($input->getAttribute('aria-activedescendant'));
 

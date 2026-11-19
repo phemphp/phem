@@ -2,10 +2,10 @@
 
 namespace Phem\Ui\Base\Tests\App;
 
-use Phem\Attribute\Component;
+use Phem\Attribute\{Component, State};
 use Phem\Node;
 
-use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
 use Phem\Ui\Base\{Autocomplete, Combobox, Drawer, DrawerViewport, ToastViewport};
 
 // A Combobox with a list of the browser has one selected item, and an Autocomplete has none.
@@ -27,6 +27,40 @@ function ComboboxSelectionDemo(): Node
                 <ComboboxPopup><ComboboxList><ComboboxItem value="fix">fix</ComboboxItem></ComboboxList></ComboboxPopup>
             </Autocomplete>
         </div>
+    );
+}
+
+// A list of the server with the `single` selection mode: the root binds the selected value.
+#[Component]
+final class ComboboxServerSelectionDemo
+{
+    #[State] public string $query = 'Pear';
+    #[State] public string $selected = 'pear';
+
+    public function render(): Node
+    {
+        return (
+            <Combobox id="server" phem:bind={{ selected }}>
+                <ComboboxInput phem:bind={{ query }} />
+                <ComboboxPopup>
+                    <ComboboxStatus idle="Start typing." pending="Searching…" empty={{ 'No matches for "' ~ query ~ '".' }} error="Failed." />
+                    <ComboboxList><ComboboxItem value="apple" label="Apple">Apple</ComboboxItem><ComboboxItem value="pear" label="Pear">Pear</ComboboxItem></ComboboxList>
+                </ComboboxPopup>
+            </Combobox>
+        );
+    }
+}
+
+// A list of the server with `multiple`: the handlers choose, and a click on the input opens the
+// popup.
+#[Component]
+function ComboboxServerMultipleDemo(): Node
+{
+    return (
+        <Combobox id="team" multiple>
+            <ComboboxInput />
+            <ComboboxPopup><ComboboxList><ComboboxItem value="a" selected>A</ComboboxItem></ComboboxList></ComboboxPopup>
+        </Combobox>
     );
 }
 

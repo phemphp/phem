@@ -2,100 +2,13 @@
 
 namespace App\Ui\Demos;
 
+use App\People\PersonRepository;
 use Phem\Attribute\{Component, Page, State};
 use Phem\{Event, Node};
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxIcon, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxStatus, ComboboxTrigger, ComboboxValue, DialogClose, DialogDescription, DialogPopup, DialogTitle};
 use Phem\Ui\Base\{Align, Button, Combobox, Dialog};
-
-// The people of the Async search demos of Base UI.
-const PEOPLE = [
-    [
-        'id' => 'leslie-alexander',
-        'name' => 'Leslie Alexander',
-        'username' => 'leslie',
-        'email' => 'leslie.alexander@example.com',
-        'title' => 'Product Manager',
-    ],
-    [
-        'id' => 'kathryn-murphy',
-        'name' => 'Kathryn Murphy',
-        'username' => 'kathryn',
-        'email' => 'kathryn.murphy@example.com',
-        'title' => 'Marketing Lead',
-    ],
-    [
-        'id' => 'courtney-henry',
-        'name' => 'Courtney Henry',
-        'username' => 'courtney',
-        'email' => 'courtney.henry@example.com',
-        'title' => 'Design Systems',
-    ],
-    [
-        'id' => 'michael-foster',
-        'name' => 'Michael Foster',
-        'username' => 'michael',
-        'email' => 'michael.foster@example.com',
-        'title' => 'Engineering Manager',
-    ],
-    [
-        'id' => 'lindsay-walton',
-        'name' => 'Lindsay Walton',
-        'username' => 'lindsay',
-        'email' => 'lindsay.walton@example.com',
-        'title' => 'Product Designer',
-    ],
-    [
-        'id' => 'tom-cook',
-        'name' => 'Tom Cook',
-        'username' => 'tom',
-        'email' => 'tom.cook@example.com',
-        'title' => 'Frontend Engineer',
-    ],
-    [
-        'id' => 'whitney-francis',
-        'name' => 'Whitney Francis',
-        'username' => 'whitney',
-        'email' => 'whitney.francis@example.com',
-        'title' => 'Customer Success',
-    ],
-    [
-        'id' => 'jacob-jones',
-        'name' => 'Jacob Jones',
-        'username' => 'jacob',
-        'email' => 'jacob.jones@example.com',
-        'title' => 'Security Engineer',
-    ],
-    [
-        'id' => 'arlene-mccoy',
-        'name' => 'Arlene McCoy',
-        'username' => 'arlene',
-        'email' => 'arlene.mccoy@example.com',
-        'title' => 'Data Analyst',
-    ],
-    [
-        'id' => 'marvin-mckinney',
-        'name' => 'Marvin McKinney',
-        'username' => 'marvin',
-        'email' => 'marvin.mckinney@example.com',
-        'title' => 'QA Specialist',
-    ],
-    [
-        'id' => 'eleanor-pena',
-        'name' => 'Eleanor Pena',
-        'username' => 'eleanor',
-        'email' => 'eleanor.pena@example.com',
-        'title' => 'Operations',
-    ],
-    [
-        'id' => 'jerome-bell',
-        'name' => 'Jerome Bell',
-        'username' => 'jerome',
-        'email' => 'jerome.bell@example.com',
-        'title' => 'DevOps Engineer',
-    ],
-];
 
 // The 187 countries of the Input inside popup demo of Base UI.
 const COUNTRIES = [
@@ -354,13 +267,13 @@ function ComboboxPage(): Node
                 </Example>
                 <Example title="Async search (single)" source="ComboboxAsyncSingleDemo">
                     <Example.description>
-                        <p>Load items from the server on input changes: bind the input with <code>phem:bind</code>, and render the results of the query. Keep the selected item in the list so it remains available while new results come in.</p>
+                        <p>Load items from the server on input changes: the <code>onChange</code> handler of <code>ComboboxInput</code> calls a repository service, and the state keeps the results. With <code>phem:bind</code> on the root, the browser keeps the selection and the selected item in the list. <code>ComboboxStatus</code> shows the texts of the states of the search: <code>pending</code> with a spinner while it runs, <code>error</code> when the handler throws, <code>idle</code> before the user types, and <code>empty</code> when nothing matches. This pattern avoids needing to load items upfront.</p>
                     </Example.description>
                     <ComboboxAsyncSingleDemo />
                 </Example>
                 <Example title="Async search (multiple)" source="ComboboxAsyncMultipleDemo">
                     <Example.description>
-                        <p>Load items from the server on input changes while supporting multiple selections. Selected items remain available in the list while new matches come in. This pattern avoids needing to load items upfront.</p>
+                        <p>Load items from the server on input changes while supporting multiple selections. Give each <code>ComboboxChip</code> the <code>value</code> of its item: the browser keeps the chosen items in the list while new matches come in. The handler of an item adds or removes the person, and a choice with a text closes the popup and clears the text. This pattern avoids needing to load items upfront.</p>
                     </Example.description>
                     <ComboboxAsyncMultipleDemo />
                 </Example>
@@ -575,100 +488,55 @@ function ComboboxInputInsidePopupDemo(): Node
     );
 }
 
-// The search runs on the server at each change of the input. A choice keeps the
-// person, and the input shows their name.
+// The search runs in the handler of the input, as the Async search of Base UI: the repository
+// searches, and the state keeps the results. The browser keeps the selection and the selected
+// person in the list, and the root binds the selected value.
 #[Component]
 final class ComboboxAsyncSingleDemo
 {
     #[State] public string $query = '';
-    #[State] public ?string $selected = null;
+    #[State] public string $selected = '';
+    /** @var list<array<string, string>> */
+    #[State] public array $people = [];
 
-    public function choose(string $id): void
+    public function __construct(private readonly PersonRepository $repository)
     {
-        $this->selected = $id;
-        $this->query = self::person($id)['name'];
     }
 
-    /**
-     * @return array{
-     *     id: string,
-     *     name: string,
-     *     username: string,
-     *     email: string,
-     *     title: string,
-     * }
-     */
-    public static function person(string $id): array
+    public function search(Event $e): void
     {
-        return array_values(array_filter(
-            PEOPLE,
-            static fn (array $p): bool => $p['id'] === $id,
-        ))[0];
-    }
-
-    /**
-     * @return list<array{
-     *     id: string,
-     *     name: string,
-     *     username: string,
-     *     email: string,
-     *     title: string,
-     * }>
-     */
-    public static function search(string $query): array
-    {
-        $query = mb_strtolower(trim($query));
-
-        return '' === $query ? [] : array_values(array_filter(
-            PEOPLE,
-            static fn (array $p): bool => [] !== array_filter(
-                [$p['name'], $p['username'], $p['email'], $p['title']],
-                static fn (string $v): bool => str_contains(
-                    mb_strtolower($v),
-                    $query,
-                ),
-            ),
-        ));
+        $this->query = trim((string) $e->value);
+        $this->people = $this->repository->search($this->query);
     }
 
     public function render(): Node
     {
-        $chosen = null === $this->selected ? null : self::person($this->selected);
-        $searching = null !== $chosen && $this->query === $chosen['name']
-            ? ''
-            : trim($this->query);
-        $results = self::search($searching);
-        if (null !== $chosen && !\in_array($chosen, $results, true)) {
-            $results[] = $chosen;
-        }
-        $status = match (true) {
-            '' === $searching => null === $chosen
-                ? 'Start typing to search people…'
-                : null,
-            [] === self::search($searching) => 'No matches for "'.$searching.'".',
-            default => null,
-        };
-
         return (
-            <Combobox id="reviewer">
-                <ComboboxLabel className="flex flex-col gap-1 text-sm leading-5 font-bold">Assign reviewer</ComboboxLabel>
-                <ComboboxInputGroup>
-                    <ComboboxInput phem:bind={{ query }} placeholder="e.g. Michael" />
+            <Combobox id="reviewer" phem:bind={{ selected }}>
+                <ComboboxLabel>Assign reviewer</ComboboxLabel>
+                <ComboboxInputGroup className="w-64 md:w-80">
+                    <ComboboxInput onChange={{ search }} placeholder="e.g. Michael" />
                     <ComboboxActions>
                         <ComboboxClear aria-label="Clear selection" />
                         <ComboboxTrigger aria-label="Open popup" />
                     </ComboboxActions>
                 </ComboboxInputGroup>
-                <ComboboxPopup>
-                    <ComboboxStatus className="flex items-center gap-2 py-1 pr-5 pl-2 text-sm leading-5 text-neutral-500 empty:hidden dark:text-neutral-400">{{ status }}</ComboboxStatus>
-                    <ComboboxList>
-                        {% for person in results %}
-                            <ComboboxItem key={{ person.id }} value={{ person.id }} selected={{ person.id == selected }} onClick={{ choose(person.id) }} className="items-start leading-[1.2rem]">
+                <ComboboxPopup className="py-1">
+                    <ComboboxStatus
+                        idle="Start typing to search people…"
+                        pending="Searching…"
+                        empty={{ 'No matches for "' ~ query ~ '".' }}
+                        error="Failed to fetch people. Please try again."
+                    />
+                    <ComboboxEmpty className="py-2">Try a different search term.</ComboboxEmpty>
+                    <ComboboxList className="py-0">
+                        {% for person in people %}
+                            <ComboboxItem key={{ person.id }} value={{ person.id }} label={{ person.name }} className="items-start leading-[1.2rem] data-highlighted:text-neutral-950 data-highlighted:before:bg-neutral-100 dark:data-highlighted:text-white dark:data-highlighted:before:bg-neutral-800">
                                 <ComboboxItemIndicator className="mt-1" />
                                 <span className="col-start-2 flex flex-col gap-1">
                                     <span className="text-sm leading-5 font-bold">{{ person.name }}</span>
                                     <span className="text-xs">{{ person.email }}</span>
-                                    <span className="flex flex-wrap gap-2 text-xs opacity-70">
+                                    <span className="flex flex-wrap gap-2 text-xs text-neutral-500 dark:text-neutral-400">
                                         <span>@{{ person.username }}</span>
                                         <span>{{ person.title }}</span>
                                     </span>
@@ -682,47 +550,37 @@ final class ComboboxAsyncSingleDemo
     }
 }
 
-// The search of the server with more than one choice: the chips keep the chosen
-// people.
+// The search of the server with more than one choice, as the Async search of Base UI: the chips
+// show the chosen people, and the browser keeps their items in the list. A choice with a text
+// closes the popup, and the text goes.
 #[Component]
 final class ComboboxAsyncMultipleDemo
 {
     #[State] public string $query = '';
-    /** @var list<string> */
-    #[State] public array $selected = [];
+    /** @var list<array<string, string>> */
+    #[State] public array $people = [];
+    /** @var list<array<string, string>> */
+    #[State] public array $chosen = [];
+
+    public function __construct(private readonly PersonRepository $repository)
+    {
+    }
+
+    public function search(Event $e): void
+    {
+        $this->query = trim((string) $e->value);
+        $this->people = $this->repository->search($this->query);
+    }
 
     public function toggle(string $id): void
     {
-        $this->selected = \in_array($id, $this->selected, true)
-            ? array_values(array_diff($this->selected, [$id]))
-            : [...$this->selected, $id];
-        $this->query = '';
-    }
-
-    public function remove(string $id): void
-    {
-        $this->selected = array_values(array_diff($this->selected, [$id]));
+        $others = array_values(array_filter($this->chosen, static fn (array $person): bool => $person['id'] !== $id));
+        $this->chosen = $others !== $this->chosen ? $others : [...$this->chosen, $this->repository->get($id)];
     }
 
     public function render(): Node
     {
-        $chosen = array_map(ComboboxAsyncSingleDemo::person(...), $this->selected);
-        $results = ComboboxAsyncSingleDemo::search($this->query);
-        foreach ($chosen as $person) {
-            if (!\in_array($person, $results, true)) {
-                $results[] = $person;
-            }
-        }
-        $trimmed = trim($this->query);
-        $status = match (true) {
-            '' === $trimmed => [] === $chosen
-                ? 'Start typing to search people…'
-                : null,
-            [] === ComboboxAsyncSingleDemo::search($trimmed) =>
-                'No matches for "'.$trimmed.'".',
-            default => null,
-        };
-        $count = \count($chosen);
+        $count = \count($this->chosen);
 
         return (
             <Combobox id="reviewers" multiple className="max-w-md">
@@ -730,23 +588,38 @@ final class ComboboxAsyncMultipleDemo
                 <ComboboxInputGroup className="flex h-auto min-h-8 w-64 cursor-text flex-wrap items-center gap-0.5 px-2 py-1 has-[button]:px-1 min-[32rem]:w-[22rem]">
                     <ComboboxChips aria-label={{ count > 0 ? 'Selected reviewers' : null }}>
                         {% for person in chosen %}
-                            <ComboboxChip key={{ person.id }} aria-label={{ person.name }}>
+                            <ComboboxChip key={{ person.id }} value={{ person.id }} aria-label={{ person.name }}>
                                 {{ person.name }}
-                                <ComboboxChipRemove aria-label="Remove {{ person.name }}" onClick={{ remove(person.id) }} />
+                                <ComboboxChipRemove aria-label="Remove {{ person.name }}" onClick={{ toggle(person.id) }} />
                             </ComboboxChip>
                         {% endfor %}
-                        <ComboboxInput phem:bind={{ query }} placeholder={{ count > 0 ? '' : 'e.g. Michael' }} className="h-[calc(1.5rem-2px)] w-auto min-w-12 flex-1 p-0" />
+                        <ComboboxInput
+                            onChange={{ search }}
+                            placeholder={{ count > 0 ? '' : 'e.g. Michael' }}
+                            aria-description={{ count > 0 ? count ~ ' selected. From the start of the input, press Left Arrow to focus the selected items' : null }}
+                            className="h-[calc(1.5rem-2px)] w-auto min-w-12 flex-1 p-0"
+                        />
                     </ComboboxChips>
                 </ComboboxInputGroup>
-                <ComboboxPopup>
-                    <ComboboxStatus className="flex items-center gap-2 py-1 pr-5 pl-2 text-sm leading-5 text-neutral-500 empty:hidden dark:text-neutral-400">{{ status }}</ComboboxStatus>
-                    <ComboboxList>
-                        {% for person in results %}
-                            <ComboboxItem key={{ person.id }} value={{ person.id }} selected={{ person.id in selected }} onClick={{ toggle(person.id) }} className="items-start leading-[1.2rem]">
+                <ComboboxPopup className="py-1">
+                    <ComboboxStatus
+                        idle="Start typing to search people…"
+                        pending="Searching…"
+                        empty={{ 'No matches for "' ~ query ~ '".' }}
+                        error="Failed to fetch people. Please try again."
+                    />
+                    <ComboboxEmpty className="py-2">Try a different search term.</ComboboxEmpty>
+                    <ComboboxList className="max-h-[min(24.5rem,var(--available-height))] py-0">
+                        {% for person in people %}
+                            <ComboboxItem key={{ person.id }} value={{ person.id }} label={{ person.name }} selected={{ person.id in chosen|column('id') }} onClick={{ toggle(person.id) }} className="items-start leading-[1.2rem] data-highlighted:text-neutral-950 data-highlighted:before:bg-neutral-100 dark:data-highlighted:text-white dark:data-highlighted:before:bg-neutral-800">
                                 <ComboboxItemIndicator className="mt-1" />
                                 <span className="col-start-2 flex flex-col gap-1">
                                     <span className="text-sm leading-5 font-bold">{{ person.name }}</span>
                                     <span className="text-xs">{{ person.email }}</span>
+                                    <span className="flex flex-wrap gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                                        <span>@{{ person.username }}</span>
+                                        <span>{{ person.title }}</span>
+                                    </span>
                                 </span>
                             </ComboboxItem>
                         {% endfor %}
