@@ -209,6 +209,41 @@ final class ComboboxTest extends E2eTestCase
         expect($input)->toHaveValue('Banana');
     }
 
+    public function testTheSingleSelectionModeKeepsANewSelectionOfTheKeyboard(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $input = $page->locator('#reviewer-input');
+        $input->click();
+        $input->fill('lindsay');
+        $page->locator('#person-lindsay')->click();
+        expect($input)->toHaveValue('Lindsay Walton');
+        expect($page->locator('#reviewer-value'))->toHaveValue('lindsay');
+
+        // The user deletes the text until the search gives a second person. The server render
+        // still has the old selection (`data-selected` on the item of Lindsay).
+        foreach (['Lindsay Walto', 'Lindsay', 'Lin', 'Li'] as $text) {
+            $input->fill($text);
+            expect($page->locator('#person-lindsay'))->toBeVisible();
+        }
+
+        expect($page->locator('#person-leslie'))->toBeVisible();
+
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#person-leslie'))->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('Enter');
+        expect($input)->toHaveValue('Leslie Alexander');
+
+        // The answer of the server has no person: the item of Lindsay leaves the list, and the
+        // browser keeps the new selection.
+        expect($page->locator('#person-lindsay'))->toHaveCount(0);
+        expect($input)->toHaveValue('Leslie Alexander');
+        expect($page->locator('#reviewer-value'))->toHaveValue('leslie');
+        expect($page->locator('#reviewer-clear'))->toBeVisible();
+        expect($page->locator('#person-leslie'))->toHaveAttribute('aria-selected', 'true');
+    }
+
     public function testThePointerOutOfTheItemsRemovesTheHighlight(): void
     {
         $page = $this->visit('/combobox');

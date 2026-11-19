@@ -129,7 +129,8 @@ import { textValue } from "./phem_fields.js"
 // server render that does not have the selected item (the `single` selection mode) or a chosen
 // item (`multiple`, an item with `aria-selected="true"` and a `chip` target with its
 // `data-value`) keeps it, at the end of the list. A chosen item whose chip goes leaves the list,
-// and so does a kept item that is not selected any more (at once).
+// and so does a kept item that is not selected any more (at once). A server render that removes
+// the old selected item of the server does not change the selection of the browser.
 // The text of an input with no `phem:bind` belongs to the browser: the morph keeps it.
 //
 // A `status` target shows the state of a search of the server with its parts: the elements with
@@ -608,6 +609,14 @@ export default class PhemComboboxController extends Controller {
 
     if (!(this.#selecting || this.#selectingMany) || !this.serverSelected.has(item)) return
 
+    // A server render that removes an item does not change the selection: the old selection of
+    // the server leaves the list, and the browser keeps its own selection.
+    if (this.#selecting && !event.detail.newElement && item !== this.#selectedItem) {
+      this.serverSelected.delete(item)
+
+      return
+    }
+
     const next = event.detail.newElement?.hasAttribute("data-selected") ?? false
     if (next === this.serverSelected.get(item)) return
 
@@ -682,6 +691,10 @@ export default class PhemComboboxController extends Controller {
     const item = this.serverSelection
     this.serverSelection = undefined
     if (item === undefined || !this.#selecting) return
+
+    // The server render has the selection of the browser (for example a bound value): the text
+    // that the user types stays.
+    if (item === this.#selectedItem) return
 
     this.selected = item
     this.queryChanged = false

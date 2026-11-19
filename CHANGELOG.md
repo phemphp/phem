@@ -8,6 +8,14 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Fix: a `phem-combobox` with the `single` selection mode and a list of the server keeps the text
+  that the user types when the server render marks the item that the browser already selected
+  (for example with a bound value). Before, the answer of the search wrote the label of the item
+  in the input again, for example `Lindsay Walton` after the user deleted a letter.
+- Fix: a `phem-combobox` with the `single` selection mode and a list of the server keeps a new
+  selection when the next server render removes the item of the old selection. Before, the input,
+  the `value` part and the selection went empty, for example after a choice with Enter in a
+  search that still showed the old selected item.
 - Escape on the closed popup of a `phem-combobox` clears the selected item and the chips too, as
   in Base UI, not only the text: a shown `clear` part gets the click (with its handler), and with
   `multiple` and a list of the server, the `chipRemove` of each chip gets a click. When the

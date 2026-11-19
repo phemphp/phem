@@ -3,27 +3,49 @@
 namespace App\Ui\Combobox;
 
 use Phem\Attribute\{Page, State};
+use Phem\Event;
 use Phem\Node;
 
 use function App\Ui\Layout\Document;
 
 // A city field: the server gives the cities that start with the text. A fruit field: the server
 // renders the fruits one time, and the browser filters them. A color field: as the fruit field,
-// with no id on the list and the items.
+// with no id on the list and the items. A reviewer field: the server searches the people in the
+// handler of the input, and the browser selects one of them.
 #[Page('/combobox')]
 final class ComboboxPage
 {
     private const array CITIES = ['Lyon', 'Paris', 'Parma', 'Porto'];
     private const array FRUITS = ['Apple', 'Banana', 'Cherry', 'Éclair', 'Lemon'];
     private const array COLORS = ['Blue', 'Green', 'Red'];
+    private const array PEOPLE = ['leslie' => 'Leslie Alexander', 'lindsay' => 'Lindsay Walton', 'tom' => 'Tom Cook'];
 
     #[State] public string $query = '';
     #[State] public string $city = '';
+    #[State] public string $reviewer = '';
+    /** @var list<array{id: string, name: string}> */
+    #[State] public array $people = [];
 
     public function choose(string $city): void
     {
         $this->city = $city;
         $this->query = $city;
+    }
+
+    public function searchPeople(Event $e): void
+    {
+        $text = strtolower(trim((string) $e->value));
+
+        $this->people = [];
+        if ('' === $text) {
+            return;
+        }
+
+        foreach (self::PEOPLE as $id => $name) {
+            if (str_contains(strtolower($name), $text)) {
+                $this->people[] = ['id' => $id, 'name' => $name];
+            }
+        }
     }
 
     public function render(): Node
@@ -82,6 +104,19 @@ final class ComboboxPage
                         <ul class="color-list" data-phem-combobox-target="list">
                             {% for name in colors %}
                                 <li key={{ name }} data-phem-combobox-target="item">{{ name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="reviewer" data-controller="phem-combobox" data-phem-combobox-selection-mode-value="single">
+                    <input id="reviewer-input" data-phem-combobox-target="input" onChange={{ searchPeople }} aria-label="Reviewer" />
+                    <button type="button" id="reviewer-clear" data-phem-combobox-target="clear">Clear</button>
+                    <input type="hidden" id="reviewer-value" data-phem-combobox-target="value" phem:bind={{ reviewer }} />
+                    <div id="reviewer-popup" data-phem-combobox-target="popup" hidden>
+                        <ul id="reviewer-list" data-phem-combobox-target="list">
+                            {% for person in people %}
+                                <li key={{ person.id }} id={{ 'person-' ~ person.id }} data-value={{ person.id }} data-selected={{ person.id == reviewer ? '' : null }} data-phem-combobox-target="item">{{ person.name }}</li>
                             {% endfor %}
                         </ul>
                     </div>

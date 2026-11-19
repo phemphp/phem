@@ -50,6 +50,69 @@ final class PickersTest extends DemoTestCase
         expect($clear)->toBeHidden();
     }
 
+    public function testComboboxAsyncSearchKeepsANewSelectionOfTheKeyboard(): void
+    {
+        $page = $this->visitComponent('combobox');
+        $async = $page->getByRole('region', ['name' => 'Async search (single)'])->locator('[data-demo="preview"]');
+        $reviewer = $async->getByRole('combobox', ['name' => 'Assign reviewer']);
+        $clear = $async->getByRole('button', ['name' => 'Clear selection']);
+        $lindsay = $async->getByRole('option', ['name' => 'Lindsay Walton']);
+        $leslie = $async->getByRole('option', ['name' => 'Leslie Alexander']);
+
+        $reviewer->click();
+        $reviewer->fill('lindsay');
+        $lindsay->click();
+        expect($reviewer)->toHaveValue('Lindsay Walton');
+
+        // The user deletes the text bit by bit, until the search gives a second person.
+        $reviewer->click();
+        foreach (['Lindsay Walto', 'Lindsay', 'Lin', 'Li'] as $text) {
+            $reviewer->fill($text);
+            expect($lindsay)->toBeVisible();
+        }
+
+        expect($leslie)->toBeVisible();
+
+        // Enter chooses the highlighted person: the name stays after the answer of the server.
+        $page->keyboard()->press('ArrowDown');
+        expect($leslie)->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('Enter');
+        expect($reviewer)->toHaveValue('Leslie Alexander');
+        // The answer of the server has no person: the other people leave the list.
+        expect($async->locator('[role="option"][data-value="lindsay-walton"]'))->toHaveCount(0);
+        expect($reviewer)->toHaveValue('Leslie Alexander');
+        expect($clear)->toBeVisible();
+
+        $reviewer->click();
+        expect($async->getByRole('option'))->toHaveCount(1);
+        expect($leslie)->toHaveAttribute('aria-selected', 'true');
+    }
+
+    public function testComboboxAsyncSearchKeepsTheTextThatTheUserDeletes(): void
+    {
+        $page = $this->visitComponent('combobox');
+        $async = $page->getByRole('region', ['name' => 'Async search (single)'])->locator('[data-demo="preview"]');
+        $reviewer = $async->getByRole('combobox', ['name' => 'Assign reviewer']);
+        $lindsay = $async->getByRole('option', ['name' => 'Lindsay Walton']);
+
+        $reviewer->click();
+        $reviewer->fill('lindsay');
+        $lindsay->click();
+        expect($reviewer)->toHaveValue('Lindsay Walton');
+
+        // The user deletes a letter. The answer of the server marks Lindsay as selected (the
+        // bound value), and the text of the user stays.
+        $reviewer->click();
+        $page->keyboard()->press('End');
+        $page->evaluate('() => { window.searched = false; window.addEventListener("phem:done", () => { window.searched = true }, { once: true }) }');
+        $page->keyboard()->press('Backspace');
+        expect($reviewer)->toHaveValue('Lindsay Walto');
+        $page->waitForFunction('() => window.searched');
+        expect($lindsay)->toBeVisible();
+        expect($reviewer)->toHaveValue('Lindsay Walto');
+        expect($lindsay)->toHaveAttribute('aria-selected', 'true');
+    }
+
     public function testComboboxExamples(): void
     {
         $page = $this->visitComponent('combobox');

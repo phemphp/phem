@@ -1666,6 +1666,74 @@ describe("phem-combobox", () => {
       expect($("value").value).toBe("lindsay")
     })
 
+    it("keeps a new selection through a morph that removes the item of the old selection", async () => {
+      await mountField(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+      // The user deletes the text until the server gives a second person. The server render
+      // still has the old selection.
+      await search("o", [lindsay, tom], "lindsay")
+      expect($("popup").hidden).toBe(false)
+
+      // Enter chooses Tom. The label of the selection sends no text: the server render has no
+      // person, and its selection is Tom.
+      press("ArrowDown")
+      expect($("person-lindsay").hasAttribute("data-highlighted")).toBe(true)
+      press("ArrowDown")
+      expect($("person-tom").hasAttribute("data-highlighted")).toBe(true)
+      respond(people([], { selected: "tom" }))
+      const done = nextDone()
+      press("Enter")
+
+      expect($("input").value).toBe("Tom Cook")
+      expect($("value").value).toBe("tom")
+      await done
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // The browser keeps the item of the new selection, its label and its value.
+      expect($("input").value).toBe("Tom Cook")
+      expect($("value").value).toBe("tom")
+      expect([...$("list").children].map((el) => el.id)).toEqual(["person-tom"])
+      expect($("person-tom").getAttribute("aria-selected")).toBe("true")
+      expect($("clear").hidden).toBe(false)
+    })
+
+    it("takes a new selection of the server that keeps the item of the old selection", async () => {
+      await mountField(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
+      await search("o", [lindsay, tom], "lindsay")
+
+      // The server selects Tom: the item of Lindsay stays, with no `data-selected`.
+      await search("o", [lindsay, tom], "tom")
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect($("input").value).toBe("Tom Cook")
+      expect($("value").value).toBe("tom")
+      expect([...$("list").children].map((el) => el.id)).toEqual(["person-lindsay", "person-tom"])
+      expect($("person-lindsay").getAttribute("aria-selected")).toBe("false")
+      expect($("person-tom").getAttribute("aria-selected")).toBe("true")
+    })
+
+    it("keeps the text that the user types when the server render has the selection of the browser", async () => {
+      await mountField(people([lindsay, tom]))
+      respond(people([], { selected: "lindsay" }))
+      let done = nextDone()
+      $("person-lindsay").click()
+      await done
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // The user deletes a letter. The server render marks Lindsay as selected (a bound value),
+      // but the input has no `phem:bind`: the text belongs to the browser.
+      respond(people([lindsay], { selected: "lindsay" }))
+      done = nextDone()
+      $("input").value = "Lindsay Walto"
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      await done
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect($("input").value).toBe("Lindsay Walto")
+      expect($("value").value).toBe("lindsay")
+      expect($("person-lindsay").getAttribute("aria-selected")).toBe("true")
+      expect($("popup").hidden).toBe(false)
+    })
+
     it("sends the text that the user types after a selection", async () => {
       await mountField(people([lindsay], { selected: "lindsay", text: "Lindsay Walton" }))
       await search("Lind", [lindsay], "lindsay")
