@@ -28,15 +28,14 @@ services:
     volumes: *volumes
 
   # phem/ui-base (ui/base/): the components with the phem of this repository and the phemc that
-  # the entrypoint builds from compiler/. `make ui-test`, `make ui-demo` (http://localhost:8100).
+  # the entrypoint builds from compiler/. `make ui-test`, `make ui-check`. The demo has its own
+  # production image (ui/base/demo/etc/Dockerfile, `make ui-demo`).
   ui:
     build: { context: .., dockerfile: docker/Dockerfile }
     working_dir: /app/ui/base
     command: vendor/bin/phpunit
     environment:
       PHEMC_BIN: /cargo-target/release/phemc
-    ports:
-      - "8100:8000"
     volumes: *volumes
 
   # The browser tests of the demo of phem/ui-base (`make ui-test-e2e`).

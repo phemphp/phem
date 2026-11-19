@@ -1,0 +1,19 @@
+# The build context of ui/base/demo/etc/Dockerfile is the root of the repository. Keep the local
+# dependencies, the build output and the parts that the demo does not use out of it.
+**/.git
+**/.DS_Store
+**/node_modules
+**/vendor
+**/var
+compiler/target
+# The demo colors the code with the grammar of the editor plugins (src/Ui/Highlighter.php).
+editors
+!editors/vscode/syntaxes
+website
+e2e
+bench
+.claude
+ui/base/demo/composer.lock
+ui/base/demo/assets/vendor
+ui/base/demo/public/assets
+ui/base/demo/config/reference.php

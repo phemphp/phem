@@ -1,5 +1,5 @@
 framework:
-    secret: 'phem-ui-base-demo-secret-not-for-production'
+    secret: '%env(APP_SECRET)%'
     http_method_override: false
     handle_all_throwables: true
     asset_mapper:

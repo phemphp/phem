@@ -60,8 +60,15 @@ The components use only the public API of phem: the components, the controllers 
 make install   # composer install
 make test      # PHPUnit render tests
 make check     # phemc check src
-make demo      # the gallery on http://localhost:8100
+make demo      # the gallery on http://localhost:8100 (FrankenPHP, production image)
 make test-e2e  # the browser tests of the demo (Playwright PHP)
+```
+
+The demo runs in its own production image (`demo/etc/Dockerfile`, with its `Caddyfile` and PHP settings): FrankenPHP in worker mode, `APP_ENV=prod`. The build context is the root of the repository, because the image installs phem/phem and phem/ui-base from it and builds `phemc` from `compiler/`. Rebuild the image after each change (`make demo` does it). The image copies `demo/.env.local` (not in git) with the `APP_SECRET` of the demo. `make demo` writes it with a random secret when it is missing. To build and run the image without make:
+
+```sh
+docker build -f ui/base/demo/etc/Dockerfile -t phem-ui-base-demo .   # from the root of the repository
+docker run --rm -p 8080:8080 phem-ui-base-demo
 ```
 
 The browser tests (`demo/tests/`) run in the e2e image of phem, with Chromium. They need no web server: the Playwright Symfony bundle sends the requests of the browser to the kernel of the demo, in the PHPUnit process. A failed test saves a screenshot and the HTML of the page in `demo/var/failures/`.

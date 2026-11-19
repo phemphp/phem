@@ -1,0 +1,17 @@
+# The demo in production (etc/Dockerfile): public/index.php in FrankenPHP worker mode. The paths are relative to the demo
+# directory (the working directory of the image). Each worker boots
+# the kernel once and then handles many requests.
+{
+	frankenphp {
+		worker {
+			file ./public/index.php
+			{$FRANKENPHP_WORKER_CONFIG}
+		}
+	}
+}
+
+{$SERVER_NAME::8080} {
+	encode zstd gzip
+	root * public
+	php_server
+}

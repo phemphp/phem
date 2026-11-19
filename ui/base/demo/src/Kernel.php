@@ -14,7 +14,7 @@ use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 use Symfony\UX\StimulusBundle\StimulusBundle;
 use Symfonycasts\TailwindBundle\SymfonycastsTailwindBundle;
 
-/** The demo app: `make demo` builds the .phem files with phemc and serves the gallery. */
+/** The demo app: `make demo` builds its production image (etc/Dockerfile) and serves the gallery. */
 final class Kernel extends BaseKernel
 {
     use MicroKernelTrait;

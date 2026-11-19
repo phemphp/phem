@@ -1,6 +1,6 @@
 #!/bin/sh
 # Prepares the demo: the Composer and importmap packages, the compiled components and the
-# Tailwind CSS. `make demo` and bin/test run it. Set APP_ENV for the environment of the console.
+# Tailwind CSS. bin/test runs it. Set APP_ENV for the environment of the console.
 set -e
 cd "$(dirname "$0")/.."
 

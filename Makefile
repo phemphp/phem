@@ -23,7 +23,7 @@ ui-test-e2e: ## Run the browser tests of the phem/ui-base demo. Pass PHPUnit opt
 ui-check: ## Check the phem/ui-base components with the phemc of this repository
 	$(MAKE) -C ui/base check
 
-ui-demo: ## Serve the phem/ui-base demo on http://localhost:8100, with the phem of this repository
+ui-demo: ## Build the phem/ui-base demo image and serve it with FrankenPHP on http://localhost:8100, with the phem of this repository
 	$(MAKE) -C ui/base demo
 
 bench:  ## Run the benchmark of the client/server flow (bench/run.php): server time, bytes, requests

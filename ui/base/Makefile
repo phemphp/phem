@@ -22,5 +22,7 @@ check: install ## Check the components with phemc
 shell: ## Open a shell in the image
 	$(DC) ui bash
 
-demo: ## Serve the demo app on http://localhost:8100
-	$(DC) --service-ports ui sh -c 'demo/bin/setup && cd demo && php -S 0.0.0.0:8000 -t public'
+demo: ## Build the production image of the demo (demo/etc/Dockerfile) and serve it with FrankenPHP on http://localhost:8100
+	@test -f demo/.env.local || printf 'APP_SECRET=%s\n' "$$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > demo/.env.local
+	docker build -f demo/etc/Dockerfile -t phem-ui-base-demo ../..
+	docker run --rm --init -p 8100:8080 phem-ui-base-demo
