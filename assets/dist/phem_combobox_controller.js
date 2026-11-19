@@ -948,8 +948,11 @@ export default class PhemComboboxController extends Controller {
     }
   }
 
+  // A highlight that is not of the pointer: `onPointerMove` sets `pointerItem` again after the
+  // call. So `onPointerOut` removes only a highlight of the pointer.
   #highlight(item, { scroll = true } = {}) {
     this.highlighted = item ?? null
+    this.pointerItem = null
     this.#render()
     if (scroll) item?.scrollIntoView?.({ block: "nearest" })
   }

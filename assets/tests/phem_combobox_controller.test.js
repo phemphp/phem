@@ -943,6 +943,20 @@ describe("phem-combobox", () => {
       expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
     })
 
+    it("keeps a highlight of the keyboard on the item that the pointer highlighted before", async () => {
+      await mount(fruits())
+      typeText("a")
+      hover($("fruit-apple"))
+      press("ArrowDown")
+      press("ArrowUp")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-apple")
+
+      // The keyboard gave the highlight to the item again: it is not a highlight of the pointer.
+      out($("fruit-apple"))
+
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-apple")
+    })
+
     it("keeps the highlight of autoHighlight when the pointer leaves the items after the user types", async () => {
       await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-auto-highlight-value="true"'))
       typeText("a")

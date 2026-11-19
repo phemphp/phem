@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Fix: the highlight of the keyboard in a `phem-combobox` stays when the pointer leaves the items,
+  also on an item that the pointer highlighted before. Before, the item lost the highlight, for
+  example the first chosen item of a `multiple` combobox after the user emptied the input, when
+  the list changed under the pointer.
 - Fix: a `phem-combobox` with the `single` selection mode and a list of the server keeps the text
   that the user types when the server render marks the item that the browser already selected
   (for example with a bound value). Before, the answer of the search wrote the label of the item
