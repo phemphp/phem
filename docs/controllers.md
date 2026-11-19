@@ -1371,7 +1371,50 @@ A click on an item adds its `data-value` to the values, or removes it. The item 
 <li data-value="ts" data-phem-combobox-target="item" role="option" aria-selected="true" data-selected>TypeScript</li>
 ```
 
-The first values are the items that the server renders with `data-selected`. The values stay after the morph of an event, and a server render that changes the `data-selected` of an item adds or removes its value.
+The first values are the items that the server renders with `data-selected`, and the chips with a `data-value` that it renders with no `hidden`. The values stay after the morph of an event, and a server render that changes the `data-selected` of an item adds or removes its value.
+
+A form sends only the chosen values: put a hidden input with the value in each chip (`<input type="hidden" name="languages" value="js">`). The form fields of a hidden chip get `disabled`, and the fields of a chip that shows lose it.
+
+### Choose more than one item of a list of the server
+
+The `multiple` selection mode also works with a list of the server, for a form that sends the choices on submit: the server searches, and the browser keeps the chosen items. The items have no `onClick` handler, so a choice sends no event. A click on an item that is not chosen adds a chip from the `chipTemplate` part, before the template: `{label}` in its text and its attributes is the label of the item, and `{value}` in its attributes is the value of the item. A hidden input in the chip gives the value to the form:
+
+```phem
+<form onSubmit={{ save }}>
+    <div data-controller="phem-combobox" data-phem-combobox-selection-mode-value="multiple" data-phem-combobox-multiple-value="true">
+        <div data-phem-combobox-target="chips" aria-label="Selected reviewers">
+            <template data-phem-combobox-target="chipTemplate">
+                <span data-phem-combobox-target="chip" aria-label="{label}">
+                    {label}
+                    <input type="hidden" name="reviewers" value="{value}" />
+                    <button type="button" data-phem-combobox-target="chipRemove" aria-label="Remove {label}">×</button>
+                </span>
+            </template>
+            <input data-phem-combobox-target="input" onChange={{ search }} aria-label="Reviewers" />
+        </div>
+        <div data-phem-combobox-target="popup" hidden>
+            <ul data-phem-combobox-target="list">
+                {% for person in people %}
+                    <li key={{ person.id }} data-value={{ person.id }} data-label={{ person.name }} data-phem-combobox-target="item">{{ person.name }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <button type="submit">Submit</button>
+</form>
+```
+
+After a click on **Tom Cook**, the browser shows the chip, and the item stays in the list while new results come in:
+
+```html
+<span data-phem-combobox-target="chip" aria-label="Tom Cook" id="phem-combobox-choice-1" data-value="tom-cook" tabindex="-1">
+    Tom Cook
+    <input type="hidden" name="reviewers" value="tom-cook">
+    <button type="button" data-phem-combobox-target="chipRemove" aria-label="Remove Tom Cook" tabindex="-1">×</button>
+</span>
+```
+
+The chips that the browser made stay through the morph of an event, until the server renders a chip with the same `data-value`: the chip of the server replaces the chip of the browser. A server render that removes a chip with a `data-value` removes its value. A click on the `chipRemove` part of a chip, a second click on its item or a click on the `clear` part removes the value: the chip leaves, and so does an item that the browser kept in the list. The handler of the submit gets the values in `$e->form['reviewers']`: a string for one value, and a list for more than one. For a choice that the server saves at once, give the items an `onClick` handler and no `multiple` selection mode (see "Show a choice before the server answers").
 
 The `trigger` and the `inputGroup` parts show the state of the popup. An Autocomplete (no selection) with a list of the browser, a trigger and an input group:
 

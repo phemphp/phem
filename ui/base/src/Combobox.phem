@@ -21,7 +21,10 @@ use Phem\{Bound, Html, Node};
  * An item with an `onClick` handler shows its choice before the server answers: with `multiple`,
  * a ComboboxChipTemplate gives the chip. While the handler runs, the ComboboxChipRemove of the
  * chip (or the ComboboxClear) shows a spinner. When the handler fails, it shows a warning, and
- * after one second the choice goes.
+ * after one second the choice goes. In a form that sends the choice on submit, give the root a
+ * `name` and a `selectionMode` (`single`, or `multiple` with `multiple`), and the items no
+ * handler: the browser keeps the selection, also with a list of the server. With `multiple`, a
+ * ComboboxChipTemplate gives the chips of the choices.
  * Give an `id`: the ids of the input and the items start with it, so the highlight stays on its
  * item through the morph.
  *
@@ -55,7 +58,11 @@ class Combobox
     #[Prop] public int $sideOffset = 4;
     #[Prop] public int $alignOffset = 0;
     #[Prop] public int $collisionPadding = 5;
-    /** The name of the selected value in a form: a hidden input gets the `value` of the selected item. */
+    /**
+     * The name of the selected value in a form: a hidden input gets the `value` of the selected
+     * item. With `multiple`, each ComboboxChip with a `value` (and the chip of a
+     * ComboboxChipTemplate) has a hidden input with the value of its item.
+     */
     #[Prop] public ?string $name = null;
     /**
      * The `value` of the selected item, bound to a state with `phem:bind`: the browser selects (the
@@ -462,12 +469,18 @@ function ComboboxChips(?Html $children = null, mixed ...$rest): Node
  * A chosen value, for a combobox with `multiple`. Give it an `aria-label`.
  *
  * With a list of the browser, render a chip for each item, with the `value` of its item: the
- * browser shows the chips of the chosen items, in the order of the choices.
+ * browser shows the chips of the chosen items, in the order of the choices. With a `name` on the
+ * root, the chip has a hidden input with its `value`, so a form sends the chosen values. The chip
+ * of a ComboboxChipTemplate also has it: its input gets the value of the item. A chip with no
+ * `value` out of a template has no input.
  */
 #[Component]
-function ComboboxChip(#[Context] Combobox $combobox, ?string $value = null, ?Html $children = null, mixed ...$rest): Node
+function ComboboxChip(#[Context] Combobox $combobox, #[Context] ?ComboboxChipTemplate $template = null, ?string $value = null, ?Html $children = null, mixed ...$rest): Node
 {
     $hidden = null !== $value && 'multiple' === $combobox->resolvedSelectionMode() && !$combobox->isSelected($value);
+    // The chip of a template gets the value of the item in the browser.
+    $field = null !== $template ? '{value}' : $value;
+    $name = $combobox->multiple && null !== $field ? $combobox->name : null;
 
     return (
         <div
@@ -479,19 +492,27 @@ function ComboboxChip(#[Context] Combobox $combobox, ?string $value = null, ?Htm
             {{ ...rest }}
         >
             {{ children }}
+            {% if name is not null %}<input type="hidden" name={{ name }} value={{ field }} disabled={{ hidden }} />{% endif %}
         </div>
     );
 }
 
 /**
  * The chip that the browser shows at once for a choice of the server, before the handler of the
- * item answers: put a ComboboxChip with no `value` in it. `{label}` in its text and its attributes
- * is the label of the item. Put it after the chips of the server, in the ComboboxChips.
+ * item answers, or for a choice that the browser keeps (the `multiple` selection mode with a list
+ * of the server): put a ComboboxChip with no `value` in it. `{label}` in its text and its
+ * attributes is the label of the item, and `{value}` in its attributes the value of the item. Put
+ * it after the chips of the server, in the ComboboxChips.
  */
-#[Component]
-function ComboboxChipTemplate(?Html $children = null): Node
+#[Component, Provide]
+class ComboboxChipTemplate
 {
-    return <template data-phem-combobox-target="chipTemplate">{{ children }}</template>;
+    #[Prop] public ?Html $children = null;
+
+    public function render(): Node
+    {
+        return <template data-phem-combobox-target="chipTemplate">{{ children }}</template>;
+    }
 }
 
 /**

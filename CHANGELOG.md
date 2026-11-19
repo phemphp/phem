@@ -8,6 +8,17 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The `multiple` selection mode of `phem-combobox` also works with a list of the server, for a
+  form that sends the choices on submit: the server searches, and the browser keeps the chosen
+  items. A click on an item with no handler adds a chip from the `chipTemplate` part, where
+  `{value}` in the attributes is the value of the item (for example
+  `<input type="hidden" name="reviewers" value="{value}">`). The chips that the browser made stay
+  through the morph, until a chip of the server for the same value replaces them. A chip that the
+  server renders with no `hidden` is a first value, and a server render that removes it removes
+  the value. The form fields of a hidden chip get `disabled`, so a form sends only the chosen
+  values. In phem/ui-base, `selectionMode="single"` or `"multiple"` gives the selection to the
+  browser also with a list of the server, and with a `name` each `ComboboxChip` with a `value`
+  (and the chip of a `ComboboxChipTemplate`) has a hidden input with its value.
 - A `phem-combobox` with a list of the server shows a choice before the `onClick` handler of the
   item answers. With `multiple`, a click on an item that is not chosen adds a chip from the new
   `chipTemplate` part (a `<template>`: `{label}` is the label of the item), and the item gets

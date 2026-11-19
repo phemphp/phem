@@ -122,6 +122,28 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorExists('#langs-item-php[data-selected]');
     }
 
+    public function testASelectionModeGivesTheSelectionOfAListOfTheServerToTheBrowser(): void
+    {
+        $html = $this->mount(self::APP.'ComboboxFormDemo')
+            // A `name` alone does not change the selection of a list of the server.
+            ->assertSelectorExists('[data-controller="phem-combobox"]:not([data-phem-combobox-selection-mode-value]) #tag-input')
+            ->assertSelectorNotExists('input[name="tag"]')
+            // One value: the hidden input of the root.
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-selection-mode-value="single"] input[type="hidden"][name="owner"][data-phem-combobox-target="value"]')
+            // More than one value: a hidden input in each chip. The input of a hidden chip is disabled.
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-selection-mode-value="multiple"][data-phem-combobox-multiple-value="true"]')
+            ->assertSelectorExists('[data-phem-combobox-target="chip"][data-value="ada"]:not([hidden]) input[type="hidden"][name="reviewers"][value="ada"]:not([disabled])')
+            ->assertSelectorExists('[data-phem-combobox-target="chip"][data-value="bob"][hidden] input[type="hidden"][name="reviewers"][value="bob"][disabled]')
+            ->assertSelectorNotExists('input[type="hidden"][name="reviewers"][data-phem-combobox-target="value"]')
+            // A chip with no value out of the template has no input.
+            ->assertSelectorCount(2, '[data-phem-combobox-target="chips"] > [data-phem-combobox-target="chip"] input[name="reviewers"]')
+            ->html();
+
+        // The chip of the template gets the value of the item.
+        $template = (string) preg_replace('/^.*<template data-phem-combobox-target="chipTemplate">(.*?)<\/template>.*$/s', '$1', $html);
+        self::assertStringContainsString('name="reviewers" value="{value}"', $template);
+    }
+
     public function testThePopupOfAnAutocompleteHasNoAnimation(): void
     {
         $this->mount(self::APP.'ComboboxSelectionDemo')

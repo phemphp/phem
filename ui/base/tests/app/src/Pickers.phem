@@ -5,8 +5,8 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\{Component, State};
 use Phem\Node;
 
-use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxChipTemplate, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
-use Phem\Ui\Base\{Autocomplete, Combobox, Drawer, DrawerViewport, ToastViewport};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
+use Phem\Ui\Base\{Autocomplete, Combobox, ComboboxChipTemplate, Drawer, DrawerViewport, ToastViewport};
 
 // A Combobox with a list of the browser has one selected item, and an Autocomplete has none.
 #[Component]
@@ -90,6 +90,38 @@ function ComboboxMultipleDemo(): Node
                 </ComboboxList>
             </ComboboxPopup>
         </Combobox>
+    );
+}
+
+// A list of the server in a form: the `selectionMode` gives the selection to the browser, and the
+// `name` the values to the form. The owner has one value, and each chip of a reviewer has a hidden
+// input. A chip with no value out of the template has no input.
+#[Component]
+function ComboboxFormDemo(): Node
+{
+    return (
+        <form>
+            <Combobox id="tag" name="tag">
+                <ComboboxInput />
+                <ComboboxPopup><ComboboxList></ComboboxList></ComboboxPopup>
+            </Combobox>
+            <Combobox id="owner" name="owner" selectionMode="single">
+                <ComboboxInput />
+                <ComboboxPopup><ComboboxList><ComboboxItem value="ada" label="Ada">Ada</ComboboxItem></ComboboxList></ComboboxPopup>
+            </Combobox>
+            <Combobox id="reviewers" name="reviewers" multiple selectionMode="multiple" defaultValue={{ ['ada'] }}>
+                <ComboboxChips>
+                    <ComboboxChip value="ada" aria-label="Ada">Ada<ComboboxChipRemove aria-label="Remove Ada" /></ComboboxChip>
+                    <ComboboxChip value="bob" aria-label="Bob">Bob<ComboboxChipRemove aria-label="Remove Bob" /></ComboboxChip>
+                    <ComboboxChip aria-label="Cy">Cy</ComboboxChip>
+                    <ComboboxChipTemplate>
+                        <ComboboxChip aria-label="{label}">{label}<ComboboxChipRemove aria-label="Remove {label}" /></ComboboxChip>
+                    </ComboboxChipTemplate>
+                    <ComboboxInput />
+                </ComboboxChips>
+                <ComboboxPopup><ComboboxList></ComboboxList></ComboboxPopup>
+            </Combobox>
+        </form>
     );
 }
 

@@ -148,12 +148,18 @@ final class PersonRepository
     /** @return Person */
     public function get(string $id): array
     {
+        return $this->find($id) ?? throw new \OutOfBoundsException(\sprintf('No person has the id "%s".', $id));
+    }
+
+    /** @return Person|null the person with the id, or null when no person has it */
+    public function find(string $id): ?array
+    {
         foreach (self::PEOPLE as $person) {
             if ($person['id'] === $id) {
                 return $person;
             }
         }
 
-        throw new \OutOfBoundsException(\sprintf('No person has the id "%s".', $id));
+        return null;
     }
 }

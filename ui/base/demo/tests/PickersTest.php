@@ -113,6 +113,63 @@ final class PickersTest extends DemoTestCase
         expect($lindsay)->toHaveAttribute('aria-selected', 'true');
     }
 
+    public function testComboboxAsyncSearchInAFormSendsTheChoicesOnSubmit(): void
+    {
+        $page = $this->visitComponent('combobox');
+
+        // The page records the elements of the events: the inputs search and the form submits. A
+        // choice sends no event.
+        $page->evaluate(<<<'JS'
+            () => {
+                window.senders = []
+                document.addEventListener('phem:send', (event) => window.senders.push(event.target.tagName.toLowerCase()), true)
+            }
+            JS);
+
+        $form = $page->getByRole('region', ['name' => 'Async search in a form'])->locator('[data-demo="preview"]');
+        $owner = $form->getByRole('combobox', ['name' => 'Owner']);
+        $reviewers = $form->getByRole('combobox', ['name' => 'Reviewers']);
+        $submit = $form->getByRole('button', ['name' => 'Submit']);
+        $chips = $form->locator('[data-phem-combobox-target="chip"]:not([hidden])');
+
+        // An empty choice: the handler of the submit shows the errors.
+        $submit->click();
+        expect($form->getByText('Choose an owner.'))->toBeVisible();
+        expect($form->getByText('Choose at least one reviewer.'))->toBeVisible();
+        expect($owner)->toHaveAttribute('aria-invalid', 'true');
+
+        $owner->fill('tom');
+        $form->getByRole('option', ['name' => 'Tom Cook'])->click();
+        expect($owner)->toHaveValue('Tom Cook');
+
+        // Each choice adds a chip at once, with no spinner.
+        $reviewers->fill('lindsay');
+        $form->getByRole('option', ['name' => 'Lindsay Walton'])->click();
+        $reviewers->fill('michael');
+        $form->getByRole('option', ['name' => 'Michael Foster'])->click();
+        expect($chips)->toHaveCount(2);
+        expect($chips->nth(0))->toHaveText('Lindsay Walton');
+        expect($chips->nth(1))->toHaveText('Michael Foster');
+        expect($reviewers)->toHaveValue('');
+        expect($form->locator('[data-pending]'))->toHaveCount(0);
+
+        $form->getByRole('button', ['name' => 'Remove Michael Foster'])->click();
+        expect($chips)->toHaveCount(1);
+        expect($chips)->toHaveText('Lindsay Walton');
+
+        // The submit sends the choices of the browser.
+        $submit->click();
+        expect($form->getByText('Owner: Tom Cook. Reviewers: Lindsay Walton.'))->toBeVisible();
+        expect($form->getByText('Choose an owner.'))->toHaveCount(0);
+        expect($chips)->toHaveCount(1);
+        expect($chips)->toHaveText('Lindsay Walton');
+        expect($owner)->toHaveValue('Tom Cook');
+
+        $senders = $page->evaluate('() => window.senders');
+        self::assertSame(['form', 'input'], array_values(array_unique($senders)));
+        self::assertSame('form', end($senders));
+    }
+
     public function testComboboxAsyncSearchShowsAChoiceBeforeTheAnswer(): void
     {
         $page = $this->visitComponent('combobox');

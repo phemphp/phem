@@ -1942,6 +1942,187 @@ describe("phem-combobox", () => {
     })
   })
 
+  describe("the multiple selection mode with a list of the server", () => {
+    // The people that the server gives, with the template of a chip that sends the value in a
+    // form, and the chips of the people that it renders as chosen.
+    function people(results, { chosen = [], text = "" } = {}) {
+      const names = { ada: "Ada Lovelace", bob: "Bob Kahn", tom: "Tom Cook" }
+      const chip = (id) => `<span id="chip-${id}" data-phem-combobox-target="chip" data-value="${id}">${names[id]}<input type="hidden" name="reviewers" value="${id}" /><button type="button" id="remove-${id}" data-phem-combobox-target="chipRemove" aria-label="Remove ${names[id]}">×</button></span>`
+      const item = (id) => `<li id="person-${id}" data-value="${id}" data-label="${names[id]}" data-phem-combobox-target="item">${names[id]}</li>`
+
+      return `<form id="form" data-phem-on-submit="c1.save">
+          <div id="combobox" data-controller="phem-combobox" data-phem-combobox-selection-mode-value="multiple" data-phem-combobox-multiple-value="true">
+            <div id="chips" data-phem-combobox-target="chips">
+              ${chosen.map(chip).join("")}
+              <template id="chip-template" data-phem-combobox-target="chipTemplate"><span data-phem-combobox-target="chip" aria-label="{label}">{label}<input type="hidden" name="reviewers" value="{value}" /><button type="button" data-phem-combobox-target="chipRemove" aria-label="Remove {label}">×</button></span></template>
+              <input id="input" data-phem-combobox-target="input" data-phem-on-input="c1.search" aria-label="Reviewers" value="${text}" />
+            </div>
+            <button type="button" id="clear" data-phem-combobox-target="clear">Clear</button>
+            <div id="popup" data-phem-combobox-target="popup" hidden>
+              <ul id="list" data-phem-combobox-target="list">${results.map(item).join("")}</ul>
+            </div>
+          </div>
+        </form>`
+    }
+
+    const chips = () => [...$("chips").children].filter((el) => el.matches("[data-phem-combobox-target=chip]") && !el.hidden).map((el) => el.getAttribute("data-value"))
+    const sent = () => new FormData($("form")).getAll("reviewers")
+
+    // The user types, and the server answers with the results.
+    async function search(text, results, chosen = []) {
+      respond(people(results, { chosen, text }))
+      const done = nextDone()
+      $("input").focus()
+      $("input").value = text
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      await done
+    }
+
+    it("adds the chip of a chosen item from the template, with no event of the server", async () => {
+      await mountField(people([]))
+      await search("a", ["ada", "bob"])
+      const changes = []
+      $("combobox").addEventListener("phem-combobox:change", (event) => changes.push(event.detail.value))
+      const calls = fetch.mock.calls.length
+
+      // The text goes after the click: its input event searches with no text.
+      respond(people([]))
+      const done = nextDone()
+      $("person-bob").click()
+
+      expect(chips()).toEqual(["bob"])
+      const chip = $("chips").querySelector('[data-value="bob"]')
+      expect(chip.textContent).toBe("Bob Kahn×")
+      expect(chip.getAttribute("aria-label")).toBe("Bob Kahn")
+      expect(chip.nextElementSibling.id).toBe("chip-template")
+      expect($("person-bob").getAttribute("aria-selected")).toBe("true")
+      expect($("person-bob").hasAttribute("data-selected")).toBe(true)
+      expect($("person-bob").hasAttribute("data-pending")).toBe(false)
+      expect(sent()).toEqual(["bob"])
+      expect(changes).toEqual([["bob"]])
+      expect(fetch.mock.calls.length).toBe(calls)
+
+      // The new list of the server keeps the chip, and the chosen item.
+      await done
+      expect($("input").value).toBe("")
+      expect(chips()).toEqual(["bob"])
+      expect($("person-bob")).not.toBe(null)
+      expect($("person-ada")).toBe(null)
+      expect(sent()).toEqual(["bob"])
+    })
+
+    it("removes a value with a second click, the remove button of its chip and the clear target", async () => {
+      await mountField(people([]))
+      await search("o", ["ada", "bob", "tom"])
+      respond(people(["ada", "bob", "tom"], { text: "" }))
+      const done = nextDone()
+      $("person-ada").click()
+      $("person-bob").click()
+      $("person-tom").click()
+      await done
+      expect(chips()).toEqual(["ada", "bob", "tom"])
+
+      $("person-ada").click()
+      expect(chips()).toEqual(["bob", "tom"])
+      expect($("person-ada").getAttribute("aria-selected")).toBe("false")
+
+      $("chips").querySelector('[data-value="bob"] button').click()
+      expect(chips()).toEqual(["tom"])
+      expect(sent()).toEqual(["tom"])
+
+      respond(people([]))
+      $("clear").click()
+      expect(chips()).toEqual([])
+      expect(sent()).toEqual([])
+    })
+
+    it("removes a kept item from the list when its value goes", async () => {
+      await mountField(people([]))
+      await search("bo", ["bob"])
+      respond(people([]))
+      const done = nextDone()
+      $("person-bob").click()
+      await done
+      expect($("person-bob")).not.toBe(null)
+
+      $("chips").querySelector('[data-value="bob"] button').click()
+      expect(chips()).toEqual([])
+      expect($("person-bob")).toBe(null)
+    })
+
+    it("takes the chips of the server render as the first values, and keeps a removed one out of the form", async () => {
+      await mountField(people([], { chosen: ["ada", "tom"] }))
+      expect(chips()).toEqual(["ada", "tom"])
+      expect(sent()).toEqual(["ada", "tom"])
+
+      $("remove-ada").click()
+      expect(chips()).toEqual(["tom"])
+      expect($("chip-ada").hidden).toBe(true)
+      expect(sent()).toEqual(["tom"])
+
+      // A server render of the same chips keeps the choice of the browser.
+      await search("b", ["bob"], ["ada", "tom"])
+      expect($("chip-ada").hidden).toBe(true)
+      expect(chips()).toEqual(["tom"])
+      expect(sent()).toEqual(["tom"])
+    })
+
+    it("removes the value of a chip that a server render removes", async () => {
+      await mountField(people([], { chosen: ["ada", "tom"] }))
+      await search("b", ["bob"], ["tom"])
+
+      expect(chips()).toEqual(["tom"])
+      expect(sent()).toEqual(["tom"])
+      expect($("clear").hidden).toBe(false)
+    })
+
+    it("replaces the chip that the browser made with the chip of the server", async () => {
+      await mountField(people([]))
+      await search("a", ["ada", "bob"])
+      respond(people(["ada", "bob"], { chosen: ["ada"], text: "a" }))
+      $("person-ada").setAttribute("data-phem-on-click", "c1.assign")
+      const done = nextDone()
+      $("person-ada").click()
+      expect(chips()).toEqual(["ada"])
+      await done
+
+      expect(chips()).toEqual(["ada"])
+      expect($("chips").querySelectorAll('[data-value="ada"]').length).toBe(1)
+      expect($("chip-ada")).not.toBe(null)
+      expect(sent()).toEqual(["ada"])
+    })
+
+    it("lets the server change the disabled state of a button in a chip", async () => {
+      await mountField(people([], { chosen: ["ada"] }))
+      respond(people(["bob"], { chosen: ["ada"], text: "b" }).replace('id="remove-ada"', 'id="remove-ada" disabled'))
+      const done = nextDone()
+      $("input").focus()
+      $("input").value = "b"
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      await done
+
+      expect($("remove-ada").disabled).toBe(true)
+    })
+
+    it("sends the chosen values with the submit of the form", async () => {
+      await mountField(people([]))
+      await search("a", ["ada", "bob"])
+      respond(people([]))
+      const searched = nextDone()
+      $("person-ada").click()
+      await searched
+
+      respond(people([]))
+      const done = nextDone()
+      $("form").requestSubmit()
+      await done
+
+      const { form } = JSON.parse(fetch.mock.calls.at(-1)[1].body).event
+      expect(form).toEqual([["reviewers", "ada"]])
+      expect(chips()).toEqual(["ada"])
+    })
+  })
+
   describe("an inline list", () => {
     // A command palette: the list is in the page, with no popup.
     function palette(attributes = "") {

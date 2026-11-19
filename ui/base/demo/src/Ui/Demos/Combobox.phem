@@ -7,8 +7,8 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\{Event, Node};
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxChipTemplate, ComboboxClear, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxIcon, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxStatus, ComboboxTrigger, ComboboxValue, DialogClose, DialogDescription, DialogPopup, DialogTitle};
-use Phem\Ui\Base\{Align, Button, Combobox, Dialog};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxIcon, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxStatus, ComboboxTrigger, ComboboxValue, DialogClose, DialogDescription, DialogPopup, DialogTitle};
+use Phem\Ui\Base\{Align, Button, Combobox, ComboboxChipTemplate, Dialog};
 
 // The 187 countries of the Input inside popup demo of Base UI.
 const COUNTRIES = [
@@ -278,6 +278,13 @@ function ComboboxPage(): Node
                         <p>A choice shows at once: the browser adds a chip from <code>ComboboxChipTemplate</code>, where <code>{label}</code> is the label of the item, and its remove button shows a spinner until the server answers. When the handler fails, the button shows a warning, and after one second the chip goes. Choose Marvin McKinney to see a failure.</p>
                     </Example.description>
                     <ComboboxAsyncMultipleDemo />
+                </Example>
+                <Example title="Async search in a form" source="ComboboxAsyncFormDemo">
+                    <Example.description>
+                        <p>Load items from the server on input changes, and send the choices with the form. Give the root a <code>name</code> and a <code>selectionMode</code> (<code>single</code>, or <code>multiple</code> with <code>multiple</code>), and the items no <code>onClick</code> handler: the browser keeps the selection, and a choice sends no event. With <code>multiple</code>, the browser adds a chip from <code>ComboboxChipTemplate</code> for each choice, and each chip has a hidden input with the value of its item. The <code>onSubmit</code> handler of the form gets the values.</p>
+                        <p>Use this pattern when the app saves all the data of a form on submit. Use the async search examples above when each choice saves at once.</p>
+                    </Example.description>
+                    <ComboboxAsyncFormDemo />
                 </Example>
                 <Example title="Creatable" source="ComboboxCreatableDemo">
                     <Example.description>
@@ -641,6 +648,137 @@ final class ComboboxAsyncMultipleDemo
                     </ComboboxList>
                 </ComboboxPopup>
             </Combobox>
+        );
+    }
+}
+
+// The search of the server in a form: the browser keeps the choices, and the submit sends them.
+// The items have no handler, so a choice sends no event, and the `selectionMode` of each root gives
+// the selection to the browser. The `name` of each root gives the form its values: the hidden input of the owner, and the hidden input of each chip of a reviewer.
+#[Component]
+final class ComboboxAsyncFormDemo
+{
+    #[State] public string $ownerQuery = '';
+    #[State] public string $reviewersQuery = '';
+    /** @var list<array<string, string>> */
+    #[State] public array $owners = [];
+    /** @var list<array<string, string>> */
+    #[State] public array $reviewers = [];
+    /** @var array<string, string> */
+    #[State] public array $errors = [];
+    #[State] public ?string $result = null;
+
+    public function __construct(private readonly PersonRepository $repository)
+    {
+    }
+
+    public function searchOwners(Event $e): void
+    {
+        $this->ownerQuery = trim((string) $e->value);
+        $this->owners = $this->repository->search($this->ownerQuery);
+    }
+
+    public function searchReviewers(Event $e): void
+    {
+        $this->reviewersQuery = trim((string) $e->value);
+        $this->reviewers = $this->repository->search($this->reviewersQuery);
+    }
+
+    public function save(Event $e): void
+    {
+        // The browser sends the values: an id that is not a person is not a choice.
+        $owner = $this->repository->find((string) ($e->form['owner'] ?? ''));
+        $reviewers = array_filter(array_map(fn (mixed $id): ?array => $this->repository->find((string) $id), (array) ($e->form['reviewers'] ?? [])));
+
+        $this->errors = array_filter([
+            'owner' => null === $owner ? 'Choose an owner.' : null,
+            'reviewers' => [] === $reviewers ? 'Choose at least one reviewer.' : null,
+        ]);
+        if ([] !== $this->errors) {
+            $this->result = null;
+
+            return;
+        }
+
+        $this->result = 'Owner: '.$owner['name'].'. Reviewers: '.implode(', ', array_column($reviewers, 'name')).'.';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ save }} className="flex flex-col items-start gap-4">
+                <div className="flex flex-col gap-1">
+                    <Combobox id="form-owner" name="owner" selectionMode="single">
+                        <ComboboxLabel>Owner</ComboboxLabel>
+                        <ComboboxInputGroup className="w-64 md:w-80">
+                            <ComboboxInput onChange={{ searchOwners }} placeholder="e.g. Michael" aria-invalid={{ errors.owner is defined ? 'true' : null }} aria-describedby={{ errors.owner is defined ? 'form-owner-error' : null }} />
+                            <ComboboxActions>
+                                <ComboboxClear aria-label="Clear selection" />
+                                <ComboboxTrigger aria-label="Open popup" />
+                            </ComboboxActions>
+                        </ComboboxInputGroup>
+                        <ComboboxPopup className="py-1">
+                            <ComboboxStatus
+                                idle="Start typing to search people…"
+                                pending="Searching…"
+                                empty={{ 'No matches for "' ~ ownerQuery ~ '".' }}
+                                error="Failed to fetch people. Please try again."
+                            />
+                            <ComboboxList className="py-0">
+                                {% for person in owners %}
+                                    <ComboboxItem key={{ person.id }} value={{ person.id }} label={{ person.name }}>
+                                        <ComboboxItemIndicator />
+                                        <ComboboxItemLabel>{{ person.name }}</ComboboxItemLabel>
+                                    </ComboboxItem>
+                                {% endfor %}
+                            </ComboboxList>
+                        </ComboboxPopup>
+                    </Combobox>
+                    {% if errors.owner is defined %}<p id="form-owner-error" className="text-sm text-red-700 dark:text-red-400">{{ errors.owner }}</p>{% endif %}
+                </div>
+                <div className="flex flex-col gap-1">
+                    <Combobox id="form-reviewers" name="reviewers" multiple selectionMode="multiple" className="max-w-md">
+                        <ComboboxLabel>Reviewers</ComboboxLabel>
+                        <ComboboxInputGroup className="flex h-auto min-h-8 w-64 cursor-text flex-wrap items-center gap-0.5 px-2 py-1 has-[button]:px-1 min-[32rem]:w-[22rem]">
+                            <ComboboxChips aria-label="Selected reviewers">
+                                <ComboboxChipTemplate>
+                                    <ComboboxChip aria-label="{label}">
+                                        {label}
+                                        <ComboboxChipRemove aria-label="Remove {label}" />
+                                    </ComboboxChip>
+                                </ComboboxChipTemplate>
+                                <ComboboxInput
+                                    onChange={{ searchReviewers }}
+                                    placeholder="e.g. Michael"
+                                    selectedDescription="{count} selected. From the start of the input, press Left Arrow to focus the selected items"
+                                    aria-invalid={{ errors.reviewers is defined ? 'true' : null }}
+                                    aria-describedby={{ errors.reviewers is defined ? 'form-reviewers-error' : null }}
+                                    className="h-[calc(1.5rem-2px)] w-auto min-w-12 flex-1 p-0"
+                                />
+                            </ComboboxChips>
+                        </ComboboxInputGroup>
+                        <ComboboxPopup className="py-1">
+                            <ComboboxStatus
+                                idle="Start typing to search people…"
+                                pending="Searching…"
+                                empty={{ 'No matches for "' ~ reviewersQuery ~ '".' }}
+                                error="Failed to fetch people. Please try again."
+                            />
+                            <ComboboxList className="max-h-[min(24.5rem,var(--available-height))] py-0">
+                                {% for person in reviewers %}
+                                    <ComboboxItem key={{ person.id }} value={{ person.id }} label={{ person.name }}>
+                                        <ComboboxItemIndicator />
+                                        <ComboboxItemLabel>{{ person.name }}</ComboboxItemLabel>
+                                    </ComboboxItem>
+                                {% endfor %}
+                            </ComboboxList>
+                        </ComboboxPopup>
+                    </Combobox>
+                    {% if errors.reviewers is defined %}<p id="form-reviewers-error" className="text-sm text-red-700 dark:text-red-400">{{ errors.reviewers }}</p>{% endif %}
+                </div>
+                <Button type="submit">Submit</Button>
+                <p role="status" className="text-sm empty:hidden">{{ result }}</p>
+            </form>
         );
     }
 }
