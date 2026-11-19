@@ -1220,7 +1220,7 @@ final class ReviewerField
 }
 ```
 
-A click on an item selects it in the browser, as with a list of the browser: the item gets `data-selected` and `aria-selected="true"`, and the `value` part gets its `data-value`. The input gets the label of the item, and sends its `input` and `change` events. The label of the selection is not a search, so the event gives no text: after a click on **Lindsay Walton**, the browser sends `search` with `$e->value` set to `""`, and `selected: "lindsay"`. A `phem:bind` input gets `""` too. The text that the user types goes as it is.
+A click on an item selects it in the browser, as with a list of the browser: the item gets `data-selected` and `aria-selected="true"`, and the `value` part gets its `data-value`. The input gets the label of the item at once, and sends its `input` and `change` events in the next task, after the event of the click (when the item has an `onClick` handler): the server render of the search does not have to keep the item for its handler. The label of the selection is not a search, so the event gives no text: after a click on **Lindsay Walton**, the browser sends `search` with `$e->value` set to `""`, and `selected: "lindsay"`. A `phem:bind` input gets `""` too. The text that the user types goes as it is.
 
 The browser keeps the selected item in the list: a server render that does not have it (here `search('')` gives no people) keeps the item at the end of the list. The text of an input with no `phem:bind` belongs to the browser, so the morph keeps the label. The server can also mark the selected item, for example with `data-selected={{ person.id == selected ? '' : null }}` on the `li`. A server render that marks the item that the browser already selected does not change the input: the text that the user types stays. For example, after the user deletes the last letter of **Lindsay Walton**, the input keeps `Lindsay Walto` when the answer of the server marks Lindsay as selected. A server render that removes this item does not change the selection of the browser. So a choice with the keyboard keeps the new item while the list of the search still has the old selection: after the search "Li", ArrowDown to **Leslie Alexander** and Enter, the answer of the server has no people. The browser keeps Leslie, with its label and its value, and the item of Lindsay leaves the list. After the click on **Lindsay Walton**, the browser shows:
 
@@ -1254,6 +1254,83 @@ From the input of the user until the event of the input runs, the parts keep the
 ```
 
 The rest is as with a list of the browser. The input has no free text: when the popup closes, the input gets the label of the selected item again (and sends its events), or no text. A popup that opens with the label of the selection in the input has the highlight on the selected item. The `clear` part shows only while an item is selected: a click on it removes the text and the selection, and the next event sends both. When the user deletes all the text, the selection goes too: the event sends `""` and `selected: ""`. When the selection goes, the item that the browser kept leaves the list at once, so the `idle` part shows with no wait. A clear on an open popup keeps the popup open, as in Base UI. Give an item a `data-label` when its text has more than its label (for example a name and an email).
+
+### Show a choice before the server answers
+
+With a list of the server, give an item an `onClick` handler that saves the choice, for example a service that assigns a reviewer. The browser shows the choice at once, before the handler answers, and shows the state of the handler:
+
+- With `data-phem-combobox-multiple-value="true"`, a click on an item that is not chosen adds a chip from the `chipTemplate` part, a `<template>` in the box of the chips. The chip goes before the template, with the `data-value` of the item and its own `id`. `{label}` in its text and in its attributes is the label of the item (its `data-label`, or its text). The item gets `aria-selected="true"`. An item that is chosen (a click removes it) gets no chip.
+- With the `single` selection mode, the browser selects the item, as with no handler.
+
+While the handler runs, the chip, or the `clear` parts of the `single` selection mode, get `data-pending`. The chip stays through the morph of another event, for example a search. The answer of the handler shows the server render: its morph removes the chip of the browser, and shows the chip of the server. When the handler fails (it throws, or the server does not answer), the chip or the `clear` part gets `data-failed` in place of `data-pending`, and phem shows no error message for the event. After one second, the choice goes: the chip leaves and the item is not chosen, or the selection and the text of the input are cleared.
+
+```phem
+#[Component]
+final class ReviewersField
+{
+    #[State] public string $query = '';
+    #[State] public array $people = [];
+    #[State] public array $chosen = [];
+
+    public function __construct(private readonly PersonRepository $repository)
+    {
+    }
+
+    public function search(Event $e): void
+    {
+        $this->query = trim($e->value);
+        $this->people = $this->repository->search($this->query);
+    }
+
+    public function toggle(string $id): void
+    {
+        $others = array_values(array_filter($this->chosen, static fn (array $person): bool => $person['id'] !== $id));
+        // assign() throws when the person cannot review.
+        $this->chosen = $others !== $this->chosen ? $others : [...$this->chosen, $this->repository->assign($id)];
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div data-controller="phem-combobox" data-phem-combobox-multiple-value="true">
+                <div data-phem-combobox-target="chips">
+                    {% for person in chosen %}
+                        <span key={{ person.id }} data-value={{ person.id }} data-phem-combobox-target="chip">
+                            {{ person.name }}
+                            <button type="button" data-phem-combobox-target="chipRemove" onClick={{ toggle(person.id) }} aria-label="Remove {{ person.name }}">×</button>
+                        </span>
+                    {% endfor %}
+                    <template data-phem-combobox-target="chipTemplate">
+                        <span data-phem-combobox-target="chip">{label} <button type="button" data-phem-combobox-target="chipRemove" aria-label="Remove {label}">…</button></span>
+                    </template>
+                    <input data-phem-combobox-target="input" onChange={{ search }} aria-label="Reviewers" />
+                </div>
+                <div data-phem-combobox-target="popup" hidden>
+                    <ul data-phem-combobox-target="list">
+                        {% for person in people %}
+                            <li key={{ person.id }} id={{ 'person-' ~ person.id }} data-value={{ person.id }} data-label={{ person.name }}
+                                aria-selected={{ person.id in chosen|column('id') ? 'true' : 'false' }}
+                                data-phem-combobox-target="item" onClick={{ toggle(person.id) }}>{{ person.name }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        );
+    }
+}
+```
+
+Right after a click on **Tom Cook**, before the answer, the browser shows:
+
+```html
+<div data-phem-combobox-target="chips" role="toolbar">
+    <span data-phem-combobox-target="chip" tabindex="-1" id="phem-combobox-choice-1" data-value="tom" data-pending="">Tom Cook <button type="button" data-phem-combobox-target="chipRemove" tabindex="-1" aria-label="Remove Tom Cook">…</button></span>
+    <template data-phem-combobox-target="chipTemplate">...</template>
+    <input data-phem-combobox-target="input" role="combobox" ... />
+</div>
+```
+
+The answer replaces the chip with the chip of the server. When `assign()` throws, the chip gets `data-failed`, and one second later it leaves, and the item gets `aria-selected="false"` again. Style the parts with these attributes, for example a spinner in the remove button of a chip with `data-pending`, and a warning icon with `data-failed`. The `ComboboxChipTemplate`, `ComboboxChipRemove` and `ComboboxClear` components of phem/ui-base do it.
 
 ### Choose more than one item of a list of the browser
 

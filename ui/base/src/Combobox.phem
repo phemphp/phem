@@ -18,6 +18,10 @@ use Phem\{Bound, Html, Node};
  * bind the root to a state with `phem:bind`: the browser selects one item (`selectionMode` is
  * `single`), and keeps the selected item in the list. With `multiple`, the browser keeps the items
  * of the chips (a ComboboxChip with a `value`). A ComboboxStatus shows the state of the search.
+ * An item with an `onClick` handler shows its choice before the server answers: with `multiple`,
+ * a ComboboxChipTemplate gives the chip. While the handler runs, the ComboboxChipRemove of the
+ * chip (or the ComboboxClear) shows a spinner. When the handler fails, it shows a warning, and
+ * after one second the choice goes.
  * Give an `id`: the ids of the input and the items start with it, so the highlight stays on its
  * item through the morph.
  *
@@ -256,7 +260,11 @@ function ComboboxIcon(?Html $children = null, mixed ...$rest): Node
     return <span aria-hidden="true" className={{ classes('flex text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
 }
 
-/** The button that clears the input. Give it an `aria-label`. */
+/**
+ * The button that clears the input. Give it an `aria-label`. While the handler of the selected
+ * item runs, it shows a spinner (`data-pending`), and a warning when the handler fails
+ * (`data-failed`).
+ */
 #[Component]
 function ComboboxClear(?Html $children = null, mixed ...$rest): Node
 {
@@ -265,12 +273,21 @@ function ComboboxClear(?Html $children = null, mixed ...$rest): Node
             type="button"
             tabindex="-1"
             data-phem-combobox-target="clear"
-            className={{ classes('combobox-clear flex h-full w-6 items-center justify-center border-0 bg-transparent [&[hidden]]:hidden p-0 text-neutral-950 dark:text-white') }}
+            className={{ classes('combobox-clear group/clear flex h-full w-6 items-center justify-center border-0 bg-transparent [&[hidden]]:hidden p-0 text-neutral-950 dark:text-white') }}
             {{ ...rest }}
         >
-            {{ children ? children : <XIcon /> }}
+            <span className="contents group-data-pending/clear:hidden group-data-failed/clear:hidden">{{ children ? children : <XIcon /> }}</span>
+            <ComboboxSpinner className="group-data-pending/clear:inline-block" />
+            <WarningIcon className="hidden text-red-700 group-data-failed/clear:block dark:text-red-400" />
         </button>
     );
+}
+
+/** The spinner of a choice that waits for the server. It is hidden: a variant of its button shows it. */
+#[Component]
+function ComboboxSpinner(mixed ...$rest): Node
+{
+    return <span aria-hidden="true" className={{ classes('hidden size-3 animate-spin rounded-full border border-current border-r-transparent') }} {{ ...rest }}></span>;
 }
 
 /** The popup of the list. In an Autocomplete it has no animation, as in Base UI. */
@@ -467,8 +484,20 @@ function ComboboxChip(#[Context] Combobox $combobox, ?string $value = null, ?Htm
 }
 
 /**
+ * The chip that the browser shows at once for a choice of the server, before the handler of the
+ * item answers: put a ComboboxChip with no `value` in it. `{label}` in its text and its attributes
+ * is the label of the item. Put it after the chips of the server, in the ComboboxChips.
+ */
+#[Component]
+function ComboboxChipTemplate(?Html $children = null): Node
+{
+    return <template data-phem-combobox-target="chipTemplate">{{ children }}</template>;
+}
+
+/**
  * The button that removes a chip. Give it an `aria-label`. With a list of the browser, a click
- * removes the chosen item. Else give it an `onClick` handler.
+ * removes the chosen item. Else give it an `onClick` handler. On the chip of a ComboboxChipTemplate,
+ * it shows a spinner while the handler of the item runs, and a warning when the handler fails.
  */
 #[Component]
 function ComboboxChipRemove(?Html $children = null, mixed ...$rest): Node
@@ -477,10 +506,12 @@ function ComboboxChipRemove(?Html $children = null, mixed ...$rest): Node
         <button
             type="button"
             data-phem-combobox-target="chipRemove"
-            className={{ classes('flex size-4 items-center justify-center border-0 bg-transparent p-0 text-inherit hover:bg-neutral-200 group-focus-within:hover:bg-neutral-700 dark:hover:bg-neutral-700 dark:group-focus-within:hover:bg-neutral-200') }}
+            className={{ classes('flex size-4 items-center justify-center border-0 bg-transparent p-0 text-inherit hover:bg-neutral-200 group-focus-within:hover:bg-neutral-700 group-data-pending:pointer-events-none group-data-failed:pointer-events-none dark:hover:bg-neutral-700 dark:group-focus-within:hover:bg-neutral-200') }}
             {{ ...rest }}
         >
-            {{ children ? children : <XIcon /> }}
+            <span className="contents group-data-pending:hidden group-data-failed:hidden">{{ children ? children : <XIcon /> }}</span>
+            <ComboboxSpinner className="group-data-pending:inline-block" />
+            <WarningIcon className="hidden text-red-700 group-data-failed:block dark:text-red-400" />
         </button>
     );
 }

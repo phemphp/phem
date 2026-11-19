@@ -8,6 +8,19 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A `phem-combobox` with a list of the server shows a choice before the `onClick` handler of the
+  item answers. With `multiple`, a click on an item that is not chosen adds a chip from the new
+  `chipTemplate` part (a `<template>`: `{label}` is the label of the item), and the item gets
+  `aria-selected="true"`. With the `single` selection mode, the browser selects the item, as
+  before. While the handler runs, the chip (or the `clear` parts of the `single` selection mode)
+  gets `data-pending`, and the chip stays through the morph of another event. The answer shows the
+  server render. When the handler fails, the part gets `data-failed`, phem shows no error message,
+  and after one second the choice goes: the chip leaves, or the selection is cleared.
+- Fix: a click on an item of a `phem-combobox` with the `single` selection mode and a list of the
+  server sends the `input` and `change` events of the label after the event of the click, as with
+  `multiple`. Before, the search went first: its server render did not have the item, so the
+  `onClick` handler of the item did not run (the server answered 409, and the page loaded again).
+  The input still shows the label at once.
 - Fix: the highlight of the keyboard in a `phem-combobox` stays when the pointer leaves the items,
   also on an item that the pointer highlighted before. Before, the item lost the highlight, for
   example the first chosen item of a `multiple` combobox after the user emptied the input, when

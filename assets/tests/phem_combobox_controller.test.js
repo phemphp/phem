@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemComboboxController from "../dist/phem_combobox_controller.js"
-import { click, hover, mount, nextDone, respond, stubElementReflection } from "./support.js"
+import { answer as answerOf, click, hover, mount, nextDone, respond, stubElementReflection } from "./support.js"
 
 let application
 
@@ -2063,6 +2063,202 @@ describe("phem-combobox", () => {
       press("ArrowUp")
 
       expect($("input").hasAttribute("aria-activedescendant")).toBe(false)
+    })
+  })
+
+  describe("a choice that shows before the answer", () => {
+    // Resolves with the `phem:done` of the next event of the handler.
+    function doneOf(handler) {
+      return new Promise((resolve) => {
+        const listener = (event) => {
+          if (event.detail.handler !== handler) return
+
+          window.removeEventListener("phem:done", listener)
+          resolve(event)
+        }
+        window.addEventListener("phem:done", listener)
+      })
+    }
+
+    const failed = () => fetch.mockResolvedValueOnce(new Response("Failed", { status: 500 }))
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+    describe("with multiple", () => {
+      // The server gives the chips of the chosen people, a template of a chip, and the results.
+      function reviewers(chosen, results = ["ada", "bob"]) {
+        const chip = (p) => `<span id="chip-${p}" data-value="${p}" data-phem-combobox-target="chip" aria-label="${p}">${p}<button data-phem-combobox-target="chipRemove" data-phem-on-click="c1.remove" aria-label="Remove ${p}">×</button></span>`
+        const item = (p) => `<li id="person-${p}" data-value="${p}" data-label="${p.toUpperCase()}" data-phem-combobox-target="item" data-phem-on-click="c1.toggle" aria-selected="${chosen.includes(p)}">${p}</li>`
+
+        return `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-multiple-value="true">
+            <div id="chips" data-phem-combobox-target="chips">
+              ${chosen.map(chip).join("")}
+              <template id="chip-template" data-phem-combobox-target="chipTemplate"><span data-phem-combobox-target="chip" aria-label="{label}">{label}<button data-phem-combobox-target="chipRemove" aria-label="Remove {label}">×</button></span></template>
+              <input id="input" data-phem-combobox-target="input" data-phem-on-input="c1.search" aria-label="Reviewers" />
+            </div>
+            <div id="popup" data-phem-combobox-target="popup" hidden>
+              <ul id="list" data-phem-combobox-target="list">${results.map(item).join("")}</ul>
+            </div>
+          </div>`
+      }
+
+      const chipsOf = (value) => [...document.querySelectorAll(`#chips [data-value="${value}"]`)]
+
+      it("adds the chip of the item at once, and the chip of the server replaces it", async () => {
+        await mountField(reviewers([]))
+        respond(reviewers(["ada"]))
+        const done = doneOf("c1.toggle")
+        $("person-ada").click()
+
+        const [chip] = chipsOf("ada")
+        expect(chip.hasAttribute("data-pending")).toBe(true)
+        expect(chip.textContent).toBe("ADA×")
+        expect(chip.getAttribute("aria-label")).toBe("ADA")
+        expect(chip.querySelector("button").getAttribute("aria-label")).toBe("Remove ADA")
+        expect(chip.nextElementSibling.id).toBe("chip-template")
+        expect($("person-ada").getAttribute("aria-selected")).toBe("true")
+        expect($("person-ada").hasAttribute("data-selected")).toBe(true)
+        expect($("chips").getAttribute("role")).toBe("toolbar")
+
+        await done
+        expect(chipsOf("ada").map((el) => el.id)).toEqual(["chip-ada"])
+        expect($("chip-ada").hasAttribute("data-pending")).toBe(false)
+        expect($("person-ada").getAttribute("aria-selected")).toBe("true")
+      })
+
+      it("adds no chip for an item that is chosen, or with no template", async () => {
+        await mountField(reviewers(["ada"]))
+        respond(reviewers([]))
+        const done = doneOf("c1.toggle")
+        $("person-ada").click()
+
+        expect(chipsOf("ada").map((el) => el.id)).toEqual(["chip-ada"])
+        expect($("chip-ada").hasAttribute("data-pending")).toBe(false)
+        await done
+
+        $("chip-template").remove()
+        respond(reviewers(["bob"]).replace(/<template[\s\S]*?<\/template>/, ""))
+        const added = doneOf("c1.toggle")
+        $("person-bob").click()
+        expect(chipsOf("bob")).toEqual([])
+        await added
+      })
+
+      it("shows the failure on the chip, then removes the chip and the choice after one second", async () => {
+        await mountField(reviewers([]))
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        const errors = []
+        document.addEventListener("phem:error", (event) => errors.push(event.defaultPrevented), { once: true })
+        failed()
+        const done = doneOf("c1.toggle")
+        $("person-ada").click()
+        await done
+
+        const [chip] = chipsOf("ada")
+        expect(chip.hasAttribute("data-pending")).toBe(false)
+        expect(chip.hasAttribute("data-failed")).toBe(true)
+        expect($("person-ada").getAttribute("aria-selected")).toBe("true")
+        // The chip shows the failure: phem shows no message.
+        expect(errors).toEqual([true])
+        expect(document.querySelector(".phem-error")).toBe(null)
+
+        await wait(1050)
+        expect(chipsOf("ada")).toEqual([])
+        expect(chip.isConnected).toBe(false)
+        expect($("person-ada").getAttribute("aria-selected")).toBe("false")
+        expect($("person-ada").hasAttribute("data-selected")).toBe(false)
+        expect($("chips").hasAttribute("role")).toBe(false)
+      })
+    })
+
+    describe("with the single selection mode", () => {
+      // The people that the server gives, and the selected person. A click on a person assigns it.
+      function reviewer(results, { selected = null, text = "" } = {}) {
+        const item = ([id, name]) => `<li id="person-${id}" data-value="${id}"${id === selected ? " data-selected" : ""} data-phem-combobox-target="item" data-phem-on-click="c1.assign">${name}</li>`
+
+        return `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-selection-mode-value="single">
+            <input id="input" data-phem-combobox-target="input" data-phem-on-input="c1.search" aria-label="Reviewer" value="${text}" />
+            <button id="clear" data-phem-combobox-target="clear">Clear</button>
+            <input type="hidden" id="value" data-phem-combobox-target="value" value="${selected ?? ""}" />
+            <div id="popup" data-phem-combobox-target="popup" hidden>
+              <ul id="list" data-phem-combobox-target="list">${results.map(item).join("")}</ul>
+            </div>
+          </div>`
+      }
+
+      const people = [["ada", "Ada Lovelace"], ["bob", "Bob Kahn"]]
+
+      it("gives data-pending to the clear part until the answer of the choice", async () => {
+        await mountField(reviewer(people))
+        // The event of the click, then the input event of the label: the server render of the
+        // search has no item for the click.
+        respond(reviewer([people[0]], { selected: "ada" }))
+        respond(reviewer([], { selected: "ada" }))
+        const done = doneOf("c1.assign")
+        const searched = doneOf("c1.search")
+        $("person-ada").click()
+
+        expect($("input").value).toBe("Ada Lovelace")
+        expect($("clear").hidden).toBe(false)
+        expect($("clear").hasAttribute("data-pending")).toBe(true)
+
+        await done
+        await searched
+        expect(fetch.mock.calls.map(([, { body }]) => JSON.parse(body).handler)).toEqual(["c1.assign", "c1.search"])
+        expect($("clear").hasAttribute("data-pending")).toBe(false)
+        expect($("clear").hasAttribute("data-failed")).toBe(false)
+        expect($("value").value).toBe("ada")
+        expect($("input").value).toBe("Ada Lovelace")
+      })
+
+      it("keeps a selection that the user changed before the answer of the choice", async () => {
+        await mountField(reviewer(people))
+        // The answer of the click waits.
+        let answer
+        fetch.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
+        const done = doneOf("c1.assign")
+        $("person-ada").click()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        // The user deletes all the text: the selection goes.
+        respond(reviewer([]))
+        respond(reviewer([]))
+        $("input").value = ""
+        $("input").dispatchEvent(new Event("input", { bubbles: true }))
+        expect($("value").value).toBe("")
+
+        // The answer of the click marks Ada as selected: the server did not know the change.
+        answer(new Response(JSON.stringify(answerOf(reviewer(people, { selected: "ada" }))), { status: 200, headers: { "Content-Type": "application/json" } }))
+        await done
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect($("value").value).toBe("")
+        expect($("input").value).toBe("")
+        expect($("clear").hidden).toBe(true)
+        expect($("person-ada").getAttribute("aria-selected")).toBe("false")
+      })
+
+      it("shows the failure on the clear part, then clears the selection after one second", async () => {
+        await mountField(reviewer(people))
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        failed()
+        respond(reviewer([]))
+        const done = doneOf("c1.assign")
+        $("person-ada").click()
+        await done
+
+        expect($("clear").hasAttribute("data-failed")).toBe(true)
+        expect($("input").value).toBe("Ada Lovelace")
+        expect(document.querySelector(".phem-error")).toBe(null)
+
+        // The clear sends the input event of the empty input.
+        respond(reviewer(people))
+        await wait(1050)
+        expect($("clear").hasAttribute("data-failed")).toBe(false)
+        expect($("clear").hidden).toBe(true)
+        expect($("input").value).toBe("")
+        expect($("value").value).toBe("")
+        // The browser kept the item for the selection: it leaves the list.
+        expect($("person-ada")).toBe(null)
+      })
     })
   })
 })

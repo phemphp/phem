@@ -81,6 +81,23 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorExists('#team-item-a[data-selected][aria-selected="true"]');
     }
 
+    public function testTheChipTemplateGivesTheChipOfAChoiceBeforeTheAnswer(): void
+    {
+        $html = $this->mount(self::APP.'ComboboxServerMultipleDemo')
+            ->assertSelectorExists('[data-phem-combobox-target="chips"] > template[data-phem-combobox-target="chipTemplate"]')
+            ->html();
+
+        // The chip of the template has the placeholders of the label, and its remove button has
+        // the X, a hidden spinner and a hidden warning: the variants of the chip show them.
+        $template = (string) preg_replace('/^.*<template data-phem-combobox-target="chipTemplate">(.*?)<\/template>.*$/s', '$1', $html);
+        self::assertStringContainsString('aria-label="{label}"', $template);
+        self::assertStringContainsString('aria-label="Remove {label}"', $template);
+        self::assertStringContainsString('group-data-pending:hidden group-data-failed:hidden', $template);
+        self::assertStringContainsString('animate-spin', $template);
+        self::assertStringContainsString('group-data-pending:inline-block', $template);
+        self::assertStringContainsString('group-data-failed:block', $template);
+    }
+
     public function testTheHighlightPropsAndAGrid(): void
     {
         $this->mount(self::APP.'ComboboxHighlightDemo')

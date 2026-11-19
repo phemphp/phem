@@ -6,7 +6,8 @@ namespace App\People;
 
 /**
  * The people of the Async search demos of Base UI. An app searches a database or an HTTP API: the
- * demo filters a fixed list, waits as a slow network, and fails for the text "will_error".
+ * demo filters a fixed list, waits as a slow network, and fails for the text "will_error". The
+ * assignment of a reviewer also waits, and fails for a person on leave.
  *
  * @phpstan-type Person array{id: string, name: string, username: string, email: string, title: string}
  */
@@ -121,6 +122,27 @@ final class PersonRepository
             [$person['name'], $person['username'], $person['email'], $person['title']],
             static fn (string $value): bool => str_contains(mb_strtolower($value), $text),
         )));
+    }
+
+    /** The people that cannot review: an assignment fails. */
+    private const array ON_LEAVE = ['marvin-mckinney'];
+
+    /**
+     * Assigns the person as a reviewer.
+     *
+     * @return Person
+     */
+    public function assign(string $id): array
+    {
+        $person = $this->get($id);
+
+        usleep(600_000);
+
+        if (\in_array($id, self::ON_LEAVE, true)) {
+            throw new \RuntimeException(\sprintf('%s is on leave and cannot review.', $person['name']));
+        }
+
+        return $person;
     }
 
     /** @return Person */

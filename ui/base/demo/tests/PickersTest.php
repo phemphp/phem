@@ -113,6 +113,78 @@ final class PickersTest extends DemoTestCase
         expect($lindsay)->toHaveAttribute('aria-selected', 'true');
     }
 
+    public function testComboboxAsyncSearchShowsAChoiceBeforeTheAnswer(): void
+    {
+        $page = $this->visitComponent('combobox');
+
+        // The page records each state of a choice: a state can be shorter than a round trip of
+        // the test.
+        $page->evaluate(<<<'JS'
+            () => {
+                window.choices = []
+                const record = () => {
+                    for (const el of document.querySelectorAll('[data-pending], [data-failed]')) {
+                        const spinner = el.querySelector('.animate-spin')?.checkVisibility() ? 'spinner' : ''
+                        const warning = el.querySelector('svg.hidden')?.checkVisibility() ? 'warning' : ''
+                        const state = `${el.hasAttribute('data-pending') ? 'pending' : 'failed'} ${el.getAttribute('aria-label')} ${spinner}${warning}`
+                        if (!window.choices.includes(state)) window.choices.push(state)
+                    }
+                }
+                new MutationObserver(record).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-pending', 'data-failed'] })
+            }
+            JS);
+
+        // Multiple: the chip shows at once, with a spinner, and the chip of the server replaces it.
+        $multiple = $page->getByRole('region', ['name' => 'Async search (multiple)'])->locator('[data-demo="preview"]');
+        $reviewers = $multiple->getByRole('combobox', ['name' => 'Assign reviewers']);
+        $tom = $multiple->locator('[data-phem-combobox-target="chip"]')->filter(['hasText' => 'Tom Cook']);
+        $reviewers->fill('tom');
+        $multiple->getByRole('option', ['name' => 'Tom Cook'])->click();
+        expect($tom)->toHaveCount(1);
+        expect($tom)->not()->toHaveAttribute('data-pending', '');
+        expect($multiple->getByRole('button', ['name' => 'Remove Tom Cook']))->toBeVisible();
+        expect($tom->locator('.animate-spin'))->toBeHidden();
+
+        // Marvin is on leave: the chip shows a warning, then it goes after one second.
+        $marvin = $multiple->locator('[data-phem-combobox-target="chip"]')->filter(['hasText' => 'Marvin McKinney']);
+        $reviewers->fill('marvin');
+        $multiple->getByRole('option', ['name' => 'Marvin McKinney'])->click();
+        // The first error page of the server can be slow.
+        $page->waitForFunction('() => window.choices.includes("failed Marvin McKinney warning") && !document.querySelector("[data-failed]")', null, ['timeout' => 15_000]);
+        expect($marvin)->toHaveCount(0);
+        expect($tom)->toHaveCount(1);
+        expect($multiple->getByRole('option', ['name' => 'Marvin McKinney']))->toHaveCount(0);
+        expect($page->locator('.phem-error'))->toHaveCount(0);
+
+        // Single: the clear button shows the spinner while the server assigns the person, and the
+        // warning when it fails. Then the selection goes.
+        $single = $page->getByRole('region', ['name' => 'Async search (single)'])->locator('[data-demo="preview"]');
+        $reviewer = $single->getByRole('combobox', ['name' => 'Assign reviewer']);
+        $clear = $single->getByRole('button', ['name' => 'Clear selection']);
+        $reviewer->fill('marvin');
+        $single->getByRole('option', ['name' => 'Marvin McKinney'])->click();
+        expect($reviewer)->toHaveValue('Marvin McKinney');
+        $page->waitForFunction('() => window.choices.includes("failed Clear selection warning") && !document.querySelector("[data-failed]")', null, ['timeout' => 15_000]);
+        expect($clear)->toBeHidden();
+        expect($reviewer)->toHaveValue('');
+
+        $reviewer->fill('tom');
+        $single->getByRole('option', ['name' => 'Tom Cook'])->click();
+        expect($reviewer)->toHaveValue('Tom Cook');
+        $page->waitForFunction('() => window.choices.length === 5 && !document.querySelector("[data-pending]")');
+        expect($clear)->not()->toHaveAttribute('data-failed', '');
+        expect($clear)->toBeVisible();
+        expect($reviewer)->toHaveValue('Tom Cook');
+
+        self::assertSame([
+            'pending Tom Cook spinner',
+            'pending Marvin McKinney spinner',
+            'failed Marvin McKinney warning',
+            'pending Clear selection spinner',
+            'failed Clear selection warning',
+        ], $page->evaluate('() => window.choices'));
+    }
+
     public function testComboboxExamples(): void
     {
         $page = $this->visitComponent('combobox');

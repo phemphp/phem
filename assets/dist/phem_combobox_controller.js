@@ -7,6 +7,7 @@ import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, leaveList, nextItem } from "./phem_roving.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
 import { textValue } from "./phem_fields.js"
+import { PendingChoices } from "./phem_pending_choices.js"
 
 // The `phem-combobox` controller: a text field with a list of suggestions that the server gives,
 // for a search, a city or a user. The list stays open after the morph of an event.
@@ -120,8 +121,9 @@ import { textValue } from "./phem_fields.js"
 //
 // The `single` selection mode also works with a list of the server, as the Async search of Base
 // UI: the browser keeps the selection, and the server searches. A click on an item selects it,
-// writes its label in the input and sends the `input` and `change` events, and a bound `value`
-// target gets the value of the item. The label of the selection in the input is not a search:
+// writes its label in the input, and a bound `value` target gets the value of the item. The
+// `input` and `change` events of the input go in the next task, after the event of the click: the
+// handler of the item runs first. The label of the selection in the input is not a search:
 // phem sends no text for it (`phemValue` is empty, see phem_fields.js), so the handler of the
 // input and a `phem:bind` input get `""`. The text that the user types goes as it is.
 //
@@ -132,6 +134,18 @@ import { textValue } from "./phem_fields.js"
 // and so does a kept item that is not selected any more (at once). A server render that removes
 // the old selected item of the server does not change the selection of the browser.
 // The text of an input with no `phem:bind` belongs to the browser: the morph keeps it.
+//
+// With a list of the server, a choice shows at once, before the server answers, when the click on
+// the item sends an event (its `onClick` handler). With `multiple`, a click on an item that is not
+// chosen adds a chip from the `chipTemplate` target (a `<template>` in the box of the chips): the
+// chip goes before the template, with the `data-value` of the item, and `{label}` in its text and
+// its attributes is the label of the item. The item gets `aria-selected="true"`. With the `single`
+// selection mode, the browser already selects the item. While the event runs, the chip (or the
+// `clear` targets of the `single` selection mode) gets `data-pending`, and the chip stays through
+// the morph of another event. The answer of the event shows the server render: its morph replaces
+// the chip with the chip of the server. A failed event gives `data-failed`, and after one second
+// the choice goes: the chip leaves, or the selection is cleared. phem shows no error message for
+// the event (see phem_pending_choices.js).
 //
 // A `status` target shows the state of a search of the server with its parts: the elements with
 // a `data-phem-combobox-status` attribute. The part of the state shows, and the others get
@@ -172,7 +186,7 @@ import { textValue } from "./phem_fields.js"
 const FIELDS = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
 
 export default class PhemComboboxController extends Controller {
-  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "row", "item", "group", "groupLabel", "empty", "status", "chips", "chip", "chipRemove"]
+  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "row", "item", "group", "groupLabel", "empty", "status", "chips", "chip", "chipRemove", "chipTemplate"]
   static values = {
     autoHighlight: String,
     keepHighlight: Boolean,
@@ -236,6 +250,8 @@ export default class PhemComboboxController extends Controller {
     this.statusState = null
     this.typing = false
     this.awaiting = false
+    // The choices that show before the answer of their event.
+    this.choices = new PendingChoices()
     this.popup = new Popup({
       anchor: () => (this.#inPopup ? this.triggerTargets[0] : null) ?? this.inputGroupTargets[0] ?? (this.hasInputTarget ? this.inputTarget : null),
       popup: () => (this.hasPopupTarget ? this.popupTarget : null),
@@ -256,6 +272,7 @@ export default class PhemComboboxController extends Controller {
       },
     })
     this.state.connect()
+    this.choices.connect()
 
     this.listening = new AbortController()
     const options = { signal: this.listening.signal }
@@ -286,6 +303,7 @@ export default class PhemComboboxController extends Controller {
 
   disconnect() {
     this.state.disconnect()
+    this.choices.disconnect()
     this.listening.abort()
     this.busy.disconnect()
     this.popup.destroy()
@@ -496,7 +514,9 @@ export default class PhemComboboxController extends Controller {
         this.typed = null
         if (this.#input) delete this.#input.phemValue
         if (this.#selecting) this.#select(item)
-        if (this.#clientList || this.#selecting) this.#fill(this.#inPopup ? "" : this.#labelOf(item))
+        // With a list of the server, the input shows the label at once, and its events go after
+        // the click: the handler of the item runs first, as with `multiple`.
+        if (this.#clientList || this.#selecting) this.#fill(this.#inPopup ? "" : this.#labelOf(item), { later: !this.#clientList })
       }
 
       this.#render()
@@ -596,6 +616,13 @@ export default class PhemComboboxController extends Controller {
     // The morph compares the content of an `empty` target with the server render.
     if (this.emptyTargets.includes(item)) this.#renderEmpty(item, true)
 
+    // The chip of a choice that waits for its answer stays.
+    if (!event.detail.newElement && this.choices.keeps(item)) {
+      event.preventDefault()
+
+      return
+    }
+
     // A list of the server that does not have a selected item: the item stays.
     if (!event.detail.newElement && this.#keeps(item)) {
       event.preventDefault()
@@ -622,13 +649,85 @@ export default class PhemComboboxController extends Controller {
 
     this.serverSelected.set(item, next)
     if (this.#selectingMany) this.serverValues.set(valueOf(event.detail.newElement ?? item), next)
+    // The user changed the selection after the request of this answer left: the server did not
+    // know it, and the selection of the browser stays (as a state value, see phem_client_state.js).
+    else if (this.#selectedSince(this.#sentAt)) return
     else if (next) this.serverSelection = item
     else if (this.serverSelection === undefined) this.serverSelection = null
   }
 
-  // An event of the input waits: the `status` parts keep their state.
+  // An event of the input waits: the `status` parts keep their state. The event of a click on an
+  // item is a choice that shows at once.
   onQueue = (event) => {
     if (event.target === this.#input) this.awaiting = true
+    else this.#showChoice(event.target, event.detail.id)
+  }
+
+  // A click on an item of a list of the server sends its event: the choice shows before the
+  // answer. With `multiple`, an item that is not chosen gets a chip from the `chipTemplate`
+  // target. With the `single` selection mode, the item is the selection already.
+  #showChoice(item, id) {
+    if (this.#clientList || !this.itemTargets.includes(item)) return
+
+    if (this.#selecting) {
+      if (item !== this.#selectedItem) return
+
+      // The selection of the choice goes, also when a morph replaced its item. A new selection
+      // stays.
+      const revert = () => {
+        const selected = this.#selectedItem
+        if (selected && valueOf(selected) === valueOf(item)) this.#clear()
+        this.#render()
+      }
+      this.choices.add(id, { item, parts: this.clearTargets, revert })
+
+      return
+    }
+
+    const template = this.chipTemplateTargets[0]
+    if (!this.#multiple || !template || item.getAttribute("aria-selected") === "true") return
+
+    const chip = this.#chipFrom(template, item)
+    template.before(chip)
+    item.setAttribute("aria-selected", "true")
+
+    const revert = () => {
+      chip.remove()
+      if (!this.choices.chooses(item)) item.setAttribute("aria-selected", "false")
+      // The browser kept the item for the choice: it leaves the list.
+      if (this.held.has(item) && !this.choices.chooses(item)) item.remove()
+      this.#render()
+    }
+    // The morph of the answer replaced the chip with the chip of the server.
+    const end = () => chip.remove()
+    this.choices.add(id, { item, chip, parts: [chip], revert, end })
+    this.#render()
+  }
+
+  // A chip of the `chipTemplate` target for the item: `{label}` is the label of the item. Its id
+  // keeps the morph from matching it with a chip of the server. It is a copy, not a component of
+  // the server: it has no fiber id (`data-phem-c`).
+  #chipFrom(template, item) {
+    const chip = template.content.firstElementChild.cloneNode(true)
+    const label = this.#labelOf(item)
+    const walker = document.createTreeWalker(chip, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
+
+    for (let node = chip; node; node = walker.nextNode()) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.textContent = node.textContent.replaceAll("{label}", label)
+
+        continue
+      }
+
+      node.removeAttribute("data-phem-c")
+      for (const attr of node.attributes) if (attr.value.includes("{label}")) attr.value = attr.value.replaceAll("{label}", label)
+    }
+
+    chip.id = `${template.id || "phem-combobox"}-choice-${++choices}`
+    chip.setAttribute("data-value", valueOf(item))
+    chip.setAttribute("data-phem-combobox-target", "chip")
+
+    return chip
   }
 
   // An event of the input starts: the `pending` part shows with the loading state.
@@ -833,6 +932,7 @@ export default class PhemComboboxController extends Controller {
     if (old && old !== item && this.held.has(old)) old.remove()
 
     this.selected = item ?? null
+    this.selectedAt = performance.now()
     const value = item?.getAttribute("data-value") ?? ""
 
     for (const el of this.valueTargets) {
@@ -869,20 +969,27 @@ export default class PhemComboboxController extends Controller {
     }
   }
 
-  // Writes a value in the input and sends its events, as when the user types it.
-  #fill(value) {
+  // Writes a value in the input and sends its events, as when the user types it. With `later`, the
+  // events go in the next task: phem takes the click of a choice first.
+  #fill(value, { later = false } = {}) {
     const input = this.#input
     if (!input) return
 
-    this.filling = true
-    try {
-      input.value = value
-      this.#markLabel()
-      input.dispatchEvent(new Event("input", { bubbles: true }))
-      input.dispatchEvent(new Event("change", { bubbles: true }))
-    } finally {
-      this.filling = false
+    input.value = value
+    this.#markLabel()
+
+    const send = () => {
+      this.filling = true
+      try {
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+        input.dispatchEvent(new Event("change", { bubbles: true }))
+      } finally {
+        this.filling = false
+      }
     }
+
+    if (later) setTimeout(send)
+    else send()
   }
 
   // The `single` selection mode with a list of the server: the label of the selection in the
@@ -1285,11 +1392,11 @@ export default class PhemComboboxController extends Controller {
     }
     if (this.triggerTargets.includes(el)) return ["aria-expanded", "aria-haspopup", "data-popup-open"].includes(name) || (name === "data-placeholder" && this.#showsValue(el))
     if (this.inputGroupTargets.includes(el)) return name === "role" || name === "data-popup-open" || (name === "data-placeholder" && (this.#selecting || this.#selectingMany))
-    if (this.itemTargets.includes(el)) return (name === "aria-selected" && (!this.#multiple || this.#selectingMany)) || name === "data-highlighted" || (name === "data-selected" && (this.#selecting || this.#selectingMany))
+    if (this.itemTargets.includes(el)) return (name === "aria-selected" && (!this.#multiple || this.#selectingMany || this.choices.chooses(el))) || name === "data-highlighted" || (name === "data-selected" && (this.#selecting || this.#selectingMany || this.choices.chooses(el)))
     if (this.chipTargets.includes(el)) return name === "hidden" && this.#selectingMany && el.hasAttribute("data-value")
     if (this.chipsTargets.includes(el)) return name === "role" || (name === "aria-label" && this.#selectingMany)
     if (this.emptyTargets.includes(el)) return name === "role" || name === "aria-live" || name === "aria-atomic"
-    if (this.clearTargets.includes(el)) return name === "hidden" || name === "data-visible"
+    if (this.clearTargets.includes(el)) return name === "hidden" || name === "data-visible" || name === "data-pending" || name === "data-failed"
     if (this.valueTargets.includes(el)) return name === "value" && this.#selecting
 
     return false
@@ -1363,6 +1470,16 @@ export default class PhemComboboxController extends Controller {
     return this.selectionModeValue === "single" && !this.#multiple
   }
 
+  // The time of the request of the answer that the morph renders (see phem_controller.js), or null.
+  get #sentAt() {
+    return this.element.closest("[data-controller~='phem']")?.phemSentAt ?? null
+  }
+
+  // The user selected an item (or no item) after this time.
+  #selectedSince(time) {
+    return time !== null && this.selectedAt !== undefined && this.selectedAt > time
+  }
+
   // The selected item in the page: the same element, or the item with its id after a morph.
   get #selectedItem() {
     const selected = this.selected
@@ -1427,6 +1544,9 @@ export default class PhemComboboxController extends Controller {
     return getComputedStyle(this.element).direction === "rtl"
   }
 }
+
+// The number of the chips that the choices added: each gets its own id.
+let choices = 0
 
 // The value of an item: its `data-value` attribute.
 function valueOf(item) {

@@ -7,7 +7,7 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\{Event, Node};
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxIcon, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxStatus, ComboboxTrigger, ComboboxValue, DialogClose, DialogDescription, DialogPopup, DialogTitle};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxChipTemplate, ComboboxClear, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxIcon, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxStatus, ComboboxTrigger, ComboboxValue, DialogClose, DialogDescription, DialogPopup, DialogTitle};
 use Phem\Ui\Base\{Align, Button, Combobox, Dialog};
 
 // The 187 countries of the Input inside popup demo of Base UI.
@@ -268,12 +268,14 @@ function ComboboxPage(): Node
                 <Example title="Async search (single)" source="ComboboxAsyncSingleDemo">
                     <Example.description>
                         <p>Load items from the server on input changes: the <code>onChange</code> handler of <code>ComboboxInput</code> calls a repository service, and the state keeps the results. With <code>phem:bind</code> on the root, the browser keeps the selection and the selected item in the list. <code>ComboboxStatus</code> shows the texts of the states of the search: <code>pending</code> with a spinner while it runs, <code>error</code> when the handler throws, <code>idle</code> before the user types, and <code>empty</code> when nothing matches. This pattern avoids needing to load items upfront.</p>
+                        <p>The <code>onClick</code> handler of an item assigns the person. The selection shows at once, and the clear button shows a spinner until the server answers. When the handler fails, the button shows a warning, and after one second the selection goes. Choose Marvin McKinney to see a failure.</p>
                     </Example.description>
                     <ComboboxAsyncSingleDemo />
                 </Example>
                 <Example title="Async search (multiple)" source="ComboboxAsyncMultipleDemo">
                     <Example.description>
                         <p>Load items from the server on input changes while supporting multiple selections. Give each <code>ComboboxChip</code> the <code>value</code> of its item: the browser keeps the chosen items in the list while new matches come in. The handler of an item adds or removes the person, and a choice with a text closes the popup and clears the text. This pattern avoids needing to load items upfront.</p>
+                        <p>A choice shows at once: the browser adds a chip from <code>ComboboxChipTemplate</code>, where <code>{label}</code> is the label of the item, and its remove button shows a spinner until the server answers. When the handler fails, the button shows a warning, and after one second the chip goes. Choose Marvin McKinney to see a failure.</p>
                     </Example.description>
                     <ComboboxAsyncMultipleDemo />
                 </Example>
@@ -490,7 +492,8 @@ function ComboboxInputInsidePopupDemo(): Node
 
 // The search runs in the handler of the input, as the Async search of Base UI: the repository
 // searches, and the state keeps the results. The browser keeps the selection and the selected
-// person in the list, and the root binds the selected value.
+// person in the list, and the root binds the selected value. The handler of an item assigns the
+// person: the selection shows before the answer, and goes when the assignment fails.
 #[Component]
 final class ComboboxAsyncSingleDemo
 {
@@ -507,6 +510,11 @@ final class ComboboxAsyncSingleDemo
     {
         $this->query = trim((string) $e->value);
         $this->people = $this->repository->search($this->query);
+    }
+
+    public function assign(string $id): void
+    {
+        $this->selected = $this->repository->assign($id)['id'];
     }
 
     public function render(): Node
@@ -531,7 +539,7 @@ final class ComboboxAsyncSingleDemo
                     <ComboboxEmpty className="py-2">Try a different search term.</ComboboxEmpty>
                     <ComboboxList className="py-0">
                         {% for person in people %}
-                            <ComboboxItem key={{ person.id }} value={{ person.id }} label={{ person.name }} className="items-start leading-[1.2rem] data-highlighted:text-neutral-950 data-highlighted:before:bg-neutral-100 dark:data-highlighted:text-white dark:data-highlighted:before:bg-neutral-800">
+                            <ComboboxItem key={{ person.id }} value={{ person.id }} label={{ person.name }} onClick={{ assign(person.id) }} className="items-start leading-[1.2rem] data-highlighted:text-neutral-950 data-highlighted:before:bg-neutral-100 dark:data-highlighted:text-white dark:data-highlighted:before:bg-neutral-800">
                                 <ComboboxItemIndicator className="mt-1" />
                                 <span className="col-start-2 flex flex-col gap-1">
                                     <span className="text-sm leading-5 font-bold">{{ person.name }}</span>
@@ -552,7 +560,8 @@ final class ComboboxAsyncSingleDemo
 
 // The search of the server with more than one choice, as the Async search of Base UI: the chips
 // show the chosen people, and the browser keeps their items in the list. A choice with a text
-// closes the popup, and the text goes.
+// closes the popup, and the text goes. The browser adds the chip of a new choice at once, from
+// the template, and removes it when the assignment fails.
 #[Component]
 final class ComboboxAsyncMultipleDemo
 {
@@ -575,7 +584,7 @@ final class ComboboxAsyncMultipleDemo
     public function toggle(string $id): void
     {
         $others = array_values(array_filter($this->chosen, static fn (array $person): bool => $person['id'] !== $id));
-        $this->chosen = $others !== $this->chosen ? $others : [...$this->chosen, $this->repository->get($id)];
+        $this->chosen = $others !== $this->chosen ? $others : [...$this->chosen, $this->repository->assign($id)];
     }
 
     public function render(): Node
@@ -593,6 +602,12 @@ final class ComboboxAsyncMultipleDemo
                                 <ComboboxChipRemove aria-label="Remove {{ person.name }}" onClick={{ toggle(person.id) }} />
                             </ComboboxChip>
                         {% endfor %}
+                        <ComboboxChipTemplate>
+                            <ComboboxChip aria-label="{label}">
+                                {label}
+                                <ComboboxChipRemove aria-label="Remove {label}" />
+                            </ComboboxChip>
+                        </ComboboxChipTemplate>
                         <ComboboxInput
                             onChange={{ search }}
                             placeholder={{ count > 0 ? '' : 'e.g. Michael' }}

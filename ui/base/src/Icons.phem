@@ -54,3 +54,9 @@ function XIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="round" className={{ classes('block') }} {{ ...rest }}><path d="m4.5 4.5 7 7m-7 0 7-7" /></svg>;
 }
+
+#[Component]
+function WarningIcon(mixed ...$rest): Node
+{
+    return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linejoin="round" className={{ classes('block') }} {{ ...rest }}><path d="M8 1.5 15 14H1zM8 6v4m0 1.5v1" /></svg>;
+}

@@ -5,7 +5,7 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\{Component, State};
 use Phem\Node;
 
-use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxChipTemplate, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
 use Phem\Ui\Base\{Autocomplete, Combobox, Drawer, DrawerViewport, ToastViewport};
 
 // A Combobox with a list of the browser has one selected item, and an Autocomplete has none.
@@ -58,7 +58,12 @@ function ComboboxServerMultipleDemo(): Node
 {
     return (
         <Combobox id="team" multiple>
-            <ComboboxInput />
+            <ComboboxChips>
+                <ComboboxChipTemplate>
+                    <ComboboxChip aria-label="{label}">{label}<ComboboxChipRemove aria-label="Remove {label}" /></ComboboxChip>
+                </ComboboxChipTemplate>
+                <ComboboxInput />
+            </ComboboxChips>
             <ComboboxPopup><ComboboxList><ComboboxItem value="a" selected>A</ComboboxItem></ComboboxList></ComboboxPopup>
         </Combobox>
     );
