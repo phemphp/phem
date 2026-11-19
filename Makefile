@@ -1,4 +1,4 @@
-.PHONY: test test-js test-e2e ui-test ui-test-e2e ui-check ui-demo bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
+.PHONY: test test-js test-e2e ui-test ui-test-e2e ui-check ui-demo ui-demo-watch bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
 
 # The build context of the dev image is the repository.
 COMPOSE = docker compose -f docker/compose.yaml
@@ -25,6 +25,9 @@ ui-check: ## Check the phem/ui-base components with the phemc of this repository
 
 ui-demo: ## Build the phem/ui-base demo image and serve it with FrankenPHP on http://localhost:8100, with the phem of this repository
 	$(MAKE) -C ui/base demo
+
+ui-demo-watch: ## Serve the phem/ui-base demo of this repository on http://localhost:8100, and restart FrankenPHP after each change
+	$(MAKE) -C ui/base demo-watch
 
 bench:  ## Run the benchmark of the client/server flow (bench/run.php): server time, bytes, requests
 	$(COMPOSE) run --rm --build dev php bench/run.php

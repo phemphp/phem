@@ -1,4 +1,4 @@
-.PHONY: help install test test-e2e check shell demo
+.PHONY: help install test test-e2e check shell demo demo-watch
 
 # The services of phem/ui-base are in the compose file of the repository: the phem image, with the
 # phem of this repository and the phemc that the entrypoint builds from compiler/.
@@ -26,3 +26,7 @@ demo: ## Build the production image of the demo (demo/etc/Dockerfile) and serve 
 	@test -f demo/.env.local || printf 'APP_SECRET=%s\n' "$$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > demo/.env.local
 	docker build -f demo/etc/Dockerfile -t phem-ui-base-demo ../..
 	docker run --rm --init -p 8100:8080 phem-ui-base-demo
+
+demo-watch: ## Serve the demo of this repository in the dev environment on http://localhost:8100: FrankenPHP restarts after a change (demo/etc/watch)
+	docker build -f demo/etc/Dockerfile --target watch -t phem-ui-base-demo-watch ../..
+	docker run --rm --init -p 8100:8080 -v "$(abspath ../..):/app" phem-ui-base-demo-watch

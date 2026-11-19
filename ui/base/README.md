@@ -57,11 +57,12 @@ The bundle lives in `ui/base/` of the phem repository until its components are s
 The components use only the public API of phem: the components, the controllers and their documented attributes. A package of an app can do the same.
 
 ```sh
-make install   # composer install
-make test      # PHPUnit render tests
-make check     # phemc check src
-make demo      # the gallery on http://localhost:8100 (FrankenPHP, production image)
-make test-e2e  # the browser tests of the demo (Playwright PHP)
+make install     # composer install
+make test        # PHPUnit render tests
+make check       # phemc check src
+make demo        # the gallery on http://localhost:8100 (FrankenPHP, production image)
+make demo-watch  # the same gallery in the dev environment, restarted after each change
+make test-e2e    # the browser tests of the demo (Playwright PHP)
 ```
 
 The demo runs in its own production image (`demo/etc/Dockerfile`, with its `Caddyfile` and PHP settings): FrankenPHP in worker mode, `APP_ENV=prod`. The build context is the root of the repository, because the image installs phem/phem and phem/ui-base from it and builds `phemc` from `compiler/`. Rebuild the image after each change (`make demo` does it). The image copies `demo/.env.local` (not in git) with the `APP_SECRET` of the demo. `make demo` writes it with a random secret when it is missing. To build and run the image without make:
@@ -70,5 +71,13 @@ The demo runs in its own production image (`demo/etc/Dockerfile`, with its `Cadd
 docker build -f ui/base/demo/etc/Dockerfile -t phem-ui-base-demo .   # from the root of the repository
 docker run --rm -p 8080:8080 phem-ui-base-demo
 ```
+
+While you work on a component or a controller, run `make demo-watch` (or `make ui-demo-watch` from the root of the repository). It serves the same gallery on http://localhost:8100 with the `watch` stage of `demo/etc/Dockerfile`: FrankenPHP in worker mode, `APP_ENV=dev`, on a bind mount of the repository. The image is built only once, and `demo/etc/watch` reloads the demo after each change:
+
+- **`.phem` files** (the demo, the components and phem): `phemc watch` rebuilds them and restarts FrankenPHP
+- **PHP classes and config files** (the demo, the components and phem): the `watch` options of the worker restart the workers
+- **Controllers and CSS** (`assets/`): AssetMapper serves the new file on the next request, and `tailwind:build --watch` rebuilds the CSS
+
+Stop `make demo` first: both use port 8100.
 
 The browser tests (`demo/tests/`) run in the e2e image of phem, with Chromium. They need no web server: the Playwright Symfony bundle sends the requests of the browser to the kernel of the demo, in the PHPUnit process. A failed test saves a screenshot and the HTML of the page in `demo/var/failures/`.
