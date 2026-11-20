@@ -49,6 +49,7 @@ export const navigation: NavGroup[] = [
         title: 'Reference',
         pages: [
             { slug: 'syntax', label: 'Syntax' },
+            { slug: 'cheatsheet', label: 'Cheatsheet' },
             { slug: 'compiler', label: 'Compiler' },
             { slug: 'configuration', label: 'Configuration' },
         ],

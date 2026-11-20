@@ -8,6 +8,12 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The Claude Code plugin (0.2.0) starts `phemc mcp` of the project, has a `phem` skill (the
+  workflow, the new cheatsheet and the list of the docs) and a `phem-ui` skill (the components of
+  the installed packages), and runs `phemc check` after each write or edit of a `.phem` file: an
+  error goes back to Claude, which corrects the file. New doc: "Phem cheatsheet"
+  (`docs/cheatsheet.md`, `phemc docs cheatsheet`), the syntax on one page and the rules that are
+  easy to break.
 - New `phemc mcp` command: a Model Context Protocol server on stdin and stdout for the coding
   agents. Its tools give the texts of `phemc search`, `docs`, `components` and `examples`
   (`phem_search`, `phem_doc`, `phem_components`, `phem_component`, `phem_examples`), and

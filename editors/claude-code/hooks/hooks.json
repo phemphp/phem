@@ -1,0 +1,17 @@
+{
+    "description": "Checks each .phem file that Claude writes or edits with phemc check, and sends the errors back to Claude",
+    "hooks": {
+        "PostToolUse": [
+            {
+                "matcher": "Write|Edit|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "sh \"${CLAUDE_PLUGIN_ROOT}/bin/phem-check-hook\"",
+                        "timeout": 60
+                    }
+                ]
+            }
+        ]
+    }
+}

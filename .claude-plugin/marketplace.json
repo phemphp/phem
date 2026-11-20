@@ -11,7 +11,7 @@
         {
             "name": "phem",
             "source": "./editors/claude-code",
-            "description": "The Phem language server for .phem files: compiler diagnostics after each edit, go to definition, find references, hover, and outline."
+            "description": "Phem for Claude Code: the language server of .phem files, the Phem MCP server (docs, components, examples, search and check of the installed versions), the phem and phem-ui skills, and a phemc check of each .phem file that Claude writes."
         }
     ]
 }

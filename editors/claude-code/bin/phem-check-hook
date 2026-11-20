@@ -1,0 +1,7 @@
+#!/bin/sh
+# Runs the check hook (phem-check-hook.php) when PHP is on the host. The hook runs after each
+# write of any file: with no PHP, it does nothing, so a write never shows a hook error.
+
+command -v php > /dev/null 2>&1 || exit 0
+
+exec php "$(dirname "$0")/phem-check-hook.php"

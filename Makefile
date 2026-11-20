@@ -1,10 +1,13 @@
-.PHONY: test test-js test-e2e ui-test ui-test-e2e ui-check ui-demo ui-demo-watch bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
+.PHONY: test test-js test-e2e test-claude-code ui-test ui-test-e2e ui-check ui-demo ui-demo-watch bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
 
 # The build context of the dev image is the repository.
 COMPOSE = docker compose -f docker/compose.yaml
 
-test: test-js test-e2e ## Run cargo test, PHPUnit, the JS tests and the e2e tests
+test: test-js test-e2e test-claude-code ## Run cargo test, PHPUnit, the JS tests, the e2e tests and the tests of the Claude Code plugin
 	$(COMPOSE) run --rm --build dev
+
+test-claude-code: ## Run the tests of the Claude Code plugin (editors/claude-code/): the phemc check hook, the MCP launcher, the skills
+	$(COMPOSE) run --rm -T --entrypoint sh dev -c 'cargo build --release --quiet --manifest-path compiler/Cargo.toml -p phemc-cli && PHEMC_BIN=/cargo-target/release/phemc php editors/claude-code/tests/run.php'
 
 test-js: ## Run the tests of the phem Stimulus controller (Vitest, jsdom)
 	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/assets:/assets" -v "$(CURDIR)/src/Test/Resources:/src/Test/Resources:ro" -w /assets node:22-alpine sh -c ' \

@@ -7,7 +7,7 @@ This guide is for work on Phem itself: the runtime, the compiler, and the editor
 You only need Docker. Run these commands from the root of the repository:
 
 ```sh
-make test      # the JS tests, the e2e tests, cargo test and PHPUnit
+make test      # the JS tests, the e2e tests, the Claude Code plugin tests, cargo test and PHPUnit
 make test-e2e  # only the e2e tests: Chromium and the e2e app (e2e/)
 make bench     # the benchmark of the client/server flow (bench/run.php)
 make shell     # a shell in the dev image: phemc (built from compiler/), cargo, composer, PHPUnit
@@ -111,7 +111,7 @@ docker/              the dev image (Dockerfile, compose.yaml, entrypoint.sh): `m
 editors/server/      the Node launcher of the language server (phem-lsp.wasm: `make lsp`)
 editors/vscode/      VS Code extension: .phem syntax highlighting (TextMate grammar) and the language server
 editors/phpstorm/    PhpStorm plugin: the same grammar and language server
-editors/claude-code/ Claude Code plugin: the language server, for diagnostics after each edit
+editors/claude-code/ Claude Code plugin: the language server, the MCP server, the skills and the check hook (`make test-claude-code`)
 ui/base/             phem/ui-base: the Base UI components and their demo, on the phem of this repository: `make ui-test`, `make ui-test-e2e`
 docs/                the docs, as plain Markdown (GitHub, the website and LLMs read the same files)
 website/             the docs website (Astro): `make docs`, `make docs-build`

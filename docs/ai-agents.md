@@ -86,7 +86,19 @@ The commands print Markdown. Add `--format json` when a tool reads the output.
 
 ## Use Claude Code
 
-The Phem plugin for Claude Code also runs the language server, so Claude Code gets the diagnostics after each edit (see [Use Claude Code](compiler.md#use-claude-code)). Add the workflow above to `CLAUDE.md` too: the language server shows the errors, and the `phemc` commands give the data that prevents them.
+The Phem plugin for Claude Code does all of this for you (see [Use Claude Code](compiler.md#use-claude-code)):
+
+- **MCP server**: it starts `phemc mcp` of the project, so you don't need `claude mcp add`
+- **Skills**: the `phem` skill gives Claude the workflow, the cheatsheet and the list of the docs, and the `phem-ui` skill gives it the components of the installed packages
+- **Check hook**: after each write or edit of a `.phem` file, it runs `phemc check` on the file. An error goes back to Claude, which corrects the file before it goes on
+- **Language server**: Claude Code gets the diagnostics after each edit, and the `LSP` tool
+
+```sh
+claude plugin marketplace add phemphp/phem
+claude plugin install phem@phem
+```
+
+You don't need the text of [Add the workflow to the instructions of the agent](#add-the-workflow-to-the-instructions-of-the-agent) with the plugin: the skills give it.
 
 ## Check what the agent finds
 

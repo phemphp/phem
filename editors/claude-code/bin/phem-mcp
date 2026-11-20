@@ -1,0 +1,26 @@
+#!/bin/sh
+# Runs the Phem MCP server of the project (`phemc mcp`) on stdin and stdout.
+#
+# 1. PHEMC_BIN, when it is set: a phemc that you build from a clone of the Phem repository (a
+#    build in the clone can be older than its code, so the launcher does not look for it).
+# 2. vendor/bin/phemc of the application: the docs and the components of the installed versions.
+# 3. phemc on the PATH.
+
+project=${CLAUDE_PROJECT_DIR:-$PWD}
+
+cd "$project" || exit 1
+
+if [ -n "$PHEMC_BIN" ]; then
+    exec "$PHEMC_BIN" mcp
+fi
+
+if [ -f vendor/bin/phemc ]; then
+    exec php vendor/bin/phemc mcp
+fi
+
+if command -v phemc > /dev/null 2>&1; then
+    exec phemc mcp
+fi
+
+echo "phem-mcp: no phemc in $project/vendor/bin/ and none on the PATH. Run \`composer require phem/phem\`." >&2
+exit 1

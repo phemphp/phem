@@ -69,8 +69,9 @@ definition, find references, hover and the outline of `.phem` files. These plugi
   [Phem plugin](https://plugins.jetbrains.com/plugin/36117-phem) from the JetBrains Marketplace
   (Settings > Plugins > Marketplace, search for "Phem"). It runs the bundled server with
   Node.js, or a native `phemc` binary.
-- [Claude Code](editors/claude-code/README.md): the plugin runs `vendor/bin/phemc lsp` of your
-  app, so Claude gets the compiler errors after each edit of a `.phem` file.
+- [Claude Code](editors/claude-code/README.md): the plugin runs `vendor/bin/phemc lsp` and
+  `phemc mcp` of your app, checks each `.phem` file that Claude writes, and gives Claude the
+  docs, the components and the examples of the installed versions.
 
   ```sh
   claude plugin marketplace add phemphp/phem

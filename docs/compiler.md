@@ -304,7 +304,14 @@ The server also checks the `.phem` files of the Composer packages together with 
 
 ### Use Claude Code
 
-The Phem plugin for [Claude Code](https://claude.com/claude-code) runs the language server of the application (`vendor/bin/phemc lsp`). After each edit of a `.phem` file, Claude Code gets the `phemc` errors, warnings and hints and can correct them right away. Its `LSP` tool also gets go to definition, find references, hover and the outline. Install the plugin:
+The Phem plugin for [Claude Code](https://claude.com/claude-code) gives Claude Code these parts of the application:
+
+- **Language server** (`vendor/bin/phemc lsp`): after each edit of a `.phem` file, Claude Code gets the `phemc` errors, warnings and hints. Its `LSP` tool also gets go to definition, find references, hover and the outline
+- **MCP server** (`vendor/bin/phemc mcp`): the tools of [`phemc mcp`](#phemc-mcp)
+- **Skills**: `phem` loads the [cheatsheet](cheatsheet.md), the list of the docs (`phemc docs`) and the workflow (look up, write, check). `phem-ui` loads the components of the installed packages (`phemc components`) and the workflow to start from an example
+- **Check hook**: after each write or edit of a `.phem` file, the hook runs `phemc check <file>`. An error stops Claude (exit code 2) with the diagnostics, so it corrects the file. A warning goes to Claude as context. Another file, a project with no `phemc`, or a project that `phemc` can't read doesn't stop Claude
+
+Install the plugin:
 
 ```sh
 claude plugin marketplace add phemphp/phem
