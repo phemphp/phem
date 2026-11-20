@@ -1330,7 +1330,7 @@ Right after a click on **Tom Cook**, before the answer, the browser shows:
 </div>
 ```
 
-The answer replaces the chip with the chip of the server. When `assign()` throws, the chip gets `data-failed`, and one second later it leaves, and the item gets `aria-selected="false"` again. Style the parts with these attributes, for example a spinner in the remove button of a chip with `data-pending`, and a warning icon with `data-failed`. The `ComboboxChipTemplate`, `ComboboxChipRemove` and `ComboboxClear` components of phem/ui-base do it.
+The answer replaces the chip with the chip of the server. When `assign()` throws, the chip gets `data-failed`, and one second later it leaves, and the item gets `aria-selected="false"` again. phem shows no error message for the failed choice: its chip shows the failure. The failure of another event, also of the same handler, shows the message. The label of the item goes in the chip as it is, also with a `$` or a `{value}` in it. Style the parts with these attributes, for example a spinner in the remove button of a chip with `data-pending`, and a warning icon with `data-failed`. The `ComboboxChipTemplate`, `ComboboxChipRemove` and `ComboboxClear` components of phem/ui-base do it.
 
 ### Choose more than one item of a list of the browser
 

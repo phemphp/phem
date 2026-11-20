@@ -60,7 +60,7 @@ function NavigationMenuDemo(): Node
                         <NavigationMenu id="handbook-menu">
                             <NavigationMenuList>
                                 <NavigationMenuItem value="handbook">
-                                    <NavigationMenuTrigger>Handbook</NavigationMenuTrigger>
+                                    <NavigationMenuTrigger card>Handbook</NavigationMenuTrigger>
                                     <NavigationMenuContent><NavigationMenuLink href="/styling" card>Styling</NavigationMenuLink></NavigationMenuContent>
                                 </NavigationMenuItem>
                             </NavigationMenuList>

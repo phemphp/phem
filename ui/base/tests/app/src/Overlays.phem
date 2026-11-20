@@ -125,8 +125,8 @@ function TooltipDetachedDemo(): Node
 {
     return (
         <div>
-            <TooltipTrigger handle="tools" id="listen" payload="Listen" aria-label="Listen">L</TooltipTrigger>
-            <TooltipTrigger handle="tools" id="timer" payload="Set a timer" aria-label="Set a timer">T</TooltipTrigger>
+            <TooltipTrigger handle="tools" id="listen" payload="Listen" aria-label="Listen" bordered>L</TooltipTrigger>
+            <TooltipTrigger handle="tools" id="timer" payload="Set a timer" aria-label="Set a timer" bordered className="border-l-0">T</TooltipTrigger>
             <Tooltip handle="tools" open triggerId="timer">
                 <TooltipPopup><TooltipViewport>Tools</TooltipViewport></TooltipPopup>
             </Tooltip>

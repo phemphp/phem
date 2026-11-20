@@ -2349,6 +2349,62 @@ describe("phem-combobox", () => {
         expect($("person-ada").hasAttribute("data-selected")).toBe(false)
         expect($("chips").hasAttribute("role")).toBe(false)
       })
+
+      it("keeps a `$` and a `{value}` of the label as they are in the chip", async () => {
+        await mountField(reviewers([]))
+        $("person-ada").setAttribute("data-label", "Pay $$ $& {value}")
+        respond(reviewers(["ada"]))
+        const done = doneOf("c1.toggle")
+        $("person-ada").click()
+
+        const [chip] = chipsOf("ada")
+        expect(chip.textContent).toBe("Pay $$ $& {value}×")
+        expect(chip.getAttribute("aria-label")).toBe("Pay $$ $& {value}")
+        expect(chip.querySelector("button").getAttribute("aria-label")).toBe("Remove Pay $$ $& {value}")
+        await done
+      })
+
+      it("shows the error of another event of the same handler", async () => {
+        await mountField(reviewers(["bob"]))
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        const errors = []
+        document.addEventListener("phem:error", (event) => errors.push(event.defaultPrevented))
+
+        // The choice of Ada fails: its chip shows the failure for one second.
+        failed()
+        const chosen = doneOf("c1.toggle")
+        $("person-ada").click()
+        await chosen
+
+        // A click on Bob (already chosen) is not a choice: its failure shows the message.
+        failed()
+        const removed = doneOf("c1.toggle")
+        $("person-bob").click()
+        await removed
+
+        expect(errors).toEqual([true, false])
+        expect(document.querySelector(".phem-error")).not.toBe(null)
+        await wait(1050)
+      })
+
+      it("ends a choice when the controller connects again before the answer", async () => {
+        await mountField(reviewers([]))
+        let answer
+        fetch.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
+        const done = doneOf("c1.toggle")
+        $("person-ada").click()
+        const [chip] = chipsOf("ada")
+        expect(chip.hasAttribute("data-pending")).toBe(true)
+
+        // A morph moves the element: Stimulus disconnects the controller, and connects it again.
+        $("combobox").parentElement.append($("combobox"))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        answer(new Response(JSON.stringify(answerOf(reviewers(["ada"]))), { status: 200, headers: { "Content-Type": "application/json" } }))
+        await done
+        expect(chipsOf("ada").map((el) => el.id)).toEqual(["chip-ada"])
+        expect($("chip-ada").hasAttribute("data-pending")).toBe(false)
+      })
     })
 
     describe("with the single selection mode", () => {

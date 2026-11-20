@@ -183,8 +183,10 @@ function ComboboxLabel(#[Context] Combobox $combobox, ?Html $children = null, mi
 }
 
 /**
- * The box around the input, the clear button and the trigger, or around the ComboboxChips. A press
- * on the box out of the input and the buttons gives the focus to the input.
+ * The place of the input, the clear button and the trigger: the buttons go over the end of the
+ * input. A press on the group out of the input and the buttons gives the focus to the input. The
+ * input fills the group: give the group its width. With `multiple`, put the ComboboxChips in it:
+ * the chips are the box.
  */
 #[Component]
 function ComboboxInputGroup(?Html $children = null, mixed ...$rest): Node
@@ -192,7 +194,7 @@ function ComboboxInputGroup(?Html $children = null, mixed ...$rest): Node
     return (
         <div
             data-phem-combobox-target="inputGroup"
-            className={{ classes('relative h-8 w-56 border border-neutral-950 bg-white dark:bg-neutral-950 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-neutral-950 dark:focus-within:outline-white dark:border-white [&>input]:pr-[calc(0.5rem+2rem)] has-[.combobox-clear:not([hidden])]:[&>input]:pr-[calc(0.5rem+2rem*2)]') }}
+            className={{ classes('relative w-56 [&>input]:w-full [&>input]:pr-[calc(0.5rem+2rem)] has-[.combobox-clear:not([hidden])]:[&>input]:pr-[calc(0.5rem+2rem*2)] has-[>.combobox-chips]:w-fit') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -204,6 +206,9 @@ function ComboboxInputGroup(?Html $children = null, mixed ...$rest): Node
  * The text field. Search in its `onChange` handler: the event gives the text of the user in
  * `value` (no text while the input shows the label of the selection). Or bind it to a state of the
  * app with `phem:bind`.
+ *
+ * The input has its own border, also in a ComboboxInputGroup. In the ComboboxChips, the chips are
+ * the box: put the input directly in the ComboboxChips, and it has no border.
  *
  * With `multiple` and a list of the browser, the `placeholder` shows only when no item is chosen,
  * and `selectedDescription` is the `aria-description` while an item is chosen: `{count}` is the
@@ -223,7 +228,7 @@ function ComboboxInput(#[Context] Combobox $combobox, ?Bound $value = null, ?str
             data-phem-combobox-description={{ selectedDescription }}
             phem:live
             data-phem-combobox-target="input"
-            className={{ classes('h-full w-full border-0 bg-white pl-2 dark:bg-neutral-950 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 outline-none placeholder:text-neutral-500 dark:placeholder:text-neutral-400 dark:text-white') }}
+            className={{ classes('h-8 w-64 border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white') }}
             {{ ...rest }}
         />
     );
@@ -447,9 +452,10 @@ function ComboboxSeparator(mixed ...$rest): Node
 }
 
 /**
- * The row of the chips and the input, for a combobox with `multiple`. Put it in a
- * ComboboxInputGroup, the box around it. It gets `role="toolbar"` while a chip shows. With a list
- * of the browser, its `aria-label` shows only when an item is chosen.
+ * The box of the chips and the input, for a combobox with `multiple`: it grows with the rows of
+ * the chips. Put it in a ComboboxInputGroup, and put the ComboboxInput directly in it. It gets
+ * `role="toolbar"` while a chip shows. With a list of the browser, its `aria-label` shows only
+ * when an item is chosen.
  */
 #[Component]
 function ComboboxChips(?Html $children = null, mixed ...$rest): Node
@@ -457,7 +463,7 @@ function ComboboxChips(?Html $children = null, mixed ...$rest): Node
     return (
         <div
             data-phem-combobox-target="chips"
-            className={{ classes('flex w-full flex-wrap items-center gap-1') }}
+            className={{ classes('combobox-chips flex min-h-8 w-64 min-[32rem]:w-[22rem] cursor-text flex-wrap items-center gap-1 border border-neutral-950 bg-white px-2 py-1 has-[button]:px-1 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-neutral-950 dark:border-white dark:bg-neutral-950 dark:focus-within:outline-white [&>input]:h-[calc(1.5rem-2px)] [&>input]:w-auto [&>input]:min-w-12 [&>input]:flex-1 [&>input]:border-0 [&>input]:p-0 [&>input]:focus:outline-none') }}
             {{ ...rest }}
         >
             {{ children }}

@@ -4,7 +4,7 @@ This page helps you fix an event that fails, reloads the page, or runs slowly. E
 
 ## An event fails and the page doesn’t change
 
-When the server answers an event with an error status, such as a `500` or a `403`, the browser keeps the page as it was. It dispatches a `phem:error` event on the component of the handler, with `handler` and `status` in its detail. After a network error, `status` is `null`. If no listener cancels the event, the browser shows a default message at the bottom of the page: “Something went wrong. Please try again.”
+When the server answers an event with an error status, such as a `500` or a `403`, the browser keeps the page as it was. It dispatches a `phem:error` event on the component of the handler, with `handler`, `status` and `ids` (the ids of the DOM events of the request, see [Track an event from JavaScript](client-side.md#track-an-event-from-javascript)) in its detail. After a network error, `status` is `null`. If no listener cancels the event, the browser shows a default message at the bottom of the page: “Something went wrong. Please try again.”
 
 The server log and the browser console show why the handler failed. The console logs each failure as `[phem] event failed`, with the status and the response body.
 

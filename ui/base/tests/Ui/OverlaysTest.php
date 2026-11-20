@@ -87,7 +87,7 @@ final class OverlaysTest extends KernelTestCase
     {
         $this->mount(self::APP.'TooltipDemo')
             ->assertSelectorExists('[data-controller="phem-tooltip"][data-phem-tooltip-side-value="top"][data-phem-tooltip-side-offset-value="11"]')
-            ->assertSelectorExists('button[data-phem-tooltip-target="trigger"][aria-label="Bold"]')
+            ->assertSelectorExists('button[data-phem-tooltip-target="trigger"][aria-label="Bold"][class~="border-0"]:not([class~="border"])')
             ->assertSelectorExists('[data-phem-tooltip-target="popup"][hidden]');
     }
 
@@ -96,6 +96,8 @@ final class OverlaysTest extends KernelTestCase
         $this->mount(self::APP.'TooltipDetachedDemo')
             ->assertSelectorExists('span#tools[data-controller="phem-tooltip"][data-phem-tooltip-open-value="true"][data-phem-tooltip-trigger-id-value="timer"]')
             ->assertSelectorExists('button#timer[data-phem-tooltip-for="tools"][data-phem-tooltip-payload="Set a timer"]:not([data-phem-tooltip-target])')
+            ->assertSelectorExists('button#listen[class~="border"][class~="bg-white"]:not([class~="border-0"])')
+            ->assertSelectorExists('button#timer[class~="border"][class~="border-l-0"]')
             ->assertSelectorExists('[data-phem-tooltip-target="popup"] [data-phem-tooltip-target="viewport"]');
     }
 
@@ -121,6 +123,8 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('div#shared[data-controller="phem-dialog"][data-phem-dialog-trigger-id-value="two"][data-phem-dialog-confirm-close-value="discard"][data-phem-dialog-final-focus-value="#after"]')
             ->assertSelectorExists('button#two[data-phem-dialog-for="shared"][data-phem-dialog-payload="Dialog 2"]:not([data-phem-dialog-target])')
             ->assertSelectorExists('dialog[data-phem-dialog-target="viewport"] > div[data-phem-dialog-target="popup"] [data-phem-dialog-target="payload"]')
+            // In a viewport, the popup keeps the box of a dialog, and the caller places it.
+            ->assertSelectorExists('div[data-phem-dialog-target="popup"][class~="border"][class~="bg-white"][class~="outline-0"]:not([class~="fixed"])')
             ->assertSelectorExists('div#discard[data-controller="phem-dialog"] dialog[role="alertdialog"] button[data-phem-dialog-target="close"][data-phem-dialog-discard]');
     }
 

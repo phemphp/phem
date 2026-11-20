@@ -63,17 +63,24 @@ function Tooltip(
  * With a `handle`, it is a detached trigger of the Tooltip with the same `handle`: it can be
  * anywhere in the page. The `payload` is the text of the TooltipViewport while this trigger is
  * active.
+ *
+ * In a group with one border around the triggers (a toolbar), the trigger has no border. A trigger
+ * alone has its own border: give it the `bordered` prop.
  */
 #[Component]
 function TooltipTrigger(
     ?string $handle = null,
     ?string $payload = null,
+    bool $bordered = false,
     #[Context] ?Toolbar $toolbar = null,
     ?Html $children = null,
     mixed ...$rest,
 ): Node {
     $item = null !== $toolbar ? 'item' : null;
     $target = null === $handle ? 'trigger' : null;
+    $border = $bordered
+        ? 'border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950'
+        : 'border-0 bg-transparent focus-visible:bg-transparent';
 
     return (
         <button
@@ -82,7 +89,7 @@ function TooltipTrigger(
             data-phem-tooltip-for={{ handle }}
             data-phem-tooltip-payload={{ payload }}
             data-phem-toolbar-target={{ item }}
-            className={{ classes('flex size-8 items-center justify-center border-0 bg-transparent text-neutral-950 select-none data-popup-open:bg-neutral-100 focus-visible:relative focus-visible:z-1 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:text-white dark:data-popup-open:bg-neutral-800 dark:hover:bg-neutral-800 dark:active:bg-neutral-700') }}
+            className={{ classes('flex size-8 items-center justify-center text-neutral-950 select-none data-popup-open:bg-neutral-100 focus-visible:relative focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:text-white dark:data-popup-open:bg-neutral-800 dark:hover:bg-neutral-800 dark:active:bg-neutral-700', border) }}
             {{ ...rest }}
         >
             {{ children }}

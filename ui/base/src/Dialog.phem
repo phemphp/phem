@@ -89,13 +89,15 @@ function DialogTrigger(
     );
 }
 
-/** The box of the dialog. In a DialogViewport, it is a `div`, and the classes of the caller place it. */
+/** The box of the dialog. In a DialogViewport, it is a `div` with the same border and background, and the classes of the caller place it. */
 #[Component]
 function DialogPopup(#[Context] ?Dialog $dialog = null, #[Context] ?DialogViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
 {
     // The viewport of a dialog around this dialog does not count.
     if (null !== $viewport && $viewport->dialog === $dialog) {
-        return <div data-phem-dialog-target="popup" className={{ classes('outline-0') }} {{ ...rest }}>{{ children }}</div>;
+        $box = Style::POPUP;
+
+        return <div data-phem-dialog-target="popup" className={{ classes(box, 'outline-0') }} {{ ...rest }}>{{ children }}</div>;
     }
 
     $base = Style::DIALOG;

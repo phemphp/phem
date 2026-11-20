@@ -56,6 +56,9 @@ final class Style
     /** A button of a toolbar. */
     public const string TOOLBAR_BUTTON = 'flex h-8 min-w-8 items-center justify-center gap-2 border-0 bg-transparent px-3 font-[inherit] text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:not-data-pressed:bg-neutral-200 data-pressed:bg-neutral-950 data-pressed:text-white data-pressed:hover:not-data-disabled:bg-neutral-950 data-pressed:hover:not-data-disabled:text-white dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:not-data-pressed:bg-neutral-700 dark:data-pressed:bg-white dark:data-pressed:text-neutral-950 dark:data-pressed:hover:not-data-disabled:bg-white dark:data-pressed:hover:not-data-disabled:text-neutral-950 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-disabled:text-neutral-500';
 
+    /** A link or a trigger of a navigation menu in a content: a card with a title and a description. */
+    public const string NAVIGATION_CARD = 'relative block h-full w-full border-0 bg-transparent p-2 text-left text-sm font-normal text-inherit no-underline hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800';
+
     /** The title and the description of a dialog or a popover. */
     public const string TITLE = 'text-base font-bold';
     public const string DESCRIPTION = 'text-sm text-neutral-600 dark:text-neutral-400';

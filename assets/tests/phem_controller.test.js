@@ -2938,7 +2938,7 @@ describe("pushes", () => {
       source.push('<turbo-stream action="phem-refresh"></turbo-stream>')
 
       await vi.waitFor(() => expect(errors).toHaveBeenCalledOnce())
-      expect(errors.mock.calls[0][0].detail).toEqual({ handler: null, status: 409 })
+      expect(errors.mock.calls[0][0].detail).toEqual({ handler: null, status: 409, ids: [] })
       expect(Turbo.visit).not.toHaveBeenCalled()
       expect(document.querySelector("input").value).toBe("A long text")
     })

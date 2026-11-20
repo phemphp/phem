@@ -25,10 +25,12 @@ The element that sent an event receives these browser events, with the `handler`
 | Event | When |
 |---|---|
 | `phem:before-queue` | Before the event joins the queue; call `preventDefault()` to cancel it, and `detail.resume()` to send the cancelled event later (see [Hold an event](#hold-an-event-and-send-it-later)) |
-| `phem:queue` | When the event joins the queue |
+| `phem:queue` | When the event joins the queue; `detail.id` is the id of the DOM event |
 | `phem:send` | When the request starts |
 | `phem:receive` | When the server accepted the event, before the morph |
 | `phem:done` | When the event ends; `detail.ok` is `false` if it failed, and for a redirect, `detail.redirect` is the URL and the event comes before the visit |
+
+One request can carry more than one DOM event (an `input` event takes the place of the one that waits): `phem:send`, `phem:receive`, `phem:done` and `phem:error` give the ids of their DOM events in `detail.ids`.
 
 Each `phem:send` gets exactly one `phem:done`, even when the event fails, redirects or reloads the page. Use the pair to know when an event runs. The loading state shows only after the loading delay, so a fast event never shows it.
 

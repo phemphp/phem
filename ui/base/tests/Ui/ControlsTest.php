@@ -45,7 +45,9 @@ final class ControlsTest extends KernelTestCase
     {
         $this->mount(self::APP.'MenuTriggerWithNoCaretDemo')
             ->assertSelectorExists('button[data-phem-menu-target="trigger"][aria-label="Actions"]')
-            ->assertSelectorNotExists('button[data-phem-menu-target="trigger"] svg');
+            ->assertSelectorNotExists('button[data-phem-menu-target="trigger"] svg')
+            // With no caret, the padding is the same on both sides.
+            ->assertSelectorExists('button[data-phem-menu-target="trigger"][class~="px-3"]:not([class~="pr-2"])');
     }
 
     public function testTheTriggersInAToolbarAreItemsOfTheToolbar(): void

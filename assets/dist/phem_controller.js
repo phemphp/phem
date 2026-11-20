@@ -2262,7 +2262,7 @@ export default class PhemController extends Controller {
       if (e instanceof PageLeft) return
 
       console.error("[phem] event failed (network error)", e)
-      this.showError(handler, null)
+      this.showError(handler, null, ids)
       failed(null)
       return
     }
@@ -2283,7 +2283,7 @@ export default class PhemController extends Controller {
       // refresh comes from a push, not from the user: it does not drop the changes of a
       // `data-phem-guard`, it shows the error, and the user can copy the changes first.
       failed(409)
-      if (event.refresh && this.dirtyGuard()) this.showError(handler, 409)
+      if (event.refresh && this.dirtyGuard()) this.showError(handler, 409, ids)
       else this.reload()
       return
     }
@@ -2302,7 +2302,7 @@ export default class PhemController extends Controller {
     if (!response.ok) {
       const text = await response.text()
       console.error(`[phem] event failed (${response.status})`, text)
-      this.showError(handler, response.status)
+      this.showError(handler, response.status, ids)
       failed(response.status)
       return false
     }
@@ -2314,7 +2314,7 @@ export default class PhemController extends Controller {
       data = JSON.parse(text)
     } catch {
       console.error(`[phem] event failed (${response.status}): the response is not JSON`, text)
-      this.showError(handler, response.status)
+      this.showError(handler, response.status, ids)
       failed(response.status)
       return
     }
@@ -2793,9 +2793,10 @@ export default class PhemController extends Controller {
     }
   }
 
-  // Dispatches `phem:error`, then shows the default message when no listener prevents it.
-  showError(handler, status) {
-    const event = new CustomEvent("phem:error", { detail: { handler, status }, bubbles: true, cancelable: true })
+  // Dispatches `phem:error`, then shows the default message when no listener prevents it. `ids` are
+  // the ids of the DOM events of the request (the `id` of their `phem:queue`).
+  showError(handler, status, ids = []) {
+    const event = new CustomEvent("phem:error", { detail: { handler, status, ids: [...ids] }, bubbles: true, cancelable: true })
     if (!this.componentRoot(handler).dispatchEvent(event)) return
 
     this.hideError()

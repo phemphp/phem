@@ -732,12 +732,13 @@ export default class PhemComboboxController extends Controller {
     const chip = template.content.firstElementChild.cloneNode(true)
     const label = this.#labelOf(item)
     const value = valueOf(item)
-    const fill = (text) => text.replaceAll("{label}", label).replaceAll("{value}", value)
+    // One pass with a function: a `$` or a `{value}` in the label stays as it is.
+    const fill = (text, names = /\{(label|value)\}/g) => text.replace(names, (_, name) => (name === "label" ? label : value))
     const walker = document.createTreeWalker(chip, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
 
     for (let node = chip; node; node = walker.nextNode()) {
       if (node.nodeType === Node.TEXT_NODE) {
-        node.textContent = node.textContent.replaceAll("{label}", label)
+        node.textContent = fill(node.textContent, /\{(label)\}/g)
 
         continue
       }
@@ -1429,12 +1430,15 @@ export default class PhemComboboxController extends Controller {
     for (const item of items) if (this.held.has(item) && !values.has(valueOf(item))) item.remove()
 
     const template = this.chipTemplateTargets[0]
-    if (!template) return
+    const missing = template ? [...values].filter((value) => !shown.has(value)) : []
+    if (missing.length === 0) return
 
-    for (const value of values) {
-      if (shown.has(value)) continue
+    // The item of each value, in one pass over the list.
+    const itemOf = new Map()
+    for (const item of items) if (item.isConnected && !itemOf.has(valueOf(item))) itemOf.set(valueOf(item), item)
 
-      const item = items.find((el) => el.isConnected && valueOf(el) === value)
+    for (const value of missing) {
+      const item = itemOf.get(value)
       if (!item) continue
 
       const chip = this.#chipFrom(template, item)

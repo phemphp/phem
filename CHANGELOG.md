@@ -8,6 +8,13 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem:error` gives the ids of the DOM events of the request in `detail.ids`, as `phem:send`,
+  `phem:receive` and `phem:done` do, and `phem:queue` gives the id of its DOM event in
+  `detail.id`. A listener can tell which DOM event failed.
+- A choice of `phem-combobox` that shows before the answer hides only the error message of its
+  own event: the failure of another event of the same handler shows the message. The chip of the
+  `chipTemplate` part keeps a `$` and a `{value}` of the label as they are. A choice ends also
+  when a morph moves the combobox before the answer: its chip loses `data-pending`.
 - The `multiple` selection mode of `phem-combobox` also works with a list of the server, for a
   form that sends the choices on submit: the server searches, and the browser keeps the chosen
   items. A click on an item with no handler adds a chip from the `chipTemplate` part, where

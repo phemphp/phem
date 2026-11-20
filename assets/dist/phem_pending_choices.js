@@ -13,31 +13,32 @@ export const FAILED_TIME = 1000
 export class PendingChoices {
   constructor() {
     this.choices = []
-    this.timers = new Set()
   }
 
   // On the document: phem dispatches the `phem:done` of an item that the morph removed on the root
   // of its component, and `phem:error` on the root.
   connect() {
+    this.connected = true
+    if (this.listening) return
+
     this.listening = new AbortController()
     const options = { signal: this.listening.signal }
-    document.addEventListener("phem:send", this.onSend, options)
     document.addEventListener("phem:receive", this.onReceive, options)
     document.addEventListener("phem:error", this.onError, options)
     document.addEventListener("phem:done", this.onDone, options)
   }
 
+  // A choice that waits keeps its listeners and its timer: a controller that connects again (an
+  // element that a morph moved) gets the end of its event. The listeners stop with the last choice.
   disconnect() {
-    this.listening.abort()
-    for (const timer of this.timers) clearTimeout(timer)
-    this.timers.clear()
-    this.choices = []
+    this.connected = false
+    this.#stopWhenIdle()
   }
 
   // A choice of the DOM event `id` (the id of `phem:queue`).
   add(id, { item, chip = null, parts, revert, end = () => {} }) {
     for (const el of parts) el.setAttribute("data-pending", "")
-    this.choices.push({ id, handler: null, received: false, item, chip, parts, revert, end })
+    this.choices.push({ id, received: false, item, chip, parts, revert, end })
   }
 
   // The browser keeps the chip of a choice until the answer of its event.
@@ -51,18 +52,14 @@ export class PendingChoices {
     return this.choices.some((c) => c.item === item && !c.received)
   }
 
-  onSend = (event) => {
-    for (const choice of this.#of(event)) choice.handler = event.detail.handler
-  }
-
   // The answer came: its morph shows the server render, and removes the chip of the browser.
   onReceive = (event) => {
     for (const choice of this.#of(event)) choice.received = true
   }
 
+  // The failure of a choice shows on its parts, not in the default message.
   onError = (event) => {
-    const handler = event.detail?.handler
-    if (handler != null && this.choices.some((c) => c.handler === handler)) event.preventDefault()
+    if (this.#of(event).length > 0) event.preventDefault()
   }
 
   onDone = (event) => {
@@ -78,21 +75,27 @@ export class PendingChoices {
 
       for (const el of choice.parts) el.setAttribute("data-failed", "")
       choice.id = null
-      const timer = setTimeout(() => {
-        this.timers.delete(timer)
+      setTimeout(() => {
         this.#remove(choice)
         for (const el of choice.parts) el.removeAttribute("data-failed")
         choice.revert()
       }, FAILED_TIME)
-      this.timers.add(timer)
     }
   }
 
   #remove(choice) {
     this.choices = this.choices.filter((c) => c !== choice)
+    this.#stopWhenIdle()
   }
 
-  // The choices of the DOM events that the event of a `phem:send`, `phem:receive` or `phem:done`
+  #stopWhenIdle() {
+    if (this.connected || this.choices.length > 0 || !this.listening) return
+
+    this.listening.abort()
+    this.listening = null
+  }
+
+  // The choices of the DOM events that the event of a `phem:receive`, `phem:error` or `phem:done`
   // carries.
   #of(event) {
     const ids = event.detail?.ids ?? []

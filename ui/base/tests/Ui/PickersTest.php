@@ -50,6 +50,23 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorNotExists('[data-phem-combobox-open-on-input-click-value]');
     }
 
+    public function testTheInputHasItsOwnBorderAndTheChipsAreTheBox(): void
+    {
+        // An input out of a group (here an Autocomplete) has its own border.
+        $this->mount(self::APP.'ComboboxSelectionDemo')
+            ->assertSelectorExists('#tags-input[class~="border"][class~="w-64"]');
+
+        // In a group, the input keeps its border and fills the group. The buttons go over its end.
+        $this->mount(self::APP.'ComboboxDemo')
+            ->assertSelectorExists('[data-phem-combobox-target="inputGroup"][class~="relative"][class~="[&>input]:w-full"]:not([class~="border"])')
+            ->assertSelectorExists('[data-phem-combobox-target="inputGroup"] > input#fruit-input[class~="border"]');
+
+        // With `multiple`, the chips are the box, and the input in them has no border.
+        $this->mount(self::APP.'ComboboxMultipleDemo')
+            ->assertSelectorExists('[data-phem-combobox-target="chips"][class~="combobox-chips"][class~="border"][class~="[&>input]:border-0"]')
+            ->assertSelectorExists('[data-phem-combobox-target="chips"] > input#langs-input');
+    }
+
     public function testAListOfTheServerWithABoundValueSelectsOneItem(): void
     {
         $this->mount(self::APP.'ComboboxServerSelectionDemo')

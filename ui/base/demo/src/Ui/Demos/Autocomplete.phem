@@ -499,7 +499,7 @@ function AutocompleteHeroDemo(): Node
     return (
         <Autocomplete id="tags" filter="contains">
             <ComboboxLabel>Search tags</ComboboxLabel>
-            <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 px-2 placeholder:opacity-100 placeholder:[-webkit-text-fill-color:var(--color-neutral-500)] dark:placeholder:[-webkit-text-fill-color:var(--color-neutral-400)] focus:outline-solid focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:border-white dark:focus:outline-white" />
+            <ComboboxInput placeholder="e.g. feature" className="placeholder:opacity-100 placeholder:[-webkit-text-fill-color:var(--color-neutral-500)] dark:placeholder:[-webkit-text-fill-color:var(--color-neutral-400)]" />
             <ComboboxPopup>
                 <ComboboxEmpty>No tags found.</ComboboxEmpty>
                 <ComboboxList className="scroll-py-[0.25rem]">
@@ -549,7 +549,7 @@ final class AutocompleteAsyncDemo
         return (
             <Autocomplete id="movies">
                 <ComboboxLabel>Search movies by name or year</ComboboxLabel>
-                <ComboboxInput phem:bind={{ query }} placeholder="e.g. Pulp Fiction or 1994" className="h-8 w-[16rem] border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white" />
+                <ComboboxInput phem:bind={{ query }} placeholder="e.g. Pulp Fiction or 1994" />
                 <ComboboxPopup className="[&[data-empty]:not([aria-busy=true]):has([data-status-text]:empty)]:hidden">
                     <ComboboxStatus className="p-0">
                         <span className="hidden items-center gap-2 py-1 pr-8 pl-2 [[aria-busy=true]_&]:flex">
@@ -558,7 +558,7 @@ final class AutocompleteAsyncDemo
                         </span>
                         <span data-status-text className="flex items-center gap-2 py-1 pr-8 pl-2 empty:hidden [[aria-busy=true]_&]:hidden">{{ status }}</span>
                     </ComboboxStatus>
-                    <ComboboxList className="data-empty:p-0">
+                    <ComboboxList>
                         {% for movie in results %}
                             <ComboboxItem key={{ movie.id }} value={{ movie.id }} onClick={{ choose(movie.id) }} className="flex">
                                 <span className="flex w-full flex-col gap-1">
@@ -582,7 +582,7 @@ function AutocompleteInlineDemo(): Node
     return (
         <Autocomplete id="inline-tags" filter="contains" mode="both">
             <ComboboxLabel>Search tags</ComboboxLabel>
-            <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white" />
+            <ComboboxInput placeholder="e.g. feature" />
             <ComboboxPopup className="data-empty:hidden">
                 <ComboboxList>
                     {% for id, tag in tags %}
@@ -613,7 +613,7 @@ function AutocompleteGroupedDemo(): Node
     return (
         <Autocomplete id="grouped-tags" filter="contains">
             <ComboboxLabel>Select a tag</ComboboxLabel>
-            <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white" />
+            <ComboboxInput placeholder="e.g. feature" />
             <ComboboxPopup>
                 <ComboboxEmpty>No tags found.</ComboboxEmpty>
                 <ComboboxList>
@@ -708,7 +708,7 @@ final class AutocompleteFuzzyDemo
         return (
             <Autocomplete id="docs">
                 <ComboboxLabel>Fuzzy search documentation</ComboboxLabel>
-                <ComboboxInput phem:bind={{ query }} placeholder="e.g. React" className="h-8 w-[16rem] border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white" />
+                <ComboboxInput phem:bind={{ query }} placeholder="e.g. React" />
                 <ComboboxPopup>
                     <ComboboxEmpty className="py-3">No results found for "{{ query }}"</ComboboxEmpty>
                     <ComboboxList className="flex max-h-[min(var(--available-height),28rem)] flex-col">
@@ -759,7 +759,7 @@ final class AutocompleteLimitDemo
         return (
             <Autocomplete id="limited-tags" filter="contains" limit={{ limit }}>
                 <ComboboxLabel>Limit results to 8</ComboboxLabel>
-                <ComboboxInput phem:bind={{ query }} placeholder="e.g. component" className="h-8 w-[16rem] border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white" />
+                <ComboboxInput phem:bind={{ query }} placeholder="e.g. component" />
                 <ComboboxPopup>
                     <ComboboxEmpty className="py-2">No results found for "{{ query }}"</ComboboxEmpty>
                     <ComboboxList>
@@ -782,7 +782,7 @@ function AutocompleteAutoHighlightDemo(): Node
     return (
         <Autocomplete id="highlighted-tags" filter="contains" autoHighlight>
             <ComboboxLabel>Auto highlight on type</ComboboxLabel>
-            <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white" />
+            <ComboboxInput placeholder="e.g. feature" />
             <ComboboxPopup>
                 <ComboboxEmpty>No tags found.</ComboboxEmpty>
                 <ComboboxList>
@@ -811,14 +811,14 @@ function AutocompleteCommandPaletteDemo(): Node
                             <path d="m11 11 3.5 3.5" />
                             <circle cx="7" cy="7" r="5.5" />
                         </svg>
-                        <ComboboxInput aria-label="Search commands" aria-describedby="palette-shortcuts" placeholder="Search for apps and commands…" autofocus className="h-10 bg-transparent pr-3 pl-0 dark:bg-transparent" />
+                        <ComboboxInput aria-label="Search commands" aria-describedby="palette-shortcuts" placeholder="Search for apps and commands…" autofocus className="h-10 w-full border-0 bg-transparent pr-3 pl-0 focus:outline-none dark:bg-transparent" />
                     </div>
                     <DialogClose className="sr-only">Close command palette</DialogClose>
                     <ScrollArea className="relative flex h-auto max-h-[min(60dvh,24rem)] min-h-0 w-auto max-w-none flex-[0_1_auto] overflow-hidden border-t border-neutral-950 bg-transparent dark:border-t-white dark:bg-transparent">
                         <ScrollAreaViewport className="min-h-0 flex-1 overscroll-contain border-0 [scroll-padding-block:0.25rem]">
                             <ScrollAreaContent className="block min-w-full p-0">
-                                <ComboboxEmpty className="flex min-h-32 items-center justify-start py-4 pr-4 pl-2 empty:min-h-0">No results found.</ComboboxEmpty>
-                                <ComboboxList className="max-h-none overflow-visible py-1">
+                                <ComboboxEmpty className="flex min-h-32 items-center justify-start empty:min-h-0">No results found.</ComboboxEmpty>
+                                <ComboboxList className="max-h-none overflow-visible">
                                     {% for name, items in groups %}
                                         <ComboboxGroup key={{ name }} className="not-last:mb-1">
                                             <ComboboxGroupLabel className="flex min-h-8 items-center py-0 pr-6 pl-3 leading-none">{{ name }}</ComboboxGroupLabel>
@@ -892,7 +892,7 @@ final class AutocompleteGridDemo
                     <Autocomplete id="emoji" grid align={{ Align.End }}>
                         <ComboboxTrigger tabindex="0" aria-label="Choose emoji" className="size-8 w-8 border border-neutral-950 text-xl leading-none hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 active:bg-neutral-200 data-popup-open:bg-neutral-100 dark:border-white dark:hover:bg-neutral-800 dark:focus-visible:outline-white dark:active:bg-neutral-700 dark:data-popup-open:bg-neutral-800">😀</ComboboxTrigger>
                         <ComboboxPopup aria-label="Select emoji" className="w-auto border-0 [--input-container-height:2rem]">
-                            <ComboboxInput phem:bind={{ search }} aria-label="Search emojis" placeholder="Search emojis…" className="h-8 w-64 max-w-full border border-neutral-950 px-2 focus:outline-2 focus:-outline-offset-2 focus:outline-neutral-950 dark:border-white dark:focus:outline-white" />
+                            <ComboboxInput phem:bind={{ search }} aria-label="Search emojis" placeholder="Search emojis…" className="max-w-full focus:-outline-offset-2" />
                             <div className="border border-t-0 border-neutral-950 dark:border-white">
                                 <ComboboxEmpty className="px-2 py-3">No emojis found</ComboboxEmpty>
                                 <ComboboxList aria-label="Emoji results" className="max-h-[min(calc(20.5rem-var(--input-container-height)-2px),calc(var(--available-height)-var(--input-container-height)-2px))] overflow-auto py-2 scroll-pt-1 scroll-pb-[0.35rem]">
@@ -903,7 +903,7 @@ final class AutocompleteGridDemo
                                                 {% for index, row in rows %}
                                                     <ComboboxRow key={{ index }} className="grid grid-cols-5">
                                                         {% for item in row %}
-                                                            <ComboboxItem key={{ item.value }} value={{ item.value }} data-label={{ item.name }} aria-label={{ item.name }} onClick={{ insert(item.emoji) }} className="flex h-10 min-w-[var(--anchor-width)] flex-col items-center justify-center px-0.5 py-2 data-highlighted:before:bg-neutral-100 dark:data-highlighted:before:bg-neutral-800">
+                                                            <ComboboxItem key={{ item.value }} value={{ item.value }} data-label={{ item.name }} aria-label={{ item.name }} onClick={{ insert(item.emoji) }} className="flex h-10 min-w-[var(--anchor-width)] flex-col justify-center px-0.5 py-2 data-highlighted:before:bg-neutral-100 dark:data-highlighted:before:bg-neutral-800">
                                                                 <span className="text-2xl leading-none">{{ item.emoji }}</span>
                                                             </ComboboxItem>
                                                         {% endfor %}
@@ -944,7 +944,7 @@ final class AutocompleteLargeDatasetDemo
         return (
             <Autocomplete id="many" openOnInputClick={{ open }}>
                 <ComboboxLabel>Search 10,000 items</ComboboxLabel>
-                <ComboboxInput phem:bind={{ query }} className="h-8 w-[16rem] border border-neutral-950 bg-white px-2 text-sm font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white" />
+                <ComboboxInput phem:bind={{ query }} />
                 <ComboboxPopup>
                     <ComboboxEmpty className="px-2 py-3">No items found.</ComboboxEmpty>
                     <ComboboxList>
