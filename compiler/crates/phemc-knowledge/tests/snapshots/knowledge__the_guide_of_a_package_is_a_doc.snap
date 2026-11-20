@@ -1,0 +1,9 @@
+---
+source: crates/phemc-knowledge/tests/knowledge.rs
+expression: "k.library.find(\"acme/ui#naming\").unwrap().page().md()"
+---
+<!-- acme/ui#naming | Acme UI › Naming — The components of Acme, for the forms and the popups of an app. -->
+
+## Naming
+
+Give each part the name of its family first: `DialogPopup`, not `PopupDialog`.

@@ -5,6 +5,7 @@
 //! which parses it into a [`markup::Node`] tree that keeps Twig regions intact.
 
 pub mod diag;
+pub mod doc;
 pub mod markup;
 pub mod php;
 pub mod span;

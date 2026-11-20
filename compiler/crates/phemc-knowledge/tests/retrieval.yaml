@@ -1,0 +1,101 @@
+# The retrieval eval of phem (`phemc search --eval`): prompts of real tasks, and the keys that
+# must be in their top 20 results. It runs on the docs of phem and on the fixture package
+# (tests/fixtures/project). Add a prompt when an agent did not find a doc that it needed.
+
+# The docs of phem.
+- query: debounce the search input
+  expect: [events#control-when-typing-sends-an-event]
+- query: show a spinner while the handler runs
+  expect: [events#show-a-loading-state]
+- query: disable the button while saving
+  expect: [events#disable-the-element-while-its-event-runs]
+- query: redirect to another page after the form submit
+  expect: [events#redirect-after-a-handler]
+- query: keyboard shortcut to save
+  expect: [events#add-keyboard-shortcuts]
+- query: infinite scroll load more items
+  expect: [events#load-more-when-an-element-comes-into-view, feeds#load-older-items]
+- query: refresh the data every 5 seconds
+  expect: [events#poll-the-server]
+- query: bind an input to a state property
+  expect: [forms#bind-a-field-to-state-without-a-handler]
+- query: validate a form while the user types
+  expect: [forms#validate-a-form-while-the-user-types]
+- query: use a Symfony form type
+  expect: [forms#handle-a-symfony-form]
+- query: upload a file
+  expect: [forms#accept-file-uploads]
+- query: warn the user about unsaved changes
+  expect: [forms#warn-about-unsaved-changes]
+- query: keep state between events
+  expect: [components#keep-state-between-events]
+- query: share state between two components
+  expect: [components#share-state-between-two-components]
+- query: pass a value down the tree without props
+  expect: [components#pass-a-value-down-the-tree-with-context]
+- query: keep the filter in the URL query string
+  expect: [components#keep-state-in-the-url]
+- query: render must be pure
+  expect: [components#keep-render-pure, principles#keep-render-pure]
+- query: rest props spread attributes
+  expect: [syntax#rest-props]
+- query: named slots and children
+  expect: [syntax#props-children-and-slots]
+- query: loop over a list with keys
+  expect: [syntax#lists-and-keys]
+- query: if else in markup
+  expect: [syntax#conditional-markup]
+- query: declare a page with a route
+  expect: [pages#declare-a-page]
+- query: read a route parameter
+  expect: [pages#read-route-values]
+- query: link to a page
+  expect: [pages#link-to-a-page]
+- query: custom 404 page
+  expect: [error-pages#add-a-page-for-a-specific-status]
+- query: push updates to other browsers with Mercure
+  expect: [real-time#push-changes-from-a-handler]
+- query: load slow content after the page
+  expect: [resilience#load-slow-content-after-the-page]
+- query: run slow work in a Messenger worker
+  expect: [resilience#run-slow-work-after-the-response]
+- query: protect a handler with IsGranted
+  expect: [security#protect-one-handler-with-isgranted]
+- query: rate limit events
+  expect: [security#rate-limit-events]
+- query: test a component with mount
+  expect: [testing#choose-between-mount-and-visit]
+- query: event fails with a 413
+  expect: [failed-events#an-event-fails-with-a-413]
+- query: merge tailwind classes of the caller
+  expect: [styling#merge-tailwind-classes]
+- query: replace a component of a package
+  expect: [packages#replace-a-component-of-a-package]
+- query: write a package of components
+  expect: [package-authoring]
+- query: set extra.phem.source in composer.json
+  expect: [package-authoring#declare-the-components-in-composerjson]
+- query: give coding agents the examples of a package
+  expect: [package-authoring#help-coding-agents-use-the-components]
+- query: what does E015 mean
+  expect: [compiler#diagnostic-codes]
+- query: open a modal dialog with a controller
+  expect: [controllers#open-a-modal-dialog]
+- query: show a toast message
+  expect: [controllers#show-toast-messages]
+- query: confirm before delete
+  expect: [controllers#ask-for-confirmation-before-an-event]
+
+# The fixture package acme/ui: components, examples and the guide.
+- query: a modal with a form
+  expect: [Acme\Ui\Dialog, Acme\Ui\Examples\DialogFormDemo]
+- query: lightbox
+  expect: [Acme\Ui\Dialog]
+- query: nested dialogs
+  expect: [Acme\Ui\Examples\DialogNestedDemo]
+- query: dialog popup box
+  expect: [Acme\Ui\DialogPopup]
+- query: submit button
+  expect: [Acme\Ui\Button]
+- query: naming of the parts
+  expect: [acme/ui#naming]

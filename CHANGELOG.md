@@ -8,6 +8,21 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- New `phemc docs`, `phemc components`, `phemc examples` and `phemc search` commands give a
+  coding agent the texts that it needs, with the installed versions: the docs of Phem (in the
+  `phemc` binary), the components of the app and of the packages (docblocks, props with their
+  defaults and enum cases, and the parts of each family from `#[Context]` and `#[Provide]`), and
+  the examples and the guide of a package. Each text has a stable key (`events#poll-the-server`,
+  `Acme\Ui\Dialog`, `acme/ui#naming`). The search is lexical (BM25) and gives the same result
+  each time. `phemc search --eval <file>` runs a retrieval eval and fails under 100 % recall.
+  `--format json` prints JSON for the tools. The new doc "Use Phem with coding agents" shows the
+  workflow and a text to copy into `AGENTS.md` or `CLAUDE.md`.
+- A package can give examples (`extra.phem.examples`) and a guide for agents
+  (`extra.phem.guide`), and the other names of a component in an `@aliases` docblock tag. An app
+  build never compiles the examples. `phemc build`, `check` and `watch` compile them with
+  `--examples-of <package>`, for the demo of a package.
+- `phemc check <file>` and `phemc check -` (stdin, with `--stdin-path`) check one file: the
+  project compiles with it, and only its diagnostics show.
 - Fix: the first focus of a `phem-dialog` does not scroll the dialog and the content of its
   popup, as in Base UI. Before, a viewport that scrolls (the "outside scroll" layout) opened at the
   bottom of a tall popup: the browser gave the focus while the start transition moved the popup

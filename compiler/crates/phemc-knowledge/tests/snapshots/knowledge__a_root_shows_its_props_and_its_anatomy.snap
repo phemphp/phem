@@ -1,0 +1,41 @@
+---
+source: crates/phemc-knowledge/tests/knowledge.rs
+expression: "k.catalog.detail_md(dialog, &k.examples_of(&dialog.fqcn))"
+---
+# Dialog — Acme\Ui\Dialog (acme/ui)
+
+A modal dialog.
+
+The popup is a native `<dialog>`.
+
+Import: `use Acme\Ui\Dialog; use Acme\Ui\DialogViewport; use function Acme\Ui\{DialogTrigger, DialogPopup, DialogTitle};`
+Source: vendor/acme/ui/components/Dialog.phem
+Also called: modal, lightbox
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| defaultOpen | bool | false | The dialog is open on the first render. |
+| title | string | required |  |
+| children | ?Html | null |  |
+| ...attrs | the other attributes | [] |  |
+
+## Context
+
+Provides: Dialog (the parts inside get it)
+
+## Anatomy
+
+```
+Dialog
+├─ DialogPopup
+└─ DialogViewport
+   └─ DialogPopup
+```
+Other parts: DialogTrigger, DialogTitle
+
+## Examples
+
+- `Acme\Ui\Examples\DialogFormDemo` Dialog with a form.
+- `Acme\Ui\Examples\DialogNestedDemo` A dialog in a dialog.

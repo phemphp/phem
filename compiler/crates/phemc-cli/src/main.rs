@@ -4,8 +4,11 @@
 //!   (`bin/console phem:warmup` of the Symfony application). It compiles the `.phem` roots of the
 //!   Composer packages with the app (see `phemc_sources`). It runs from the project root.
 //! - `phemc check <src>`: reports diagnostics only. `--format json` prints them as JSON (for editors).
+//!   `phemc check <file>` and `phemc check -` (stdin) report the diagnostics of one file.
 //! - `phemc watch <src> --exec <cmd>`: rebuilds on change and restarts `<cmd>`.
 //! - `phemc lsp`: runs the language server on stdin and stdout (for editors).
+//! - `phemc docs`, `phemc components`, `phemc examples`, `phemc search`: the texts for the coding
+//!   agents (see `phemc_knowledge`).
 
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -30,12 +33,7 @@ enum Cmd {
     /// Compile a source directory.
     Build(BuildArgs),
     /// Report diagnostics, write nothing.
-    Check {
-        src: PathBuf,
-        /// The output format: `text` (on stderr) or `json` (on stdout, for editors).
-        #[arg(long, value_enum, default_value_t = Format::Text)]
-        format: Format,
-    },
+    Check(CheckArgs),
     /// Build, run a command, and rebuild + restart it when a source file changes.
     Watch {
         #[command(flatten)]
@@ -46,12 +44,91 @@ enum Cmd {
     },
     /// Run the language server on stdin and stdout.
     Lsp,
+    /// Show the docs of phem (of this version), or the guide of a package.
+    Docs {
+        /// A doc (`events`), a section (`events#debounce`), or a package guide (`acme/ui`).
+        key: Option<String>,
+        /// List the key of each section.
+        #[arg(long, conflicts_with = "key")]
+        toc: bool,
+        #[command(flatten)]
+        project: ProjectArgs,
+    },
+    /// Show the components of the app and of the packages, or one component.
+    Components {
+        /// A component: its tag (`Dialog`) or its FQCN.
+        name: Option<String>,
+        /// Only the components of a package (`app` for the app).
+        #[arg(long)]
+        package: Option<String>,
+        #[command(flatten)]
+        project: ProjectArgs,
+    },
+    /// Show the examples of the packages: all, the ones of a component, or one example.
+    Examples {
+        /// A component (its examples), or an example (its code).
+        name: Option<String>,
+        #[arg(long)]
+        package: Option<String>,
+        #[command(flatten)]
+        project: ProjectArgs,
+    },
+    /// Search the docs, the components and the examples.
+    Search {
+        /// The words to search.
+        #[arg(required_unless_present = "eval")]
+        query: Option<String>,
+        /// Run a retrieval eval (a YAML file of queries and keys) and fail under 100 % recall.
+        #[arg(long, conflicts_with = "query")]
+        eval: Option<PathBuf>,
+        /// The number of results.
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+        #[command(flatten)]
+        project: ProjectArgs,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
 enum Format {
     Text,
     Json,
+}
+
+/// The output format of the texts for the agents.
+#[derive(Clone, Copy, ValueEnum)]
+enum TextFormat {
+    Md,
+    Json,
+}
+
+#[derive(Args, Clone)]
+struct ProjectArgs {
+    /// The source directory of the app.
+    #[arg(long, default_value = "src")]
+    src: PathBuf,
+    /// The output format: `md` (for the agents) or `json` (for the tools).
+    #[arg(long, value_enum, default_value_t = TextFormat::Md)]
+    format: TextFormat,
+}
+
+#[derive(Args, Clone)]
+struct CheckArgs {
+    /// The source directory, one `.phem` file, or `-` for a file on stdin.
+    path: PathBuf,
+    /// The source directory of the app, when `path` is a file or `-`.
+    #[arg(long, default_value = "src")]
+    src: PathBuf,
+    /// The path of the file on stdin: its text replaces this file. With no path, it is a new
+    /// file of the app.
+    #[arg(long)]
+    stdin_path: Option<PathBuf>,
+    /// Check the examples of a package too (the demo of a package).
+    #[arg(long = "examples-of", value_name = "PACKAGE")]
+    examples_of: Vec<String>,
+    /// The output format: `text` (on stderr) or `json` (on stdout, for editors).
+    #[arg(long, value_enum, default_value_t = Format::Text)]
+    format: Format,
 }
 
 #[derive(Args, Clone)]
@@ -67,16 +144,22 @@ struct BuildArgs {
     /// Do not run `bin/console phem:warmup` after the build.
     #[arg(long)]
     no_warmup: bool,
+    /// Compile the examples of a package too (the demo of a package).
+    #[arg(long = "examples-of", value_name = "PACKAGE")]
+    examples_of: Vec<String>,
 }
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.cmd {
         Cmd::Build(args) => build(&args),
-        Cmd::Check { src, format: Format::Text } => check(&src),
-        Cmd::Check { src, format: Format::Json } => check_json(&src),
+        Cmd::Check(args) => check(&args),
         Cmd::Watch { build, exec } => watch(&build, exec.as_deref()).map(|_| true),
         Cmd::Lsp => phemc_lsp::run().map(|_| true).map_err(Into::into),
+        Cmd::Docs { key, toc, project } => knowledge::docs(key.as_deref(), toc, &project),
+        Cmd::Components { name, package, project } => knowledge::components(name.as_deref(), package.as_deref(), &project),
+        Cmd::Examples { name, package, project } => knowledge::examples(name.as_deref(), package.as_deref(), &project),
+        Cmd::Search { query, eval, limit, project } => knowledge::search(query.as_deref(), eval.as_deref(), limit, &project),
     };
 
     match result {
@@ -89,9 +172,19 @@ fn main() -> ExitCode {
     }
 }
 
-/// The source roots of the project in the current directory: the app and the packages.
-fn source_roots(src: &Path) -> Result<Vec<SourceRoot>> {
-    Ok(phemc_sources::roots(Path::new("."), src)?)
+mod knowledge;
+
+/// The source roots of the project in the current directory: the app and the packages, and the
+/// examples of the packages in `examples_of`.
+fn source_roots(src: &Path, examples_of: &[String]) -> Result<Vec<SourceRoot>> {
+    let project = Path::new(".");
+    let mut roots = phemc_sources::roots(project, src)?;
+    for package in examples_of {
+        let examples = phemc_sources::examples_root(project, &roots, package)?;
+        roots.push(examples);
+    }
+
+    Ok(roots)
 }
 
 fn read_sources(roots: &[SourceRoot]) -> Result<Vec<SourceInput>> {
@@ -140,15 +233,20 @@ struct Compiled {
     warnings: usize,
 }
 
-fn compile(src: &Path) -> Result<Compiled> {
-    let roots = source_roots(src)?;
+fn compile(src: &Path, examples_of: &[String]) -> Result<Compiled> {
+    let roots = source_roots(src, examples_of)?;
     let inputs = read_sources(&roots)?;
-    let files = files_summary(inputs.len(), roots.iter().filter(|r| r.package.is_some()).count());
+    let files = files_summary(inputs.len(), packages(&roots));
 
     let (out, diags) = phemc_codegen::compile(inputs);
     let (errors, warnings) = report(&diags);
 
     Ok(Compiled { out, files, errors, warnings })
+}
+
+/// The number of packages of the roots: the examples of a package are not another package.
+fn packages(roots: &[SourceRoot]) -> usize {
+    roots.iter().filter_map(|r| r.package.as_ref()).collect::<std::collections::HashSet<_>>().len()
 }
 
 /// "42 file(s)", or "42 file(s) (2 package(s))" when there are packages.
@@ -159,18 +257,77 @@ fn files_summary(files: usize, packages: usize) -> String {
     }
 }
 
-fn check(src: &Path) -> Result<bool> {
-    let Compiled { files, errors, warnings, .. } = compile(src)?;
-    eprintln!("phemc: checked {files}: {errors} error(s), {warnings} warning(s)");
-    Ok(errors == 0)
+fn check(args: &CheckArgs) -> Result<bool> {
+    let one = args.path.as_os_str() == "-" || args.path.is_file();
+    let src = if one { &args.src } else { &args.path };
+    let roots = source_roots(src, &args.examples_of)?;
+    let mut inputs = read_sources(&roots)?;
+    let files = files_summary(inputs.len(), packages(&roots));
+
+    // One file: the project compiles with it, and only its diagnostics show.
+    let only = one.then(|| one_file(args, &roots, &mut inputs)).transpose()?;
+    let (_, mut diags) = phemc_codegen::compile(inputs);
+    if let Some(path) = &only {
+        diags.retain(|f| &f.path == path);
+    }
+
+    let ok = !diags.iter().flat_map(|f| f.printed()).any(|d| d.is_error());
+    match args.format {
+        // `--format json` prints the diagnostics to stdout. The exit code is the same as with
+        // `--format text`.
+        Format::Json => println!("{}", diagnostics_json(&diags)),
+        Format::Text => {
+            let (errors, warnings) = report(&diags);
+            eprintln!("phemc: checked {}: {errors} error(s), {warnings} warning(s)", only.as_deref().unwrap_or(&files));
+        }
+    }
+
+    Ok(ok)
 }
 
-/// `phemc check --format json`: prints the diagnostics to stdout. The exit code is the same as
-/// with `--format text`.
-fn check_json(src: &Path) -> Result<bool> {
-    let (_, diags) = phemc_codegen::compile(read_sources(&source_roots(src)?)?);
-    println!("{}", diagnostics_json(&diags));
-    Ok(!diags.iter().flat_map(|f| &f.diags).any(|d| d.is_error()))
+/// Puts the file of `phemc check <file>` or `phemc check -` in the inputs, and gives its path. A
+/// file of the roots keeps its key. Another file (or stdin with no `--stdin-path`) is a new file
+/// of the app.
+fn one_file(args: &CheckArgs, roots: &[SourceRoot], inputs: &mut Vec<SourceInput>) -> Result<String> {
+    let (path, text) = match args.path.as_os_str() == "-" {
+        true => {
+            let mut text = String::new();
+            std::io::Read::read_to_string(&mut std::io::stdin(), &mut text).context("cannot read stdin")?;
+            (args.stdin_path.clone().unwrap_or_else(|| PathBuf::from("stdin.phem")), text)
+        }
+        false => (args.path.clone(), std::fs::read_to_string(&args.path).with_context(|| format!("cannot read {}", args.path.display()))?),
+    };
+
+    let path = project_path(&path);
+    if let Some(input) = inputs.iter_mut().find(|i| i.path == path) {
+        input.text = text;
+        return Ok(path);
+    }
+
+    // A new file: its key must not be the key of a file of the roots.
+    let app = roots.iter().find(|r| r.package.is_none());
+    let rel = app.and_then(|r| path.strip_prefix(&format!("{}/", r.path))).map_or_else(|| format!("phemc-check/{}", path.trim_start_matches('/')), String::from);
+    inputs.push(SourceInput { rel, path: path.clone(), package: None, text });
+
+    Ok(path)
+}
+
+/// The path of a file from the project root (the current directory), with `/` separators. A
+/// file outside the project keeps its absolute path.
+fn project_path(path: &Path) -> String {
+    path_from(&std::env::current_dir().unwrap_or_default(), path)
+}
+
+fn path_from(project: &Path, path: &Path) -> String {
+    let absolute = if path.is_absolute() { path.to_path_buf() } else { project.join(path) };
+    let inner = absolute.strip_prefix(project).map(Path::to_path_buf).unwrap_or(absolute);
+    if inner.is_absolute() {
+        return inner.to_string_lossy().replace('\\', "/");
+    }
+
+    let parts: Vec<String> = inner.components().filter(|c| !matches!(c, std::path::Component::CurDir)).map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
+
+    parts.join("/")
 }
 
 /// The diagnostics as JSON:
@@ -234,7 +391,7 @@ fn position(text: &str, offset: usize) -> serde_json::Value {
 
 fn build(args: &BuildArgs) -> Result<bool> {
     let started = Instant::now();
-    let Compiled { out, files, errors, warnings } = compile(&args.src)?;
+    let Compiled { out, files, errors, warnings } = compile(&args.src, &args.examples_of)?;
     let Some(project) = out else {
         eprintln!("phemc: build failed: {errors} error(s), {warnings} warning(s)");
         return Ok(false);
@@ -340,6 +497,8 @@ fn spawn(cmd: &str) -> Result<Child> {
 struct Watched {
     roots: Vec<PathBuf>,
     composer: Option<PathBuf>,
+    /// The packages of `--examples-of`: their examples dirs are watched too.
+    examples_of: Vec<String>,
 }
 
 impl Watched {
@@ -357,7 +516,10 @@ impl Watched {
         }
 
         let (dirs, mut failed): (Vec<PathBuf>, _) = match phemc_sources::roots_or_app(project, src) {
-            Ok((roots, None)) => (roots.into_iter().map(|r| r.dir).collect(), None),
+            Ok((roots, None)) => {
+                let examples = roots.iter().filter(|r| r.package.as_ref().is_some_and(|p| self.examples_of.contains(p))).filter_map(|r| r.examples.clone()).collect::<Vec<_>>();
+                (roots.into_iter().map(|r| r.dir).chain(examples).collect(), None)
+            }
             Ok((app, Some(e))) => (self.roots.iter().cloned().chain(app.into_iter().map(|r| r.dir)).collect(), Some(anyhow::Error::from(e))),
             Err(e) => (self.roots.clone(), Some(anyhow::Error::from(e))),
         };
@@ -426,7 +588,7 @@ fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
 
     let (tx, rx) = mpsc::channel();
     let mut watcher = notify::recommended_watcher(tx)?;
-    let mut watched = Watched { roots: Vec::new(), composer: None };
+    let mut watched = Watched { roots: Vec::new(), composer: None, examples_of: args.examples_of.clone() };
     if let Err(e) = watched.update(&mut watcher, project, &args.src) {
         eprintln!("phemc: {e:#}");
     }
@@ -560,7 +722,7 @@ mod tests {
         write("vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#);
 
         let mut watcher = FakeWatcher::default();
-        let mut watched = Watched { roots: Vec::new(), composer: None };
+        let mut watched = Watched { roots: Vec::new(), composer: None, examples_of: vec![] };
         watched.update(&mut watcher, &dir, Path::new("src")).unwrap();
         assert_eq!(watcher.paths, [dir.join("vendor/composer"), dir.join("src"), dir.join("vendor/acme/ui/components")]);
 
@@ -582,13 +744,26 @@ mod tests {
     fn the_summary_gives_the_packages() {
         assert_eq!(files_summary(3, 0), "3 file(s)");
         assert_eq!(files_summary(42, 2), "42 file(s) (2 package(s))");
+
+        // The examples of a package are not another package.
+        let root = |package: Option<&str>| SourceRoot { dir: "x".into(), path: "x".into(), prefix: String::new(), package: package.map(String::from), installed: true, real_dir: None, examples: None, guide: None };
+        assert_eq!(packages(&[root(None), root(Some("acme/ui")), root(Some("acme/ui"))]), 1);
+    }
+
+    #[test]
+    fn a_checked_file_has_a_path_from_the_project_root() {
+        let project = Path::new("/app");
+
+        assert_eq!(path_from(project, Path::new("./src/Ui/Home.phem")), "src/Ui/Home.phem");
+        assert_eq!(path_from(project, Path::new("/app/src/Ui/Home.phem")), "src/Ui/Home.phem");
+        assert_eq!(path_from(project, Path::new("/tmp/draft.phem")), "/tmp/draft.phem");
     }
 
     #[test]
     fn the_build_removes_the_output_of_a_removed_package() {
         let out = std::env::temp_dir().join(format!("phemc-cli-out-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&out);
-        let args = BuildArgs { src: "src".into(), out: out.clone(), php: "php".into(), no_warmup: true };
+        let args = BuildArgs { src: "src".into(), out: out.clone(), php: "php".into(), no_warmup: true, examples_of: vec![] };
         let home = SourceInput::app("Home.phem", "<?phem\nnamespace App;\nfunction Home() { return <p />; }\n");
         let badge = SourceInput { rel: "vendor/acme/ui/Badge.phem".into(), path: "vendor/acme/ui/components/Badge.phem".into(), package: Some("acme/ui".into()), text: "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Badge() { return <b />; }\n".into() };
 

@@ -149,6 +149,27 @@ pub struct ComponentDef {
     /// The component that this component replaces in all the tags (`#[Component(replaces: ...)]`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub replaces: Option<String>,
+    /// The offset of the `function` or `class` keyword in the file: the docblock is before it.
+    #[serde(skip)]
+    pub decl: usize,
+    /// The props as the file declares them, in order, with the rest prop (the catalog of
+    /// `phemc components` shows them).
+    #[serde(skip)]
+    pub inputs: Vec<PropDecl>,
+}
+
+/// A prop as a file declares it: a parameter of a function component, or a `#[Prop]` property.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PropDecl {
+    pub name: String,
+    /// The type, as written (`?string`, `Variant`), or empty.
+    pub ty: String,
+    /// The default value, as written, or `None`.
+    pub default: Option<String>,
+    /// The variadic parameter, or the `#[Prop(rest: true)]` property: it takes the other props.
+    pub rest: bool,
+    /// The parameter or the property name: the docblock of a property is before it.
+    pub span: Span,
 }
 
 /// A `#[Context]` property or parameter of a component.
@@ -264,6 +285,8 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             page,
             routed: is_routed(&f.fqn),
             replaces: replaced(f.replaces.as_ref()),
+            decl: f.span.start,
+            inputs: params.iter().map(|p| PropDecl { name: p.name.clone(), ty: p.ty.clone(), default: p.default.clone(), rest: p.variadic, span: p.span }).collect(),
         });
     }
 
@@ -283,7 +306,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             template: None,
             props: props.iter().map(|p| p.name.clone()).collect(),
             slots: props.iter().filter(|p| is_html_type(&p.ty)).map(|p| p.name.clone()).collect(),
-            required: props.iter().filter(|p| !p.has_default && !allows_null(&p.ty)).map(|p| p.name.clone()).collect(),
+            required: props.iter().filter(|p| p.default.is_none() && !allows_null(&p.ty)).map(|p| p.name.clone()).collect(),
             rest: c.all_props().any(|p| p.is_prop() && p.is_rest),
             open: c.open,
             bound: props.iter().filter(|p| is_bound_type(file, &p.ty)).map(|p| p.name.clone()).collect(),
@@ -291,12 +314,22 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             contexts: c
                 .all_props()
                 .filter(|p| p.is_context)
-                .map(|p| ContextNeed { name: p.name.clone(), ty: context_type(file, &p.ty), required: !p.has_default && !allows_null(&p.ty), span: p.span })
+                .map(|p| ContextNeed { name: p.name.clone(), ty: context_type(file, &p.ty), required: p.default.is_none() && !allows_null(&p.ty), span: p.span })
                 .collect(),
             provides,
             page: is_page(&c.fqn),
             routed: is_routed(&c.fqn),
             replaces: replaced(c.replaces.as_ref()),
+            decl: c.span.start,
+            // An inherited prop can be in another file: it has no span here.
+            inputs: c
+                .props
+                .iter()
+                .map(|p| (p, p.span))
+                .chain(c.inherited_props.iter().map(|p| (p, Span::default())))
+                .filter(|(p, _)| p.is_prop())
+                .map(|(p, span)| PropDecl { name: p.name.clone(), ty: p.ty.clone(), default: p.default.clone(), rest: p.is_rest, span })
+                .collect(),
         });
     }
 
@@ -801,6 +834,8 @@ pub fn builtins() -> Vec<ComponentDef> {
         page: false,
         routed: false,
         replaces: None,
+        decl: 0,
+        inputs: vec![],
     }, ComponentDef {
         fqcn: SUSPENSE.into(),
         kind: Kind::Class,
@@ -819,6 +854,8 @@ pub fn builtins() -> Vec<ComponentDef> {
         page: false,
         routed: false,
         replaces: None,
+        decl: 0,
+        inputs: vec![],
     }, ComponentDef {
         fqcn: ERROR_BOUNDARY.into(),
         kind: Kind::Class,
@@ -837,6 +874,8 @@ pub fn builtins() -> Vec<ComponentDef> {
         page: false,
         routed: false,
         replaces: None,
+        decl: 0,
+        inputs: vec![],
     }, ComponentDef {
         fqcn: DYNAMIC.into(),
         kind: Kind::Function,
@@ -855,6 +894,8 @@ pub fn builtins() -> Vec<ComponentDef> {
         page: false,
         routed: false,
         replaces: None,
+        decl: 0,
+        inputs: vec![],
     }]
 }
 

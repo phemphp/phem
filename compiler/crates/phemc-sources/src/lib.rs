@@ -5,6 +5,11 @@
 //! The installed packages come from `<vendor dir>/composer/installed.json` (see [`vendor_dir`]).
 //! The root package (the project itself) can give a root too: the tests of a package compile it
 //! as a package.
+//!
+//! A package can also give the texts for the coding agents (see `phemc_knowledge`):
+//! `"extra": {"phem": {"source": "src", "examples": "examples", "guide": "README.md"}}`. The
+//! examples are `.phem` files that show how to use the components. The build of an app does not
+//! compile them (see [`examples_root`]).
 
 use phemc_codegen::SourceInput;
 use serde_json::Value;
@@ -30,6 +35,11 @@ pub struct SourceRoot {
     /// editor sees it: in the project, with the project dir that `roots()` got. `None` when the
     /// root is not a link.
     pub real_dir: Option<PathBuf>,
+    /// The directory of the examples of a package (`extra.phem.examples`), on disk. The build
+    /// does not read it, except with [`examples_root`].
+    pub examples: Option<PathBuf>,
+    /// The guide of a package for the coding agents (`extra.phem.guide`): a Markdown file, on disk.
+    pub guide: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -89,7 +99,7 @@ fn app_root(project: &Path, src: &Path) -> Result<SourceRoot, Error> {
         return Err(Error(format!("source directory `{}` does not exist", src.display())));
     }
 
-    Ok(SourceRoot { path: from_root(project, &dir), dir, prefix: String::new(), package: None, installed: false, real_dir: None })
+    Ok(SourceRoot { path: from_root(project, &dir), dir, prefix: String::new(), package: None, installed: false, real_dir: None, examples: None, guide: None })
 }
 
 /// The root of the root package (the project itself), as a package.
@@ -98,13 +108,13 @@ fn own_root(project: &Path) -> Result<Option<SourceRoot>, Error> {
         return Ok(None);
     };
 
-    let Some(source) = phem_source(&composer) else {
+    if phem_source(&composer).is_none() {
         return Ok(None);
-    };
+    }
 
     let name = composer.get("name").and_then(Value::as_str).ok_or_else(|| Error("the root `composer.json` gives `extra.phem.source`, but no `name`".into()))?;
 
-    package_root(project, project, name, source, false).map(Some)
+    package_root(project, project, name, &composer, false).map(Some)
 }
 
 /// The Composer vendor dir of a project, as Composer finds it: the `COMPOSER_VENDOR_DIR`
@@ -134,13 +144,13 @@ pub fn installed_roots(project: &Path) -> Result<Vec<SourceRoot>, Error> {
     let list = installed.get("packages").unwrap_or(&installed).as_array().cloned().unwrap_or_default();
     let mut roots = Vec::new();
     for package in &list {
-        let (Some(name), Some(source)) = (package.get("name").and_then(Value::as_str), phem_source(package)) else {
+        let (Some(name), Some(_)) = (package.get("name").and_then(Value::as_str), phem_source(package)) else {
             continue;
         };
 
         // Composer 1 has no `install-path`: the package is in `vendor/<name>`.
         let install = package.get("install-path").and_then(Value::as_str).map_or_else(|| format!("../{name}"), String::from);
-        roots.push(package_root(project, &composer_dir.join(install), name, source, true)?);
+        roots.push(package_root(project, &composer_dir.join(install), name, package, true)?);
     }
 
     roots.sort_by(|a, b| a.package.cmp(&b.package));
@@ -173,11 +183,13 @@ pub fn read_file(file: &Path) -> Result<String, Error> {
 /// The `.phem` files of the roots, with the text that `text_of(root, file, path in the root)`
 /// gives: the language server keeps the files of the packages in memory.
 ///
-/// A root does not read the directory of another root (a test app in the root `.` of a package),
+/// A root does not read the directory of another root (a test app in the root `.` of a package)
+/// or the examples dir of a package,
 /// nor a Composer vendor dir (with `composer/installed.json`), `node_modules` or `.git` in it. Two files with the same key in the
 /// build (an app file in `src/vendor/acme/ui/`, and a file of the package `acme/ui`) are an error.
 pub fn read_with(roots: &[SourceRoot], mut text_of: impl FnMut(&SourceRoot, &Path, &Path) -> Result<String, Error>) -> Result<Vec<SourceInput>, Error> {
-    let dirs: Vec<PathBuf> = roots.iter().map(|r| absolute(&r.dir)).collect();
+    // The examples of a package are not sources, except as a root (see `examples_root`).
+    let dirs: Vec<PathBuf> = roots.iter().map(|r| absolute(&r.dir)).chain(roots.iter().filter_map(|r| r.examples.as_deref()).map(absolute)).collect();
     let mut keys: HashMap<String, String> = HashMap::new();
     let mut inputs = Vec::new();
 
@@ -214,23 +226,53 @@ pub fn read_with(roots: &[SourceRoot], mut text_of: impl FnMut(&SourceRoot, &Pat
 }
 
 fn phem_source(package: &Value) -> Option<&str> {
-    package.pointer("/extra/phem/source").and_then(Value::as_str)
+    phem_extra(package, "source")
 }
 
-fn package_root(project: &Path, base: &Path, name: &str, source: &str, installed: bool) -> Result<SourceRoot, Error> {
-    if Path::new(source).is_absolute() {
-        return Err(Error(format!("the package `{name}` gives an absolute `extra.phem.source` (`{source}`): give a path in the package")));
-    }
+/// A key of `extra.phem` of a package.
+fn phem_extra<'a>(package: &'a Value, key: &str) -> Option<&'a str> {
+    package.pointer(&format!("/extra/phem/{key}")).and_then(Value::as_str)
+}
 
-    let dir = normalize(&base.join(source));
-    if !dir.is_dir() {
-        return Err(Error(format!("the package `{name}` gives the source dir `{source}`, but `{}` does not exist", dir.display())));
-    }
+fn package_root(project: &Path, base: &Path, name: &str, package: &Value, installed: bool) -> Result<SourceRoot, Error> {
+    let source = phem_source(package).unwrap_or_default();
+    let dir = package_path(base, name, "source", source, "source dir", Path::is_dir)?;
+
+    // The texts for the coding agents.
+    let examples = phem_extra(package, "examples").map(|e| package_path(base, name, "examples", e, "examples dir", Path::is_dir)).transpose()?;
+    let guide = phem_extra(package, "guide").map(|g| package_path(base, name, "guide", g, "guide", Path::is_file)).transpose()?;
 
     let path = from_root(project, &dir);
     let real_dir = real_dir(project, &path);
 
-    Ok(SourceRoot { path, dir, prefix: format!("vendor/{name}/"), package: Some(name.to_string()), installed, real_dir })
+    Ok(SourceRoot { path, dir, prefix: format!("vendor/{name}/"), package: Some(name.to_string()), installed, real_dir, examples, guide })
+}
+
+/// The path of `extra.phem.<key>` in the package dir `base`. It must be a path in the package,
+/// and `exists` must accept it.
+fn package_path(base: &Path, name: &str, key: &str, value: &str, what: &str, exists: fn(&Path) -> bool) -> Result<PathBuf, Error> {
+    if Path::new(value).is_absolute() {
+        return Err(Error(format!("the package `{name}` gives an absolute `extra.phem.{key}` (`{value}`): give a path in the package")));
+    }
+
+    let path = normalize(&base.join(value));
+    if !exists(&path) {
+        return Err(Error(format!("the package `{name}` gives the {what} `{value}`, but `{}` does not exist", path.display())));
+    }
+
+    Ok(path)
+}
+
+/// The examples of a package as a source root, for a build that compiles them (the demo of the
+/// package: `phemc build src --examples-of acme/ui`). Their keys start with
+/// `vendor/<package>/examples/`, so they are not the keys of the files of the package.
+pub fn examples_root(project: &Path, roots: &[SourceRoot], package: &str) -> Result<SourceRoot, Error> {
+    let root = roots.iter().find(|r| r.package.as_deref() == Some(package)).ok_or_else(|| Error(format!("the package `{package}` is not installed, or it gives no `extra.phem.source`")))?;
+    let dir = root.examples.clone().ok_or_else(|| Error(format!("the package `{package}` gives no `extra.phem.examples`")))?;
+    let path = from_root(project, &dir);
+    let real_dir = real_dir(project, &path);
+
+    Ok(SourceRoot { path, dir, prefix: format!("vendor/{package}/examples/"), package: Some(package.to_string()), installed: root.installed, real_dir, examples: None, guide: None })
 }
 
 /// The real directory of a root that is a link, as the editor sees it (see `SourceRoot::real_dir`).
@@ -462,6 +504,58 @@ mod tests {
 
         let error = read(&roots(&dir, Path::new("src")).unwrap(), &HashMap::new()).unwrap_err().to_string();
         assert_eq!(error, "the files `src/vendor/acme/ui/Badge.phem` and `vendor/acme/ui/components/Badge.phem` have the same key `vendor/acme/ui/Badge.phem` in the build: rename or move one of them");
+    }
+
+    #[test]
+    fn a_package_gives_its_examples_and_its_guide() {
+        let dir = project();
+        write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components", "examples": "examples", "guide": "README.md"}}}]}"#);
+        write(&dir, "vendor/acme/ui/components/Badge.phem", "<?phem badge");
+        write(&dir, "vendor/acme/ui/examples/BadgeDemo.phem", "<?phem demo");
+        write(&dir, "vendor/acme/ui/README.md", "# Acme UI");
+
+        let roots = roots(&dir, Path::new("src")).unwrap();
+        assert_eq!(roots[1].examples, Some(dir.join("vendor/acme/ui/examples")));
+        assert_eq!(roots[1].guide, Some(dir.join("vendor/acme/ui/README.md")));
+        assert_eq!((roots[0].examples.as_ref(), roots[0].guide.as_ref()), (None, None));
+
+        // The build of the app does not compile the examples.
+        let keys: Vec<_> = read(&roots, &HashMap::new()).unwrap().into_iter().map(|i| i.rel).collect();
+        assert_eq!(keys, ["vendor/acme/ui/Badge.phem"]);
+
+        // The demo of the package compiles them, with their own keys.
+        let mut with_examples = roots.clone();
+        with_examples.push(examples_root(&dir, &roots, "acme/ui").unwrap());
+        let inputs: Vec<_> = read(&with_examples, &HashMap::new()).unwrap().into_iter().map(|i| (i.rel, i.path, i.package)).collect();
+        assert_eq!(inputs[1], ("vendor/acme/ui/examples/BadgeDemo.phem".into(), "vendor/acme/ui/examples/BadgeDemo.phem".into(), Some("acme/ui".into())));
+
+        assert!(examples_root(&dir, &roots, "acme/other").unwrap_err().to_string().contains("`acme/other` is not installed"));
+    }
+
+    #[test]
+    fn a_source_root_of_a_package_does_not_read_its_examples() {
+        // The root `.` of a package has the examples dir in it.
+        let dir = project();
+        write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": ".", "examples": "examples"}}}]}"#);
+        write(&dir, "vendor/acme/ui/Badge.phem", "<?phem badge");
+        write(&dir, "vendor/acme/ui/examples/BadgeDemo.phem", "<?phem demo");
+
+        let keys: Vec<_> = read(&roots(&dir, Path::new("src")).unwrap(), &HashMap::new()).unwrap().into_iter().map(|i| i.rel).collect();
+        assert_eq!(keys, ["vendor/acme/ui/Badge.phem"]);
+    }
+
+    #[test]
+    fn a_wrong_examples_dir_or_guide_is_an_error() {
+        let dir = project();
+        std::fs::create_dir_all(dir.join("vendor/acme/ui/components")).unwrap();
+        write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components", "examples": "demos"}}}]}"#);
+        assert!(roots(&dir, Path::new("src")).unwrap_err().to_string().contains("the package `acme/ui` gives the examples dir `demos`"));
+
+        write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components", "guide": "AGENTS.md"}}}]}"#);
+        assert!(roots(&dir, Path::new("src")).unwrap_err().to_string().contains("the package `acme/ui` gives the guide `AGENTS.md`"));
+
+        write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components", "examples": "/abs"}}}]}"#);
+        assert!(roots(&dir, Path::new("src")).unwrap_err().to_string().contains("an absolute `extra.phem.examples`"));
     }
 
     #[test]

@@ -1,0 +1,18 @@
+---
+source: crates/phemc-knowledge/tests/knowledge.rs
+expression: k.catalog.summary_md(&k.guides())
+---
+# Components
+
+Read a component with `phemc components <name>`, and its examples with `phemc examples <name>`.
+
+## app
+
+- `Card` A card of the app.
+
+## acme/ui
+
+Guide: `phemc docs acme/ui` (`acme/ui#install`, `acme/ui#naming`)
+
+- `Button` A button.
+- `Dialog` A modal dialog. Parts: DialogTrigger, DialogPopup, DialogViewport, DialogTitle.

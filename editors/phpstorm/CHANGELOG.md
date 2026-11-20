@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+- The language server reads the docblocks with the same code as the component catalog of
+  `phemc components`. The hover and the docblock types do not change.
+
 ## 0.4.0
 
 - A handler call in the markup that gives an argument to a `Phem\Reply` parameter shows the

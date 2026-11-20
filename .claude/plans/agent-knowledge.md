@@ -1,6 +1,7 @@
 # Phem knowledge for coding agents
 
-Status: proposal, not started (2026-11-20). The illustrated version is a private artifact:
+Status: phase 1 done (2026-11-20): the engine (`compiler/crates/phemc-knowledge`) and the CLI.
+Phases 2 to 5 are open. The illustrated version is a private artifact:
 https://claude.ai/artifact/GpUdLcBbsR3ptYYUswxLhJ. This file is the source of truth.
 
 ## Context
@@ -103,7 +104,8 @@ Rules that follow from it:
    release first, then a release of each package.
 3. **Package guide.** `extra.phem.guide: "README.md"` (or a shorter `AGENTS.md`) points to the
    package text for agents: naming rules, install steps. Its keys have the package prefix:
-   `phem/ui-base:naming`. `phemc components --summary` shows the guide of each package.
+   `phem/ui-base#naming` (the same `#` as a doc section). `phemc components` shows the section
+   keys of the guide of each package.
 4. **Version match per package.** The data of a package comes from `vendor/<package>/`, so it
    matches the installed version of that package, not the version of phem.
 5. **Dist.** The ui-base `.gitattributes` keeps `src/`, `examples/` and the guide in the Composer
@@ -142,7 +144,7 @@ Rules that follow from it:
   the body says when to use it. Derive the components that it uses from its tags.
 - **Search.** One BM25 index over the contextual chunks (doc sections, components, recipes), with
   `@aliases` and the camelCase tokenizer. It returns the top 20, sorted by score, then by key.
-- **Maps.** `phemc docs --toc` (all section keys and titles) and `phemc components --summary`
+- **Maps.** `phemc docs --toc` (all section keys and titles) and `phemc components`
   (families, one line each). The skills load both.
 
 ### 2. CLI (thin over the engine, `compiler/crates/phemc-cli/src/main.rs`)
@@ -191,7 +193,7 @@ per message.
 - Skill `phem-ui`: triggers on UI tasks (forms, dialogs, menus, lists). Workflow: 1)
   `phem_examples`/`phem_search` for the use case, 2) `phem_component` for each tag, 3) compose
   from the closest recipe, 4) `phem_check`. Its body injects
-  `` !`vendor/bin/phemc components --summary` ``: the installed packages and their roots.
+  `` !`vendor/bin/phemc components` ``: the installed packages and their roots.
 - Hook `PostToolUse` on `Write|Edit` of `*.phem`: run `phemc check <file> --format json`. Exit
   code 2 sends the errors back to Claude. This is the deterministic gate.
 - Keep the LSP. Bump the plugin version in `.claude-plugin/plugin.json`.
@@ -279,7 +281,7 @@ Hook in `editors/claude-code/hooks/hooks.json`:
 
 ## Phases (each one is a separate change)
 
-1. Engine + CLI: `phemc-knowledge`, shared `doc_tags`, catalog fields, contextual chunks,
+1. Done. Engine + CLI: `phemc-knowledge`, shared `doc_tags`, catalog fields, contextual chunks,
    `@aliases`, `extra.phem.examples` and `extra.phem.guide`, `docs` (with `--toc`), `components`,
    `search` (with `--eval`), `check` on a file or stdin, the demo option. Snapshot tests on a
    fixture package. The phem retrieval eval. The contract in `docs/package-authoring.md`.
@@ -287,7 +289,7 @@ Hook in `editors/claude-code/hooks/hooks.json`:
    composer keys, guide, aliases, dist rules, demo and `Gallery` read them, docblocks, its eval.
 3. `phemc mcp` with protocol tests.
 4. Claude Code plugin: skills, hook, `.mcp.json`, `docs/cheatsheet.md`.
-5. Other agents: `llms-full.txt`, `docs/ai-agents.md`. Evals: a fixed set of prompts run with
+5. Other agents: `llms-full.txt`, `docs/ai-agents.md` (done with phase 1). Evals: a fixed set of prompts run with
    `claude -p`, scored on `phemc check` passing and on the expected tags.
 
 ## Docs, changelog, releases (each phase)

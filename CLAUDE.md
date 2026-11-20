@@ -24,8 +24,9 @@ its demo. It stays here until its components are stable, then it moves to its ow
 again (`git subtree split --prefix=ui/base`). Its own Composer package requires `phem/phem` from
 the root of this repository (a path repository).
 
-- The components use only the public API of phem. `src/`, `config/`, `templates/` and `assets/`
-  never use a class, a file or a selector of `ui/base/`.
+- The components use only the public API of phem. `src/`, `config/`, `templates/`, `assets/`,
+  `compiler/` and `editors/` never use a class, a file or a selector of `ui/base/`. The tests of
+  `compiler/` use their own fixture packages.
 - A missing behavior goes into phem (a controller, a component), not into `ui/base/`.
 - A change in phem that changes a component updates `ui/base/` in the same change: its
   components, its tests and its demo. `ui/base/` has no changelog: the changelog of phem has the

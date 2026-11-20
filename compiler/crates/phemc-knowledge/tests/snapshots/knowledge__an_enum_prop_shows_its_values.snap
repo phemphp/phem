@@ -1,0 +1,60 @@
+---
+source: crates/phemc-knowledge/tests/knowledge.rs
+expression: "serde_json::to_string_pretty(&k.catalog.detail_json(button,\n&k.examples_of(&button.fqcn))).unwrap()"
+---
+{
+  "anatomy": {
+    "others": [],
+    "tree": {
+      "name": "Button"
+    }
+  },
+  "doc": [
+    "A button.",
+    "Give it `type=\"submit\"` to submit a form."
+  ],
+  "examples": [
+    {
+      "key": "Acme\\Ui\\Examples\\DialogFormDemo",
+      "title": "Dialog with a form."
+    }
+  ],
+  "family": "Button",
+  "fqcn": "Acme\\Ui\\Button",
+  "function": true,
+  "import": "use function Acme\\Ui\\Button;",
+  "name": "Button",
+  "package": "acme/ui",
+  "path": "vendor/acme/ui/components/Button.phem",
+  "props": [
+    {
+      "default": "Variant::Primary",
+      "name": "variant",
+      "required": false,
+      "type": "Variant",
+      "values": [
+        "primary",
+        "outline"
+      ]
+    },
+    {
+      "default": "false",
+      "name": "disabled",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": "null",
+      "name": "children",
+      "required": false,
+      "type": "?Html"
+    },
+    {
+      "default": null,
+      "name": "rest",
+      "required": false,
+      "rest": true,
+      "type": "mixed"
+    }
+  ]
+}

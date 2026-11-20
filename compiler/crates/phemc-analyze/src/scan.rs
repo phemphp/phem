@@ -285,7 +285,8 @@ pub struct Prop {
     pub is_rest: bool,
     /// A promoted constructor parameter: a service that the container injects, not a prop.
     pub is_promoted: bool,
-    pub has_default: bool,
+    /// The default value, as written (`null`, `'primary'`), or `None`.
+    pub default: Option<String>,
     /// `#[Context]`: the property gets the context of its type.
     pub is_context: bool,
     /// `#[Provide]`: the property is a context for the components below.
@@ -898,6 +899,21 @@ fn case_value(toks: &Toks, at: usize) -> Option<String> {
     }
 }
 
+/// The default value of a property, as written: from the token `from` to the `;`, the `,` or the
+/// hook list at the top level.
+fn default_value(toks: &Toks, from: usize, close: usize) -> Option<String> {
+    let mut i = from;
+    while i < close && !toks.is_op(i, ";") && !toks.is_op(i, ",") && !toks.is_op(i, "{") {
+        if toks.is_op(i, "(") || toks.is_op(i, "[") {
+            i = toks.matching(i);
+        }
+
+        i += 1;
+    }
+
+    (i > from).then(|| toks.src[toks.t[from].span.start..toks.t[i.min(close) - 1].span.end].to_string())
+}
+
 /// Parses `function name(params): type { body }` starting at the `function` token.
 fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
     let mut i = at + 1;
@@ -1230,7 +1246,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                         prop_attr: None,
                         is_rest: false,
                         is_promoted: true,
-                        has_default: p.default.is_some(),
+                        default: p.default.clone(),
                         is_context: false,
                         is_provide: false,
                         // A promoted parameter is a service, not a prop: the analysis reports it.
@@ -1259,7 +1275,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
 
         if t.kind == TokKind::Var {
             let ty = ty_start.map_or(String::new(), |s| toks.src[toks.t[s].span.start..toks.t[i - 1].span.end].trim().to_string());
-            let has_default = toks.is_op(i + 1, "=");
+            let default = toks.is_op(i + 1, "=").then(|| default_value(toks, i + 2, close)).flatten();
             check_attrs(info, &member_attrs);
             let has_attr = |name: &str| member_attrs.iter().any(|(a, _)| info.resolve_class(a) == name);
             class.props.push(Prop {
@@ -1279,7 +1295,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 },
                 is_rest: member_rest.iter().any(|a| info.resolve_class(a) == ATTR_PROP),
                 is_promoted: false,
-                has_default,
+                default,
                 is_context: has_attr(ATTR_CONTEXT),
                 is_provide: has_attr(ATTR_PROVIDE),
                 broadcast_key: member_attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_BROADCAST_KEY).map(|(_, s)| *s),
@@ -1485,6 +1501,7 @@ final class Form {
         let c = &f.classes[0];
         let props: Vec<_> = c.props.iter().map(|p| p.name.as_str()).collect();
         assert_eq!(props, ["form", "n", "f"]);
+        assert_eq!(c.props[1].default.as_deref(), Some("1"));
         assert_eq!(c.methods.len(), 1);
         assert_eq!(f.markup_scopes, vec![MarkupScope::Method(0, 0)]);
     }

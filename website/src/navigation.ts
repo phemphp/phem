@@ -41,6 +41,7 @@ export const navigation: NavGroup[] = [
             { slug: 'testing', label: 'Testing' },
             { slug: 'packages', label: 'Packages' },
             { slug: 'package-authoring', label: 'Package Authoring' },
+            { slug: 'ai-agents', label: 'Coding Agents' },
             { slug: 'deployment', label: 'Deployment' },
         ],
     },

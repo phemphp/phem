@@ -3,10 +3,11 @@
 //! `$a->b()->c`, `Foo::bar()`, `new Foo()`, `$this->items[0]`.
 
 use crate::classes::{Found, Index, MemberKind, Source};
-use crate::decl::{doc_before, tokenize, Param, Parsed, Tok, Token, UseKind};
+use crate::decl::{tokenize, Param, Parsed, Tok, Token, UseKind};
 use crate::imports::imports_of;
 use crate::project::SymbolKind;
-use crate::types::{doc_tags, resolve_name, to_type, Key, Type, TypeCtx};
+use crate::types::{resolve_name, to_type, Key, Type, TypeCtx};
+use phemc_syntax::doc::{doc_before, doc_tags};
 use std::rc::Rc;
 
 /// The tokens of `code[start..end]`, with offsets in `code`.

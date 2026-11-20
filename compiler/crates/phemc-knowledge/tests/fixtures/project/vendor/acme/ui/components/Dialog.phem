@@ -1,0 +1,62 @@
+<?phem
+
+namespace Acme\Ui;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * A modal dialog.
+ *
+ * The popup is a native `<dialog>`.
+ *
+ * @aliases modal, lightbox
+ */
+#[Component, Provide]
+class Dialog
+{
+    /** The dialog is open on the first render. */
+    #[Prop] public bool $defaultOpen = false;
+    #[Prop] public string $title;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return <div data-controller="acme-dialog" {{ ...attrs }}>{{ children }}</div>;
+    }
+}
+
+/** The button that opens the dialog. */
+#[Component]
+function DialogTrigger(?Html $children = null): Node
+{
+    return <button type="button">{{ children }}</button>;
+}
+
+/** The box of the dialog. */
+#[Component]
+function DialogPopup(#[Context] ?Dialog $dialog = null, #[Context] ?DialogViewport $viewport = null, ?Html $children = null): Node
+{
+    return <dialog>{{ children }}</dialog>;
+}
+
+/** The container that places the popup. */
+#[Component, Provide]
+class DialogViewport
+{
+    #[Context] public Dialog $dialog;
+    #[Prop] public ?Html $children = null;
+
+    public function render(): Node
+    {
+        return <div>{{ children }}</div>;
+    }
+}
+
+/** The heading of the dialog. */
+#[Component]
+function DialogTitle(?Html $children = null): Node
+{
+    return <h2>{{ children }}</h2>;
+}

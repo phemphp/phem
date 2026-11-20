@@ -1,0 +1,26 @@
+---
+source: crates/phemc-knowledge/tests/knowledge.rs
+expression: "k.catalog.detail_md(popup, &k.examples_of(&popup.fqcn))"
+---
+# DialogPopup — Acme\Ui\DialogPopup (acme/ui)
+
+The box of the dialog.
+
+Import: `use Acme\Ui\Dialog; use Acme\Ui\DialogViewport; use function Acme\Ui\{DialogTrigger, DialogPopup, DialogTitle};`
+Source: vendor/acme/ui/components/Dialog.phem
+Part of: Dialog
+
+## Props
+
+| Prop | Type | Default |
+|---|---|---|
+| children | ?Html | null |
+
+## Context
+
+Goes inside: Dialog (optional), DialogViewport (optional)
+
+## Examples
+
+- `Acme\Ui\Examples\DialogFormDemo` Dialog with a form.
+- `Acme\Ui\Examples\DialogNestedDemo` A dialog in a dialog.

@@ -1,8 +1,9 @@
 .DS_Store
 /compiler/target/
 vendor/
-# The fixture Composer packages of the test app.
+# The fixture Composer packages of the test app, and of the tests of phemc-knowledge.
 !/tests/Fixtures/app/vendor/
+!/compiler/crates/phemc-knowledge/tests/fixtures/project/vendor/
 var/
 composer.lock
 # The e2e app is a project: its lock file pins the versions of the e2e tests.

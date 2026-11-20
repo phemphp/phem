@@ -1,0 +1,19 @@
+<?phem
+
+namespace App\Ui;
+
+use Phem\Attribute\{Component, Page};
+use Phem\{Html, Node};
+
+/** A card of the app. */
+#[Component]
+function Card(string $title, ?Html $children = null): Node
+{
+    return <section><h2>{{ title }}</h2>{{ children }}</section>;
+}
+
+#[Page('/')]
+function HomePage(): Node
+{
+    return <Card title="Home" />;
+}

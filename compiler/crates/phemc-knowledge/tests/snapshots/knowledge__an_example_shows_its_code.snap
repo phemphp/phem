@@ -1,0 +1,33 @@
+---
+source: crates/phemc-knowledge/tests/knowledge.rs
+expression: "k.examples[0].md()"
+---
+# DialogFormDemo — Acme\Ui\Examples\DialogFormDemo (acme/ui)
+
+Dialog with a form.
+
+Use it to edit a record without a page change.
+
+Uses: Dialog, DialogTrigger, DialogPopup, DialogTitle, Button
+Source: vendor/acme/ui/examples/Dialog.phem
+
+```php
+/**
+ * Dialog with a form.
+ *
+ * Use it to edit a record without a page change.
+ */
+#[Component]
+function DialogFormDemo(): Node
+{
+    return (
+        <Dialog title="Edit">
+            <DialogTrigger>Edit profile</DialogTrigger>
+            <DialogPopup>
+                <DialogTitle>Edit profile</DialogTitle>
+                <form><Button type="submit">Save</Button></form>
+            </DialogPopup>
+        </Dialog>
+    );
+}
+```

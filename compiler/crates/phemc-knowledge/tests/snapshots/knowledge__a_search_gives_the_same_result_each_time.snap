@@ -1,0 +1,18 @@
+---
+source: crates/phemc-knowledge/tests/knowledge.rs
+expression: "phemc_knowledge::search::Hit::md(&first[..5], \"dialog with a form\")"
+---
+# Search: dialog with a form
+
+Read a result with `phemc docs <key>`, `phemc components <key>` or `phemc examples <key>`.
+
+1. `Acme\Ui\Examples\DialogFormDemo` (example) DialogFormDemo — example of Dialog (acme/ui), uses Dialog, DialogTrigger, DialogPopup, DialogTitle, Button
+   Dialog with a form.
+2. `forms#warn-about-unsaved-changes` (doc) Handle forms › Warn about unsaved changes — This guide shows you how to get the data of a form in a handler.
+   A bound field that the user changed, and that the server hasn’t received yet, gets the `phem-dirty` class.
+3. `compiler#docs-and-components-for-coding-agents` (doc) Compiler reference: phemc commands, options and output › phemc commands › Docs and components for coding agents — `phemc` is the Rust compiler that turns `.phem` files into PHP and Twig.
+   `phemc docs`, `phemc components`, `phemc examples` and `phemc search` give a coding agent the texts that it needs to write `.phem` code.
+4. `controllers#ask-before-the-close` (doc) Build UI with the built-in controllers › Open a modal dialog › Ask before the close — This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens…
+   Set the `confirm-close` value to the `id` of another `phem-dialog` element in the popup, for example an alert dialog.
+5. `controllers#ask-in-a-dialog-of-the-page` (doc) Build UI with the built-in controllers › Ask for confirmation before an event › Ask in a dialog of the page — This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens…
+   By default, `window.confirm()` asks the question.

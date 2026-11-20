@@ -1,0 +1,9 @@
+{
+    "packages": [
+        {
+            "name": "acme/ui",
+            "install-path": "../acme/ui",
+            "extra": { "phem": { "source": "components", "examples": "examples", "guide": "README.md" } }
+        }
+    ]
+}

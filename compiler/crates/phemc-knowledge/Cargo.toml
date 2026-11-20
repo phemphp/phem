@@ -1,0 +1,18 @@
+[package]
+name = "phemc-knowledge"
+description = "The texts for the coding agents: the docs of phem, the component catalog, the examples of the packages, and a search over them"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+phemc-syntax.workspace = true
+phemc-analyze.workspace = true
+phemc-codegen.workspace = true
+phemc-sources.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+walkdir.workspace = true
+
+[dev-dependencies]
+insta.workspace = true

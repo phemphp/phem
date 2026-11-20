@@ -442,6 +442,76 @@ The class is in `src/`, so `getPath()` of the `AbstractBundle` is the package ro
 
 The bundle needs these packages in `require`: `symfony/config`, `symfony/dependency-injection`, and `symfony/http-kernel`. Put `symfony/asset-mapper` in `suggest`, because the bundle only uses it when the app has it.
 
+## Help coding agents use the components
+
+A coding agent learns the components of a package from `phemc components`, `phemc examples` and `phemc search` (see [Docs and components for coding agents](compiler.md#docs-and-components-for-coding-agents)). These commands read the installed sources of the package in `vendor/`, so the agent sees the API of the installed version. Give the agent the data that it needs:
+
+- **Docblocks**: the docblock of a component is its API doc. Its first paragraph is the summary, one sentence that says what the component is. The next paragraphs say when and how to use it. The docblock of a `#[Prop]` property is the description of the prop. Give the props real types and default values, and use an enum for a closed list of values: the catalog shows the cases
+- **Families**: put a root and its parts in one file with the name of the root (`Dialog.phem`). A part with a `#[Context]` of the root, or of another part, goes inside it, and the catalog shows this tree as the anatomy of the root
+- **Aliases**: give the other names of a root in an `@aliases` tag, so a search for `modal` finds `Dialog`
+- **Examples**: put examples of real use cases in a directory that `extra.phem.examples` points to
+- **Guide**: put the text that an agent must know about the whole package (the naming rules, the install steps) in a Markdown file that `extra.phem.guide` points to
+
+```json
+{
+    "extra": {
+        "phem": {
+            "source": "src/Ui",
+            "examples": "examples",
+            "guide": "README.md"
+        }
+    }
+}
+```
+
+```php
+/**
+ * A modal dialog.
+ *
+ * The popup is a native `<dialog>`, so it needs no portal.
+ *
+ * @aliases modal, lightbox
+ */
+#[Component, Provide]
+class Dialog
+{
+    /** The dialog is open on the first render. */
+    #[Prop] public bool $defaultOpen = false;
+}
+```
+
+An example is a `#[Component]` function in a `.phem` file of the examples directory, with one file for each family. The summary of its docblock is its title, and the next paragraph says when to use it. The components that it uses come from its tags:
+
+```php
+// examples/Dialog.phem
+namespace Acme\Ui\Examples;
+
+/**
+ * Dialog with a form.
+ *
+ * Use it to edit a record without a page change.
+ */
+#[Component]
+function DialogFormDemo(): Node
+{
+    return (
+        <Dialog title="Edit">
+            <DialogTrigger>Edit profile</DialogTrigger>
+            <DialogPopup>…</DialogPopup>
+        </Dialog>
+    );
+}
+```
+
+The examples follow these rules:
+
+- **Not in the app**: `phemc build` never compiles the examples into an app. A source root that contains the examples directory doesn’t read it either
+- **In the demo**: a demo of the package compiles them with `phemc build src --examples-of acme/ui`. Their files get keys in `vendor/acme/ui/examples/`, so they don’t collide with the files of the package
+- **In the dist**: keep the examples and the guide in the Composer dist. Don’t put them in `export-ignore` of `.gitattributes`, because the agent reads them in `vendor/`
+- **Paths**: `examples` and `guide` are paths in the package. A missing directory or file, or an absolute path, is an error, as for `source`
+
+The guide is a doc of `phemc docs`: `phemc docs acme/ui` shows it, and `phemc docs acme/ui#naming` shows its section. `phemc components` lists the keys of its sections.
+
 ## Test a package
 
 A package has no app, so its tests use a small test app in `tests/app/src` with the pages and components that the tests need (for example a `<Tabs>` around the `<Tab>` items). Extend `Phem\Test\TestKernel` and point PHPUnit to it:
@@ -487,3 +557,12 @@ final class BadgeTest extends KernelTestCase
 ### Check the package in CI
 
 In continuous integration (CI), run `vendor/bin/phemc check tests/app/src` to check the package too. A package without a test app can run the same command: when the source dir doesn’t exist in a package (its root `composer.json` sets `extra.phem.source`), `phemc` compiles only the package root. In an app, a missing source dir is an error.
+
+Check the examples and the search too, so an example can’t go stale and a new component can’t hide an old one from a search:
+
+```sh
+vendor/bin/phemc check tests/app/src --examples-of acme/ui
+vendor/bin/phemc search --eval tests/retrieval.yaml
+```
+
+The eval file has the prompts of real tasks and the keys that they must find (see [Docs and components for coding agents](compiler.md#docs-and-components-for-coding-agents)). The command exits with code 1 when a key isn’t in the top 20.

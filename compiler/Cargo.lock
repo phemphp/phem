@@ -729,6 +729,7 @@ dependencies = [
  "notify",
  "phemc-analyze",
  "phemc-codegen",
+ "phemc-knowledge",
  "phemc-lsp",
  "phemc-sources",
  "phemc-syntax",
@@ -748,6 +749,20 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "phemc-knowledge"
+version = "0.5.0"
+dependencies = [
+ "insta",
+ "phemc-analyze",
+ "phemc-codegen",
+ "phemc-sources",
+ "phemc-syntax",
+ "serde",
+ "serde_json",
+ "walkdir",
 ]
 
 [[package]]

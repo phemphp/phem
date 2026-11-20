@@ -3,6 +3,7 @@
 //! The parser is tolerant: the file can be incomplete, because the user types it.
 
 use crate::scanner::{code_of, is_word_char, is_word_start};
+use phemc_syntax::doc::doc_before;
 use phemc_syntax::php::{find_open_tag, OPEN_TAG, PHP_OPEN_TAG};
 
 const MODIFIERS: &[&str] = &["public", "protected", "private", "readonly", "static", "final", "abstract", "var"];
@@ -1075,49 +1076,6 @@ fn define_name(rest: &str) -> Option<&str> {
     valid.then_some(name)
 }
 
-/// The `/** ... */` block just before a declaration, or empty. Only modifiers, attributes, and a
-/// type can be between the block and `offset`.
-pub fn doc_before(text: &str, offset: usize) -> String {
-    let mut from = offset.saturating_sub(4000);
-    while !text.is_char_boundary(from) {
-        from += 1;
-    }
-
-    let before = &text[from..offset.min(text.len())];
-    let Some(close) = before.rfind("*/") else { return String::new() };
-    let Some(open) = before[..close].rfind("/**") else { return String::new() };
-
-    if before[open..close].contains("*/") {
-        return String::new();
-    }
-
-    let between = strip_attributes(&before[close + 2..]);
-    if between.contains([';', '{', '}', '$']) {
-        return String::new();
-    }
-
-    before[open..close + 2].to_string()
-}
-
-/// The text without the `#[...]` attributes (without nested brackets).
-fn strip_attributes(s: &str) -> String {
-    let mut out = String::new();
-    let mut rest = s;
-    while let Some(i) = rest.find("#[") {
-        out.push_str(&rest[..i]);
-        match rest[i..].find(']') {
-            Some(j) => rest = &rest[i + j + 1..],
-            None => {
-                rest = &rest[i..];
-                break;
-            }
-        }
-    }
-
-    out.push_str(rest);
-    out
-}
-
 pub fn has_attr(attrs: &[String], name: &str) -> bool {
     attrs.iter().any(|a| a == name || a.ends_with(&format!("\\{name}")))
 }
@@ -1479,6 +1437,5 @@ mod tests {
     fn reads_a_docblock_before_attributes() {
         let text = "<?php\n/** The doc. */\n#[A(1)]\nfinal class X {}\n";
         assert_eq!(parse(text).classes[0].doc, "/** The doc. */");
-        assert_eq!(doc_before("/** a */ $x; class", 17), "");
     }
 }

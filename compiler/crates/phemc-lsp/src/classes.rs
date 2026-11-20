@@ -9,7 +9,8 @@
 use crate::decl::{param_text, parse, Method, Param, Parsed};
 use crate::project::{Project, SymbolKind};
 use crate::scanner::code_of;
-use crate::types::{doc_tags, resolve_name, to_type, Type, TypeCtx};
+use crate::types::{resolve_name, to_type, Type, TypeCtx};
+use phemc_syntax::doc::doc_tags;
 use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

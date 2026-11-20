@@ -734,7 +734,7 @@ The browser sends the event of the element itself: an element in it does not sen
 
 ## Poll the server
 
-Put an `onPoll` handler and a `phem:poll` interval in milliseconds on an element, and the browser sends the event at this interval. Use it for a status or a "last seen" value when the application has no Mercure hub (see [Real-time updates](real-time.md)):
+Put an `onPoll` handler and a `phem:poll` interval in milliseconds on an element, and the browser sends the event at this interval (`2000` sends it every 2 seconds). Use it for a status or a "last seen" value when the application has no Mercure hub (see [Real-time updates](real-time.md)):
 
 ```php
 #[Component]

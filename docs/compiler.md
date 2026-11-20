@@ -18,9 +18,13 @@ Each command runs from the project root, the directory that contains `bin/consol
 | Command | Purpose |
 |---|---|
 | `phemc build <src>` | Compiles the sources, writes the output directory and warms up the Twig cache |
-| `phemc check <src>` | Reports the diagnostics and writes nothing |
+| `phemc check <src>` | Reports the diagnostics and writes nothing. `phemc check <file>` and `phemc check -` check one file |
 | `phemc watch <src>` | Builds, then rebuilds on each change, and restarts an optional command |
 | `phemc lsp` | Runs the language server on stdin and stdout |
+| `phemc docs [<key>]` | Shows the docs of this version of Phem, or the guide of a package |
+| `phemc components [<name>]` | Shows the components of the application and of the packages, or one component |
+| `phemc examples [<name>]` | Shows the examples of the packages, or the code of one example |
+| `phemc search <query>` | Searches the docs, the components and the examples |
 
 `phemc --help` lists the commands, `phemc <command> --help` lists the options of one command, and `phemc --version` prints the version.
 
@@ -46,6 +50,7 @@ The `<src>` argument is the source root of the application, for example `src`. T
 | `--out <dir>` | `var/phem` | The output directory. Set the `phem.build_dir` option to the same path |
 | `--php <bin>` | `php` | The PHP binary that runs the Twig warmup |
 | `--no-warmup` | off | Skips `bin/console phem:warmup` after the build |
+| `--examples-of <package>` | none | Compiles the examples of a package too (see [Help coding agents use the components](package-authoring.md#help-coding-agents-use-the-components)). Give it again for more packages |
 
 The build has these properties:
 
@@ -88,6 +93,18 @@ phemc check src
 | Option | Default | Effect |
 |---|---|---|
 | `--format <format>` | `text` | `text` prints the diagnostics on stderr; `json` prints them on stdout, for editors and other tools |
+| `--src <dir>` | `src` | The source root of the application, when the argument is a file or `-` |
+| `--stdin-path <file>` | none | With `-`: the text on stdin replaces this file. Without it, the text is a new file of the application |
+| `--examples-of <package>` | none | Checks the examples of a package too |
+
+Give a `.phem` file in place of the source root to check only this file. The command compiles the whole project, so the imports and the components of the other files resolve, but it shows only the diagnostics of this file. Give `-` to check a text on stdin, for example a file that an agent writes before it saves it:
+
+```sh
+phemc check src/Ui/HomePage.phem
+cat draft.phem | phemc check - --stdin-path src/Ui/HomePage.phem
+```
+
+The summary then names the file: `phemc: checked src/Ui/HomePage.phem: 0 error(s), 0 warning(s)`. A file that isn’t in a source root is a new file of the application.
 
 In the `text` format, each diagnostic shows its code, the `.phem` line and column, a label and a hint, and the command ends with `phemc: checked 15 file(s): 1 error(s), 0 warning(s)`:
 
@@ -134,7 +151,7 @@ Both formats leave out the warnings of a Composer package, because the applicati
 phemc watch src --exec "frankenphp run --config Caddyfile"
 ```
 
-It takes the options of `phemc build` (`--out`, `--php`, `--no-warmup`) and one more:
+It takes the options of `phemc build` (`--out`, `--php`, `--no-warmup`, `--examples-of`) and one more:
 
 | Option | Default | Effect |
 |---|---|---|
@@ -142,7 +159,7 @@ It takes the options of `phemc build` (`--out`, `--php`, `--no-warmup`) and one 
 
 The watcher behaves as follows:
 
-- **Watched files**: the `.phem` files of the source root and of each package root, and `vendor/composer/installed.json`. A change of `installed.json` (`composer require`, `composer update`) reads the package roots again and rebuilds
+- **Watched files**: the `.phem` files of the source root, of each package root and of the examples of `--examples-of`, and `vendor/composer/installed.json`. A change of `installed.json` (`composer require`, `composer update`) reads the package roots again and rebuilds
 - **Debounce**: after a change, it waits until no change arrives for 150 ms, then builds once
 - **Failed build**: it prints the diagnostics and `phemc: the previous build keeps running`. It doesn’t restart the command, so the previous server keeps serving the last good build. When the first build fails, the command doesn’t start until a build passes
 - **Missing source root**: the command exits with an error. A wrong package root (a bad `extra.phem.source`) prints an error, and the watcher keeps watching the application and `installed.json` until you fix it
@@ -155,6 +172,97 @@ The Flex recipe of `phem/phem` adds `phemc watch` to `.symfony.local.yaml`, so `
 workers:
     phemc:
         cmd: ['vendor/bin/phemc', 'watch', 'src']
+```
+
+### Docs and components for coding agents
+
+`phemc docs`, `phemc components`, `phemc examples` and `phemc search` give a coding agent the texts that it needs to write `.phem` code. Any agent that can run a shell command can use them. The texts match the installed versions:
+
+- **Docs**: the docs of Phem are in the `phemc` binary, so they match the installed `phem/phem`
+- **Components**: the catalog comes from the `.phem` files of the application and of the installed packages (`vendor/`). The docblocks, the props, the default values, the cases of an enum prop, and the `#[Context]` and `#[Provide]` attributes give its content
+- **Examples and guides**: a package can give its examples and a guide for agents (see [Help coding agents use the components](package-authoring.md#help-coding-agents-use-the-components))
+
+Each text has a stable key. A doc is its file name (`events`), and a section adds the anchor of its heading on the website (`events#poll-the-server`). A component or an example is its FQCN (`Acme\Ui\Dialog`). The guide of a package is the package name (`acme/ui`), and a section of it is `acme/ui#naming`.
+
+| Command | Output |
+|---|---|
+| `phemc docs` | The docs, one line each |
+| `phemc docs --toc` | The key and the title of each section of the docs |
+| `phemc docs <key>` | A doc, a section with its subsections, or the guide of a package |
+| `phemc components` | The component families of each package, one line each, and the sections of the package guides |
+| `phemc components <name>` | One component: its docblock, its imports, its props, its context, its parts and its examples |
+| `phemc examples` | All the examples, one line each |
+| `phemc examples <name>` | The examples of a component, or the code of one example |
+| `phemc search <query>` | The 20 best keys for the query, with their context |
+
+The commands take these options:
+
+| Option | Default | Effect |
+|---|---|---|
+| `--format <format>` | `md` | `md` prints Markdown for the agents; `json` prints JSON for the tools |
+| `--src <dir>` | `src` | The source root of the application |
+| `--package <name>` | none | `phemc components` and `phemc examples` show only this package (`app` for the application) |
+| `--limit <n>` | `20` | `phemc search` gives `n` results |
+| `--eval <file>` | none | `phemc search` runs a retrieval eval (see below) |
+
+A family is the components of one file. Its root has the name of the file. A part goes inside the components of its `#[Context]` types, so the anatomy of a root comes from the sources:
+
+```text
+$ phemc components Dialog
+# Dialog — Acme\Ui\Dialog (acme/ui)
+
+A modal dialog.
+
+Import: `use Acme\Ui\Dialog; use Acme\Ui\DialogViewport; use function Acme\Ui\{DialogTrigger, DialogPopup, DialogTitle};`
+Source: vendor/acme/ui/components/Dialog.phem
+Also called: modal, lightbox
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| defaultOpen | bool | false | The dialog is open on the first render. |
+| title | string | required |  |
+| children | ?Html | null |  |
+| ...attrs | the other attributes | [] |  |
+
+## Anatomy
+
+Dialog
+├─ DialogPopup
+└─ DialogViewport
+   └─ DialogPopup
+Other parts: DialogTrigger, DialogTitle
+
+## Examples
+
+- `Acme\Ui\Examples\DialogFormDemo` Dialog with a form.
+```
+
+`phemc search` is a lexical search (BM25). It reads each text with a context: the title and the headings of a doc section, or the family of a component. It splits `DialogPopup` into `dialog` and `popup`, it keeps a code such as `E042` whole, and it finds a component by the words of its `@aliases` tag. The same query always gives the same result:
+
+```text
+$ phemc search "dialog with a form"
+1. `Acme\Ui\Examples\DialogFormDemo` (example) DialogFormDemo — example of Dialog (acme/ui), uses Dialog, DialogTrigger, DialogPopup, DialogTitle, Button
+   Dialog with a form.
+2. `forms#warn-about-unsaved-changes` (doc) Handle forms › Warn about unsaved changes — This guide shows you how to get the data of a form in a handler.
+   A bound field that the user changed, and that the server hasn’t received yet, gets the `phem-dirty` class.
+```
+
+A wrong key is an error with the closest keys: ``phemc: no component `Dialogg`. Did you mean `Acme\Ui\Dialog`, …?``.
+
+`phemc search --eval <file>` checks that the search finds the correct keys. The file is a YAML list of queries, each with the keys that must be in its top 20 (or `--limit`). The command prints the recall and the keys that it doesn’t find, and exits with code 1 under 100 %:
+
+```yaml
+- query: a modal with a form
+  expect: [Acme\Ui\Dialog, Acme\Ui\Examples\DialogFormDemo]
+- query: debounce the search input
+  expect:
+    - events#control-when-typing-sends-an-event
+```
+
+```text
+phemc: retrieval eval: 2 quer(ies), 3/3 key(s) in the top 20 (recall@20 100.0 %)
 ```
 
 ### `phemc lsp`

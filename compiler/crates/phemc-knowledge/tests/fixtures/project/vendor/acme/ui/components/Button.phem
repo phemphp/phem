@@ -1,0 +1,17 @@
+<?phem
+
+namespace Acme\Ui;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/**
+ * A button.
+ *
+ * Give it `type="submit"` to submit a form.
+ */
+#[Component]
+function Button(Variant $variant = Variant::Primary, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    return <button data-variant={{ variant.value }} disabled={{ disabled }} {{ ...rest }}>{{ children }}</button>;
+}
