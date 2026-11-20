@@ -79,7 +79,7 @@ function TooltipTrigger(
     $item = null !== $toolbar ? 'item' : null;
     $target = null === $handle ? 'trigger' : null;
     $border = $bordered
-        ? 'border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950'
+        ? 'border border-input bg-background focus-visible:-outline-offset-1 focus-visible:bg-background'
         : 'border-0 bg-transparent focus-visible:bg-transparent';
 
     return (
@@ -89,7 +89,7 @@ function TooltipTrigger(
             data-phem-tooltip-for={{ handle }}
             data-phem-tooltip-payload={{ payload }}
             data-phem-toolbar-target={{ item }}
-            className={{ classes('flex size-8 items-center justify-center text-neutral-950 select-none data-popup-open:bg-neutral-100 focus-visible:relative focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:text-white dark:data-popup-open:bg-neutral-800 dark:hover:bg-neutral-800 dark:active:bg-neutral-700', border) }}
+            className={{ classes('flex size-8 items-center justify-center text-foreground select-none data-popup-open:bg-accent focus-visible:relative focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-ring hover:bg-accent active:bg-accent-active', border) }}
             {{ ...rest }}
         >
             {{ children }}
@@ -105,7 +105,7 @@ function TooltipPopup(?Html $children = null, mixed ...$rest): Node
             data-phem-tooltip-target="popup"
             popover="manual"
             hidden
-            className={{ classes('m-0 inset-auto overflow-visible relative flex flex-col border border-neutral-950 bg-white px-2 py-1 text-sm text-neutral-950 origin-[var(--transform-origin)] shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[transform,opacity] duration-100 ease-out data-ending-style:opacity-0 data-ending-style:[transform:scale(0.98)] data-instant:transition-none data-starting-style:opacity-0 data-starting-style:[transform:scale(0.98)] dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
+            className={{ classes('m-0 inset-auto overflow-visible relative flex flex-col border border-border bg-popover px-2 py-1 text-sm text-popover-foreground origin-[var(--transform-origin)] rounded-popup shadow-popup transition-[transform,opacity] duration-100 ease-out data-ending-style:opacity-0 data-ending-style:[transform:scale(0.98)] data-instant:transition-none data-starting-style:opacity-0 data-starting-style:[transform:scale(0.98)] [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}

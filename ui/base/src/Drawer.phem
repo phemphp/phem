@@ -121,7 +121,7 @@ function DrawerTrigger(?Html $children = null, mixed ...$rest): Node
 function DrawerPopup(#[Context] Drawer $drawer, #[Context] ?DrawerViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
 {
     $edge = $drawer->swipeDirection->classes([] === $drawer->snapPoints);
-    $panel = 'h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none';
+    $panel = 'h-auto p-6 border-border bg-popover text-popover-foreground outline-none rounded-popup shadow-popup overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none';
 
     if (null !== $viewport && $viewport->drawer === $drawer) {
         return <div data-phem-dialog-target="popup" className={{ classes(panel, edge) }} {{ ...rest }}>{{ children }}</div>;
@@ -130,7 +130,7 @@ function DrawerPopup(#[Context] Drawer $drawer, #[Context] ?DrawerViewport $view
     return (
         <dialog
             data-phem-dialog-target="popup"
-            className={{ classes('fixed z-50 m-0 inset-0 h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
+            className={{ classes('fixed z-50 m-0 inset-0 h-auto p-6 border-border bg-popover text-popover-foreground outline-none rounded-popup shadow-popup overflow-y-auto overscroll-contain touch-auto transition-transform duration-[450ms] data-ending-style:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-ending-style:backdrop:duration-[calc(var(--drawer-swipe-strength,1)*400ms)] data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
             {{ ...rest }}
         >
             {{ children }}

@@ -1,11 +1,13 @@
 @import "tailwindcss";
 
-/* The components of phem/ui-base. In an app: @source "../../vendor/phem/ui-base/src"; */
-@source "../../../src";
-@source "../../src";
-
 /* The theme switch of the sidebar (phem-theme): `<html>` gets `data-theme="light"` or `data-theme="dark"`. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* The theme and the components of phem/ui-base. In an app: @import "../../vendor/phem/ui-base/assets/theme.css"; */
+@import "../../../assets/theme.css";
+
+/* The pages of the demo. */
+@source "../../src";
 
 /* The code of the demos (App\Ui\Highlighter): the background of its box, and GitHub Dark in the dark mode. */
 .phiki {

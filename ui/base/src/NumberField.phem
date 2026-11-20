@@ -89,14 +89,14 @@ function NumberFieldInput(#[Context] ?Toolbar $toolbar = null, mixed ...$rest): 
 {
     $item = null !== $toolbar ? 'item' : null;
 
-    return <input data-phem-number-field-target="input" data-phem-toolbar-target={{ item }} className={{ classes('h-full w-[7ch] border border-neutral-950 bg-white px-2 text-left text-sm font-normal text-neutral-950 tabular-nums any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white focus:z-1 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white') }} {{ ...rest }} />;
+    return <input data-phem-number-field-target="input" data-phem-toolbar-target={{ item }} className={{ classes('h-full w-[7ch] border border-input bg-background px-2 text-left text-sm font-normal text-foreground tabular-nums any-pointer-coarse:text-base focus:z-1 focus:outline-2 focus:-outline-offset-1 focus:outline-ring') }} {{ ...rest }} />;
 }
 
 #[Component]
 function NumberFieldDecrement(?Html $children = null, mixed ...$rest): Node
 {
     return (
-        <button type="button" data-phem-number-field-target="decrement" className={{ classes('flex h-full w-8 items-center justify-center border border-r-0 border-neutral-950 bg-white bg-clip-padding text-neutral-950 outline-0 select-none dark:border-white dark:bg-neutral-950 dark:text-white hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400') }} {{ ...rest }}>
+        <button type="button" data-phem-number-field-target="decrement" className={{ classes('flex h-full w-8 items-center justify-center border border-r-0 border-input bg-background bg-clip-padding text-foreground outline-0 select-none hover:not-data-disabled:bg-accent active:not-data-disabled:bg-accent-active data-disabled:border-muted-foreground data-disabled:text-muted-foreground disabled:text-muted-foreground') }} {{ ...rest }}>
             {{ children ? children : <MinusIcon /> }}
         </button>
     );
@@ -106,7 +106,7 @@ function NumberFieldDecrement(?Html $children = null, mixed ...$rest): Node
 function NumberFieldIncrement(?Html $children = null, mixed ...$rest): Node
 {
     return (
-        <button type="button" data-phem-number-field-target="increment" className={{ classes('flex h-full w-8 items-center justify-center border border-l-0 border-neutral-950 bg-white bg-clip-padding text-neutral-950 outline-0 select-none dark:border-white dark:bg-neutral-950 dark:text-white hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400') }} {{ ...rest }}>
+        <button type="button" data-phem-number-field-target="increment" className={{ classes('flex h-full w-8 items-center justify-center border border-l-0 border-input bg-background bg-clip-padding text-foreground outline-0 select-none hover:not-data-disabled:bg-accent active:not-data-disabled:bg-accent-active data-disabled:border-muted-foreground data-disabled:text-muted-foreground disabled:text-muted-foreground') }} {{ ...rest }}>
             {{ children ? children : <PlusIcon /> }}
         </button>
     );

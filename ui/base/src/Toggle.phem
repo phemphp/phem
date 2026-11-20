@@ -28,7 +28,7 @@ function Toggle(
     $base = match (true) {
         null !== $toolbar => Style::TOOLBAR_BUTTON,
         null !== $group => Style::GROUP_TOGGLE,
-        default => 'flex size-8 items-center justify-center border-none rounded-none bg-transparent text-neutral-950 dark:text-white select-none hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 data-pressed:text-neutral-950 dark:data-pressed:text-white focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-disabled:text-neutral-500',
+        default => 'flex size-8 items-center justify-center border-none rounded-control bg-transparent text-foreground select-none hover:not-data-disabled:bg-accent active:not-data-disabled:bg-accent-active data-pressed:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ring data-disabled:text-muted-foreground',
     };
 
     return (
@@ -91,7 +91,7 @@ class ToggleGroup
                 data-phem-toggle-group-loop-focus-value={{ loopFocus ? null : 'false' }}
                 data-phem-toggle-group-disabled-value={{ disabled ? 'true' : null }}
                 data-phem-toolbar-target={{ inToolbar ? 'group' : null }}
-                className={{ classes(inToolbar ? 'flex gap-px' : 'flex gap-px p-px border border-neutral-950 dark:border-white', 'data-[orientation=vertical]:flex-col') }}
+                className={{ classes(inToolbar ? 'flex gap-px' : 'flex gap-px p-px border border-input rounded-control', 'data-[orientation=vertical]:flex-col') }}
                 {{ ...attrs }}
             >
                 {{ children }}

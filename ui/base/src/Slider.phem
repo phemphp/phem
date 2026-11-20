@@ -85,7 +85,7 @@ class Slider
 #[Component]
 function SliderLabel(?Html $children = null, mixed ...$rest): Node
 {
-    return <div data-phem-slider-target="label" className={{ classes('text-sm font-bold text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children }}</div>;
+    return <div data-phem-slider-target="label" className={{ classes('text-sm font-bold text-foreground') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /** The formatted values. */
@@ -94,7 +94,7 @@ function SliderValue(#[Context] Slider $slider, mixed ...$rest): Node
 {
     $text = implode(' – ', array_map(static fn (float $v): string => (string) (0.0 == fmod($v, 1) ? (int) $v : $v), $slider->values()));
 
-    return <output data-phem-slider-target="value" className={{ classes('text-right text-sm text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ text }}</output>;
+    return <output data-phem-slider-target="value" className={{ classes('text-right text-sm text-foreground') }} {{ ...rest }}>{{ text }}</output>;
 }
 
 /** The area that takes the presses and the drags. */
@@ -111,7 +111,7 @@ function SliderTrack(#[Context] Slider $slider, ?Html $children = null, mixed ..
 {
     $vertical = $slider->vertical();
 
-    return <div data-phem-slider-target="track" style="position: relative" className={{ classes('bg-neutral-200 select-none dark:bg-neutral-800', vertical ? 'h-full w-1' : 'h-1 w-full') }} {{ ...rest }}>{{ children }}</div>;
+    return <div data-phem-slider-target="track" style="position: relative" className={{ classes('bg-muted select-none', vertical ? 'h-full w-1' : 'h-1 w-full') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /** The filled part of the track: from the start to the value, or between the values of a range. */
@@ -125,7 +125,7 @@ function SliderIndicator(#[Context] Slider $slider, mixed ...$rest): Node
         ? 'position: absolute; bottom: '.$start.'%; height: '.$size.'%; width: inherit'
         : 'position: relative; inset-inline-start: '.$start.'%; width: '.$size.'%; height: inherit';
 
-    return <div data-phem-slider-target="indicator" style={{ style }} className={{ classes('bg-neutral-950 select-none dark:bg-white') }} {{ ...rest }} />;
+    return <div data-phem-slider-target="indicator" style={{ style }} className={{ classes('bg-primary select-none') }} {{ ...rest }} />;
 }
 
 /** A thumb, with a native range input for the keyboard, the ARIA and the form. Give it an `aria-label`. */
@@ -146,7 +146,7 @@ function SliderThumb(#[Context] Slider $slider, int $index = 0, ?string $name = 
             data-phem-slider-target="thumb"
             data-index={{ index }}
             style={{ style }}
-            className={{ classes('size-4 border border-neutral-950 bg-white select-none has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-neutral-950 dark:has-[:focus-visible]:outline-white dark:border-white dark:bg-neutral-950') }}
+            className={{ classes('size-4 border border-input rounded-control bg-background select-none has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring') }}
             {{ ...rest }}
         >
             <input type="range" name={{ name }} aria-label={{ label }} min={{ slider.min }} max={{ slider.max }} step={{ slider.step }} value={{ value }} disabled={{ slider.disabled }} className="sr-only" />

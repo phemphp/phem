@@ -83,7 +83,7 @@ function PopoverTrigger(
             data-phem-popover-for={{ handle }}
             data-phem-popover-payload={{ payload }}
             data-phem-toolbar-target={{ item }}
-            className={{ classes(base, 'data-pressed:bg-neutral-100 dark:data-pressed:bg-neutral-800') }}
+            className={{ classes(base, 'data-pressed:bg-accent') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -99,7 +99,7 @@ function PopoverPopup(?Html $children = null, mixed ...$rest): Node
             data-phem-popover-target="popup"
             popover="manual"
             hidden
-            className={{ classes('m-0 inset-auto overflow-visible relative flex h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] max-w-[500px] flex-col gap-1 origin-[var(--transform-origin)] bg-white dark:bg-neutral-950 p-3 text-neutral-950 dark:text-white outline-none border border-neutral-950 dark:border-white shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0 [&[hidden]]:hidden') }}
+            className={{ classes('m-0 inset-auto overflow-visible relative flex h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] max-w-[500px] flex-col gap-1 origin-[var(--transform-origin)] bg-popover p-3 text-popover-foreground outline-none border border-border rounded-popup shadow-popup transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0 [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}

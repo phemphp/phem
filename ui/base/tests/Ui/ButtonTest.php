@@ -39,8 +39,18 @@ final class ButtonTest extends KernelTestCase
             ->assertSelectorExists('button[data-phem-lock]')
             ->html();
 
-        self::assertStringContainsString('aria-disabled:text-neutral-500', $html);
-        self::assertStringContainsString('hover:not-data-disabled:not-aria-disabled:bg-neutral-100', $html);
+        self::assertStringContainsString('aria-disabled:text-muted-foreground', $html);
+        self::assertStringContainsString('hover:not-data-disabled:not-aria-disabled:bg-accent', $html);
+    }
+
+    public function testTheButtonTakesItsColorsFromTheTheme(): void
+    {
+        $html = $this->mount('Phem\Ui\Base\Button', ['children' => new Html('Submit')])
+            ->assertSelectorExists('button[class~="bg-background"][class~="text-foreground"][class~="border-input"][class~="rounded-control"][class~="focus-visible:outline-ring"]')
+            ->html();
+
+        // The theme gives the dark values: the button has no dark: class.
+        self::assertStringNotContainsString('dark:', $html);
     }
 
     public function testTheCallerClassesMerge(): void

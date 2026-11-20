@@ -33,7 +33,7 @@ function ContextMenuTrigger(#[Context] Menu $menu, ?Html $children = null, mixed
 
     return (
         <div
-            className={{ classes('flex aspect-5/3 w-full max-w-64 items-center justify-center rounded-none border border-neutral-950 bg-white text-neutral-950 select-none text-sm dark:border-white dark:bg-neutral-950 dark:text-white') }}
+            className={{ classes('flex aspect-5/3 w-full max-w-64 items-center justify-center rounded-control border border-input bg-background text-foreground select-none text-sm') }}
             {{ ...target }}
             {{ ...rest }}
         >

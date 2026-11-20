@@ -57,7 +57,7 @@ function MeterLabel(#[Context] Meter $meter, ?Html $children = null, mixed ...$r
 {
     $id = $meter->id ? $meter->id.'-label' : null;
 
-    return <span id={{ id }} className={{ classes('text-sm font-normal text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children }}</span>;
+    return <span id={{ id }} className={{ classes('text-sm font-normal text-foreground') }} {{ ...rest }}>{{ children }}</span>;
 }
 
 #[Component]
@@ -65,13 +65,13 @@ function MeterValue(#[Context] Meter $meter, ?Html $children = null, mixed ...$r
 {
     $text = $meter->text();
 
-    return <span aria-hidden="true" className={{ classes('text-right text-sm text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children ?? text }}</span>;
+    return <span aria-hidden="true" className={{ classes('text-right text-sm text-foreground') }} {{ ...rest }}>{{ children ?? text }}</span>;
 }
 
 #[Component]
 function MeterTrack(?Html $children = null, mixed ...$rest): Node
 {
-    return <div className={{ classes('col-span-2 h-3 overflow-hidden bg-neutral-200 dark:bg-neutral-800') }} {{ ...rest }}>{{ children }}</div>;
+    return <div className={{ classes('col-span-2 h-3 overflow-hidden bg-muted') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 #[Component]
@@ -79,5 +79,5 @@ function MeterIndicator(#[Context] Meter $meter, mixed ...$rest): Node
 {
     $style = 'inset-inline-start: 0; height: inherit; width: '.$meter->percent().'%';
 
-    return <div style={{ style }} className={{ classes('bg-neutral-950 transition-[width] duration-500 dark:bg-white') }} {{ ...rest }} />;
+    return <div style={{ style }} className={{ classes('bg-primary transition-[width] duration-500') }} {{ ...rest }} />;
 }

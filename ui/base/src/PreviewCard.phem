@@ -52,7 +52,7 @@ function PreviewCardTrigger(string $href, ?string $handle = null, ?string $paylo
             data-phem-popover-target={{ target }}
             data-phem-popover-for={{ handle }}
             data-phem-popover-payload={{ payload }}
-            className={{ classes('text-neutral-950 underline decoration-neutral-950/60 decoration-1 underline-offset-2 outline-0 hover:decoration-neutral-950 data-popup-open:decoration-neutral-950 focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-neutral-950 dark:text-white dark:decoration-white/60 dark:hover:decoration-white dark:data-popup-open:decoration-white dark:focus-visible:outline-white') }}
+            className={{ classes('text-foreground underline decoration-foreground/60 decoration-1 underline-offset-2 outline-0 hover:decoration-foreground data-popup-open:decoration-foreground focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-ring') }}
             {{ ...rest }}
         >{{ children }}</a>
     );
@@ -66,7 +66,7 @@ function PreviewCardPopup(?Html $children = null, mixed ...$rest): Node
             data-phem-popover-target="popup"
             popover="manual"
             hidden
-            className={{ classes('m-0 inset-auto overflow-visible relative h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] origin-[var(--transform-origin)] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[transform,opacity] duration-100 ease-out data-ending-style:[transform:scale(0.98)] data-ending-style:opacity-0 data-starting-style:[transform:scale(0.98)] data-starting-style:opacity-0 dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
+            className={{ classes('m-0 inset-auto overflow-visible relative h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] origin-[var(--transform-origin)] border border-border bg-popover text-popover-foreground rounded-popup shadow-popup transition-[transform,opacity] duration-100 ease-out data-ending-style:[transform:scale(0.98)] data-ending-style:opacity-0 data-starting-style:[transform:scale(0.98)] data-starting-style:opacity-0 [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}

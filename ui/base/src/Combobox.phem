@@ -163,7 +163,7 @@ class Combobox
                 data-phem-combobox-side-offset-value={{ sideOffset }}
                 data-phem-combobox-align-offset-value={{ alignOffset }}
                 data-phem-combobox-collision-padding-value={{ collisionPadding }}
-                className={{ classes('relative flex flex-col gap-1 text-sm leading-5 font-bold text-neutral-950 dark:text-white') }}
+                className={{ classes('relative flex flex-col gap-1 text-sm leading-5 font-bold text-foreground') }}
                 {{ ...attrs }}
             >
                 {{ children }}
@@ -228,7 +228,7 @@ function ComboboxInput(#[Context] Combobox $combobox, ?Bound $value = null, ?str
             data-phem-combobox-description={{ selectedDescription }}
             phem:live
             data-phem-combobox-target="input"
-            className={{ classes('h-8 w-64 border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 dark:focus:outline-white') }}
+            className={{ classes('h-8 w-64 border border-input rounded-control bg-background px-2 text-sm any-pointer-coarse:text-base font-normal text-foreground placeholder:text-muted-foreground focus:outline-2 focus:-outline-offset-1 focus:outline-ring') }}
             {{ ...rest }}
         />
     );
@@ -238,7 +238,7 @@ function ComboboxInput(#[Context] Combobox $combobox, ?Bound $value = null, ?str
 #[Component]
 function ComboboxActions(?Html $children = null, mixed ...$rest): Node
 {
-    return <div className={{ classes('absolute right-0 bottom-0 flex h-full items-center justify-center text-neutral-500 dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
+    return <div className={{ classes('absolute right-0 bottom-0 flex h-full items-center justify-center text-muted-foreground') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /** The button that opens and closes the popup. Give it an `aria-label`. */
@@ -250,7 +250,7 @@ function ComboboxTrigger(?Html $children = null, mixed ...$rest): Node
             type="button"
             tabindex="-1"
             data-phem-combobox-target="trigger"
-            className={{ classes('flex h-full w-6 items-center justify-center border-0 bg-transparent p-0 text-neutral-950 dark:text-white') }}
+            className={{ classes('flex h-full w-6 items-center justify-center border-0 bg-transparent p-0 text-foreground') }}
             {{ ...rest }}
         >
             {{ children ? children : <CaretDownIcon /> }}
@@ -262,14 +262,14 @@ function ComboboxTrigger(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function ComboboxValue(?string $placeholder = null, mixed ...$rest): Node
 {
-    return <span data-phem-combobox-target="value" placeholder={{ placeholder }} data-placeholder={{ placeholder ? '' : null }} className={{ classes('data-placeholder:text-neutral-500 dark:data-placeholder:text-neutral-400') }} {{ ...rest }}>{{ placeholder }}</span>;
+    return <span data-phem-combobox-target="value" placeholder={{ placeholder }} data-placeholder={{ placeholder ? '' : null }} className={{ classes('data-placeholder:text-muted-foreground') }} {{ ...rest }}>{{ placeholder }}</span>;
 }
 
 /** The icon of a trigger that shows the value. */
 #[Component]
 function ComboboxIcon(?Html $children = null, mixed ...$rest): Node
 {
-    return <span aria-hidden="true" className={{ classes('flex text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
+    return <span aria-hidden="true" className={{ classes('flex text-foreground') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
 }
 
 /**
@@ -285,12 +285,12 @@ function ComboboxClear(?Html $children = null, mixed ...$rest): Node
             type="button"
             tabindex="-1"
             data-phem-combobox-target="clear"
-            className={{ classes('combobox-clear group/clear flex h-full w-6 items-center justify-center border-0 bg-transparent [&[hidden]]:hidden p-0 text-neutral-950 dark:text-white') }}
+            className={{ classes('combobox-clear group/clear flex h-full w-6 items-center justify-center border-0 bg-transparent [&[hidden]]:hidden p-0 text-foreground') }}
             {{ ...rest }}
         >
             <span className="contents group-data-pending/clear:hidden group-data-failed/clear:hidden">{{ children ? children : <XIcon /> }}</span>
             <ComboboxSpinner className="group-data-pending/clear:inline-block" />
-            <WarningIcon className="hidden text-red-700 group-data-failed/clear:block dark:text-red-400" />
+            <WarningIcon className="hidden text-destructive group-data-failed/clear:block" />
         </button>
     );
 }
@@ -313,7 +313,7 @@ function ComboboxPopup(#[Context] Combobox $combobox, ?Html $children = null, mi
             data-phem-combobox-target="popup"
             popover="manual"
             hidden
-            className={{ classes('m-0 inset-auto overflow-visible w-[var(--anchor-width)] max-w-[var(--available-width)] origin-[var(--transform-origin)] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0_rgb(0_0_0_/_12%)] dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden', animation) }}
+            className={{ classes('m-0 inset-auto overflow-visible w-[var(--anchor-width)] max-w-[var(--available-width)] origin-[var(--transform-origin)] border border-border bg-popover text-popover-foreground rounded-popup shadow-popup [&[hidden]]:hidden', animation) }}
             {{ ...rest }}
         >
             {{ children }}
@@ -371,7 +371,7 @@ function ComboboxItem(#[Context] Combobox $combobox, string $value, ?string $lab
             data-selected={{ selected ? '' : null }}
             data-disabled={{ disabled ? '' : null }}
             data-phem-combobox-target="item"
-            className={{ classes('group grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 p-2 text-sm leading-4 font-normal outline-none select-none data-highlighted:relative data-highlighted:z-0 data-highlighted:text-white data-highlighted:before:absolute data-highlighted:before:inset-0 data-highlighted:before:z-[-1] data-highlighted:before:bg-neutral-950 dark:data-highlighted:text-neutral-950 dark:data-highlighted:before:bg-white data-disabled:text-neutral-500') }}
+            className={{ classes('group grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 p-2 text-sm leading-4 font-normal outline-none select-none data-highlighted:relative data-highlighted:z-0 data-highlighted:text-highlight-foreground data-highlighted:before:absolute data-highlighted:before:inset-0 data-highlighted:before:z-[-1] data-highlighted:before:bg-highlight data-disabled:text-muted-foreground') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -397,7 +397,7 @@ function ComboboxItemLabel(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function ComboboxEmpty(?Html $children = null, mixed ...$rest): Node
 {
-    return <div data-phem-combobox-target="empty" className={{ classes('py-4 pr-4 pl-2 text-sm leading-4 font-normal text-neutral-500 dark:text-neutral-400 empty:m-0 empty:p-0') }} {{ ...rest }}>{{ children }}</div>;
+    return <div data-phem-combobox-target="empty" className={{ classes('py-4 pr-4 pl-2 text-sm leading-4 font-normal text-muted-foreground empty:m-0 empty:p-0') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /**
@@ -412,13 +412,13 @@ function ComboboxEmpty(?Html $children = null, mixed ...$rest): Node
 function ComboboxStatus(?string $idle = null, ?string $pending = null, ?string $empty = null, ?string $error = null, ?Html $children = null, mixed ...$rest): Node
 {
     if (null === $idle && null === $pending && null === $empty && null === $error) {
-        return <div data-phem-combobox-target="status" className={{ classes('px-2 py-1 text-sm font-normal text-neutral-500 dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
+        return <div data-phem-combobox-target="status" className={{ classes('px-2 py-1 text-sm font-normal text-muted-foreground') }} {{ ...rest }}>{{ children }}</div>;
     }
 
     $part = 'flex items-center gap-2 [&[hidden]]:hidden';
 
     return (
-        <div data-phem-combobox-target="status" className={{ classes('py-1 pr-5 pl-2 text-sm leading-5 font-normal text-neutral-500 dark:text-neutral-400 [&:not(:has(>:not([hidden]):not(:empty)))]:hidden') }} {{ ...rest }}>
+        <div data-phem-combobox-target="status" className={{ classes('py-1 pr-5 pl-2 text-sm leading-5 font-normal text-muted-foreground [&:not(:has(>:not([hidden]):not(:empty)))]:hidden') }} {{ ...rest }}>
             {% if pending is not null %}
                 <span data-phem-combobox-status="pending" hidden className={{ part }}>
                     <span aria-hidden="true" className="inline-block size-3 animate-spin rounded-full border border-current border-r-transparent"></span>
@@ -442,13 +442,13 @@ function ComboboxGroup(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function ComboboxGroupLabel(?Html $children = null, mixed ...$rest): Node
 {
-    return <div data-phem-combobox-target="groupLabel" className={{ classes('px-2 py-2 text-sm leading-4 font-normal text-neutral-500 select-none dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
+    return <div data-phem-combobox-target="groupLabel" className={{ classes('px-2 py-2 text-sm leading-4 font-normal text-muted-foreground select-none') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 #[Component]
 function ComboboxSeparator(mixed ...$rest): Node
 {
-    return <div role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...rest }} />;
+    return <div role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-border') }} {{ ...rest }} />;
 }
 
 /**
@@ -463,7 +463,7 @@ function ComboboxChips(?Html $children = null, mixed ...$rest): Node
     return (
         <div
             data-phem-combobox-target="chips"
-            className={{ classes('combobox-chips flex min-h-8 w-64 min-[32rem]:w-[22rem] cursor-text flex-wrap items-center gap-1 border border-neutral-950 bg-white px-2 py-1 has-[button]:px-1 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-neutral-950 dark:border-white dark:bg-neutral-950 dark:focus-within:outline-white [&>input]:h-[calc(1.5rem-2px)] [&>input]:w-auto [&>input]:min-w-12 [&>input]:flex-1 [&>input]:border-0 [&>input]:p-0 [&>input]:focus:outline-none') }}
+            className={{ classes('combobox-chips flex min-h-8 w-64 min-[32rem]:w-[22rem] cursor-text flex-wrap items-center gap-1 border border-input rounded-control bg-background px-2 py-1 has-[button]:px-1 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-ring [&>input]:h-[calc(1.5rem-2px)] [&>input]:w-auto [&>input]:min-w-12 [&>input]:flex-1 [&>input]:border-0 [&>input]:p-0 [&>input]:focus:outline-none') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -494,7 +494,7 @@ function ComboboxChip(#[Context] Combobox $combobox, #[Context] ?ComboboxChipTem
             data-value={{ value }}
             hidden={{ hidden }}
             aria-description="Press Backspace or Delete to remove"
-            className={{ classes('group flex min-h-[calc(1.5rem-2px)] cursor-default items-center gap-1 overflow-hidden bg-neutral-100 py-0 pr-[0.2rem] pl-[0.4rem] text-sm leading-none font-normal text-neutral-950 outline-none focus-within:bg-neutral-950 focus-within:text-white [@media(hover:hover)]:data-highlighted:bg-neutral-950 [@media(hover:hover)]:data-highlighted:text-white dark:bg-neutral-800 dark:text-white dark:focus-within:bg-white dark:focus-within:text-neutral-950 dark:[@media(hover:hover)]:data-highlighted:bg-white dark:[@media(hover:hover)]:data-highlighted:text-neutral-950 [&[hidden]]:hidden') }}
+            className={{ classes('group flex min-h-[calc(1.5rem-2px)] cursor-default items-center gap-1 overflow-hidden bg-accent py-0 pr-[0.2rem] pl-[0.4rem] text-sm leading-none font-normal text-foreground outline-none focus-within:bg-highlight focus-within:text-highlight-foreground [@media(hover:hover)]:data-highlighted:bg-highlight [@media(hover:hover)]:data-highlighted:text-highlight-foreground [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -533,12 +533,12 @@ function ComboboxChipRemove(?Html $children = null, mixed ...$rest): Node
         <button
             type="button"
             data-phem-combobox-target="chipRemove"
-            className={{ classes('flex size-4 items-center justify-center border-0 bg-transparent p-0 text-inherit hover:bg-neutral-200 group-focus-within:hover:bg-neutral-700 group-data-pending:pointer-events-none group-data-failed:pointer-events-none dark:hover:bg-neutral-700 dark:group-focus-within:hover:bg-neutral-200') }}
+            className={{ classes('flex size-4 items-center justify-center border-0 bg-transparent p-0 text-inherit hover:bg-accent-active group-focus-within:hover:bg-highlight-foreground/20 group-data-pending:pointer-events-none group-data-failed:pointer-events-none') }}
             {{ ...rest }}
         >
             <span className="contents group-data-pending:hidden group-data-failed:hidden">{{ children ? children : <XIcon /> }}</span>
             <ComboboxSpinner className="group-data-pending:inline-block" />
-            <WarningIcon className="hidden text-red-700 group-data-failed:block dark:text-red-400" />
+            <WarningIcon className="hidden text-destructive group-data-failed:block" />
         </button>
     );
 }

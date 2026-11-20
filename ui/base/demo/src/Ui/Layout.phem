@@ -18,7 +18,7 @@ function Document(string $title, Html $children): Node
                 {{ theme_script() }}
                 {{ importmap('app') }}
             </head>
-            <body className="min-h-dvh bg-white text-neutral-950 antialiased dark:bg-neutral-950 dark:text-white">
+            <body className="min-h-dvh bg-background text-foreground antialiased">
                 <Root>{{ children }}</Root>
             </body>
         </html>

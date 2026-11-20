@@ -56,7 +56,7 @@ function FieldLabel(#[Context] ?Field $field = null, ?Html $children = null, mix
 {
     $for = $field?->partId('control');
 
-    return <label htmlFor={{ for }} data-phem-field-target="label" className={{ classes('text-sm font-bold text-neutral-950 dark:text-white data-disabled:text-neutral-500') }} {{ ...rest }}>{{ children }}</label>;
+    return <label htmlFor={{ for }} data-phem-field-target="label" className={{ classes('text-sm font-bold text-foreground data-disabled:text-muted-foreground') }} {{ ...rest }}>{{ children }}</label>;
 }
 
 /** The control of the field: an Input with the width of the field. */
@@ -71,7 +71,7 @@ function FieldDescription(#[Context] ?Field $field = null, ?Html $children = nul
 {
     $id = $field?->partId('description');
 
-    return <p id={{ id }} data-phem-field-target="description" className={{ classes('m-0 text-sm text-neutral-600 dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</p>;
+    return <p id={{ id }} data-phem-field-target="description" className={{ classes('m-0 text-sm text-muted-foreground') }} {{ ...rest }}>{{ children }}</p>;
 }
 
 /**
@@ -89,7 +89,7 @@ function FieldError(#[Context] ?Field $field = null, ?string $match = null, ?Htm
             data-phem-field-target="error"
             data-match={{ match }}
             hidden
-            className={{ classes('text-sm text-red-700 dark:text-red-400 [&[hidden]]:hidden') }}
+            className={{ classes('text-sm text-destructive [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}

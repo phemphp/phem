@@ -53,11 +53,11 @@ function OTPFieldInput(#[Context] ?Field $field = null, mixed ...$rest): Node
 {
     $control = null !== $field ? 'control' : null;
 
-    return <input data-phem-otp-field-target="input" data-phem-field-target={{ control }} className={{ classes('m-0 h-10 w-10 rounded-none border border-neutral-950 bg-white dark:bg-neutral-950 text-center font-inherit text-base font-normal text-neutral-950 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:text-white') }} {{ ...rest }} />;
+    return <input data-phem-otp-field-target="input" data-phem-field-target={{ control }} className={{ classes('m-0 h-10 w-10 rounded-control border border-input bg-background text-center font-inherit text-base font-normal text-foreground focus:outline-2 focus:-outline-offset-1 focus:outline-ring') }} {{ ...rest }} />;
 }
 
 #[Component]
 function OTPFieldSeparator(?Html $children = null, mixed ...$rest): Node
 {
-    return <span data-phem-otp-field-target="separator" className={{ classes('flex items-center text-neutral-500') }} {{ ...rest }}>{{ children ? children : '–' }}</span>;
+    return <span data-phem-otp-field-target="separator" className={{ classes('flex items-center text-muted-foreground') }} {{ ...rest }}>{{ children ? children : '–' }}</span>;
 }

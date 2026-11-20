@@ -31,7 +31,7 @@ function FieldsetLegend(?Html $children = null, mixed ...$rest): Node
 {
     return (
         <legend
-            className={{ classes('border-b border-neutral-950 text-base font-bold text-neutral-950 dark:border-white dark:text-white w-full') }}
+            className={{ classes('border-b border-border text-base font-bold text-foreground w-full') }}
             {{ ...rest }}
         >
             {{ children }}

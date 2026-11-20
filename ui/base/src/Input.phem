@@ -22,7 +22,7 @@ function Input(#[Context] ?Field $field = null, ?Bound $value = null, ?string $d
             data-phem-field-target={{ target }}
             disabled={{ disabled }}
             data-disabled={{ disabled ? '' : null }}
-            className={{ classes('h-8 w-40 border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white data-disabled:border-neutral-500 data-disabled:text-neutral-500') }}
+            className={{ classes('h-8 w-40 border border-input rounded-control bg-background px-2 text-sm any-pointer-coarse:text-base font-normal text-foreground placeholder:text-muted-foreground focus:outline-2 focus:-outline-offset-1 focus:outline-ring data-disabled:border-muted-foreground data-disabled:text-muted-foreground') }}
             {{ ...rest }}
             id={{ id ?? rest['id'] ?? null }}
         />

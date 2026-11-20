@@ -83,7 +83,7 @@ function ProgressLabel(#[Context] Progress $progress, ?Html $children = null, mi
     $state = $progress->state();
     $id = $progress->id ? $progress->id.'-label' : null;
 
-    return <span id={{ id }} className={{ classes('text-sm font-normal text-neutral-950 dark:text-white') }} {{ ...state }} {{ ...rest }}>{{ children }}</span>;
+    return <span id={{ id }} className={{ classes('text-sm font-normal text-foreground') }} {{ ...state }} {{ ...rest }}>{{ children }}</span>;
 }
 
 /** The text of the value. Its children replace the default text (a percent). */
@@ -93,7 +93,7 @@ function ProgressValue(#[Context] Progress $progress, ?Html $children = null, mi
     $state = $progress->state();
     $text = $progress->text();
 
-    return <span aria-hidden="true" className={{ classes('text-right text-sm text-neutral-950 dark:text-white') }} {{ ...state }} {{ ...rest }}>{{ children ?? text }}</span>;
+    return <span aria-hidden="true" className={{ classes('text-right text-sm text-foreground') }} {{ ...state }} {{ ...rest }}>{{ children ?? text }}</span>;
 }
 
 #[Component]
@@ -101,7 +101,7 @@ function ProgressTrack(#[Context] Progress $progress, ?Html $children = null, mi
 {
     $state = $progress->state();
 
-    return <div className={{ classes('col-span-2 h-1 overflow-hidden bg-neutral-200 dark:bg-neutral-800') }} {{ ...state }} {{ ...rest }}>{{ children }}</div>;
+    return <div className={{ classes('col-span-2 h-1 overflow-hidden bg-muted') }} {{ ...state }} {{ ...rest }}>{{ children }}</div>;
 }
 
 #[Component]
@@ -111,5 +111,5 @@ function ProgressIndicator(#[Context] Progress $progress, mixed ...$rest): Node
     $percent = $progress->percent();
     $style = null === $percent ? null : 'inset-inline-start: 0; height: inherit; width: '.$percent.'%';
 
-    return <div style={{ style }} className={{ classes('bg-neutral-950 transition-[width] duration-500 dark:bg-white') }} {{ ...state }} {{ ...rest }} />;
+    return <div style={{ style }} className={{ classes('bg-primary transition-[width] duration-500') }} {{ ...state }} {{ ...rest }} />;
 }

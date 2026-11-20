@@ -47,7 +47,7 @@ class RadioGroup
                 data-phem-radio-group-disabled-value={{ disabled ? 'true' : null }}
                 data-phem-radio-group-read-only-value={{ readOnly ? 'true' : null }}
                 data-phem-radio-group-required-value={{ required ? 'true' : null }}
-                className={{ classes('flex flex-col items-start gap-1 text-neutral-950 dark:text-white') }}
+                className={{ classes('flex flex-col items-start gap-1 text-foreground') }}
                 {{ ...attrs }}
             >
                 {{ children }}
@@ -90,7 +90,7 @@ class Radio
                 data-unchecked={{ on ? null : '' }}
                 data-disabled={{ disabled ? '' : null }}
                 data-phem-radio-group-target="radio"
-                className={{ classes('flex size-4 shrink-0 items-center justify-center border rounded-full p-0 border-neutral-950 bg-white text-white dark:border-white dark:bg-neutral-950 dark:text-neutral-950 data-checked:bg-neutral-950 data-checked:text-white dark:data-checked:bg-white dark:data-checked:text-neutral-950 data-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
+                className={{ classes('flex size-4 shrink-0 items-center justify-center border rounded-full p-0 border-input bg-background text-background data-checked:bg-primary data-checked:text-primary-foreground data-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring') }}
                 {{ ...attrs }}
             >
                 {{ children }}

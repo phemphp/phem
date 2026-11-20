@@ -15,7 +15,7 @@ function Avatar(?Html $children = null, mixed ...$rest): Node
     return (
         <span
             data-controller="phem-avatar"
-            className={{ classes('inline-flex size-8 items-center justify-center overflow-hidden rounded-full bg-neutral-200 align-middle text-sm leading-none font-normal text-neutral-950 select-none dark:bg-neutral-800 dark:text-white') }}
+            className={{ classes('inline-flex size-8 items-center justify-center overflow-hidden rounded-full bg-muted align-middle text-sm leading-none font-normal text-foreground select-none') }}
             {{ ...rest }}
         >
             {{ children }}

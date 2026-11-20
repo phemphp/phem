@@ -11,12 +11,13 @@ This package ships no JavaScript. A missing feature goes into phem, not into thi
 composer require phem/ui-base
 ```
 
-Add the sources to the Tailwind build, and enable the phem controllers in `assets/controllers.json`
-(see `phem/docs/controllers.md`):
+Import the theme in the Tailwind build, and enable the phem controllers in `assets/controllers.json`
+(see `phem/docs/controllers.md`). The theme file also adds the sources of the components to the
+build, so you need no `@source` for them:
 
 ```css
 @import "tailwindcss";
-@source "../../vendor/phem/ui-base/src";
+@import "../../vendor/phem/ui-base/assets/theme.css";
 ```
 
 ```php
@@ -30,6 +31,109 @@ use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger};
     </AccordionItem>
 </Accordion>
 ```
+
+## Customize
+
+The components take their colors, radius and popup shadow from CSS variables, with the names of
+[shadcn/ui](https://ui.shadcn.com/docs/theming): `bg-background`, `text-foreground`,
+`border-input`, `bg-primary`… The default values give the look of the Tailwind demos of Base UI.
+The components have no `dark:` classes: the theme sets the dark values.
+
+### Change the theme
+
+Set the variables in a rule after the import:
+
+```css
+/* assets/styles/app.css */
+@import "tailwindcss";
+@import "../../vendor/phem/ui-base/assets/theme.css";
+
+:root {
+    --primary: oklch(0.55 0.2 260);
+    --primary-foreground: oklch(0.98 0 0);
+    --ring: oklch(0.55 0.2 260);
+    --radius: 0.625rem;
+}
+```
+
+Each `<Checkbox>`, `<Switch>`, `<RadioGroup>` and pressed `<Toggle>` is now blue, and each control
+and popup is round.
+
+| Variable | Used for |
+|---|---|
+| `--background`, `--foreground` | the box and the text of a control |
+| `--popover`, `--popover-foreground` | the box and the text of a popup: popover, menu, select, dialog, drawer, toast |
+| `--primary`, `--primary-foreground` | a checked, pressed or filled part: checkbox, switch, radio, toggle, slider, progress, meter |
+| `--accent`, `--accent-foreground` | the hover and the open state |
+| `--muted`, `--muted-foreground` | a track (avatar, meter, progress, scroll area); a description, a placeholder, a disabled text |
+| `--border` | the border of a popup and of a frame (accordion, fieldset), and the separator in a popup |
+| `--input` | the border of a control: button, input, select, checkbox, switch |
+| `--ring` | the focus outline |
+| `--destructive` | the error of a field |
+| `--radius` | the radius: `rounded-popup` is `--radius`, `rounded-control` is `--radius * 0.8` |
+
+phem/ui-base adds these variables. In the Base UI look, one shadcn color has two roles here:
+
+| Variable | Default | Used for |
+|---|---|---|
+| `--highlight`, `--highlight-foreground` | `--primary`, `--primary-foreground` | the highlighted item of a menu, a select or a combobox |
+| `--separator` | `neutral-300` | the `<Separator>` component |
+| `--accent-active` | `--accent` with 10% of `--foreground` | a control while the pointer presses it (`active:`) |
+| `--overlay` | `black / 20%` | the backdrop of a dialog |
+| `--popup-shadow` | an offset shadow, none in dark mode | the shadow of a popup (`shadow-popup`) |
+
+### Use a shadcn theme
+
+Paste a theme of shadcn (or of a theme generator for shadcn) after the import. It sets the shadcn
+variables. Add these lines for the shadcn look of the highlight, the separator and the popups:
+
+```css
+:root {
+    --highlight: var(--accent);
+    --highlight-foreground: var(--accent-foreground);
+    --separator: var(--border);
+    --popup-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-md */
+}
+```
+
+### Dark mode
+
+The theme sets the dark values with `@variant dark`, so it follows the dark variant of your build.
+Declare a custom variant before the import. The variant must match the `<html>` element itself,
+because the theme sets the variables on `:root`:
+
+```css
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@import "../../vendor/phem/ui-base/assets/theme.css";
+```
+
+The default variant of Tailwind (the `prefers-color-scheme` media query) also works. The variant of
+shadcn, `&:is(.dark *)`, does not match `<html>`: a shadcn theme sets its own dark values in
+`.dark { … }`, but the dark values of the variables of phem/ui-base do not apply.
+
+### Add classes
+
+Each part merges the `className` of the caller into its classes. Turn on the Tailwind merger of
+phem, so that a class of the caller replaces a class of the same group (see
+`phem/docs/styling.md`):
+
+```php
+<Button className="h-9 px-4">Save</Button>
+```
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    class_merger:
+        tailwind:
+            css: '%kernel.project_dir%/assets/styles/app.css'
+```
+
+Set the `css` option to the entry that imports the theme. The merger then reads the `@theme`
+blocks of the theme file too, so it knows `rounded-control`, `rounded-popup` and `shadow-popup`.
+Without the `css` option, these names are in no group: `<Button className="rounded-md">` keeps
+`rounded-control` too, and the CSS order picks the radius.
 
 ## Names
 

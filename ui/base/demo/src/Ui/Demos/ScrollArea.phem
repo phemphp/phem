@@ -98,7 +98,7 @@ function ScrollAreaFadeDemo(): Node
                     <p>This type of architecture usually serves immediate, local needs, is constrained by the materials available in its particular region and reflects local traditions and cultural practices. The study of vernacular architecture does not examine formally schooled architects, but instead that of the design skills and tradition of local builders, who were rarely given any attribution for the work. More recently, vernacular architecture has been examined by designers and the building industry in an effort to be more energy conscious with contemporary design and construction—part of a broader interest in sustainable design.</p>
                 </ScrollAreaContent>
             </ScrollAreaViewport>
-            <ScrollAreaScrollbar className="bg-black/8">
+            <ScrollAreaScrollbar className="bg-black/8 dark:bg-white/12">
                 <ScrollAreaThumb />
             </ScrollAreaScrollbar>
         </ScrollArea>

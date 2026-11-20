@@ -159,8 +159,8 @@ function MenuTrigger(
     // A trigger with a caret has less space on the side of the caret.
     $padding = $caret ? 'pl-3 pr-2' : 'px-3';
     $base = null !== $item ? Style::TOOLBAR_BUTTON : (null !== $menubar
-        ? 'h-8 border-0 bg-transparent px-3 font-[inherit] text-sm font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 data-pressed:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 data-disabled:text-neutral-500 dark:text-white dark:focus-visible:bg-neutral-800 dark:data-pressed:bg-neutral-800 dark:data-disabled:text-neutral-400 focus-visible:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 focus-visible:relative dark:focus-visible:outline-white'
-        : 'flex h-8 items-center justify-center gap-1.5 rounded-none border border-neutral-950 bg-white text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 data-pressed:bg-neutral-100 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 dark:data-pressed:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white '.$padding);
+        ? 'h-8 border-0 bg-transparent px-3 font-[inherit] text-sm font-normal text-foreground select-none hover:not-data-disabled:bg-accent active:not-data-disabled:bg-accent-active data-pressed:bg-accent data-disabled:text-muted-foreground focus-visible:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ring focus-visible:relative'
+        : 'flex h-8 items-center justify-center gap-1.5 select-none data-pressed:bg-accent '.$padding.' '.Style::BUTTON_LOOK);
 
     return (
         <button
@@ -263,7 +263,7 @@ function MenuSeparator(#[Context] Menu $menu, mixed ...$rest): Node
 {
     $target = $menu->target('separator');
 
-    return <div role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...target }} {{ ...rest }} />;
+    return <div role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-border') }} {{ ...target }} {{ ...rest }} />;
 }
 
 #[Component]
@@ -279,7 +279,7 @@ function MenuGroupLabel(#[Context] Menu $menu, ?Html $children = null, mixed ...
 {
     $target = $menu->target('groupLabel');
 
-    return <div className={{ classes('px-4 py-2 text-sm leading-4 text-neutral-500 select-none dark:text-neutral-400') }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+    return <div className={{ classes('px-4 py-2 text-sm leading-4 text-muted-foreground select-none') }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /**
@@ -394,7 +394,7 @@ function MenuInput(#[Context] Menu $menu, mixed ...$rest): Node
             role="searchbox"
             autocomplete="off"
             spellcheck="false"
-            className={{ classes('min-h-8 w-0 flex-1 bg-transparent px-2.5 text-sm any-pointer-coarse:text-base leading-none outline-hidden placeholder:text-neutral-500 dark:placeholder:text-neutral-400') }}
+            className={{ classes('min-h-8 w-0 flex-1 bg-transparent px-2.5 text-sm any-pointer-coarse:text-base leading-none outline-hidden placeholder:text-muted-foreground') }}
             {{ ...target }}
             {{ ...rest }}
         />
@@ -411,7 +411,7 @@ function MenuClear(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest
         <button
             type="button"
             aria-label="Clear"
-            className={{ classes('flex size-8 items-center justify-center bg-transparent text-neutral-950 dark:text-white outline-hidden focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
+            className={{ classes('flex size-8 items-center justify-center bg-transparent text-foreground outline-hidden focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring') }}
             {{ ...target }}
             {{ ...rest }}
         >
@@ -426,7 +426,7 @@ function MenuEmpty(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest
 {
     $target = $menu->target('empty');
 
-    return <div hidden className={{ classes('p-3 text-sm text-neutral-500 dark:text-neutral-400') }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+    return <div hidden className={{ classes('p-3 text-sm text-muted-foreground') }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /** The items that the MenuInput filters: the `menu` of a popup with a filter. */

@@ -55,7 +55,7 @@ class NavigationMenu
                 data-phem-navigation-menu-collision-padding-inline-value={{ collisionPaddingInline }}
                 data-phem-navigation-menu-flip-value={{ flip ? null : 'false' }}
                 style="--duration: 0.35s; --easing: cubic-bezier(0.22, 1, 0.36, 1)"
-                className={{ classes(parent ? '' : 'min-w-max', 'text-neutral-950 dark:text-white') }}
+                className={{ classes(parent ? '' : 'min-w-max', 'text-foreground') }}
                 {{ ...attrs }}
             >
                 {{ children }}
@@ -85,8 +85,8 @@ function NavigationMenuItem(?string $value = null, ?Html $children = null, mixed
 function NavigationMenuTrigger(bool $card = false, ?Html $children = null, mixed ...$rest): Node
 {
     $base = $card
-        ? Style::NAVIGATION_CARD.' select-none data-pressed:bg-neutral-100 dark:data-pressed:bg-neutral-800'
-        : 'flex h-8 items-center justify-center gap-1.5 bg-transparent px-2 text-sm font-normal text-neutral-950 no-underline select-none min-[501px]:px-3 hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800';
+        ? Style::NAVIGATION_CARD.' select-none data-pressed:bg-accent'
+        : 'flex h-8 items-center justify-center gap-1.5 bg-transparent px-2 text-sm font-normal text-foreground no-underline select-none min-[501px]:px-3 hover:bg-accent data-pressed:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ring';
 
     return (
         <button
@@ -132,7 +132,7 @@ function NavigationMenuLink(string $href, bool $card = false, ?Html $children = 
 {
     $base = $card
         ? Style::NAVIGATION_CARD
-        : 'flex h-8 items-center justify-center gap-1.5 bg-transparent px-2 text-sm font-normal text-neutral-950 no-underline select-none min-[501px]:px-3 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:hover:bg-neutral-800';
+        : 'flex h-8 items-center justify-center gap-1.5 bg-transparent px-2 text-sm font-normal text-foreground no-underline select-none min-[501px]:px-3 hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ring';
 
     return <a href={{ href }} data-phem-navigation-menu-target="link" className={{ classes(base) }} {{ ...rest }}>{{ children }}</a>;
 }
@@ -166,7 +166,7 @@ function NavigationMenuPopup(?Html $children = null, mixed ...$rest): Node
     return (
         <div
             data-phem-navigation-menu-target="popup"
-            className={{ classes('relative h-[var(--popup-height)] w-[var(--popup-width)] origin-[var(--transform-origin)] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0] shadow-black/12 outline-none transition-[opacity,transform,width,height,scale] duration-[var(--duration)] ease-[var(--easing)] data-ending-style:scale-90 data-ending-style:opacity-0 data-ending-style:duration-150 data-ending-style:ease-[ease] data-starting-style:scale-90 data-starting-style:opacity-0 dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none') }}
+            className={{ classes('relative h-[var(--popup-height)] w-[var(--popup-width)] origin-[var(--transform-origin)] border border-border bg-popover text-popover-foreground rounded-popup shadow-popup outline-none transition-[opacity,transform,width,height,scale] duration-[var(--duration)] ease-[var(--easing)] data-ending-style:scale-90 data-ending-style:opacity-0 data-ending-style:duration-150 data-ending-style:ease-[ease] data-starting-style:scale-90 data-starting-style:opacity-0') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -177,7 +177,7 @@ function NavigationMenuPopup(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function NavigationMenuArrow(mixed ...$rest): Node
 {
-    return <div data-phem-navigation-menu-target="arrow" aria-hidden="true" className={{ classes("absolute block h-1.5 w-3 overflow-clip transition-[left,right] duration-[var(--duration)] ease-[var(--easing)] before:absolute before:bottom-0 before:left-1/2 before:block before:h-[calc(6px*sqrt(2))] before:w-[calc(6px*sqrt(2))] before:-translate-x-1/2 before:translate-y-1/2 before:rotate-45 before:border before:border-neutral-950 before:bg-white before:content-[''] data-[side=bottom]:top-[-6px] data-[side=left]:right-[-9px] data-[side=left]:rotate-90 data-[side=right]:left-[-9px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-6px] data-[side=top]:rotate-180 dark:before:border-white dark:before:bg-neutral-950") }} {{ ...rest }} />;
+    return <div data-phem-navigation-menu-target="arrow" aria-hidden="true" className={{ classes("absolute block h-1.5 w-3 overflow-clip transition-[left,right] duration-[var(--duration)] ease-[var(--easing)] before:absolute before:bottom-0 before:left-1/2 before:block before:h-[calc(6px*sqrt(2))] before:w-[calc(6px*sqrt(2))] before:-translate-x-1/2 before:translate-y-1/2 before:rotate-45 before:border before:border-border before:bg-popover before:content-[''] data-[side=bottom]:top-[-6px] data-[side=left]:right-[-9px] data-[side=left]:rotate-90 data-[side=right]:left-[-9px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-6px] data-[side=top]:rotate-180") }} {{ ...rest }} />;
 }
 
 /** The place of the open content in the popup. */

@@ -55,7 +55,7 @@ class Accordion
                 data-phem-accordion-hidden-until-found-value={{ hiddenUntilFound ? 'true' : null }}
                 data-orientation={{ orientation.value }}
                 data-disabled={{ disabled ? '' : null }}
-                className={{ classes('flex w-full max-w-80 flex-col border border-neutral-950 text-neutral-950 dark:border-white dark:text-white') }}
+                className={{ classes('flex w-full max-w-80 flex-col border border-border text-foreground') }}
                 {{ ...attrs }}
             >
                 {{ children }}
@@ -96,7 +96,7 @@ class AccordionItem
                 data-orientation={{ accordion.orientation.value }}
                 data-open={{ open ? '' : null }}
                 data-disabled={{ disabled ? '' : null }}
-                className={{ classes('not-first:border-t not-first:border-neutral-950 dark:not-first:border-white') }}
+                className={{ classes('not-first:border-t not-first:border-border') }}
                 {{ ...attrs }}
             >
                 {{ children }}
@@ -135,7 +135,7 @@ function AccordionTrigger(#[Context] AccordionItem $item, ?Html $children = null
             data-disabled={{ disabled ? '' : null }}
             data-phem-accordion-target="trigger"
             data-orientation={{ orientation }}
-            className={{ classes('group flex w-full items-center justify-between gap-4 bg-transparent px-3 py-2 text-left text-sm font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 focus-visible:relative focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:hover:not-data-disabled:bg-neutral-800 data-disabled:text-neutral-500') }}
+            className={{ classes('group flex w-full items-center justify-between gap-4 bg-transparent px-3 py-2 text-left text-sm font-normal text-foreground select-none hover:not-data-disabled:bg-accent focus-visible:relative focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-ring data-disabled:text-muted-foreground') }}
             {{ ...rest }}
         >
             {{ children }}

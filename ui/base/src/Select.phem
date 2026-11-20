@@ -85,7 +85,7 @@ function SelectLabel(#[Context] Select $select, ?Html $children = null, mixed ..
 {
     $id = $select->partId('label');
 
-    return <div id={{ id }} data-phem-select-target="label" className={{ classes('cursor-default text-sm font-bold text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children }}</div>;
+    return <div id={{ id }} data-phem-select-target="label" className={{ classes('cursor-default text-sm font-bold text-foreground') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /** The button that opens the popup. In a Toolbar, it is an item of the toolbar. */
@@ -95,8 +95,8 @@ function SelectTrigger(#[Context] Select $select, ?Html $children = null, mixed 
     $labelledBy = $select->partId('label');
     $inToolbar = null !== $select->toolbar;
     $base = $inToolbar
-        ? 'flex h-8 min-w-32 cursor-default items-center justify-between gap-2 border-0 bg-transparent px-2 font-[inherit] text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:not-data-pressed:bg-neutral-200 data-pressed:bg-neutral-100 data-pressed:text-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:not-data-pressed:bg-neutral-700 dark:data-pressed:bg-neutral-800 dark:data-pressed:text-white focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white'
-        : 'flex h-8 min-w-40 items-center justify-between gap-3 pl-2 pr-1 text-sm leading-none whitespace-nowrap border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 text-neutral-950 dark:text-white select-none hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 data-pressed:bg-neutral-100 dark:data-pressed:bg-neutral-800 font-normal focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
+        ? 'flex h-8 min-w-32 cursor-default items-center justify-between gap-2 rounded-control border-0 bg-transparent px-2 font-[inherit] text-sm leading-none whitespace-nowrap font-normal text-foreground select-none hover:not-data-disabled:bg-accent active:not-data-disabled:not-data-pressed:bg-accent-active data-pressed:bg-accent data-pressed:text-foreground focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring'
+        : 'flex h-8 min-w-40 items-center justify-between gap-3 pl-2 pr-1 select-none data-pressed:bg-accent '.Style::BUTTON_LOOK;
 
     return (
         <button
@@ -129,7 +129,7 @@ function SelectValue(#[Context] Select $select, ?string $placeholder = null, ?st
             data-phem-select-markup={{ markup ? '' : null }}
             data-placeholder={{ empty ? '' : null }}
             data-phem-select-target="value"
-            className={{ classes('data-placeholder:text-neutral-500 dark:data-placeholder:text-neutral-400') }}
+            className={{ classes('data-placeholder:text-muted-foreground') }}
             {{ ...rest }}
         >{{ empty ? placeholder : '' }}</span>
     );
@@ -149,7 +149,7 @@ function SelectPopup(?Html $children = null, mixed ...$rest): Node
             data-phem-select-target="popup"
             popover="manual"
             hidden
-            className={{ classes('m-0 inset-auto overflow-visible group min-w-[var(--anchor-width)] origin-[var(--transform-origin)] bg-clip-padding border border-neutral-950 bg-white text-neutral-950 outline-hidden select-none shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-[side=none]:translate-y-px data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:data-ending-style:transition-none data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-[side=none]:data-starting-style:scale-100 data-[side=none]:data-starting-style:opacity-100 data-[side=none]:data-starting-style:transition-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
+            className={{ classes('m-0 inset-auto overflow-visible group min-w-[var(--anchor-width)] origin-[var(--transform-origin)] bg-clip-padding border border-border bg-popover text-popover-foreground outline-hidden select-none rounded-popup shadow-popup transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-[side=none]:translate-y-px data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:data-ending-style:transition-none data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-[side=none]:data-starting-style:scale-100 data-[side=none]:data-starting-style:opacity-100 data-[side=none]:data-starting-style:transition-none [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -167,7 +167,7 @@ function SelectList(?Html $children = null, mixed ...$rest): Node
 function SelectScrollUpArrow(?Html $children = null, mixed ...$rest): Node
 {
     return (
-        <div data-phem-select-target="scrollUpArrow" aria-hidden="true" className={{ classes("top-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute data-[side=none]:before:top-[-100%] before:left-0 before:h-full before:w-full before:content-[''] dark:bg-neutral-950") }} {{ ...rest }}>
+        <div data-phem-select-target="scrollUpArrow" aria-hidden="true" className={{ classes("top-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-background text-center text-xs before:absolute data-[side=none]:before:top-[-100%] before:left-0 before:h-full before:w-full before:content-['']") }} {{ ...rest }}>
             {{ children ? children : <CaretUpIcon /> }}
         </div>
     );
@@ -177,7 +177,7 @@ function SelectScrollUpArrow(?Html $children = null, mixed ...$rest): Node
 function SelectScrollDownArrow(?Html $children = null, mixed ...$rest): Node
 {
     return (
-        <div data-phem-select-target="scrollDownArrow" aria-hidden="true" className={{ classes("bottom-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute before:left-0 before:h-full before:w-full before:content-[''] data-[side=none]:before:bottom-[-100%] dark:bg-neutral-950") }} {{ ...rest }}>
+        <div data-phem-select-target="scrollDownArrow" aria-hidden="true" className={{ classes("bottom-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-background text-center text-xs before:absolute before:left-0 before:h-full before:w-full before:content-[''] data-[side=none]:before:bottom-[-100%]") }} {{ ...rest }}>
             {{ children ? children : <CaretDownIcon /> }}
         </div>
     );
@@ -196,7 +196,7 @@ function SelectItem(#[Context] Select $select, string $value, bool $disabled = f
             data-selected={{ selected ? '' : null }}
             data-disabled={{ disabled ? '' : null }}
             data-phem-select-target="item"
-            className={{ classes('grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 py-1.5 pr-4 pl-2.5 text-sm outline-hidden select-none data-highlighted:bg-neutral-950 data-highlighted:text-white dark:data-highlighted:bg-white dark:data-highlighted:text-neutral-950 data-disabled:text-neutral-500') }}
+            className={{ classes('grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 py-1.5 pr-4 pl-2.5 text-sm outline-hidden select-none data-highlighted:bg-highlight data-highlighted:text-highlight-foreground data-disabled:text-muted-foreground') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -227,11 +227,11 @@ function SelectGroup(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function SelectGroupLabel(?Html $children = null, mixed ...$rest): Node
 {
-    return <div data-phem-select-target="groupLabel" className={{ classes('py-1.5 pr-4 pl-[2.125rem] text-sm text-neutral-500 select-none dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
+    return <div data-phem-select-target="groupLabel" className={{ classes('py-1.5 pr-4 pl-[2.125rem] text-sm text-muted-foreground select-none') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 #[Component]
 function SelectSeparator(mixed ...$rest): Node
 {
-    return <div data-phem-select-target="separator" role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...rest }} />;
+    return <div data-phem-select-target="separator" role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-border') }} {{ ...rest }} />;
 }

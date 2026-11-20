@@ -70,7 +70,7 @@ function TabsTab(string $value, #[Context] Tabs $tabs, bool $disabled = false, ?
             data-disabled={{ disabled ? '' : null }}
             data-value={{ value }}
             data-phem-tabs-target="tab"
-            className={{ classes('flex h-[calc(2rem+1px)] items-center justify-center bg-transparent px-2 py-0 font-inherit text-sm font-normal leading-5 break-keep whitespace-nowrap text-neutral-600 outline-none select-none hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-active:text-neutral-950 dark:text-neutral-300 dark:hover:text-white dark:data-active:text-white') }}
+            className={{ classes('flex h-[calc(2rem+1px)] items-center justify-center bg-transparent px-2 py-0 font-inherit text-sm font-normal leading-5 break-keep whitespace-nowrap text-muted-foreground outline-none select-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-ring data-active:text-foreground') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -82,7 +82,7 @@ function TabsTab(string $value, #[Context] Tabs $tabs, bool $disabled = false, ?
 #[Component]
 function TabsIndicator(mixed ...$rest): Node
 {
-    return <span data-phem-tabs-target="indicator" className={{ classes('absolute top-0 left-0 -z-1 h-full w-(--active-tab-width) translate-x-(--active-tab-left) border-x border-t border-neutral-950 bg-white transition-[translate,width] duration-150 ease-in-out dark:border-white dark:bg-neutral-950') }} {{ ...rest }} />;
+    return <span data-phem-tabs-target="indicator" className={{ classes('absolute top-0 left-0 -z-1 h-full w-(--active-tab-width) translate-x-(--active-tab-left) border-x border-t border-border bg-background transition-[translate,width] duration-150 ease-in-out') }} {{ ...rest }} />;
 }
 
 #[Component]
@@ -97,7 +97,7 @@ function TabsPanel(string $value, #[Context] Tabs $tabs, ?Html $children = null,
             data-hidden={{ hidden ? '' : null }}
             data-value={{ value }}
             data-phem-tabs-target="panel"
-            className={{ classes('col-start-1 row-start-1 flex w-full items-center justify-center bg-white p-4 text-center text-sm text-neutral-950 outline-none focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:bg-neutral-950 dark:text-white [[hidden]]:hidden') }}
+            className={{ classes('col-start-1 row-start-1 flex w-full items-center justify-center bg-background p-4 text-center text-sm text-foreground outline-none focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-ring [[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}

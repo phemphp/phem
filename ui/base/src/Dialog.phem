@@ -161,7 +161,7 @@ class DialogViewport
         return (
             <dialog
                 data-phem-dialog-target="viewport"
-                className={{ classes('m-0 p-0 fixed z-50 inset-0 size-full max-w-none max-h-none border-0 bg-transparent overflow-hidden backdrop:bg-black/20 dark:backdrop:bg-black/50 backdrop:transition-opacity backdrop:duration-150 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0') }}
+                className={{ classes('m-0 p-0 fixed z-50 inset-0 size-full max-w-none max-h-none border-0 bg-transparent overflow-hidden backdrop:bg-overlay backdrop:transition-opacity backdrop:duration-150 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0') }}
                 {{ ...attrs }}
             >
                 {{ children }}

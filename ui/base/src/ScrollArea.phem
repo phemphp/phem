@@ -20,7 +20,7 @@ function ScrollArea(int|array $overflowEdgeThreshold = 0, ?Html $children = null
             data-controller="phem-scroll-area"
             role="presentation"
             data-phem-scroll-area-overflow-edge-threshold-value={{ threshold }}
-            className={{ classes('h-[8.5rem] w-96 max-w-[calc(100vw-8rem)] bg-white dark:bg-neutral-950') }}
+            className={{ classes('h-[8.5rem] w-96 max-w-[calc(100vw-8rem)] bg-background') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -35,7 +35,7 @@ function ScrollAreaViewport(?Html $children = null, mixed ...$rest): Node
     return (
         <div
             data-phem-scroll-area-target="viewport"
-            className={{ classes('h-full border border-neutral-950 dark:border-white focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
+            className={{ classes('h-full border border-border focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ring') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -46,7 +46,7 @@ function ScrollAreaViewport(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function ScrollAreaContent(?Html $children = null, mixed ...$rest): Node
 {
-    return <div data-phem-scroll-area-target="content" role="presentation" className={{ classes('flex flex-col gap-4 py-2 pr-5 pl-3 text-sm leading-[1.375rem] text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children }}</div>;
+    return <div data-phem-scroll-area-target="content" role="presentation" className={{ classes('flex flex-col gap-4 py-2 pr-5 pl-3 text-sm leading-[1.375rem] text-foreground') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /** A scrollbar on one axis. It gets `hidden` when its axis has no overflow. */
@@ -60,7 +60,7 @@ function ScrollAreaScrollbar(Orientation $orientation = Orientation::Vertical, ?
             data-phem-scroll-area-target="scrollbar"
             aria-hidden="true"
             data-orientation={{ orientation.value }}
-            className={{ classes('m-px flex bg-black/12 dark:bg-white/12 opacity-0 transition-opacity pointer-events-none data-hovering:opacity-100 data-hovering:pointer-events-auto data-scrolling:opacity-100 data-scrolling:duration-0 data-scrolling:pointer-events-auto [&[hidden]]:hidden', axis) }}
+            className={{ classes('m-px flex bg-muted opacity-0 transition-opacity pointer-events-none data-hovering:opacity-100 data-hovering:pointer-events-auto data-scrolling:opacity-100 data-scrolling:duration-0 data-scrolling:pointer-events-auto [&[hidden]]:hidden', axis) }}
             {{ ...rest }}
         >
             {{ children }}
@@ -71,7 +71,7 @@ function ScrollAreaScrollbar(Orientation $orientation = Orientation::Vertical, ?
 #[Component]
 function ScrollAreaThumb(mixed ...$rest): Node
 {
-    return <div data-phem-scroll-area-target="thumb" className={{ classes('w-full bg-neutral-950 dark:bg-white data-[orientation=horizontal]:h-full data-[orientation=horizontal]:w-auto') }} {{ ...rest }} />;
+    return <div data-phem-scroll-area-target="thumb" className={{ classes('w-full bg-primary data-[orientation=horizontal]:h-full data-[orientation=horizontal]:w-auto') }} {{ ...rest }} />;
 }
 
 /** The square between the two scrollbars. */

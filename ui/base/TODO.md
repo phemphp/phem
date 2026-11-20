@@ -27,6 +27,7 @@ These differences need no phem change. The hero demos show the first one, and do
 - **Defaults:** the Positioner `align` of Base UI is `center` for a root menu, a select and a combobox. The bundle uses `start`. The hero demos set `start` or have the width of the anchor, so the look is equal.
 - **Elements:** `FieldsetLegend` is a native `<legend>` (Base UI: a `<div>`), and it gets no `data-disabled`. The popup and the arrow of a tooltip are `<span>` elements (Base UI: `<div>`). An item of a menu is a `<button>` (Base UI: a `<div>`).
 - **Font:** base-ui.com uses its own font ("Die Grotesk A"). The demo uses the system font, so a text is about 1% wider and the description of the OTP field has two lines.
+- **Theme tokens:** one token has one value, so three colors of the Tailwind variant changed a little. The descriptions and the labels of Tabs use `--muted-foreground` (`neutral-500`, Base UI: `neutral-600`; in dark mode the Tabs labels are `neutral-400`, Base UI: `neutral-300`). The track of ScrollArea uses `--muted` (`neutral-200` / `neutral-800`, Base UI: `black/12` / `white/12`). The `active:` color is a mix of `--accent` and `--foreground`, not `neutral-200` / `neutral-700`.
 
 ## Browser tests of the demo
 
@@ -76,6 +77,30 @@ Other open work for the browser tests:
 
 - **Dark mode.** Run a test of each overlay with `colorScheme: dark`, and compare with base-ui.com.
 - **Visual check.** Add screenshot tests (`toHaveScreenshot`) for each demo, after the look is final.
+
+## Customization
+
+The components take their colors from the theme tokens of `assets/theme.css` (see the README). These changes make them easier to customize.
+
+- **Parts with no rest prop.** `Autocomplete`, `ContextMenu`, `MenuSubmenu`, `ComboboxChipTemplate`, `MenuPayload`, `PopoverPayload` and `PreviewCardPayload` take no `className`. Add a rest prop where the part renders an element.
+- **The triggers do not render `Button`.** `DialogTrigger`, `DialogClose`, `PopoverTrigger`, `MenuTrigger`… render a `<button>` with `Style::BUTTON` or with their own copy of its classes. So an app that replaces `Button` (`#[Component(replaces: Button::class)]`) does not change them. Let them render `<Button>`, and one replacement changes all the buttons:
+
+  ```php
+  #[Component(replaces: Button::class)]
+  function AppButton(?Html $children = null, mixed ...$rest): Node
+  {
+      return <Button className="h-9 px-4" {{ ...rest }}>{{ children }}</Button>;
+  }
+  // Today: <Button> changes, <DialogTrigger> and <MenuTrigger> do not.
+  ```
+- **A state chain wins over the `hover:` of a caller.** `hover:not-data-disabled:not-aria-disabled:bg-accent` is more specific than `hover:bg-blue-700`, and the Tailwind merger keeps both (they have different variants). So `<Button className="bg-blue-600 hover:bg-blue-700">` keeps the hover of the theme. Stop the hover of a disabled part another way (for example `data-disabled:pointer-events-none`, and `aria-disabled:pointer-events-none` with `focusableWhenDisabled`), and use a plain `hover:`.
+- **More role tokens.** The Base UI look and the shadcn roles differ in other places too: the border of a popup is `--border` (ink in Base UI, light gray in shadcn), and a disabled control has gray colors (shadcn: `opacity-50`). Check each one, and add a token like `--highlight` where a theme needs another value.
+- **The radius of joined controls.** The input and the buttons of `NumberField`, and the bordered `TooltipTrigger`s that a demo joins with `border-l-0`, have no radius, so `--radius` does not change them. A joined group needs the radius on its outer corners only (for example `first:rounded-l-control last:rounded-r-control`, or a group part that rounds and clips).
+- **Density.** `h-8`, `px-3` and `text-sm` are fixed in each control (shadcn: `h-9`). A `--control-height` token, or a `size` prop with a recipe, would change all of them together.
+- **`data-slot` on each part.** shadcn gives each part a `data-slot` (`data-slot="dialog-popup"`). App CSS, and a parent with `has-data-[slot=dialog-description]:`, can then style a part without `className`. Many parts have a `data-phem-*-target` today, but that is the API of the controller, not a style hook.
+- **The fixed colors that are left.** The link of `Toolbar` (`hover:text-blue-700`), the backdrop of `Drawer` (`bg-black` with an opacity), and the cursor of the scrub area of `NumberField` (`drop-shadow-[0_1px_1px_#0008]`).
+- **The Tailwind merger.** Without `phem.class_merger.tailwind`, a `className` adds classes and removes none: `<Button className="bg-blue-600">` keeps `bg-background`, and the CSS order picks the color. The README says so. The bundle could warn in debug mode when the merger is off.
+- **A second theme in the demo.** A shadcn theme and a theme picker next to the dark switch. It shows the tokens, and an e2e test can check that each component follows the theme.
 
 ## To build here
 

@@ -1,0 +1,88 @@
+/*
+ * The theme of phem/ui-base. Import it in the Tailwind entry of the app, after tailwindcss:
+ *
+ *     @import "tailwindcss";
+ *     @import "../../vendor/phem/ui-base/assets/theme.css";
+ *
+ * The variables have the shadcn names, so a shadcn theme sets them too. Set your values in a
+ * rule after the import. The default values give the look of the Tailwind demos of Base UI.
+ */
+
+/* The components: the app does not need its own @source for them. */
+@source "../src";
+
+:root {
+    --background: var(--color-white);
+    --foreground: var(--color-neutral-950);
+    --popover: var(--color-white);
+    --popover-foreground: var(--color-neutral-950);
+    --primary: var(--color-neutral-950);
+    --primary-foreground: var(--color-white);
+    --muted: var(--color-neutral-200);
+    --muted-foreground: var(--color-neutral-500);
+    --accent: var(--color-neutral-100);
+    --accent-foreground: var(--color-neutral-950);
+    --destructive: var(--color-red-700);
+    --border: var(--color-neutral-950);
+    --input: var(--color-neutral-950);
+    --ring: var(--color-neutral-950);
+    --radius: 0rem;
+
+    /*
+     * The tokens of phem/ui-base only. The Base UI look uses one shadcn color for two roles here.
+     * --highlight, --highlight-foreground and --accent-active have no value here: their defaults
+     * are in @theme inline, so each element resolves them from its own --primary and --accent.
+     */
+    --separator: var(--color-neutral-300);
+    --overlay: rgb(0 0 0 / 20%);
+    --popup-shadow: 0.25rem 0.25rem 0 rgb(0 0 0 / 12%);
+
+    /* The dark variant of the app. It must match the <html> element itself. */
+    @variant dark {
+        --background: var(--color-neutral-950);
+        --foreground: var(--color-white);
+        --popover: var(--color-neutral-950);
+        --popover-foreground: var(--color-white);
+        --primary: var(--color-white);
+        --primary-foreground: var(--color-neutral-950);
+        --muted: var(--color-neutral-800);
+        --muted-foreground: var(--color-neutral-400);
+        --accent: var(--color-neutral-800);
+        --accent-foreground: var(--color-white);
+        --destructive: var(--color-red-400);
+        --border: var(--color-white);
+        --input: var(--color-white);
+        --ring: var(--color-white);
+        --separator: var(--color-neutral-700);
+        --overlay: rgb(0 0 0 / 50%);
+        /* Not none: it goes into the box-shadow list of Tailwind with the rings. */
+        --popup-shadow: 0 0 #0000;
+    }
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-highlight: var(--highlight, var(--primary));
+    --color-highlight-foreground: var(--highlight-foreground, var(--primary-foreground));
+    --color-separator: var(--separator);
+    --color-accent-active: var(--accent-active, color-mix(in oklab, var(--accent), var(--foreground) 10%));
+    --color-overlay: var(--overlay);
+
+    /* The shadcn formulas: a control is rounded-md, a popup is rounded-lg. */
+    --radius-control: calc(var(--radius) * 0.8);
+    --radius-popup: var(--radius);
+    --shadow-popup: var(--popup-shadow);
+}

@@ -14,7 +14,7 @@ function Separator(Orientation $orientation = Orientation::Horizontal, mixed ...
             role="separator"
             aria-orientation={{ orientation.value }}
             data-orientation={{ orientation.value }}
-            className={{ classes('shrink-0 bg-neutral-300 dark:bg-neutral-700 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-px') }}
+            className={{ classes('shrink-0 bg-separator data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-px') }}
             {{ ...rest }}
         />
     );

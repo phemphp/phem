@@ -23,7 +23,7 @@ class Collapsible
                 data-open={{ defaultOpen ? '' : null }}
                 data-closed={{ defaultOpen ? null : '' }}
                 data-disabled={{ disabled ? '' : null }}
-                className={{ classes('flex min-h-36 w-48 flex-col justify-center text-neutral-950 dark:text-white') }}
+                className={{ classes('flex min-h-36 w-48 flex-col justify-center text-foreground') }}
                 {{ ...attrs }}
             >
                 {{ children }}
@@ -38,6 +38,7 @@ function CollapsibleTrigger(#[Context] Collapsible $collapsible, ?Html $children
 {
     $open = $collapsible->defaultOpen;
     $disabled = $collapsible->disabled;
+    $base = 'group flex h-8 items-center justify-between gap-2 pl-3 pr-2 select-none '.Style::BUTTON_LOOK;
 
     return (
         <button
@@ -47,7 +48,7 @@ function CollapsibleTrigger(#[Context] Collapsible $collapsible, ?Html $children
             data-panel-open={{ open ? '' : null }}
             data-disabled={{ disabled ? '' : null }}
             data-phem-collapsible-target="trigger"
-            className={{ classes('group flex h-8 items-center justify-between gap-2 rounded-none border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 pl-3 pr-2 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 dark:text-white select-none hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400') }}
+            className={{ classes(base) }}
             {{ ...rest }}
         >
             {{ children }}

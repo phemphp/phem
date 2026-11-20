@@ -157,7 +157,7 @@ class CheckboxGroup
                 data-controller="phem-checkbox-group"
                 data-phem-checkbox-group-value-value={{ checked }}
                 data-phem-checkbox-group-all-values-value={{ all }}
-                className={{ classes('flex flex-col items-start gap-1 text-neutral-950 dark:text-white') }}
+                className={{ classes('flex flex-col items-start gap-1 text-foreground') }}
                 {{ ...attrs }}
             >
                 {{ children }}
