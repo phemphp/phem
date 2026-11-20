@@ -1,10 +1,13 @@
-.PHONY: test test-js test-e2e test-claude-code ui-test ui-test-e2e ui-check ui-demo ui-demo-watch bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
+.PHONY: test test-js test-e2e test-claude-code eval-agents ui-test ui-test-e2e ui-check ui-demo ui-demo-watch bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
 
 # The build context of the dev image is the repository.
 COMPOSE = docker compose -f docker/compose.yaml
 
 test: test-js test-e2e test-claude-code ## Run cargo test, PHPUnit, the JS tests, the e2e tests and the tests of the Claude Code plugin
 	$(COMPOSE) run --rm --build dev
+
+eval-agents: ## Run the agent eval of the Claude Code plugin: real `claude -p` sessions, with the account of the user (about $0.30 a run). Pass options with ARGS="--tasks=otp-form --repeat=2"
+	php editors/claude-code/evals/run.php --docker $(ARGS)
 
 test-claude-code: ## Run the tests of the Claude Code plugin (editors/claude-code/): the phemc check hook, the MCP launcher, the skills
 	$(COMPOSE) run --rm -T --entrypoint sh dev -c 'cargo build --release --quiet --manifest-path compiler/Cargo.toml -p phemc-cli && PHEMC_BIN=/cargo-target/release/phemc php editors/claude-code/tests/run.php'

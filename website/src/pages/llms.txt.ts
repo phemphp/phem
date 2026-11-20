@@ -25,5 +25,7 @@ export const GET: APIRoute = async ({ site }) => {
         lines.push('');
     }
 
+    lines.push('## Optional', '', `- [All the docs in one file](${new URL(`${import.meta.env.BASE_URL}llms-full.txt`, site)}): the docs above, without the changelog`, '');
+
     return new Response(lines.join('\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 };

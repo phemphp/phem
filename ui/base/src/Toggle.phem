@@ -9,7 +9,7 @@ use Phem\{Html, Node};
  * A button that the user presses and releases: Base UI Toggle, on the `phem-toggle` controller.
  *
  * In a ToggleGroup, the group owns the state: give the toggle a `value`. In a Toolbar, the toggle is
- * an item of the toolbar. Show the state with the `data-pressed` variant, for example
+ * an item of the toolbar. In a Tooltip, it is a trigger of the tooltip. Show the state with the `data-pressed` variant, for example
  * `group-data-pressed:block` on an icon in it.
  *
  * @aliases toggle button, pressed button, on off button
@@ -18,6 +18,7 @@ use Phem\{Html, Node};
 function Toggle(
     #[Context] ?ToggleGroup $group = null,
     #[Context] ?Toolbar $toolbar = null,
+    #[Context] ?Tooltip $tooltip = null,
     bool $defaultPressed = false,
     bool $disabled = false,
     ?string $value = null,
@@ -27,6 +28,7 @@ function Toggle(
     $pressed = null !== $group ? $group->isPressed($value) : $defaultPressed;
     $groupTarget = null !== $group ? 'item' : null;
     $toolbarTarget = null !== $toolbar ? 'item' : null;
+    $tooltipTarget = null !== $tooltip ? 'trigger' : null;
     $base = match (true) {
         null !== $toolbar => Style::TOOLBAR_BUTTON,
         null !== $group => Style::GROUP_TOGGLE,
@@ -46,6 +48,7 @@ function Toggle(
             data-phem-toggle-value-value={{ value }}
             data-phem-toggle-group-target={{ groupTarget }}
             data-phem-toolbar-target={{ toolbarTarget }}
+            data-phem-tooltip-target={{ tooltipTarget }}
             className={{ classes('group', base) }}
             {{ ...rest }}
         >

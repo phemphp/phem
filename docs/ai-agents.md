@@ -100,6 +100,13 @@ claude plugin install phem@phem
 
 You don't need the text of [Add the workflow to the instructions of the agent](#add-the-workflow-to-the-instructions-of-the-agent) with the plugin: the skills give it.
 
+## Give the docs to another LLM
+
+The website has the docs for the LLMs, as [llms.txt](https://llmstxt.org) proposes:
+
+- **`/llms.txt`**: one line for each doc, with a link to its raw Markdown (`/events.md`)
+- **`/llms-full.txt`**: all the docs in one file, in the order of the navigation, without the changelog. It is about 175,000 tokens: give it to a chat that has no shell, and prefer the `phemc` commands in an app, because they give the docs of the installed version and the components of the app
+
 ## Check what the agent finds
 
 The search finds a text by its words, the words of its headings, and the `@aliases` of a component. When the agent doesn't find a text that it needs, add a query to a retrieval eval, and run it in CI:

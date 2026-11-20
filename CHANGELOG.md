@@ -8,6 +8,14 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The website has `/llms-full.txt`: all the docs in one file, in the order of the navigation,
+  without the changelog. `/llms.txt` links to it.
+- The check hook of the Claude Code plugin checks only the files of the project of the session:
+  a file in another directory could come with its own `vendor/bin/phemc`, and the hook never runs
+  it.
+- `make eval-agents` runs the agent eval of the Claude Code plugin: real `claude -p` sessions on
+  eight UI tasks, with and without the plugin, scored with `phemc check` and the tags of each
+  task (`editors/claude-code/evals/`).
 - The Claude Code plugin (0.2.0) starts `phemc mcp` of the project, has a `phem` skill (the
   workflow, the new cheatsheet and the list of the docs) and a `phem-ui` skill (the components of
   the installed packages), and runs `phemc check` after each write or edit of a `.phem` file: an

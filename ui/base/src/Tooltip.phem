@@ -2,7 +2,7 @@
 
 namespace Phem\Ui\Base;
 
-use Phem\Attribute\{Component, Context};
+use Phem\Attribute\{Component, Context, Prop, Provide};
 use Phem\{Html, Node};
 
 /**
@@ -13,6 +13,9 @@ use Phem\{Html, Node};
  * open at once (`data-instant="delay"`), as the Base UI Tooltip.Provider does: the controller does
  * it for all the tooltips of the page.
  *
+ * A Toggle or a ToolbarButton in a Tooltip is a trigger of the tooltip, as a TooltipTrigger, for
+ * example a toggle of a ToggleGroup in a Toolbar.
+ *
  * A `handle` links the root to detached triggers: a TooltipTrigger with the same `handle`, anywhere
  * in the page, opens this tooltip. The root then gets the handle as its `id`. One tooltip can have
  * several triggers, and the `payload` of each trigger goes in the TooltipViewport. `open` and
@@ -21,42 +24,46 @@ use Phem\{Html, Node};
  *
  * @aliases hint, hover text, title
  */
-#[Component]
-function Tooltip(
-    ?string $handle = null,
-    bool $open = false,
-    ?string $triggerId = null,
-    int $delay = 600,
-    int $closeDelay = 0,
-    bool $hoverable = true,
-    bool $closeOnClick = true,
-    Side $side = Side::Top,
-    Align $align = Align::Center,
-    int $sideOffset = 0,
-    int $alignOffset = 0,
-    ?Html $children = null,
-    mixed ...$rest,
-): Node {
-    return (
-        <span
-            id={{ handle }}
-            data-controller="phem-tooltip"
-            data-phem-tooltip-open-value={{ open ? 'true' : null }}
-            data-phem-tooltip-trigger-id-value={{ triggerId }}
-            data-phem-tooltip-delay-value={{ 600 == delay ? null : delay }}
-            data-phem-tooltip-close-delay-value={{ 0 == closeDelay ? null : closeDelay }}
-            data-phem-tooltip-hoverable-value={{ hoverable ? null : 'false' }}
-            data-phem-tooltip-close-on-click-value={{ closeOnClick ? null : 'false' }}
-            data-phem-tooltip-side-value={{ side.value }}
-            data-phem-tooltip-align-value={{ align.value }}
-            data-phem-tooltip-side-offset-value={{ sideOffset }}
-            data-phem-tooltip-align-offset-value={{ alignOffset }}
-            className={{ classes('contents') }}
-            {{ ...rest }}
-        >
-            {{ children }}
-        </span>
-    );
+#[Component, Provide]
+class Tooltip
+{
+    #[Prop] public ?string $handle = null;
+    #[Prop] public bool $open = false;
+    #[Prop] public ?string $triggerId = null;
+    #[Prop] public int $delay = 600;
+    #[Prop] public int $closeDelay = 0;
+    #[Prop] public bool $hoverable = true;
+    #[Prop] public bool $closeOnClick = true;
+    #[Prop] public Side $side = Side::Top;
+    #[Prop] public Align $align = Align::Center;
+    #[Prop] public int $sideOffset = 0;
+    #[Prop] public int $alignOffset = 0;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return (
+            <span
+                id={{ handle }}
+                data-controller="phem-tooltip"
+                data-phem-tooltip-open-value={{ open ? 'true' : null }}
+                data-phem-tooltip-trigger-id-value={{ triggerId }}
+                data-phem-tooltip-delay-value={{ 600 == delay ? null : delay }}
+                data-phem-tooltip-close-delay-value={{ 0 == closeDelay ? null : closeDelay }}
+                data-phem-tooltip-hoverable-value={{ hoverable ? null : 'false' }}
+                data-phem-tooltip-close-on-click-value={{ closeOnClick ? null : 'false' }}
+                data-phem-tooltip-side-value={{ side.value }}
+                data-phem-tooltip-align-value={{ align.value }}
+                data-phem-tooltip-side-offset-value={{ sideOffset }}
+                data-phem-tooltip-align-offset-value={{ alignOffset }}
+                className={{ classes('contents') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </span>
+        );
+    }
 }
 
 /**

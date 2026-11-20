@@ -5,8 +5,8 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\{Component, State};
 use Phem\Node;
 
-use function Phem\Ui\Base\{DialogPopup, DialogTrigger, MenuItem, MenuPopup, MenuTrigger, NumberField, NumberFieldInput, Popover, PopoverPopup, PopoverTrigger, Tooltip, TooltipPopup, TooltipTrigger, Avatar, AvatarFallback, AvatarImage, CheckboxIndicator, RadioIndicator, SwitchThumb, Toggle, ToolbarButton, ToolbarGroup, ToolbarSeparator};
-use Phem\Ui\Base\{Checkbox, CheckboxGroup, Dialog, Menu, Radio, RadioGroup, SwitchRoot, ToggleGroup, Toolbar};
+use function Phem\Ui\Base\{DialogPopup, DialogTrigger, MenuItem, MenuPopup, MenuTrigger, NumberField, NumberFieldInput, Popover, PopoverPopup, PopoverTrigger, TooltipPopup, TooltipTrigger, Avatar, AvatarFallback, AvatarImage, CheckboxIndicator, RadioIndicator, SwitchThumb, Toggle, ToolbarButton, ToolbarGroup, ToolbarSeparator};
+use Phem\Ui\Base\{Checkbox, CheckboxGroup, Dialog, Menu, Radio, RadioGroup, SwitchRoot, ToggleGroup, Toolbar, Tooltip};
 
 #[Component]
 function ToggleDemo(): Node
@@ -53,6 +53,20 @@ function ToolbarTriggersDemo(): Node
             <Dialog><DialogTrigger>Dialog</DialogTrigger><DialogPopup>Text</DialogPopup></Dialog>
             <Tooltip><TooltipTrigger aria-label="Tip">T</TooltipTrigger><TooltipPopup>Tip</TooltipPopup></Tooltip>
             <NumberField defaultValue={{ 1 }}><NumberFieldInput aria-label="Count" /></NumberField>
+        </Toolbar>
+    );
+}
+
+#[Component]
+function TooltipToggleDemo(): Node
+{
+    return (
+        <Toolbar aria-label="Format">
+            <ToggleGroup multiple aria-label="Style">
+                <Tooltip><Toggle value="bold" aria-label="Bold">B</Toggle><TooltipPopup>Bold</TooltipPopup></Tooltip>
+            </ToggleGroup>
+            <Tooltip><ToolbarButton>Share</ToolbarButton><TooltipPopup>Share</TooltipPopup></Tooltip>
+            <Toggle aria-label="Alone">A</Toggle>
         </Toolbar>
     );
 }

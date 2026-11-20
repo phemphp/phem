@@ -7,7 +7,8 @@
  * - An error: the hook prints the diagnostics on stderr and exits with code 2. Claude Code gives
  *   them to Claude, which corrects the file.
  * - Warnings only: the hook gives them to Claude as context, with exit code 0.
- * - Another file, or no phemc: the hook does nothing (exit 0).
+ * - Another file, a file outside the session project, or no phemc: the hook does nothing (exit
+ *   0). The hook never runs a vendor/bin/phemc outside the project of the session.
  * - phemc gives no result (a project that it cannot read, a binary that it cannot download): the
  *   hook tells Claude that no check ran, with exit code 0, so it never stops the work for a
  *   reason that the file cannot fix.
@@ -34,6 +35,15 @@ function phem_check_hook(string $input, $stderr): int
     $cwd = is_string($event['cwd'] ?? null) ? $event['cwd'] : (string) getcwd();
     $file = phem_absolute($file, $cwd);
     $project = phem_project(dirname($file)) ?? $cwd;
+
+    // Only the project of the session: the project is in the session dir, or the session runs in
+    // a dir of the project. A file in another directory could come with its own vendor/bin/phemc.
+    $session = realpath(getenv('CLAUDE_PROJECT_DIR') ?: $cwd);
+    $real = realpath($project);
+    if (!phem_inside($real, $session) && !phem_inside($session, $real)) {
+        return 0;
+    }
+
     $phemc = phem_phemc($project);
     if (null === $phemc || !is_file($file)) {
         return 0;
@@ -73,6 +83,12 @@ function phem_check_hook(string $input, $stderr): int
     fwrite($stderr, $report.'Correct the errors of this file. `phemc components <name>` gives the props and the parts of a component.'."\n");
 
     return 2;
+}
+
+/** Whether a real path is a directory or a file in another one. */
+function phem_inside(string|false $path, string|false $dir): bool
+{
+    return false !== $path && false !== $dir && ($path === $dir || str_starts_with($path, rtrim($dir, '/').'/'));
 }
 
 /** Gives a text to Claude as context, with no stop. */

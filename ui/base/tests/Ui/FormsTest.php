@@ -40,6 +40,12 @@ final class FormsTest extends KernelTestCase
             ->assertSelectorExists('input[data-phem-bind][value="Grace"]:not([data-phem-field-target])');
     }
 
+    public function testAFieldControlTakesTheStateOfTheApp(): void
+    {
+        $this->mount(self::APP.'BoundFieldControlDemo')
+            ->assertSelectorExists('input#name-control[data-phem-field-target="control"][data-phem-bind][value="Grace"]');
+    }
+
     public function testTheNumberFieldHasItsParts(): void
     {
         $this->mount(self::APP.'NumberFieldDemo')

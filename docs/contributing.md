@@ -8,6 +8,7 @@ You only need Docker. Run these commands from the root of the repository:
 
 ```sh
 make test      # the JS tests, the e2e tests, the Claude Code plugin tests, cargo test and PHPUnit
+make eval-agents  # real Claude Code sessions with the plugin, scored with phemc (uses your Claude account)
 make test-e2e  # only the e2e tests: Chromium and the e2e app (e2e/)
 make bench     # the benchmark of the client/server flow (bench/run.php)
 make shell     # a shell in the dev image: phemc (built from compiler/), cargo, composer, PHPUnit

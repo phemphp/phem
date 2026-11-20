@@ -95,6 +95,22 @@ $context = json_decode($out, true)['hookSpecificOutput']['additionalContext'] ??
 check('a project that phemc cannot read does not block, and Claude knows that no check ran', 0 === $code && str_contains($context, 'did not run') && str_contains($context, 'missing'), "exit $code\n$out$err");
 file_put_contents($installed, $saved);
 
+// A file outside the session project, with its own vendor/bin/phemc: the hook never runs it.
+$outside = sys_get_temp_dir().'/phem-outside-'.getmypid();
+@mkdir($outside.'/vendor/bin', 0777, true);
+file_put_contents($outside.'/composer.json', '{}');
+file_put_contents($outside.'/Evil.phem', "<?phem\n");
+file_put_contents($outside.'/vendor/bin/phemc', "#!/usr/bin/env php\n<?php touch(__DIR__.'/ran');\n");
+[$code, $out] = hook($outside.'/Evil.phem', $env);
+check('a file outside the session project does not run its vendor/bin/phemc', 0 === $code && '' === $out && !is_file($outside.'/vendor/bin/ran'), "exit $code\n$out");
+exec('rm -rf '.escapeshellarg($outside));
+
+// A session that runs in a directory of the project checks the files of the project.
+file_put_contents($project.'/src/Ui/Broken.phem', "<?phem\nnamespace App\\Ui;\n\nuse Phem\\Attribute\\Component;\nuse Phem\\Node;\n\n#[Component]\nfunction Broken(): Node\n{\n    return <Card />;\n}\n");
+[$code] = hook($project.'/src/Ui/Broken.phem', $env + ['CLAUDE_PROJECT_DIR' => $project.'/src/Ui']);
+check('a session in a directory of the project checks its files', 2 === $code, "exit $code");
+unlink($project.'/src/Ui/Broken.phem');
+
 [$code] = hook($project.'/src/Ui/Missing.phem', $env);
 check('a removed file does not block', 0 === $code);
 

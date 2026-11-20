@@ -44,9 +44,10 @@ class Toolbar
 
 /** A button of the toolbar. With `disabled`, it stays in the focus order (`aria-disabled`). */
 #[Component]
-function ToolbarButton(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+function ToolbarButton(#[Context] ?Tooltip $tooltip = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
     $base = Style::TOOLBAR_BUTTON;
+    $tooltipTarget = null !== $tooltip ? 'trigger' : null;
 
     return (
         <button
@@ -54,6 +55,7 @@ function ToolbarButton(bool $disabled = false, ?Html $children = null, mixed ...
             aria-disabled={{ disabled ? 'true' : null }}
             data-disabled={{ disabled ? '' : null }}
             data-phem-toolbar-target="item"
+            data-phem-tooltip-target={{ tooltipTarget }}
             className={{ classes(base) }}
             {{ ...rest }}
         >

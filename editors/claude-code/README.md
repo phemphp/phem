@@ -45,7 +45,9 @@ The plugin runs the `vendor/bin/phemc` of the project. Use it only in projects t
 
 `bin/phem-check-hook.php` runs after each `Write`, `Edit` and `MultiEdit` of a `.phem` file. It
 runs `phemc check <file>` in the project of the file (the nearest directory with a
-`composer.json`), with the same `phemc` as `bin/phem-mcp`:
+`composer.json`), with the same `phemc` as `bin/phem-mcp`. It checks only the files of the
+project of the session (`CLAUDE_PROJECT_DIR`): a file in another directory could come with its
+own `vendor/bin/phemc`, and the hook never runs it.
 
 - **An error**: the hook prints the diagnostics and exits with code 2. Claude reads them and
   corrects the file.
@@ -82,6 +84,25 @@ claude --plugin-dir editors/claude-code    # start a session with the plugin
 ```
 
 After a new `make lsp` in a running session, run `/reload-plugins`.
+
+### Measure the plugin
+
+`make eval-agents` runs the agent eval (`evals/run.php`): real Claude Code sessions (`claude -p`)
+on the tasks of `evals/tasks.php`, in three conditions:
+
+- **before**: phem/ui-base before the work for the agents (no examples, no aliases), and no plugin
+- **baseline**: phem/ui-base of the working tree, and no plugin
+- **plugin**: phem/ui-base of the working tree, and this plugin
+
+Each run gets a new app in `var/agent-evals/<time>/`. A run passes when `phemc check` gives no
+error and the file has the tags and the patterns of its task. The eval prints a table and writes
+`summary.md` and `results.json`. It uses your Claude account: each run costs about $0.20 to $0.50.
+
+```sh
+make eval-agents                                        # all the tasks, the three conditions
+make eval-agents ARGS="--tasks=otp-form --repeat=3"     # one task, three times each
+php editors/claude-code/evals/run.php --docker --dry-run  # build and score the apps, no session
+```
 
 To load the plugin of the repository in every session, install it from the marketplace of the
 repository (`.claude-plugin/marketplace.json`):

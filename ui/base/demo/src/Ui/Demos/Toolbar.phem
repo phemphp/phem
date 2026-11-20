@@ -6,7 +6,7 @@ use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\Examples\{ToolbarHeroDemo, ToolbarMenuDemo, ToolbarNumberFieldDemo, ToolbarTooltipDemo};
+use function Phem\Ui\Base\Examples\{ToolbarHeroDemo, ToolbarMenuDemo, ToolbarNumberFieldDemo, ToolbarToggleTooltipDemo, ToolbarTooltipDemo};
 
 #[Page('/components/toolbar')]
 function ToolbarPage(): Node
@@ -29,6 +29,12 @@ function ToolbarPage(): Node
                         <p>A <code>TooltipTrigger</code> in a <code>Toolbar</code> is an item of the toolbar.</p>
                     </Example.description>
                     <ToolbarTooltipDemo />
+                </Example>
+                <Example title="Using toggles with Tooltip" source="ToolbarToggleTooltipDemo">
+                    <Example.description>
+                        <p>A <code>Toggle</code> or a <code>ToolbarButton</code> in a <code>Tooltip</code> is a trigger of the tooltip. A toggle of a <code>ToggleGroup</code> keeps its group.</p>
+                    </Example.description>
+                    <ToolbarToggleTooltipDemo />
                 </Example>
                 <Example title="Using with NumberField" source="ToolbarNumberFieldDemo">
                     <Example.description>

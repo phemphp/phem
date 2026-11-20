@@ -48,6 +48,22 @@ final class BoundInputDemo
 }
 
 #[Component]
+final class BoundFieldControlDemo
+{
+    #[State] public string $name = 'Grace';
+
+    public function render(): Node
+    {
+        return (
+            <Field id="name">
+                <FieldLabel>Name</FieldLabel>
+                <FieldControl phem:bind={{ name }} />
+            </Field>
+        );
+    }
+}
+
+#[Component]
 function NumberFieldDemo(): Node
 {
     return (

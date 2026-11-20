@@ -103,6 +103,40 @@ function ToolbarTooltipDemo(): Node
 }
 
 /**
+ * Using toggles with Tooltip.
+ *
+ * A `Toggle` or a `ToolbarButton` in a `Tooltip` is a trigger of the tooltip: a toggle of a
+ * `ToggleGroup` keeps its group, and gets a tooltip.
+ */
+#[Component]
+function ToolbarToggleTooltipDemo(): Node
+{
+    return (
+        <Toolbar aria-label="Text formatting">
+            <ToggleGroup multiple aria-label="Text style">
+                <Tooltip sideOffset={{ 10 }}>
+                    <Toggle value="bold" aria-label="Bold">
+                        <BoldIcon />
+                    </Toggle>
+                    <TooltipPopup>Bold</TooltipPopup>
+                </Tooltip>
+                <Tooltip sideOffset={{ 10 }}>
+                    <Toggle value="italic" aria-label="Italic">
+                        <ItalicIcon />
+                    </Toggle>
+                    <TooltipPopup>Italic</TooltipPopup>
+                </Tooltip>
+            </ToggleGroup>
+            <ToolbarSeparator />
+            <Tooltip sideOffset={{ 10 }}>
+                <ToolbarButton>Share</ToolbarButton>
+                <TooltipPopup>Share this document</TooltipPopup>
+            </Tooltip>
+        </Toolbar>
+    );
+}
+
+/**
  * Using with NumberField.
  *
  * A `NumberFieldInput` in a `Toolbar` is an item of the toolbar, as a `ToolbarInput`.

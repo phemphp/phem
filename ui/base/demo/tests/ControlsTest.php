@@ -309,6 +309,31 @@ final class ControlsTest extends DemoTestCase
         expect($input)->toHaveValue('110');
     }
 
+    public function testTogglesOfAToolbarWithTooltips(): void
+    {
+        $page = $this->visitComponent('toolbar');
+        $demo = $page->getByRole('region', ['name' => 'Using toggles with Tooltip'])->locator('[data-demo="preview"]');
+        $popup = $page->locator('[data-phem-tooltip-target="popup"]:not([hidden])');
+        $bold = $demo->getByRole('button', ['name' => 'Bold']);
+        $italic = $demo->getByRole('button', ['name' => 'Italic']);
+
+        // A toggle in a Tooltip is its trigger.
+        $bold->hover();
+        expect($popup)->toHaveText('Bold');
+
+        // It stays a toggle of its group: the group has `multiple`.
+        $bold->click();
+        $italic->click();
+        expect($bold)->toHaveAttribute('aria-pressed', 'true');
+        expect($italic)->toHaveAttribute('aria-pressed', 'true');
+
+        // The toggles and the button are items of the toolbar, and the focus opens their tooltips.
+        $page->keyboard()->press('ArrowRight');
+        $share = $demo->getByRole('button', ['name' => 'Share']);
+        expect($share)->toBeFocused();
+        expect($popup)->toHaveText('Share this document');
+    }
+
     /** In Base UI, the toolbar moves the focus out of a toggle group in it. */
     public function testTheArrowKeysLeaveAToggleGroupInAToolbar(): void
     {

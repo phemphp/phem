@@ -60,6 +60,14 @@ final class ControlsTest extends KernelTestCase
             ->assertSelectorExists('input[data-phem-number-field-target="input"][data-phem-toolbar-target="item"]');
     }
 
+    public function testAToggleOrAToolbarButtonInATooltipIsItsTrigger(): void
+    {
+        $this->mount(self::APP.'TooltipToggleDemo')
+            ->assertSelectorExists('[data-controller="phem-tooltip"] button[data-controller="phem-toggle"][data-phem-tooltip-target="trigger"][data-phem-toggle-group-target="item"][data-phem-toolbar-target="item"]')
+            ->assertSelectorExists('[data-controller="phem-tooltip"] button[data-phem-tooltip-target="trigger"][data-phem-toolbar-target="item"]:not([data-controller])')
+            ->assertSelectorExists('button[aria-label="Alone"]:not([data-phem-tooltip-target])');
+    }
+
     public function testASwitchCanBeANativeButtonWithAnUncheckedValue(): void
     {
         $this->mount(self::APP.'NativeButtonSwitchDemo')

@@ -3,7 +3,7 @@
 namespace Phem\Ui\Base;
 
 use Phem\Attribute\{Component, Context, Prop, Provide};
-use Phem\{Html, Node};
+use Phem\{Bound, Html, Node};
 
 /**
  * A form control with a label, a description and errors: Base UI Field.Root, on the `phem-field`
@@ -62,11 +62,14 @@ function FieldLabel(#[Context] ?Field $field = null, ?Html $children = null, mix
     return <label htmlFor={{ for }} data-phem-field-target="label" className={{ classes('text-sm font-bold text-foreground data-disabled:text-muted-foreground') }} {{ ...rest }}>{{ children }}</label>;
 }
 
-/** The control of the field: an Input with the width of the field. */
+/**
+ * The control of the field: an Input with the width of the field. Bind it to a state of the app
+ * with `phem:bind`, as an Input.
+ */
 #[Component]
-function FieldControl(mixed ...$rest): Node
+function FieldControl(?Bound $value = null, mixed ...$rest): Node
 {
-    return <Input className="w-auto self-stretch" {{ ...rest }} />;
+    return <Input phem:bind={{ value }} className="w-auto self-stretch" {{ ...rest }} />;
 }
 
 /** The help text of the Field. The control gets it as its `aria-describedby`. */
