@@ -7,6 +7,7 @@
 //!   `phemc check <file>` and `phemc check -` (stdin) report the diagnostics of one file.
 //! - `phemc watch <src> --exec <cmd>`: rebuilds on change and restarts `<cmd>`.
 //! - `phemc lsp`: runs the language server on stdin and stdout (for editors).
+//! - `phemc mcp`: runs the Model Context Protocol server on stdin and stdout (for coding agents).
 //! - `phemc docs`, `phemc components`, `phemc examples`, `phemc search`: the texts for the coding
 //!   agents (see `phemc_knowledge`).
 
@@ -44,6 +45,13 @@ enum Cmd {
     },
     /// Run the language server on stdin and stdout.
     Lsp,
+    /// Run the Model Context Protocol server on stdin and stdout: the docs, the components, the
+    /// examples, the search and the check, as tools for the coding agents.
+    Mcp {
+        /// The source directory of the app.
+        #[arg(long, default_value = "src")]
+        src: PathBuf,
+    },
     /// Show the docs of phem (of this version), or the guide of a package.
     Docs {
         /// A doc (`events`), a section (`events#debounce`), or a package guide (`acme/ui`).
@@ -156,6 +164,7 @@ fn main() -> ExitCode {
         Cmd::Check(args) => check(&args),
         Cmd::Watch { build, exec } => watch(&build, exec.as_deref()).map(|_| true),
         Cmd::Lsp => phemc_lsp::run().map(|_| true).map_err(Into::into),
+        Cmd::Mcp { src } => mcp::run(Path::new("."), &src).map(|_| true).map_err(Into::into),
         Cmd::Docs { key, toc, project } => knowledge::docs(key.as_deref(), toc, &project),
         Cmd::Components { name, package, project } => knowledge::components(name.as_deref(), package.as_deref(), &project),
         Cmd::Examples { name, package, project } => knowledge::examples(name.as_deref(), package.as_deref(), &project),
@@ -173,11 +182,16 @@ fn main() -> ExitCode {
 }
 
 mod knowledge;
+mod mcp;
 
 /// The source roots of the project in the current directory: the app and the packages, and the
 /// examples of the packages in `examples_of`.
 fn source_roots(src: &Path, examples_of: &[String]) -> Result<Vec<SourceRoot>> {
-    let project = Path::new(".");
+    source_roots_in(Path::new("."), src, examples_of)
+}
+
+/// The source roots of a project, and the examples of the packages in `examples_of`.
+fn source_roots_in(project: &Path, src: &Path, examples_of: &[String]) -> Result<Vec<SourceRoot>> {
     let mut roots = phemc_sources::roots(project, src)?;
     for package in examples_of {
         let examples = phemc_sources::examples_root(project, &roots, package)?;
@@ -298,10 +312,16 @@ fn one_file(args: &CheckArgs, roots: &[SourceRoot], inputs: &mut Vec<SourceInput
         false => (args.path.clone(), std::fs::read_to_string(&args.path).with_context(|| format!("cannot read {}", args.path.display()))?),
     };
 
-    let path = project_path(&path);
+    Ok(put_file(Path::new("."), roots, inputs, &path, text))
+}
+
+/// Puts a text in the inputs as the file of a path, and gives the path from the project root. A
+/// file of the roots keeps its key. Another file is a new file of the app.
+fn put_file(project: &Path, roots: &[SourceRoot], inputs: &mut Vec<SourceInput>, path: &Path, text: String) -> String {
+    let path = path_from(&std::path::absolute(project).unwrap_or_default(), path);
     if let Some(input) = inputs.iter_mut().find(|i| i.path == path) {
         input.text = text;
-        return Ok(path);
+        return path;
     }
 
     // A new file: its key must not be the key of a file of the roots.
@@ -309,15 +329,31 @@ fn one_file(args: &CheckArgs, roots: &[SourceRoot], inputs: &mut Vec<SourceInput
     let rel = app.and_then(|r| path.strip_prefix(&format!("{}/", r.path))).map_or_else(|| format!("phemc-check/{}", path.trim_start_matches('/')), String::from);
     inputs.push(SourceInput { rel, path: path.clone(), package: None, text });
 
-    Ok(path)
+    path
 }
 
-/// The path of a file from the project root (the current directory), with `/` separators. A
-/// file outside the project keeps its absolute path.
-fn project_path(path: &Path) -> String {
-    path_from(&std::env::current_dir().unwrap_or_default(), path)
+/// The diagnostics of one file, compiled with the project: the file on disk, or a text in place
+/// of it (`phemc mcp`).
+fn check_one(project: &Path, src: &Path, path: &Path, text: Option<String>) -> Result<(String, Vec<FileDiagnostics>)> {
+    let roots = source_roots_in(project, src, &[])?;
+    let mut inputs = read_sources(&roots)?;
+    let text = match text {
+        Some(t) => t,
+        None => {
+            let file = if path.is_absolute() { path.to_path_buf() } else { project.join(path) };
+            std::fs::read_to_string(&file).with_context(|| format!("cannot read {}", path.display()))?
+        }
+    };
+
+    let path = put_file(project, &roots, &mut inputs, path, text);
+    let (_, mut diags) = phemc_codegen::compile(inputs);
+    diags.retain(|f| f.path == path);
+
+    Ok((path, diags))
 }
 
+/// The path of a file from a project root (absolute), with `/` separators. A file outside the
+/// project keeps its absolute path.
 fn path_from(project: &Path, path: &Path) -> String {
     let absolute = if path.is_absolute() { path.to_path_buf() } else { project.join(path) };
     let inner = absolute.strip_prefix(project).map(Path::to_path_buf).unwrap_or(absolute);
@@ -371,9 +407,16 @@ fn end_of(text: &str, start: usize, end: usize) -> usize {
     text.get(start..).and_then(|rest| rest.chars().next()).map_or(start, |c| start + c.len_utf8())
 }
 
+/// The 0-based line and the UTF-16 column of a byte offset, as JSON.
+fn position(text: &str, offset: usize) -> serde_json::Value {
+    let (line, character) = line_and_column(text, offset);
+
+    serde_json::json!({ "line": line, "character": character })
+}
+
 /// The 0-based line and the UTF-16 column of a byte offset. Editors do not keep the byte order
 /// mark in the text, so it does not count.
-fn position(text: &str, offset: usize) -> serde_json::Value {
+fn line_and_column(text: &str, offset: usize) -> (usize, usize) {
     let mut offset = offset.min(text.len());
     while !text.is_char_boundary(offset) {
         offset -= 1;
@@ -383,10 +426,7 @@ fn position(text: &str, offset: usize) -> serde_json::Value {
     let line_start = before.rfind('\n').map_or(0, |i| i + 1);
     let line = &before[line_start..];
 
-    serde_json::json!({
-        "line": before.matches('\n').count(),
-        "character": line.strip_prefix('\u{feff}').unwrap_or(line).encode_utf16().count(),
-    })
+    (before.matches('\n').count(), line.strip_prefix('\u{feff}').unwrap_or(line).encode_utf16().count())
 }
 
 fn build(args: &BuildArgs) -> Result<bool> {

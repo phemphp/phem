@@ -7,6 +7,7 @@
 //! `phemc examples` and `phemc search` show them.
 
 pub mod catalog;
+pub mod commands;
 pub mod docs;
 pub mod examples;
 mod imports;

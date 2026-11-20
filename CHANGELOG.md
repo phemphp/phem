@@ -8,6 +8,12 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- New `phemc mcp` command: a Model Context Protocol server on stdin and stdout for the coding
+  agents. Its tools give the texts of `phemc search`, `docs`, `components` and `examples`
+  (`phem_search`, `phem_doc`, `phem_components`, `phem_component`, `phem_examples`), and
+  `phem_check` checks a file of the project or a code in place of it, with the diagnostics of
+  this file only. The server reads the project again for each call, and its tools write nothing.
+  See "Connect the agent to the MCP server" in `docs/ai-agents.md`.
 - `phemc examples <key>` shows the code of an example as a complete file: the `use` statements
   that it needs, the top-level constants and the classes that it uses, the example without its
   docblock (the text is above it), then its helpers. A component of the examples that another

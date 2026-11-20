@@ -41,6 +41,31 @@ vendor/bin/phemc check src/Ui/SettingsDialog.phem
 cat draft.phem | vendor/bin/phemc check - --stdin-path src/Ui/SettingsDialog.phem --format json
 ```
 
+## Connect the agent to the MCP server
+
+`phemc mcp` gives the same texts as tools of the Model Context Protocol (MCP), so the agent can call them without a shell: `phem_search`, `phem_doc`, `phem_components`, `phem_component`, `phem_examples` and `phem_check`. The server also gives the agent the workflow above when it starts. See [`phemc mcp`](compiler.md#phemc-mcp) for the arguments of each tool.
+
+For Claude Code, add the server to the project. Run this command from the project root:
+
+```sh
+claude mcp add --scope project phem -- vendor/bin/phemc mcp
+```
+
+The command writes the server to `.mcp.json`, so the other developers of the project get it too:
+
+```json
+{
+    "mcpServers": {
+        "phem": {
+            "command": "vendor/bin/phemc",
+            "args": ["mcp"]
+        }
+    }
+}
+```
+
+Other agents that support MCP servers on stdio take the same command and arguments. Start the server in the project root, and give `--src <dir>` when the source root of the application isn’t `src`.
+
 ## Add the workflow to the instructions of the agent
 
 Most agents read a file of instructions in the project, for example `AGENTS.md` or `CLAUDE.md`. Copy this text into it:

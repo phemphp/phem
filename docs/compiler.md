@@ -21,6 +21,7 @@ Each command runs from the project root, the directory that contains `bin/consol
 | `phemc check <src>` | Reports the diagnostics and writes nothing. `phemc check <file>` and `phemc check -` check one file |
 | `phemc watch <src>` | Builds, then rebuilds on each change, and restarts an optional command |
 | `phemc lsp` | Runs the language server on stdin and stdout |
+| `phemc mcp` | Runs the Model Context Protocol (MCP) server on stdin and stdout, for coding agents |
 | `phemc docs [<key>]` | Shows the docs of this version of Phem, or the guide of a package |
 | `phemc components [<name>]` | Shows the components of the application and of the packages, or one component |
 | `phemc examples [<name>]` | Shows the examples of the packages, or the code of one example |
@@ -264,6 +265,29 @@ A wrong key is an error with the closest keys: ``phemc: no component `Dialogg`. 
 ```text
 phemc: retrieval eval: 2 quer(ies), 3/3 key(s) in the top 20 (recall@20 100.0 %)
 ```
+
+### `phemc mcp`
+
+`phemc mcp` runs a Model Context Protocol (MCP) server on stdin and stdout, for the coding agents (see [Use Phem with coding agents](ai-agents.md)). Run it from the project root. It takes one option, `--src <dir>` (default `src`), the source root of the application.
+
+Each tool gives the same text as its command:
+
+| Tool | Arguments | Same as |
+|---|---|---|
+| `phem_search` | `query`, optional `limit` (1 to 100, default 20) | `phemc search <query>` |
+| `phem_doc` | optional `key` | `phemc docs <key>`, or `phemc docs --toc` with no key |
+| `phem_components` | optional `package` | `phemc components` |
+| `phem_component` | `name`, optional `package` | `phemc components <name>` |
+| `phem_examples` | optional `name` and `package` | `phemc examples [<name>]` |
+| `phem_check` | `path`, `code`, or both | `phemc check <file>`, or `phemc check - --stdin-path <path>` with the code |
+
+The server has these properties:
+
+- **Transport**: one JSON-RPC 2.0 message on each line. The logs go to stderr. It knows the protocol versions `2025-06-18`, `2025-03-26` and `2024-11-05`, and it gives the agent a short workflow in its `instructions`
+- **Fresh data**: it reads the project again for each call, so a tool gives the components and the code of the moment
+- **Read only**: the tools write nothing. `phem_check` compiles the project in memory, with the `code` in place of the file of `path`, and gives the diagnostics of this file only, one line each (`- 6:35 error E011: ...`, with lines and columns from 1). `path` must be a relative path in the project, with no `..`
+- **Robust**: a line that isn't JSON or UTF-8 gets a parse error, and a failure of one call is a tool error: the server goes on. With protocol version `2025-03-26`, a batch (a JSON array of messages) gets one array of responses
+- **Errors**: a missing key (with the closest keys), a wrong argument, or a project that `phemc` can't read is a tool error (`isError`), so the agent reads it and tries again. An unknown tool or method is a protocol error
 
 ### `phemc lsp`
 
