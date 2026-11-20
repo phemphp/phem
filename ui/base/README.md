@@ -148,6 +148,30 @@ A part that shares its props with the parts in it is also a class: `AccordionIte
 - **Ids**: parts take their ids from a `value` (or the `id` of the root), because the morph needs ids
   from the server render.
 
+## Use it with a coding agent
+
+The package ships its examples (`examples/`, the `extra.phem.examples` key of `composer.json`) and
+this guide (`extra.phem.guide`) for the coding agents. In an app, `phemc` gives them to the agent
+(see `phem/docs/ai-agents.md`):
+
+```sh
+vendor/bin/phemc components                  # the families, one line each
+vendor/bin/phemc components Dialog           # the props, the context and the anatomy of a component
+vendor/bin/phemc examples Dialog             # the examples that use Dialog
+vendor/bin/phemc search "dialog with a form" # the best components and examples for a task
+```
+
+Follow these rules when you write code with the components:
+
+- **Families**: a family is one file of `src/` (`Dialog.phem`): its root and its parts. Import the
+  root and the class parts with `use`, and the function parts with `use function`, as `phemc
+  components <name>` shows.
+- **Anatomy**: a part goes inside the component of its context, as the anatomy of the root shows.
+  A popup part goes inside its root, and the root has the Positioner props.
+- **Start from an example**: each example is one use case of base-ui.com, with the text of its
+  page. Copy the closest one, and keep its classes, its `handle` and its data attributes.
+- **Check**: run `vendor/bin/phemc check <file>` after each change.
+
 ## Status
 
 All 37 Base UI components are here. The parts follow the Base UI anatomy, with this exception:
@@ -160,10 +184,12 @@ The bundle lives in `ui/base/` of the phem repository until its components are s
 
 The components use only the public API of phem: the components, the controllers and their documented attributes. A package of an app can do the same.
 
+The demos of the gallery are the examples of the package (`examples/`, namespace `Phem\Ui\Base\Examples`). A demo page (`demo/src/Ui/Demos/`) shows them, and the demo compiles them with `phemc build src --examples-of phem/ui-base`. Give each example a docblock: its title, then the text of its section on base-ui.com. `make check` checks the examples and runs the retrieval eval of the search (`tests/retrieval.yaml`).
+
 ```sh
 make install     # composer install
 make test        # PHPUnit render tests
-make check       # phemc check src
+make check       # phemc check of the components and the examples, and the retrieval eval
 make demo        # the gallery on http://localhost:8100 (FrankenPHP, production image)
 make demo-watch  # the same gallery in the dev environment, restarted after each change
 make test-e2e    # the browser tests of the demo (Playwright PHP)

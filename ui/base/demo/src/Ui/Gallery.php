@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Ui;
 
+use Composer\InstalledVersions;
+
 final class Gallery
 {
     /**
@@ -64,11 +66,12 @@ final class Gallery
     /**
      * The source of a demo component, as on base-ui.com: the `use` statements that it needs, the
      * constants that it reads, its function or its class, and the helper components of its file
-     * that it calls. The demo is a `#[Component]` function or class of a file in src/Ui/Demos/.
+     * that it calls. The demo is a `#[Component]` function or class of an example of the installed
+     * phem/ui-base (its `extra.phem.examples` directory). The docblock is not in the source.
      */
     public static function source(string $component): string
     {
-        foreach (glob(__DIR__.'/Demos/*.phem') ?: [] as $file) {
+        foreach (glob(self::examples().'/*.phem') ?: [] as $file) {
             $code = (string) file_get_contents($file);
             $definitions = self::definitions($code);
 
@@ -87,7 +90,16 @@ final class Gallery
             return "<?phem\n\n".('' === $uses ? '' : $uses."\n\n").implode("\n\n", $blocks)."\n";
         }
 
-        throw new \InvalidArgumentException(\sprintf('No demo in src/Ui/Demos/ has the function or the class "%s".', $component));
+        throw new \InvalidArgumentException(\sprintf('No example of phem/ui-base has the function or the class "%s".', $component));
+    }
+
+    /** The examples directory of the installed phem/ui-base: its `extra.phem.examples` key. */
+    private static function examples(): string
+    {
+        $package = InstalledVersions::getInstallPath('phem/ui-base') ?? throw new \LogicException('phem/ui-base is not installed.');
+        $composer = json_decode((string) file_get_contents($package.'/composer.json'), true, flags: \JSON_THROW_ON_ERROR);
+
+        return $package.'/'.($composer['extra']['phem']['examples'] ?? throw new \LogicException('phem/ui-base gives no extra.phem.examples.'));
     }
 
     /**

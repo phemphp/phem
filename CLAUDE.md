@@ -29,7 +29,8 @@ the root of this repository (a path repository).
   `compiler/` use their own fixture packages.
 - A missing behavior goes into phem (a controller, a component), not into `ui/base/`.
 - A change in phem that changes a component updates `ui/base/` in the same change: its
-  components, its tests and its demo. `ui/base/` has no changelog: the changelog of phem has the
+  components, its examples (`ui/base/examples/`, the demos of the gallery), its tests and its
+  demo. `ui/base/` has no changelog: the changelog of phem has the
   change of the controller.
 - Run `make ui-test` and `make ui-test-e2e` after a change in `ui/base/`, and after a change in a
   controller that a component uses. They do not run in `make test`.

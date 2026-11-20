@@ -1,0 +1,304 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\Select;
+
+use function Phem\Ui\Base\{SelectGroup, SelectGroupLabel, SelectIcon, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectList, SelectPopup, SelectScrollDownArrow, SelectScrollUpArrow, SelectSeparator, SelectTrigger, SelectValue};
+
+/**
+ * A common form component for choosing a predefined value in a dropdown menu.
+ */
+#[Component]
+function SelectHeroDemo(): Node
+{
+    $apples = [
+        'gala' => 'Gala',
+        'fuji' => 'Fuji',
+        'honeycrisp' => 'Honeycrisp',
+        'granny-smith' => 'Granny Smith',
+        'pink-lady' => 'Pink Lady',
+    ];
+
+    return (
+        <Select id="apple" name="apple" sideOffset={{ 4 }}>
+            <SelectLabel>Apple</SelectLabel>
+            <SelectTrigger>
+                <SelectValue placeholder="Select apple" />
+                <SelectIcon />
+            </SelectTrigger>
+            <SelectPopup>
+                <SelectScrollUpArrow />
+                <SelectList>
+                    {% for value, name in apples %}
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
+                    {% endfor %}
+                </SelectList>
+                <SelectScrollDownArrow />
+            </SelectPopup>
+        </Select>
+    );
+}
+
+/**
+ * Formatting the value.
+ *
+ * `SelectValue` renders the label of the selected item: its `SelectItemText`, not its raw `value`.
+ *
+ * To show more than a text, see the object values.
+ */
+#[Component]
+function SelectFormattedDemo(): Node
+{
+    $themes = ['system' => 'System default', 'light' => 'Light', 'dark' => 'Dark'];
+
+    return (
+        <Select id="formatted" defaultValue="system" sideOffset={{ 4 }}>
+            <SelectLabel>Theme</SelectLabel>
+            <SelectTrigger>
+                <SelectValue />
+                <SelectIcon />
+            </SelectTrigger>
+            <SelectPopup>
+                <SelectList>
+                    {% for value, name in themes %}
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
+                    {% endfor %}
+                </SelectList>
+            </SelectPopup>
+        </Select>
+    );
+}
+
+/**
+ * Labeling a select.
+ *
+ * Use `SelectLabel` to provide a visible label for the select trigger. `SelectLabel` renders a
+ * `<div>`, so clicking it focuses the select trigger without opening the popup.
+ */
+#[Component]
+function SelectLabeledDemo(): Node
+{
+    $themes = ['system' => 'System default', 'light' => 'Light', 'dark' => 'Dark'];
+
+    return (
+        <Select id="labeled" defaultValue="light" sideOffset={{ 4 }}>
+            <SelectLabel>Theme</SelectLabel>
+            <SelectTrigger>
+                <SelectValue />
+                <SelectIcon />
+            </SelectTrigger>
+            <SelectPopup>
+                <SelectList>
+                    {% for value, name in themes %}
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
+                    {% endfor %}
+                </SelectList>
+            </SelectPopup>
+        </Select>
+    );
+}
+
+/**
+ * Placeholder values.
+ *
+ * To show a placeholder value, use the `placeholder` prop on `SelectValue`.
+ */
+#[Component]
+function SelectPlaceholderDemo(): Node
+{
+    $themes = ['system' => 'System default', 'light' => 'Light', 'dark' => 'Dark'];
+
+    return (
+        <Select id="placeholder" sideOffset={{ 4 }}>
+            <SelectLabel>Theme</SelectLabel>
+            <SelectTrigger>
+                <SelectValue placeholder="Select theme" />
+                <SelectIcon />
+            </SelectTrigger>
+            <SelectPopup>
+                <SelectList>
+                    {% for value, name in themes %}
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
+                    {% endfor %}
+                </SelectList>
+            </SelectPopup>
+        </Select>
+    );
+}
+
+/**
+ * Multiple selection.
+ *
+ * Add the `multiple` prop to the `Select` component to allow multiple selections. The `template`
+ * of `SelectValue` gives the text of two values or more.
+ */
+#[Component]
+function SelectMultipleDemo(): Node
+{
+    $languages = [
+        'javascript' => 'JavaScript',
+        'typescript' => 'TypeScript',
+        'python' => 'Python',
+        'java' => 'Java',
+        'csharp' => 'C#',
+        'php' => 'PHP',
+        'cpp' => 'C++',
+        'rust' => 'Rust',
+        'go' => 'Go',
+        'swift' => 'Swift',
+    ];
+
+    return (
+        <Select id="languages" multiple defaultValue={{ ['javascript', 'typescript'] }} alignItemWithTrigger={{ false }} sideOffset={{ 4 }}>
+            <SelectLabel>Languages</SelectLabel>
+            <SelectTrigger className="min-w-56">
+                <SelectValue placeholder="Select languages" template="{first} (+{others} more)" />
+                <SelectIcon />
+            </SelectTrigger>
+            <SelectPopup>
+                <SelectList>
+                    {% for value, name in languages %}
+                        <SelectItem key={{ value }} value={{ value }}>
+                            <SelectItemIndicator />
+                            <SelectItemText>{{ name }}</SelectItemText>
+                        </SelectItem>
+                    {% endfor %}
+                </SelectList>
+            </SelectPopup>
+        </Select>
+    );
+}
+
+/**
+ * Object values.
+ *
+ * Select items can show more than a text. With `markup`, `SelectValue` shows a copy of the markup
+ * of the selected item text.
+ */
+#[Component]
+function SelectObjectValuesDemo(): Node
+{
+    $methods = [
+        [
+            'id' => 'standard',
+            'name' => 'Standard',
+            'duration' => 'Delivers in 4-6 business days',
+            'price' => '$4.99',
+        ],
+        [
+            'id' => 'express',
+            'name' => 'Express',
+            'duration' => 'Delivers in 2-3 business days',
+            'price' => '$9.99',
+        ],
+        [
+            'id' => 'overnight',
+            'name' => 'Overnight',
+            'duration' => 'Delivers next business day',
+            'price' => '$19.99',
+        ],
+    ];
+
+    return (
+        <Select id="shipping" defaultValue="standard" sideOffset={{ 4 }}>
+            <SelectLabel>Shipping method</SelectLabel>
+            <SelectTrigger className="h-auto min-h-8 min-w-[16rem] py-1.5">
+                <SelectValue markup />
+                <SelectIcon />
+            </SelectTrigger>
+            <SelectPopup>
+                <SelectScrollUpArrow />
+                <SelectList>
+                    {% for method in methods %}
+                        <SelectItem key={{ method.id }} value={{ method.id }} className="items-start">
+                            <SelectItemIndicator className="relative top-[0.4em] self-start" />
+                            <SelectItemText>
+                                <span className="flex flex-col items-start gap-0.5">
+                                    <span className="text-sm">{{ method.name }}</span>
+                                    <span className="text-xs opacity-70">{{ method.duration }} ({{ method.price }})</span>
+                                </span>
+                            </SelectItemText>
+                        </SelectItem>
+                    {% endfor %}
+                </SelectList>
+                <SelectScrollDownArrow />
+            </SelectPopup>
+        </Select>
+    );
+}
+
+/**
+ * Grouped.
+ *
+ * Organize related options with `SelectGroup` and `SelectGroupLabel` to add section headings
+ * inside the popup.
+ */
+#[Component]
+function SelectGroupedDemo(): Node
+{
+    $groups = [
+        'Fruits' => [
+            'apple' => 'Apple',
+            'banana' => 'Banana',
+            'mango' => 'Mango',
+            'kiwi' => 'Kiwi',
+            'grape' => 'Grape',
+            'orange' => 'Orange',
+            'strawberry' => 'Strawberry',
+            'watermelon' => 'Watermelon',
+        ],
+        'Vegetables' => [
+            'broccoli' => 'Broccoli',
+            'carrot' => 'Carrot',
+            'cauliflower' => 'Cauliflower',
+            'cucumber' => 'Cucumber',
+            'kale' => 'Kale',
+            'bell-pepper' => 'Bell pepper',
+            'spinach' => 'Spinach',
+            'zucchini' => 'Zucchini',
+        ],
+    ];
+
+    return (
+        <Select id="produce" sideOffset={{ 4 }}>
+            <SelectLabel>Produce</SelectLabel>
+            <SelectTrigger>
+                <SelectValue placeholder="Select produce" />
+                <SelectIcon />
+            </SelectTrigger>
+            <SelectPopup>
+                <SelectScrollUpArrow />
+                <SelectList>
+                    {% for name, items in groups %}
+                        <SelectGroup key={{ name }}>
+                            <SelectGroupLabel>{{ name }}</SelectGroupLabel>
+                            {% for value, label in items %}
+                                <SelectItem key={{ value }} value={{ value }}>
+                                    <SelectItemIndicator />
+                                    <SelectItemText>{{ label }}</SelectItemText>
+                                </SelectItem>
+                            {% endfor %}
+                        </SelectGroup>
+                        {% if not loop.last %}<SelectSeparator />{% endif %}
+                    {% endfor %}
+                </SelectList>
+                <SelectScrollDownArrow />
+            </SelectPopup>
+        </Select>
+    );
+}

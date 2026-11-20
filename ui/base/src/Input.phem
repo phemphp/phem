@@ -8,6 +8,8 @@ use Phem\{Bound, Node};
 /**
  * A native text input: Base UI Input. In a Field, it is the control of the field. Bind it to a state
  * of the app with `phem:bind`, or give its first value in `defaultValue`.
+ *
+ * @aliases text field, text input, textbox
  */
 #[Component]
 function Input(#[Context] ?Field $field = null, ?Bound $value = null, ?string $defaultValue = null, bool $disabled = false, mixed ...$rest): Node

@@ -9,6 +9,8 @@ use Phem\{Bound, Html, Node};
  * One input for each character of a code: Base UI OTPField.Root, on the `phem-otp-field` controller.
  * Put one OTPFieldInput in it for each character. With a `name` (or `phem:bind`), a hidden input
  * keeps the full code for the form.
+ *
+ * @aliases one-time code, verification code, pin input, two-factor
  */
 #[Component]
 function OTPField(
@@ -47,7 +49,10 @@ function OTPField(
     );
 }
 
-/** The input of one character. In a Field, each input is a control of the field: the label names the first one. */
+/**
+ * The input of one character. In a Field, each input is a control of the field: the label names
+ * the first one.
+ */
 #[Component]
 function OTPFieldInput(#[Context] ?Field $field = null, mixed ...$rest): Node
 {
@@ -56,6 +61,7 @@ function OTPFieldInput(#[Context] ?Field $field = null, mixed ...$rest): Node
     return <input data-phem-otp-field-target="input" data-phem-field-target={{ control }} className={{ classes('m-0 h-10 w-10 rounded-control border border-input bg-background text-center font-inherit text-base font-normal text-foreground focus:outline-2 focus:-outline-offset-1 focus:outline-ring') }} {{ ...rest }} />;
 }
 
+/** A mark between two groups of the slots of the code, `–` by default. */
 #[Component]
 function OTPFieldSeparator(?Html $children = null, mixed ...$rest): Node
 {

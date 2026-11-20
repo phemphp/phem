@@ -1,0 +1,25 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\Field;
+
+use function Phem\Ui\Base\{FieldControl, FieldDescription, FieldError, FieldLabel};
+
+/**
+ * A component that provides labeling and validation for form controls.
+ */
+#[Component]
+function FieldHeroDemo(): Node
+{
+    return (
+        <Field id="name">
+            <FieldLabel>Name</FieldLabel>
+            <FieldControl required placeholder="Required" />
+            <FieldError match="valueMissing">Please enter your name</FieldError>
+            <FieldDescription>Visible on your profile</FieldDescription>
+        </Field>
+    );
+}

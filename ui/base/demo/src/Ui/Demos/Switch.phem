@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{FieldLabel, Form, SwitchThumb};
-use Phem\Ui\Base\{Field, SwitchRoot};
+use function Phem\Ui\Base\Examples\{SwitchFormDemo, SwitchHeroDemo, SwitchLabelingDemo, SwitchNativeButtonDemo};
 
 #[Page('/components/switch')]
 function SwitchPage(): Node
@@ -38,61 +37,5 @@ function SwitchPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
-    );
-}
-
-#[Component]
-function SwitchHeroDemo(): Node
-{
-    return (
-        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
-            <SwitchRoot defaultChecked>
-                <SwitchThumb />
-            </SwitchRoot>
-            Notifications
-        </label>
-    );
-}
-
-#[Component]
-function SwitchLabelingDemo(): Node
-{
-    return (
-        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
-            <SwitchRoot>
-                <SwitchThumb />
-            </SwitchRoot>
-            Notifications
-        </label>
-    );
-}
-
-#[Component]
-function SwitchNativeButtonDemo(): Node
-{
-    return (
-        <div className="flex items-center gap-2">
-            <label htmlFor="notifications-switch" className="text-sm text-neutral-950 dark:text-white">Notifications</label>
-            <SwitchRoot id="notifications-switch" nativeButton>
-                <SwitchThumb />
-            </SwitchRoot>
-        </div>
-    );
-}
-
-#[Component]
-function SwitchFormDemo(): Node
-{
-    return (
-        <Form>
-            <Field>
-                <FieldLabel className="flex items-center gap-2 font-normal">
-                    <SwitchRoot name="notifications">
-                        <SwitchThumb />
-                    </SwitchRoot>
-                    Notifications
-                </FieldLabel>
-            </Field>
-        </Form>
     );
 }

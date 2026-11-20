@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{MenuItem, MenuPopup, MenuTrigger, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput, SelectIcon, SelectItem, SelectItemIndicator, SelectItemText, SelectList, SelectPopup, SelectTrigger, SelectValue, Toggle, ToolbarButton, ToolbarGroup, ToolbarLink, ToolbarSeparator, TooltipPopup, TooltipTrigger};
-use Phem\Ui\Base\{Menu, NumberField, Select, ToggleGroup, Toolbar, Tooltip};
+use function Phem\Ui\Base\Examples\{ToolbarHeroDemo, ToolbarMenuDemo, ToolbarNumberFieldDemo, ToolbarTooltipDemo};
 
 #[Page('/components/toolbar')]
 function ToolbarPage(): Node
@@ -39,100 +38,5 @@ function ToolbarPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
-    );
-}
-
-#[Component]
-function ToolbarHeroDemo(): Node
-{
-    return (
-        <Toolbar className="w-150">
-            <ToggleGroup aria-label="Alignment">
-                <Toggle aria-label="Align left" value="align-left">Align Left</Toggle>
-                <Toggle aria-label="Align right" value="align-right">Align Right</Toggle>
-            </ToggleGroup>
-            <ToolbarSeparator />
-            <ToolbarGroup aria-label="Numerical format">
-                <ToolbarButton aria-label="Format as currency" className="px-0">$</ToolbarButton>
-                <ToolbarButton aria-label="Format as percent" className="px-0">%</ToolbarButton>
-            </ToolbarGroup>
-            <ToolbarSeparator />
-            <Select defaultValue="Helvetica" sideOffset={{ 4 }}>
-                <SelectTrigger>
-                    <SelectValue />
-                    <SelectIcon />
-                </SelectTrigger>
-                <SelectPopup>
-                    <SelectList>
-                        <SelectItem value="Helvetica">
-                            <SelectItemIndicator />
-                            <SelectItemText>Helvetica</SelectItemText>
-                        </SelectItem>
-                        <SelectItem value="Arial">
-                            <SelectItemIndicator />
-                            <SelectItemText>Arial</SelectItemText>
-                        </SelectItem>
-                    </SelectList>
-                </SelectPopup>
-            </Select>
-            <ToolbarSeparator />
-            <ToolbarLink href="#">Edited 51m ago</ToolbarLink>
-        </Toolbar>
-    );
-}
-
-#[Component]
-function ToolbarMenuDemo(): Node
-{
-    return (
-        <Toolbar aria-label="Document">
-            <ToolbarButton>Save</ToolbarButton>
-            <Menu sideOffset={{ 4 }}>
-                <MenuTrigger>Export</MenuTrigger>
-                <MenuPopup>
-                    <MenuItem>PDF</MenuItem>
-                    <MenuItem>PNG</MenuItem>
-                    <MenuItem>SVG</MenuItem>
-                </MenuPopup>
-            </Menu>
-        </Toolbar>
-    );
-}
-
-#[Component]
-function ToolbarTooltipDemo(): Node
-{
-    return (
-        <Toolbar aria-label="Text formatting">
-            <Tooltip sideOffset={{ 10 }}>
-                <TooltipTrigger aria-label="Bold">
-                    <BoldIcon />
-                </TooltipTrigger>
-                <TooltipPopup>Bold</TooltipPopup>
-            </Tooltip>
-            <Tooltip sideOffset={{ 10 }}>
-                <TooltipTrigger aria-label="Italic">
-                    <ItalicIcon />
-                </TooltipTrigger>
-                <TooltipPopup>Italic</TooltipPopup>
-            </Tooltip>
-        </Toolbar>
-    );
-}
-
-#[Component]
-function ToolbarNumberFieldDemo(): Node
-{
-    return (
-        <Toolbar aria-label="Zoom">
-            <ToolbarButton>Fit</ToolbarButton>
-            <NumberField id="zoom" defaultValue={{ 100 }} min={{ 10 }} max={{ 400 }} step={{ 10 }}>
-                <NumberFieldGroup>
-                    <NumberFieldDecrement />
-                    <NumberFieldInput aria-label="Zoom" />
-                    <NumberFieldIncrement />
-                </NumberFieldGroup>
-            </NumberField>
-        </Toolbar>
     );
 }

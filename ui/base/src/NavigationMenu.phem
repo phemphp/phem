@@ -15,6 +15,8 @@ use Phem\{Dynamic, Html, Node};
  *
  * A NavigationMenu in a NavigationMenuContent is a submenu, as in Base UI: a `<div>` with the width
  * of its place, and its arrow keys move the focus in the content of the parent menu.
+ *
+ * @aliases navbar, mega menu, site navigation, header navigation
  */
 #[Component, Provide]
 class NavigationMenu
@@ -64,6 +66,7 @@ class NavigationMenu
     }
 }
 
+/** The list of the items of the navigation menu (`<ul>`). */
 #[Component]
 function NavigationMenuList(?Html $children = null, mixed ...$rest): Node
 {
@@ -137,6 +140,7 @@ function NavigationMenuLink(string $href, bool $card = false, ?Html $children = 
     return <a href={{ href }} data-phem-navigation-menu-target="link" className={{ classes(base) }} {{ ...rest }}>{{ children }}</a>;
 }
 
+/** A layer under the popup of the navigation menu, while a content is open. */
 #[Component]
 function NavigationMenuBackdrop(mixed ...$rest): Node
 {
@@ -159,7 +163,9 @@ function NavigationMenuPositioner(?Html $children = null, mixed ...$rest): Node
     );
 }
 
-/** The box of the content. Its size animates between the items (`--popup-width`, `--popup-height`). */
+/**
+ * The box of the content. Its size animates between the items (`--popup-width`, `--popup-height`).
+ */
 #[Component]
 function NavigationMenuPopup(?Html $children = null, mixed ...$rest): Node
 {
@@ -174,6 +180,7 @@ function NavigationMenuPopup(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** The arrow of the popup, at the side of the active trigger. */
 #[Component]
 function NavigationMenuArrow(mixed ...$rest): Node
 {

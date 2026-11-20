@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogPayload, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, MenuItem, MenuPopup, MenuSeparator, MenuTrigger};
-use Phem\Ui\Base\{Align, Menu};
+use function Phem\Ui\Base\Examples\{AlertDialogControlledDemo, AlertDialogDetachedDemo, AlertDialogFromMenuDemo, AlertDialogHeroDemo, AlertDialogMultipleDemo, DialogCloseConfirmationDemo};
 
 #[Page('/components/alert-dialog')]
 function AlertDialogPage(): Node
@@ -55,136 +54,5 @@ function AlertDialogPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
-    );
-}
-
-/** The hero: an alert dialog with its trigger in the root. */
-#[Component]
-function AlertDialogHeroDemo(): Node
-{
-    return (
-        <AlertDialog>
-            <AlertDialogTrigger className="text-red-700 dark:text-red-400">Discard draft</AlertDialogTrigger>
-            <AlertDialogPopup>
-                <div className="flex flex-col gap-1">
-                    <AlertDialogTitle>Discard draft?</AlertDialogTitle>
-                    <AlertDialogDescription>You can’t undo this action.</AlertDialogDescription>
-                </div>
-                <div className="flex justify-end gap-3">
-                    <AlertDialogClose>Cancel</AlertDialogClose>
-                    <AlertDialogClose className="text-red-700 dark:text-red-400">Discard</AlertDialogClose>
-                </div>
-            </AlertDialogPopup>
-        </AlertDialog>
-    );
-}
-
-/** Open from a menu: the last item is a detached trigger of the alert dialog. */
-#[Component]
-function AlertDialogFromMenuDemo(): Node
-{
-    return (
-        <div>
-            <Menu sideOffset={{ 8 }} align={{ Align.Start }}>
-                <MenuTrigger>Playlist</MenuTrigger>
-                <MenuPopup>
-                    <MenuItem>Play</MenuItem>
-                    <MenuItem>Share</MenuItem>
-                    <MenuSeparator />
-                    <MenuItem data-phem-dialog-for="delete-playlist">Delete…</MenuItem>
-                </MenuPopup>
-            </Menu>
-            <AlertDialog handle="delete-playlist">
-                <AlertDialogPopup>
-                    <div className="flex flex-col gap-1">
-                        <AlertDialogTitle>Delete playlist?</AlertDialogTitle>
-                        <AlertDialogDescription>You can't undo this action.</AlertDialogDescription>
-                    </div>
-                    <div className="flex justify-end gap-3">
-                        <AlertDialogClose>Cancel</AlertDialogClose>
-                        <AlertDialogClose className="text-red-700 dark:text-red-400">Delete</AlertDialogClose>
-                    </div>
-                </AlertDialogPopup>
-            </AlertDialog>
-        </div>
-    );
-}
-
-/** Detached triggers: the trigger is outside the root, with the same handle. */
-#[Component]
-function AlertDialogDetachedDemo(): Node
-{
-    return (
-        <div>
-            <AlertDialogTrigger handle="discard-draft" className="text-red-700 dark:text-red-400">Discard draft</AlertDialogTrigger>
-            <AlertDialog handle="discard-draft">
-                <AlertDialogPopup>
-                    <div className="flex flex-col gap-1">
-                        <AlertDialogTitle>Discard draft?</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                    </div>
-                    <div className="flex justify-end gap-3">
-                        <AlertDialogClose>Cancel</AlertDialogClose>
-                        <AlertDialogClose className="text-red-700 dark:text-red-400">Discard</AlertDialogClose>
-                    </div>
-                </AlertDialogPopup>
-            </AlertDialog>
-        </div>
-    );
-}
-
-/**
- * Multiple triggers: two detached triggers of one alert dialog, with a payload each.
- */
-#[Component]
-function AlertDialogMultipleDemo(): Node
-{
-    return (
-        <div className="flex gap-2">
-            <AlertDialogTrigger handle="multiple-alert-dialog" payload="Trigger 1">Trigger 1</AlertDialogTrigger>
-            <AlertDialogTrigger handle="multiple-alert-dialog" payload="Trigger 2">Trigger 2</AlertDialogTrigger>
-            <AlertDialog handle="multiple-alert-dialog">
-                <AlertDialogPopup>
-                    <div className="flex flex-col gap-1">
-                        <AlertDialogTitle>Alert dialog</AlertDialogTitle>
-                        <AlertDialogDescription>Confirming <AlertDialogPayload /></AlertDialogDescription>
-                    </div>
-                    <div className="flex justify-end gap-3">
-                        <AlertDialogClose>Close</AlertDialogClose>
-                    </div>
-                </AlertDialogPopup>
-            </AlertDialog>
-        </div>
-    );
-}
-
-/**
- * Controlled mode: three triggers in the root, and a button that opens the alert
- * dialog for the second one.
- */
-#[Component]
-function AlertDialogControlledDemo(): Node
-{
-    return (
-        <AlertDialog>
-            <div className="flex flex-wrap justify-center gap-2">
-                <AlertDialogTrigger id="alert-trigger-1" payload="Discard draft?" className="text-red-700 dark:text-red-400">Discard</AlertDialogTrigger>
-                <AlertDialogTrigger id="alert-trigger-2" payload="Delete project?" className="text-red-700 dark:text-red-400">Delete</AlertDialogTrigger>
-                <AlertDialogTrigger id="alert-trigger-3" payload="Sign out?">Sign out</AlertDialogTrigger>
-                <button type="button" data-action="phem-dialog#open" data-phem-dialog-trigger-id-param="alert-trigger-2" className="flex h-8 items-center justify-center border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 px-3 text-sm text-neutral-950 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Open programmatically</button>
-            </div>
-            <AlertDialogPopup>
-                <div className="flex flex-col gap-1">
-                    <AlertDialogTitle>
-                        <AlertDialogPayload>Are you sure?</AlertDialogPayload>
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                </div>
-                <div className="flex justify-end gap-3">
-                    <AlertDialogClose>Cancel</AlertDialogClose>
-                    <AlertDialogClose className="text-red-700 dark:text-red-400">Confirm</AlertDialogClose>
-                </div>
-            </AlertDialogPopup>
-        </AlertDialog>
     );
 }

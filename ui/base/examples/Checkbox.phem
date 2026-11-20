@@ -1,0 +1,84 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\{Checkbox, Field};
+
+use function Phem\Ui\Base\{CheckboxIndicator, FieldLabel, Form};
+
+/**
+ * An easily stylable checkbox component.
+ */
+#[Component]
+function CheckboxHeroDemo(): Node
+{
+    return (
+        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+            <Checkbox defaultChecked>
+                <CheckboxIndicator />
+            </Checkbox>
+            Enable notifications
+        </label>
+    );
+}
+
+/**
+ * Labeling a checkbox.
+ *
+ * An enclosing `<label>` is the simplest labeling pattern:
+ */
+#[Component]
+function CheckboxLabelingDemo(): Node
+{
+    return (
+        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+            <Checkbox>
+                <CheckboxIndicator />
+            </Checkbox>
+            Accept terms and conditions
+        </label>
+    );
+}
+
+/**
+ * Rendering as a native button.
+ *
+ * By default, `Checkbox` renders a `<span>` element to support enclosing labels. Prefer rendering
+ * the checkbox as a native button with `nativeButton` when using sibling labels (`for`/`id`).
+ */
+#[Component]
+function CheckboxNativeButtonDemo(): Node
+{
+    return (
+        <div className="flex items-center gap-2">
+            <label htmlFor="notifications-checkbox" className="text-sm text-neutral-950 dark:text-white">Enable notifications</label>
+            <Checkbox id="notifications-checkbox" nativeButton>
+                <CheckboxIndicator />
+            </Checkbox>
+        </div>
+    );
+}
+
+/**
+ * Form integration.
+ *
+ * Use Field to handle label associations and form integration:
+ */
+#[Component]
+function CheckboxFormDemo(): Node
+{
+    return (
+        <Form>
+            <Field>
+                <FieldLabel className="flex items-center gap-2 font-normal">
+                    <Checkbox name="stayLoggedIn">
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    Stay logged in for 7 days
+                </FieldLabel>
+            </Field>
+        </Form>
+    );
+}

@@ -56,6 +56,8 @@ enum SwipeDirection: string
  * the focus is not trapped. With `disablePointerDismissal`, a press outside does not close it.
  * With `virtualKeyboard` (Base UI Drawer.VirtualKeyboardProvider), the popup gets
  * `--drawer-keyboard-inset` while the keyboard of the device is open.
+ *
+ * @aliases sheet, side panel, bottom sheet, off-canvas, slide-over
  */
 #[Component, Provide]
 class Drawer
@@ -138,25 +140,31 @@ function DrawerPopup(#[Context] Drawer $drawer, #[Context] ?DrawerViewport $view
     );
 }
 
-/** The content of the panel: a centered column. A mouse press in it selects its text, and does not start a swipe. */
+/**
+ * The content of the panel: a centered column. A mouse press in it selects its text, and does not
+ * start a swipe.
+ */
 #[Component]
 function DrawerContent(?Html $children = null, mixed ...$rest): Node
 {
     return <div data-phem-dialog-target="content" className={{ classes('mx-auto w-full max-w-[32rem]') }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The heading of the drawer. It names the drawer (`aria-labelledby`). */
 #[Component]
 function DrawerTitle(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogTitle className={{ classes('mb-1') }} {{ ...rest }}>{{ children }}</DialogTitle>;
 }
 
+/** The text that describes the drawer (`aria-describedby`). */
 #[Component]
 function DrawerDescription(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogDescription className={{ classes('mb-6') }} {{ ...rest }}>{{ children }}</DialogDescription>;
 }
 
+/** A button that closes the drawer. */
 #[Component]
 function DrawerClose(?Html $children = null, mixed ...$rest): Node
 {

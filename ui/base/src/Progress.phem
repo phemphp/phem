@@ -10,6 +10,8 @@ use Phem\{Html, Node};
  *
  * All the parts get `data-indeterminate`, `data-progressing` or `data-complete`. Give an `id`
  * to label the bar with its ProgressLabel.
+ *
+ * @aliases progress bar, loading bar, upload progress
  */
 #[Component, Provide]
 class Progress
@@ -77,6 +79,7 @@ class Progress
     }
 }
 
+/** The label of the progress bar. It names the progress bar (`aria-labelledby`). */
 #[Component]
 function ProgressLabel(#[Context] Progress $progress, ?Html $children = null, mixed ...$rest): Node
 {
@@ -96,6 +99,7 @@ function ProgressValue(#[Context] Progress $progress, ?Html $children = null, mi
     return <span aria-hidden="true" className={{ classes('text-right text-sm text-foreground') }} {{ ...state }} {{ ...rest }}>{{ children ?? text }}</span>;
 }
 
+/** The bar of the progress: it holds the ProgressIndicator. */
 #[Component]
 function ProgressTrack(#[Context] Progress $progress, ?Html $children = null, mixed ...$rest): Node
 {
@@ -104,6 +108,7 @@ function ProgressTrack(#[Context] Progress $progress, ?Html $children = null, mi
     return <div className={{ classes('col-span-2 h-1 overflow-hidden bg-muted') }} {{ ...state }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The part of the track that shows the progress: its width is the percentage of the value. */
 #[Component]
 function ProgressIndicator(#[Context] Progress $progress, mixed ...$rest): Node
 {

@@ -12,6 +12,8 @@ use Phem\{Bound, Dynamic, Html, Node};
  * Bind it with `phem:bind`. With `nativeButton`, it is a `<button>` for a sibling `<label for>` (give
  * it an `id`), and a hidden input keeps the state. In a CheckboxGroup, the group owns the state: give the checkbox a `value`,
  * and `parent` to the checkbox that checks all the items.
+ *
+ * @aliases check box, tick, checkmark
  */
 #[Component, Provide]
 class Checkbox
@@ -89,7 +91,9 @@ class Checkbox
     }
 }
 
-/** The check mark. It shows only when the checkbox is checked, or a dash when it is indeterminate. */
+/**
+ * The check mark. It shows only when the checkbox is checked, or a dash when it is indeterminate.
+ */
 #[Component]
 function CheckboxIndicator(#[Context] Checkbox $checkbox, ?Html $children = null, mixed ...$rest): Node
 {
@@ -116,6 +120,8 @@ function CheckboxIndicator(#[Context] Checkbox $checkbox, ?Html $children = null
  * controller. `defaultValue` lists the values of the checked checkboxes, and `allValues` the values
  * that a `parent` checkbox checks. Label it with `aria-labelledby`. With a `value`, a group in a
  * group is an item of the outer group: the outer parent checks all its checkboxes.
+ *
+ * @aliases checkboxes, multiple choice, select all
  */
 #[Component, Provide]
 class CheckboxGroup

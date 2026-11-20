@@ -9,6 +9,8 @@ use Phem\{Html, Node};
  * Custom scrollbars over a native scroll container: Base UI ScrollArea.Root, on the
  * `phem-scroll-area` controller. The scrollbars show while the pointer is over the area, or while
  * the user scrolls.
+ *
+ * @aliases scrollbar, scrollable, overflow
  */
 #[Component]
 function ScrollArea(int|array $overflowEdgeThreshold = 0, ?Html $children = null, mixed ...$rest): Node
@@ -43,6 +45,7 @@ function ScrollAreaViewport(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** The content of the scroll area, in the ScrollAreaViewport. */
 #[Component]
 function ScrollAreaContent(?Html $children = null, mixed ...$rest): Node
 {
@@ -68,6 +71,10 @@ function ScrollAreaScrollbar(Orientation $orientation = Orientation::Vertical, ?
     );
 }
 
+/**
+ * The thumb of a ScrollAreaScrollbar: its size and its position show the part of the content in
+ * view.
+ */
 #[Component]
 function ScrollAreaThumb(mixed ...$rest): Node
 {

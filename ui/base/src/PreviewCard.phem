@@ -14,6 +14,8 @@ use Phem\{Html, Node};
  * anywhere in the page, shows this card. One card can have several links, and the
  * PreviewCardViewport shows the PreviewCardPayload of the link under the pointer or with the
  * focus. `triggerId` is the `id` of the link of the open card.
+ *
+ * @aliases hover card, link preview
  */
 #[Component]
 function PreviewCard(
@@ -58,6 +60,10 @@ function PreviewCardTrigger(string $href, ?string $handle = null, ?string $paylo
     );
 }
 
+/**
+ * The box of the preview card, with the preview of the link. The controller places it next to
+ * the link.
+ */
 #[Component]
 function PreviewCardPopup(?Html $children = null, mixed ...$rest): Node
 {
@@ -74,6 +80,7 @@ function PreviewCardPopup(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** The arrow of the popup, at the side of the link. */
 #[Component]
 function PreviewCardArrow(mixed ...$rest): Node
 {

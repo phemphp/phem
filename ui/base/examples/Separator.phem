@@ -1,0 +1,28 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\Separator;
+
+/**
+ * A separator element accessible to screen readers.
+ */
+#[Component]
+function SeparatorHeroDemo(): Node
+{
+    $link = 'text-sm text-neutral-950 decoration-neutral-300 decoration-1 underline-offset-2 hover:underline focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:decoration-neutral-700';
+
+    return (
+        <div className="flex gap-4 text-nowrap">
+            <a href="#" className={{ link }}>Home</a>
+            <a href="#" className={{ link }}>Pricing</a>
+            <a href="#" className={{ link }}>Blog</a>
+            <a href="#" className={{ link }}>Support</a>
+            <Separator orientation="vertical" />
+            <a href="#" className={{ link }}>Log in</a>
+            <a href="#" className={{ link }}>Sign up</a>
+        </div>
+    );
+}

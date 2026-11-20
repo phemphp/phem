@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phemc examples <key>` shows the code of an example as a complete file: the `use` statements
+  that it needs, the top-level constants and the classes that it uses, the example without its
+  docblock (the text is above it), then its helpers. A component of the examples that another
+  example uses (an icon, a part of a demo, also in another file) is a helper: it is not an
+  example of its own.
+- Fix: a comma separates the words of an `@aliases` docblock tag, so an alias can have more than
+  one word (`@aliases popup window`). Before, each word was an alias of its own.
+- `phemc search` does not score the list of the components that an example uses (it stays in
+  the context of the result), so an example does not rank above a component that it only uses.
 - New `phemc docs`, `phemc components`, `phemc examples` and `phemc search` commands give a
   coding agent the texts that it needs, with the installed versions: the docs of Phem (in the
   `phemc` binary), the components of the app and of the packages (docblocks, props with their

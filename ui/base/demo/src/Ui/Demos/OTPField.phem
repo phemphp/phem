@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{FieldDescription, FieldLabel, Form, OTPField, OTPFieldInput, OTPFieldSeparator};
-use Phem\Ui\Base\Field;
+use function Phem\Ui\Base\Examples\{OTPFieldAlphanumericDemo, OTPFieldFormDemo, OTPFieldGroupedDemo, OTPFieldHeroDemo, OTPFieldLabelingDemo, OTPFieldMaskDemo, OTPFieldNormalizeDemo, OTPFieldPlaceholderDemo};
 
 #[Page('/components/otp-field')]
 function OTPFieldPage(): Node
@@ -65,154 +64,5 @@ function OTPFieldPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
-    );
-}
-
-#[Component]
-function OTPFieldHeroDemo(): Node
-{
-    $slots = range(1, 6);
-
-    return (
-        <div className="flex w-full max-w-80 flex-col items-start gap-1">
-            <label htmlFor="otp-1" className="text-sm font-bold text-neutral-950 dark:text-white">Verification code</label>
-            <OTPField name="code" aria-describedby="otp-description">
-                {% for i in slots %}
-                    <OTPFieldInput key={{ i }} id={{ i == 1 ? 'otp-1' : null }} />
-                {% endfor %}
-            </OTPField>
-            <p id="otp-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Enter the 6-character code we sent to your device.</p>
-        </div>
-    );
-}
-
-#[Component]
-function OTPFieldLabelingDemo(): Node
-{
-    $slots = range(1, 6);
-
-    return (
-        <div className="flex w-full max-w-80 flex-col items-start gap-1">
-            <label htmlFor="labeled-1" className="text-sm font-bold text-neutral-950 dark:text-white">Verification code</label>
-            <OTPField aria-describedby="labeled-description">
-                {% for i in slots %}
-                    <OTPFieldInput key={{ i }} id={{ i == 1 ? 'labeled-1' : null }} />
-                {% endfor %}
-            </OTPField>
-            <p id="labeled-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Enter the 6-character code we sent to your device.</p>
-        </div>
-    );
-}
-
-#[Component]
-function OTPFieldFormDemo(): Node
-{
-    $slots = range(1, 6);
-
-    return (
-        <Form>
-            <Field>
-                <FieldLabel>Verification code</FieldLabel>
-                <FieldDescription>Enter the 6-character code we sent to your device.</FieldDescription>
-                <OTPField name="verificationCode">
-                    {% for i in slots %}<OTPFieldInput key={{ i }} />{% endfor %}
-                </OTPField>
-            </Field>
-        </Form>
-    );
-}
-
-#[Component]
-function OTPFieldAlphanumericDemo(): Node
-{
-    $slots = range(1, 6);
-
-    return (
-        <div className="flex w-full max-w-80 flex-col items-start gap-1">
-            <label htmlFor="recovery-1" className="text-sm font-bold text-neutral-950 dark:text-white">Recovery code</label>
-            <OTPField validationType="alphanumeric" aria-describedby="recovery-description">
-                {% for i in slots %}
-                    <OTPFieldInput key={{ i }} id={{ i == 1 ? 'recovery-1' : null }} />
-                {% endfor %}
-            </OTPField>
-            <p id="recovery-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Accept letters and numbers for backup codes such as <code className="font-mono">A7C9XZ</code>.</p>
-        </div>
-    );
-}
-
-#[Component]
-function OTPFieldGroupedDemo(): Node
-{
-    return (
-        <div className="flex w-full max-w-80 flex-col items-start gap-1">
-            <label htmlFor="grouped-1" className="text-sm font-bold text-neutral-950 dark:text-white">Verification code</label>
-            <OTPField className="items-center">
-                <div className="flex gap-2">
-                    <OTPFieldInput id="grouped-1" />
-                    <OTPFieldInput />
-                    <OTPFieldInput />
-                </div>
-                <OTPFieldSeparator className="h-px w-4 bg-current text-neutral-950 dark:text-white">{{ '' }}</OTPFieldSeparator>
-                <div className="flex gap-2">
-                    <OTPFieldInput />
-                    <OTPFieldInput />
-                    <OTPFieldInput />
-                </div>
-            </OTPField>
-        </div>
-    );
-}
-
-#[Component]
-function OTPFieldPlaceholderDemo(): Node
-{
-    $slots = range(1, 6);
-
-    return (
-        <div className="flex w-full max-w-80 flex-col items-start gap-1">
-            <label htmlFor="hints-1" className="text-sm font-bold text-neutral-950 dark:text-white">Verification code</label>
-            <OTPField aria-describedby="hints-description">
-                {% for i in slots %}
-                    <OTPFieldInput key={{ i }} id={{ i == 1 ? 'hints-1' : null }} placeholder="•" className="placeholder:text-neutral-500 focus:placeholder:text-transparent" />
-                {% endfor %}
-            </OTPField>
-            <p id="hints-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Placeholder hints can stay visible until the active slot is focused.</p>
-        </div>
-    );
-}
-
-#[Component]
-function OTPFieldNormalizeDemo(): Node
-{
-    $slots = range(1, 6);
-
-    return (
-        <div className="flex w-full max-w-80 flex-col items-start gap-1">
-            <label htmlFor="normalized-1" className="text-sm font-bold text-neutral-950 dark:text-white">Recovery code</label>
-            <OTPField validationType="alphanumeric" normalize="uppercase" aria-describedby="normalized-description">
-                {% for i in slots %}
-                    <OTPFieldInput key={{ i }} id={{ i == 1 ? 'normalized-1' : null }} />
-                {% endfor %}
-            </OTPField>
-            <p id="normalized-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Letters and digits only. Letters are converted to uppercase.</p>
-        </div>
-    );
-}
-
-#[Component]
-function OTPFieldMaskDemo(): Node
-{
-    $slots = range(1, 6);
-
-    return (
-        <div className="flex w-full max-w-80 flex-col items-start gap-1">
-            <label htmlFor="access-1" className="text-sm font-bold text-neutral-950 dark:text-white">Access code</label>
-            <OTPField mask aria-describedby="access-description">
-                {% for i in slots %}
-                    <OTPFieldInput key={{ i }} id={{ i == 1 ? 'access-1' : null }} />
-                {% endfor %}
-            </OTPField>
-            <p id="access-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Use <code className="font-mono">mask</code> to obscure the code on shared screens.</p>
-        </div>
     );
 }

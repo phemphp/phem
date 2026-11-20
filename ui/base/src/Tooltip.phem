@@ -18,6 +18,8 @@ use Phem\{Html, Node};
  * several triggers, and the `payload` of each trigger goes in the TooltipViewport. `open` and
  * `triggerId` are the state: a render with new values opens the tooltip next to the trigger with
  * that `id`, or closes it.
+ *
+ * @aliases hint, hover text, title
  */
 #[Component]
 function Tooltip(
@@ -97,6 +99,7 @@ function TooltipTrigger(
     );
 }
 
+/** The box of the tooltip, with its text. The controller places it next to the trigger. */
 #[Component]
 function TooltipPopup(?Html $children = null, mixed ...$rest): Node
 {
@@ -113,6 +116,7 @@ function TooltipPopup(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** The arrow of the popup, at the side of the trigger. */
 #[Component]
 function TooltipArrow(mixed ...$rest): Node
 {

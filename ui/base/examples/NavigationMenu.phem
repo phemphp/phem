@@ -1,0 +1,487 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\{Align, NavigationMenu, Orientation, Side};
+
+use function Phem\Ui\Base\{CaretRightIcon, NavigationMenuArrow, NavigationMenuContent, NavigationMenuIcon, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuPopup, NavigationMenuPositioner, NavigationMenuTrigger, NavigationMenuViewport, ScrollArea, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport};
+
+/**
+ * A collection of links and menus for website navigation.
+ */
+#[Component]
+function NavigationMenuHeroDemo(): Node
+{
+    $overview = [
+        ['/quick-start', 'Quick Start', 'Install and assemble your first component.'],
+        [
+            '/accessibility',
+            'Accessibility',
+            'Learn how we build accessible components.',
+        ],
+        ['/releases', 'Releases', 'See what’s new in the latest Base UI versions.'],
+        ['/about', 'About', 'Learn more about Base UI and our mission.'],
+    ];
+    $handbook = [
+        [
+            '/styling',
+            'Styling',
+            'Base UI components can be styled with plain CSS, Tailwind CSS, CSS-in-JS, or CSS Modules.',
+        ],
+        [
+            '/animation',
+            'Animation',
+            'Base UI components can be animated with CSS transitions, CSS animations, or JavaScript libraries.',
+        ],
+        [
+            '/composition',
+            'Composition',
+            'Base UI components can be replaced and composed with your own existing components.',
+        ],
+    ];
+
+    return (
+        <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
+            <NavigationMenuList>
+                <NavigationMenuItem value="overview">
+                    <NavigationMenuTrigger>
+                        Overview
+                        <NavigationMenuIcon />
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                        <ul className="m-0 grid list-none grid-cols-2 p-0 max-[500px]:grid-cols-1">
+                            {% for link in overview %}
+                                <li key={{ link[0] }}>
+                                    <NavigationMenuLink href={{ link[0] }} card>
+                                        <h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3>
+                                        <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p>
+                                    </NavigationMenuLink>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem value="handbook">
+                    <NavigationMenuTrigger>
+                        Handbook
+                        <NavigationMenuIcon />
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                        <ul className="m-0 flex max-w-[400px] list-none flex-col justify-center p-0">
+                            {% for link in handbook %}
+                                <li key={{ link[0] }}>
+                                    <NavigationMenuLink href={{ link[0] }} card>
+                                        <h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3>
+                                        <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p>
+                                    </NavigationMenuLink>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuLink href="https://github.com/mui/base-ui">GitHub</NavigationMenuLink>
+                </NavigationMenuItem>
+            </NavigationMenuList>
+            <NavigationMenuPositioner>
+                <NavigationMenuPopup>
+                    <NavigationMenuArrow />
+                    <NavigationMenuViewport />
+                </NavigationMenuPopup>
+            </NavigationMenuPositioner>
+        </NavigationMenu>
+    );
+}
+
+/**
+ * Nested submenus.
+ *
+ * A `NavigationMenu` can be nested within a higher-level `NavigationMenuContent` part to create a
+ * multi-level navigation menu.
+ */
+#[Component]
+function NavigationMenuNestedDemo(): Node
+{
+    $overview = [
+        ['/quick-start', 'Quick Start', 'Install and assemble your first component.'],
+        [
+            '/accessibility',
+            'Accessibility',
+            'Learn how we build accessible components.',
+        ],
+        ['/releases', 'Releases', 'See what’s new in the latest Base UI versions.'],
+    ];
+    $handbook = [
+        [
+            '/styling',
+            'Styling',
+            'Base UI components can be styled with plain CSS, Tailwind CSS, CSS-in-JS, or CSS Modules.',
+        ],
+        [
+            '/animation',
+            'Animation',
+            'Base UI components can be animated with CSS transitions, CSS animations, or JavaScript libraries.',
+        ],
+        [
+            '/composition',
+            'Composition',
+            'Base UI components can be replaced and composed with your own existing components.',
+        ],
+    ];
+
+    return (
+        <NavigationMenu collisionPaddingInline={{ 20 }}>
+            <NavigationMenuList>
+                <NavigationMenuItem value="overview">
+                    <NavigationMenuTrigger>
+                        Overview
+                        <NavigationMenuIcon />
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent className="min-[500px]:min-w-[400px] min-[500px]:max-w-none">
+                        <ul className="m-0 grid list-none grid-cols-2 p-0 min-[640px]:grid-cols-[12rem_12rem]">
+                            {% for link in overview %}
+                                <li key={{ link[0] }}>
+                                    <NavigationMenuLink href={{ link[0] }} card>
+                                        <h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3>
+                                        <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p>
+                                    </NavigationMenuLink>
+                                </li>
+                            {% endfor %}
+                            <li>
+                                <NavigationMenu orientation={{ Orientation.Vertical }} side={{ Side.Right }} align={{ Align.End }} sideOffset={{ 8 }} alignOffset={{ -8 }}>
+                                    <NavigationMenuList className="block">
+                                        <NavigationMenuItem value="handbook">
+                                            <NavigationMenuTrigger card>
+                                                <span className="m-0 mb-1 block text-sm leading-4 font-normal">Handbook</span>
+                                                <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">How to use Base UI effectively.</p>
+                                                <NavigationMenuIcon className="absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center justify-center">
+                                                    <CaretRightIcon />
+                                                </NavigationMenuIcon>
+                                            </NavigationMenuTrigger>
+                                            <NavigationMenuContent className="min-[500px]:min-w-[400px] min-[500px]:max-w-none">
+                                                <ul className="m-0 flex max-w-[400px] list-none flex-col justify-center p-0">
+                                                    {% for link in handbook %}
+                                                        <li key={{ link[0] }}>
+                                                            <NavigationMenuLink href={{ link[0] }} card>
+                                                                <h3 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link[1] }}</h3>
+                                                                <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link[2] }}</p>
+                                                            </NavigationMenuLink>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </NavigationMenuContent>
+                                        </NavigationMenuItem>
+                                    </NavigationMenuList>
+                                    <NavigationMenuPositioner>
+                                        <NavigationMenuPopup>
+                                            <NavigationMenuViewport />
+                                        </NavigationMenuPopup>
+                                    </NavigationMenuPositioner>
+                                </NavigationMenu>
+                            </li>
+                        </ul>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+            </NavigationMenuList>
+            <NavigationMenuPositioner>
+                <NavigationMenuPopup>
+                    <NavigationMenuArrow />
+                    <NavigationMenuViewport />
+                </NavigationMenuPopup>
+            </NavigationMenuPositioner>
+        </NavigationMenu>
+    );
+}
+
+/**
+ * Nested inline submenus.
+ *
+ * For second-level navigation that should stay in the same panel, render only the
+ * `NavigationMenuList` and the `NavigationMenuViewport` of the nested menu (no positioner and no
+ * popup), with a `defaultValue`.
+ */
+#[Component]
+function NavigationMenuInlineDemo(): Node
+{
+    $audiences = [
+        [
+            'value' => 'developers',
+            'label' => 'Developers',
+            'hint' => 'Go from idea to UI faster.',
+            'title' => 'Build product UI without giving up control',
+            'description' => 'Start with accessible parts and shape them to your app instead of working around a preset design system.',
+            'links' => [
+                [
+                    'href' => '/react/overview/quick-start',
+                    'title' => 'Quick start',
+                    'description' => 'Install Base UI and get your first interactive primitive on screen fast.',
+                ],
+                [
+                    'href' => '/react/handbook/composition',
+                    'title' => 'Composition',
+                    'description' => 'Wrap and combine parts to match your product structure without hacks.',
+                ],
+            ],
+        ],
+        [
+            'value' => 'systems',
+            'label' => 'Design Systems',
+            'hint' => 'Keep patterns aligned across teams.',
+            'title' => 'Turn shared standards into working components',
+            'description' => 'Connect tokens, states, and accessibility rules once, then give every product team the same solid starting point.',
+            'links' => [
+                [
+                    'href' => '/react/handbook/styling',
+                    'title' => 'Styling',
+                    'description' => 'Map tokens and component states to your own CSS or utility setup.',
+                ],
+                [
+                    'href' => '/react/overview/accessibility',
+                    'title' => 'Accessibility',
+                    'description' => 'Review keyboard support and semantic defaults before anything ships.',
+                ],
+                [
+                    'href' => '/react/components/tooltip',
+                    'title' => 'Tooltip',
+                    'description' => 'Set one clear pattern for lightweight help, hints, and field guidance.',
+                ],
+                [
+                    'href' => '/react/components/popover',
+                    'title' => 'Popover',
+                    'description' => 'Handle richer anchored panels like menus, inspectors, and onboarding.',
+                ],
+            ],
+        ],
+        [
+            'value' => 'managers',
+            'label' => 'Engineering Leads',
+            'hint' => 'Roll out shared UI without drag.',
+            'title' => 'Give squads clear defaults and room to move',
+            'description' => 'Use the docs to align on quality bars, upgrades, and extension points while still leaving teams space to customize.',
+            'links' => [
+                [
+                    'href' => '/react/overview/releases',
+                    'title' => 'Releases',
+                    'description' => 'Track version changes and migration notes before upgrades surprise teams.',
+                ],
+                [
+                    'href' => '/react/handbook/typescript',
+                    'title' => 'TypeScript',
+                    'description' => 'See how the primitives type custom wrappers and shared abstractions.',
+                ],
+                [
+                    'href' => '/react/handbook/forms',
+                    'title' => 'Forms',
+                    'description' => 'Standardize validation and field patterns teams reach for constantly.',
+                ],
+            ],
+        ],
+        [
+            'value' => 'startups',
+            'label' => 'Startups',
+            'hint' => 'Ship polished basics while things change.',
+            'title' => 'Get sturdy UI foundations in place early',
+            'description' => 'Cover the hard interaction details now so your team can spend more time on the product ideas that actually differentiate you.',
+            'links' => [
+                [
+                    'href' => '/react/overview/quick-start',
+                    'title' => 'Quick start',
+                    'description' => 'Get the package installed and your first component working in minutes.',
+                ],
+                [
+                    'href' => '/react/components/menu',
+                    'title' => 'Menu',
+                    'description' => 'Add action menus with keyboard support and focus handling already done.',
+                ],
+                [
+                    'href' => '/react/components/dialog',
+                    'title' => 'Dialog',
+                    'description' => 'Launch settings or upgrade flows without rebuilding focus management.',
+                ],
+            ],
+        ],
+    ];
+    $guides = [
+        'title' => 'Where teams usually start',
+        'description' => 'These are the docs people reach for first when they are turning a prototype into shared UI.',
+    ];
+    $guideLinks = [
+        [
+            'href' => '/react/overview/accessibility',
+            'title' => 'Accessibility handbook',
+            'description' => 'Take a practical pass over focus order, semantics, and keyboard support.',
+        ],
+        [
+            'href' => '/react/handbook/composition',
+            'title' => 'Composition handbook',
+            'description' => 'Learn when to wrap parts, share behavior, and expose flexible APIs.',
+        ],
+        [
+            'href' => '/react/handbook/styling',
+            'title' => 'Styling handbook',
+            'description' => 'Apply tokens and state styles without fighting the underlying markup.',
+        ],
+    ];
+
+    return (
+        <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
+            <NavigationMenuList>
+                <NavigationMenuItem value="product">
+                    <NavigationMenuTrigger>
+                        Product
+                        <NavigationMenuIcon />
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent className="w-[calc(100vw_-_40px)] transition-[opacity,translate] duration-[calc(var(--duration)*0.5),var(--duration)] ease-[ease,cubic-bezier(0.4,0,0.2,1)] data-starting-style:data-[activation-direction=left]:opacity-0 data-starting-style:data-[activation-direction=right]:opacity-0 data-ending-style:duration-[calc(var(--duration)*0.5)] data-ending-style:ease-[ease] data-starting-style:data-[activation-direction=left]:translate-x-[-2rem] data-starting-style:data-[activation-direction=right]:translate-x-[2rem] data-ending-style:data-[activation-direction=left]:translate-x-[2rem] data-ending-style:data-[activation-direction=right]:translate-x-[-2rem] p-0 min-[700px]:[width:min(675px,calc(100vw-40px))] min-[500px]:w-[calc(100vw_-_40px)] min-[500px]:max-w-none">
+                        <NavigationMenu orientation={{ Orientation.Vertical }} defaultValue="developers" className="overflow-hidden overflow-clip">
+                            <div className="grid grid-cols-1 overflow-hidden overflow-clip min-[700px]:grid-cols-[13rem_minmax(0,1fr)]">
+                                <NavigationMenuList className="flex-row gap-1 overflow-x-auto p-2 min-[700px]:h-[var(--popup-height)] min-[700px]:flex-col min-[700px]:gap-px min-[700px]:overflow-x-visible min-[700px]:overflow-y-clip min-[700px]:border-r min-[700px]:border-r-neutral-950 min-[700px]:transition-[height] min-[700px]:duration-[var(--duration)] min-[700px]:ease-[var(--easing)] dark:min-[700px]:border-r-white">
+                                    {% for menu in audiences %}
+                                        <NavigationMenuItem key={{ menu.value }} value={{ menu.value }}>
+                                            <NavigationMenuTrigger card className="m-0 flex h-auto min-w-[10rem] flex-col items-start justify-start gap-1">
+                                                <span className="text-sm leading-4 font-normal text-neutral-950 dark:text-white">{{ menu.label }}</span>
+                                                <span className="text-sm text-neutral-500 dark:text-neutral-400">{{ menu.hint }}</span>
+                                            </NavigationMenuTrigger>
+                                            <NavigationMenuContent className="flex w-full translate-x-0 flex-col min-[500px]:w-full min-[500px]:max-w-none gap-4 p-4 min-[700px]:blur-0 transition-[opacity,translate,filter] min-[700px]:duration-[calc(var(--duration)*1.35)] min-[700px]:ease-[cubic-bezier(0.16,1,0.3,1)] data-starting-style:data-[activation-direction=left]:opacity-0 data-starting-style:data-[activation-direction=right]:opacity-0 min-[700px]:data-starting-style:data-[activation-direction=up]:opacity-0 min-[700px]:data-starting-style:data-[activation-direction=down]:opacity-0 min-[700px]:data-starting-style:data-[activation-direction=up]:translate-y-[-72px] min-[700px]:data-starting-style:data-[activation-direction=down]:translate-y-[72px] min-[700px]:data-starting-style:blur-[2px] min-[700px]:data-ending-style:data-[activation-direction=up]:translate-y-[72px] min-[700px]:data-ending-style:data-[activation-direction=down]:translate-y-[-72px] min-[700px]:data-ending-style:blur-[2px]">
+                                                <div>
+                                                    <h4 className="m-0 text-base leading-5 font-normal">{{ menu.title }}</h4>
+                                                    <p className="m-0 mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ menu.description }}</p>
+                                                </div>
+                                                <ul className="-mx-2 m-0 flex list-none flex-col gap-0 p-0">
+                                                    {% for link in menu.links %}
+                                                        <li key={{ link.href }}>
+                                                            <NavigationMenuLink href={{ link.href }} card>
+                                                                <h5 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link.title }}</h5>
+                                                                <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link.description }}</p>
+                                                            </NavigationMenuLink>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </NavigationMenuContent>
+                                        </NavigationMenuItem>
+                                    {% endfor %}
+                                </NavigationMenuList>
+                                <NavigationMenuViewport className="min-h-[16.5rem] border-t border-neutral-950 min-[700px]:border-t-0 dark:border-white" />
+                            </div>
+                        </NavigationMenu>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem value="learn">
+                    <NavigationMenuTrigger>
+                        Learn
+                        <NavigationMenuIcon />
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent className="w-[calc(100vw_-_40px)] transition-[opacity,translate] duration-[calc(var(--duration)*0.5),var(--duration)] ease-[ease,cubic-bezier(0.4,0,0.2,1)] data-starting-style:data-[activation-direction=left]:opacity-0 data-starting-style:data-[activation-direction=right]:opacity-0 data-ending-style:duration-[calc(var(--duration)*0.5)] data-ending-style:ease-[ease] data-starting-style:data-[activation-direction=left]:translate-x-[-2rem] data-starting-style:data-[activation-direction=right]:translate-x-[2rem] data-ending-style:data-[activation-direction=left]:translate-x-[2rem] data-ending-style:data-[activation-direction=right]:translate-x-[-2rem] p-0 min-[700px]:[width:min(500px,calc(100vw-40px))] min-[500px]:w-[calc(100vw_-_40px)] min-[500px]:max-w-none">
+                        <div className="flex flex-col gap-4 p-4 text-neutral-950 dark:text-white">
+                            <div>
+                                <h4 className="m-0 text-base leading-5 font-normal">{{ guides.title }}</h4>
+                                <p className="m-0 mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ guides.description }}</p>
+                            </div>
+                            <ul className="-mx-2 m-0 flex list-none flex-col gap-0 p-0">
+                                {% for link in guideLinks %}
+                                    <li key={{ link.href }}>
+                                        <NavigationMenuLink href={{ link.href }} card>
+                                            <h5 className="m-0 mb-1 text-sm leading-4 font-normal">{{ link.title }}</h5>
+                                            <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">{{ link.description }}</p>
+                                        </NavigationMenuLink>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuLink href="/react/overview/releases">Releases</NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuLink href="https://github.com/mui/base-ui">GitHub</NavigationMenuLink>
+                </NavigationMenuItem>
+            </NavigationMenuList>
+            <NavigationMenuPositioner>
+                <NavigationMenuPopup>
+                    <NavigationMenuArrow />
+                    <NavigationMenuViewport />
+                </NavigationMenuPopup>
+            </NavigationMenuPositioner>
+        </NavigationMenu>
+    );
+}
+
+// A content taller than the space under the trigger: the popup stops at the available
+// height, and the content scrolls in a Scroll Area.
+/**
+ * Large menus.
+ *
+ * When you have large menu content that doesn’t fit in the viewport in some cases, you usually
+ * have two choices:
+ *
+ * - Compress the navigation menu content: give the content and the popup `max-height:
+ * var(--available-height)`, so the menu is more compact and does not overflow.
+ *
+ * - Make the navigation menu scrollable: put the content in a Scroll Area, which keeps the
+ * scrollbars hidden while the content changes, and lets the arrow stay centered.
+ */
+#[Component]
+function NavigationMenuLargeDemo(): Node
+{
+    $pages = [
+        'Accordion',
+        'Alert Dialog',
+        'Autocomplete',
+        'Avatar',
+        'Button',
+        'Checkbox',
+        'Checkbox Group',
+        'Collapsible',
+        'Combobox',
+        'Context Menu',
+        'Dialog',
+        'Drawer',
+        'Field',
+        'Fieldset',
+        'Form',
+        'Input',
+        'Menu',
+        'Menubar',
+        'Meter',
+        'Navigation Menu',
+    ];
+
+    return (
+        <NavigationMenu collisionPaddingInline={{ 20 }}>
+            <NavigationMenuList>
+                <NavigationMenuItem value="components">
+                    <NavigationMenuTrigger>
+                        Components
+                        <NavigationMenuIcon />
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent className="h-[min(20rem,var(--available-height))] p-0">
+                        <ScrollArea className="h-full">
+                            <ScrollAreaViewport className="border-0">
+                                <ScrollAreaContent>
+                                    <ul className="m-0 grid list-none grid-cols-2 p-2">
+                                        {% for name in pages %}
+                                            <li key={{ name }}>
+                                                <NavigationMenuLink href="/components/{{ name|lower|replace({' ': '-'}) }}" card className="data-pressed:bg-neutral-100 dark:data-pressed:bg-neutral-800">{{ name }}</NavigationMenuLink>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </ScrollAreaContent>
+                            </ScrollAreaViewport>
+                            <ScrollAreaScrollbar>
+                                <ScrollAreaThumb />
+                            </ScrollAreaScrollbar>
+                        </ScrollArea>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+            </NavigationMenuList>
+            <NavigationMenuPositioner>
+                <NavigationMenuPopup className="max-h-[var(--available-height)]">
+                    <NavigationMenuArrow />
+                    <NavigationMenuViewport />
+                </NavigationMenuPopup>
+            </NavigationMenuPositioner>
+        </NavigationMenu>
+    );
+}

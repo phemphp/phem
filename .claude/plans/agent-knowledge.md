@@ -1,7 +1,7 @@
 # Phem knowledge for coding agents
 
-Status: phase 1 done (2026-11-20): the engine (`compiler/crates/phemc-knowledge`) and the CLI.
-Phases 2 to 5 are open. The illustrated version is a private artifact:
+Status: phases 1 and 2 done (2026-11-20): the engine (`compiler/crates/phemc-knowledge`), the
+CLI, and the examples of ui-base (`ui/base/examples/`). Phases 3 to 5 are open. The illustrated version is a private artifact:
 https://claude.ai/artifact/GpUdLcBbsR3ptYYUswxLhJ. This file is the source of truth.
 
 ## Context
@@ -285,7 +285,7 @@ Hook in `editors/claude-code/hooks/hooks.json`:
    `@aliases`, `extra.phem.examples` and `extra.phem.guide`, `docs` (with `--toc`), `components`,
    `search` (with `--eval`), `check` on a file or stdin, the demo option. Snapshot tests on a
    fixture package. The phem retrieval eval. The contract in `docs/package-authoring.md`.
-2. ui-base examples (in this repository or in the ui-base repository after the split): move them,
+2. Done. ui-base examples (in this repository or in the ui-base repository after the split): move them,
    composer keys, guide, aliases, dist rules, demo and `Gallery` read them, docblocks, its eval.
 3. `phemc mcp` with protocol tests.
 4. Claude Code plugin: skills, hook, `.mcp.json`, `docs/cheatsheet.md`.

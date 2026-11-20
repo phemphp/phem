@@ -9,6 +9,7 @@
 pub mod catalog;
 pub mod docs;
 pub mod examples;
+mod imports;
 pub mod markdown;
 mod scanned;
 pub mod search;
@@ -111,8 +112,10 @@ impl Knowledge {
         for e in &self.examples {
             // The aliases of the family find its examples too.
             let aliases = self.catalog.components.iter().filter(|c| c.package == e.package && c.name == e.family).flat_map(|c| c.aliases.clone()).collect::<Vec<_>>();
-            let text = format!("{}\n\n{}", e.doc.join("\n\n"), aliases.join(" "));
-            out.push(Chunk { key: e.key.clone(), kind: "example", context: e.context(), text, scored_context: true });
+            // The context lists the components that the example uses: it would rank the
+            // example with each of them, so the index reads only the family.
+            let text = format!("{}\n\nExample of {}. {}", e.doc.join("\n\n"), e.family, aliases.join(", "));
+            out.push(Chunk { key: e.key.clone(), kind: "example", context: e.context(), text, scored_context: false });
         }
 
         out

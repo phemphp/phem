@@ -11,6 +11,8 @@ use Phem\{Bound, Html, Node};
  * `defaultValue` is the value of the selected item (a list with `multiple`). With a `name` (or
  * `phem:bind`), a hidden input keeps the value for the form. By default the popup goes over the
  * trigger (`alignItemWithTrigger`). Give an `id` to label the trigger with its SelectLabel.
+ *
+ * @aliases dropdown, picker, listbox, choice
  */
 #[Component, Provide]
 class Select
@@ -80,6 +82,7 @@ class Select
     }
 }
 
+/** The label of the select. It names the trigger (`aria-labelledby`). */
 #[Component]
 function SelectLabel(#[Context] Select $select, ?Html $children = null, mixed ...$rest): Node
 {
@@ -135,12 +138,16 @@ function SelectValue(#[Context] Select $select, ?string $placeholder = null, ?st
     );
 }
 
+/** The icon of the trigger, a caret by default. */
 #[Component]
 function SelectIcon(?Html $children = null, mixed ...$rest): Node
 {
     return <span data-phem-select-target="icon" aria-hidden="true" className={{ classes('flex') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
 }
 
+/**
+ * The box of the select, with the list of the items. The controller places it next to the trigger.
+ */
 #[Component]
 function SelectPopup(?Html $children = null, mixed ...$rest): Node
 {
@@ -157,12 +164,17 @@ function SelectPopup(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/**
+ * The list of the items in the popup (`listbox`). It scrolls when the items are higher than the
+ * screen.
+ */
 #[Component]
 function SelectList(?Html $children = null, mixed ...$rest): Node
 {
     return <div data-phem-select-target="list" className={{ classes('relative py-1 scroll-py-6 overflow-y-auto max-h-[var(--available-height)]') }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** An arrow at the top of the popup: a hover scrolls the list up. */
 #[Component]
 function SelectScrollUpArrow(?Html $children = null, mixed ...$rest): Node
 {
@@ -173,6 +185,7 @@ function SelectScrollUpArrow(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** An arrow at the bottom of the popup: a hover scrolls the list down. */
 #[Component]
 function SelectScrollDownArrow(?Html $children = null, mixed ...$rest): Node
 {
@@ -218,18 +231,21 @@ function SelectItemText(?Html $children = null, mixed ...$rest): Node
     return <span data-phem-select-target="itemText" className={{ classes('col-start-2') }} {{ ...rest }}>{{ children }}</span>;
 }
 
+/** A group of items of the list, with a SelectGroupLabel. */
 #[Component]
 function SelectGroup(?Html $children = null, mixed ...$rest): Node
 {
     return <div data-phem-select-target="group" {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The label of a SelectGroup. */
 #[Component]
 function SelectGroupLabel(?Html $children = null, mixed ...$rest): Node
 {
     return <div data-phem-select-target="groupLabel" className={{ classes('py-1.5 pr-4 pl-[2.125rem] text-sm text-muted-foreground select-none') }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** A line between two items or two groups of the list. */
 #[Component]
 function SelectSeparator(mixed ...$rest): Node
 {

@@ -1,0 +1,121 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\{Component, MapForm, State};
+use Phem\{Event, Node, Validation};
+use Phem\Ui\Base\{Button, Field};
+use Symfony\Component\Validator\Constraints as Assert;
+
+use function Phem\Ui\Base\{FieldControl, FieldError, FieldLabel, Form};
+
+// The Server Function of the Base UI demo: the server answers after 1 second. "admin"
+// is reserved, and another name is unavailable one time out of two. While the request
+// runs, phem locks the button with `aria-disabled="true"`, and the Button has the
+// disabled look.
+/**
+ * A native form element with consolidated error handling.
+ *
+ * The `onSubmit` handler of a `Form` runs on the server, as a Server Function. The browser does
+ * not send the form: the submit is an event of the page, and the handler gets it as its `Event $e`
+ * argument.
+ *
+ * `$e->form` has the values of the form as an array. The key is the `name` of each control. The
+ * value is a string, or a list of strings when many controls have the same name. Read a value with
+ * a default, as in `$e->form['username'] ?? ''`.
+ *
+ * The handler sets the state of the component, and its errors show in the `FieldError` of each
+ * field. While the request runs, phem locks the submit button with `aria-disabled="true"`. To get
+ * the values as a typed object, see Validate with #[MapForm].
+ */
+#[Component]
+final class FormHeroDemo
+{
+    #[State] public string $username = 'admin';
+    #[State] public ?string $error = null;
+
+    public function submit(Event $e): void
+    {
+        $this->username = (string) ($e->form['username'] ?? '');
+        sleep(1);
+
+        $this->error = match (true) {
+            'admin' === $this->username => "'admin' is reserved for system use",
+            1 === random_int(0, 1) => $this->username.' is unavailable',
+            default => null,
+        };
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Form onSubmit={{ submit }}>
+                <Field id="username">
+                    <FieldLabel>Username</FieldLabel>
+                    <FieldControl type="text" name="username" autocomplete="username" required defaultValue={{ username }} placeholder="e.g. alice132" aria-invalid={{ error ? 'true' : null }} aria-describedby={{ error ? 'username-error' : null }} />
+                    <FieldError>{{ error }}</FieldError>
+                </Field>
+                <Button type="submit">Submit</Button>
+            </Form>
+        );
+    }
+}
+
+// The values of the form as an object, with the constraints of the Validator. When
+// the object is not valid, the handler does not run, and each error shows in the
+// FieldError of its field.
+final class Person
+{
+    #[Assert\NotBlank(message: 'Name is required')]
+    public ?string $name = null;
+
+    #[Assert\NotNull(message: 'Age is required')]
+    #[Assert\Positive(message: 'Age must be a positive number')]
+    public ?int $age = null;
+}
+
+/**
+ * Validate with #[MapForm].
+ *
+ * Add `#[MapForm]` to a parameter of the handler to get the values of the form as an object. The
+ * Validator checks its `#[Assert]` constraints before the handler runs, and the errors go to the
+ * `Validation` property of the component.
+ *
+ * Show the error of each field with `validation.error()` in its `FieldError`. The field of an
+ * error is the property path of the object, so name each control as its property.
+ */
+#[Component]
+final class FormMapFormDemo
+{
+    #[State] public Validation $validation;
+    #[State] public ?string $saved = null;
+
+    public function submit(#[MapForm] Person $person): void
+    {
+        $this->saved = \sprintf('Saved %s, %d', $person->name, $person->age);
+    }
+
+    public function render(): Node
+    {
+        $fields = [
+            'name' => ['Name', 'Enter name'],
+            'age' => ['Age', 'Enter age'],
+        ];
+
+        return (
+            <Form onSubmit={{ submit }}>
+                {% for field, info in fields %}
+                    <Field key={{ field }} id={{ field }}>
+                        <FieldLabel>{{ info[0] }}</FieldLabel>
+                        <FieldControl name={{ field }} placeholder={{ info[1] }} aria-invalid={{ validation.hasError(field) ? 'true' : null }} aria-describedby={{ validation.hasError(field) ? field ~ '-error' : null }} />
+                        <FieldError>{{ validation.error(field) }}</FieldError>
+                    </Field>
+                {% endfor %}
+                <Button type="submit">Submit</Button>
+                {% if saved %}
+                    <p role="status" className="m-0 text-sm">{{ saved }}</p>
+                {% endif %}
+            </Form>
+        );
+    }
+}

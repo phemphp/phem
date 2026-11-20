@@ -9,6 +9,8 @@ use Phem\{Bound, Html, Node};
  * A text input for a number, with steppers and a scrub area: Base UI NumberField.Root, on the
  * `phem-number-field` controller. With a `name` (or `phem:bind`), a hidden input keeps the raw value
  * for the form. `format` takes the options of `Intl.NumberFormat`.
+ *
+ * @aliases number input, stepper, spinner, quantity
  */
 #[Component]
 function NumberField(
@@ -78,12 +80,14 @@ function NumberFieldScrubAreaCursor(?Html $children = null, mixed ...$rest): Nod
     );
 }
 
+/** The group of the input and its two buttons. */
 #[Component]
 function NumberFieldGroup(?Html $children = null, mixed ...$rest): Node
 {
     return <div data-phem-number-field-target="group" className={{ classes('flex h-8') }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The text input of the number. The arrow keys change the value by the step. */
 #[Component]
 function NumberFieldInput(#[Context] ?Toolbar $toolbar = null, mixed ...$rest): Node
 {
@@ -92,6 +96,7 @@ function NumberFieldInput(#[Context] ?Toolbar $toolbar = null, mixed ...$rest): 
     return <input data-phem-number-field-target="input" data-phem-toolbar-target={{ item }} className={{ classes('h-full w-[7ch] border border-input bg-background px-2 text-left text-sm font-normal text-foreground tabular-nums any-pointer-coarse:text-base focus:z-1 focus:outline-2 focus:-outline-offset-1 focus:outline-ring') }} {{ ...rest }} />;
 }
 
+/** The button that takes a step from the value. A press that stays repeats it. */
 #[Component]
 function NumberFieldDecrement(?Html $children = null, mixed ...$rest): Node
 {
@@ -102,6 +107,7 @@ function NumberFieldDecrement(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** The button that adds a step to the value. A press that stays repeats it. */
 #[Component]
 function NumberFieldIncrement(?Html $children = null, mixed ...$rest): Node
 {

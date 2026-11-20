@@ -5,7 +5,11 @@ namespace Phem\Ui\Base;
 use Phem\Attribute\{Component, Context, Prop, Provide};
 use Phem\{Html, Node};
 
-/** A section that opens and closes: Base UI Collapsible.Root, on the `phem-collapsible` controller. */
+/**
+ * A section that opens and closes: Base UI Collapsible.Root, on the `phem-collapsible` controller.
+ *
+ * @aliases expandable, show more, disclosure, toggle section
+ */
 #[Component, Provide]
 class Collapsible
 {

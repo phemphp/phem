@@ -8,6 +8,8 @@ use Phem\{Html, Node};
 /**
  * An image of a user with a fallback, such as the initials: Base UI Avatar.Root, on the
  * `phem-avatar` controller. The fallback shows while the image is not loaded.
+ *
+ * @aliases profile picture, user image, initials
  */
 #[Component]
 function Avatar(?Html $children = null, mixed ...$rest): Node

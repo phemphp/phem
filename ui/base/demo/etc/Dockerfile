@@ -49,7 +49,7 @@ WORKDIR /app/ui/base/demo
 # after phemc build, because composer update boots the kernel before the components exist.
 RUN composer update --no-dev --optimize-autoloader --no-interaction --no-progress \
  && bin/console importmap:install \
- && phemc build src --no-warmup \
+ && phemc build src --examples-of phem/ui-base --no-warmup \
  && bin/console tailwind:build --minify \
  && rm -rf var/cache/prod \
  && bin/console cache:warmup \

@@ -190,7 +190,8 @@ pub fn doc_tags(doc: &str) -> DocTags {
                     tags.methods.push(DocMethod { offset: rest_offset + m.offset, ..m });
                 }
             }
-            "aliases" => tags.aliases.extend(rest.split([',', ' ']).map(str::trim).filter(|a| !a.is_empty()).map(String::from)),
+            // A comma ends an alias: an alias can have more than one word (`popup window`).
+            "aliases" => tags.aliases.extend(rest.split(',').map(str::trim).filter(|a| !a.is_empty()).map(String::from)),
             _ => {}
         }
     }
@@ -304,12 +305,12 @@ mod tests {
 
     #[test]
     fn reads_the_paragraphs_and_the_aliases() {
-        let doc = "/**\n * A modal dialog.\n * On a controller.\n *\n * The popup is native.\n *\n * @aliases modal, lightbox\n * @aliases popup\n */";
+        let doc = "/**\n * A modal dialog.\n * On a controller.\n *\n * The popup is native.\n *\n * @aliases modal, lightbox\n * @aliases popup window\n */";
         let tags = doc_tags(doc);
 
         assert_eq!(tags.summary, "A modal dialog. On a controller. The popup is native.");
         assert_eq!(tags.paragraphs, ["A modal dialog. On a controller.", "The popup is native."]);
-        assert_eq!(tags.aliases, ["modal", "lightbox", "popup"]);
+        assert_eq!(tags.aliases, ["modal", "lightbox", "popup window"]);
         assert_eq!(doc_tags("/** One line. */").paragraphs, ["One line."]);
     }
 

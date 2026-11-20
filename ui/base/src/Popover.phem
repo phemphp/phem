@@ -17,6 +17,8 @@ use Phem\{Html, Node};
  * several triggers, and the PopoverViewport shows the `payload` of the trigger that opened it.
  * `defaultOpen` and `triggerId` are the state: a render with new values opens the popover next to
  * the trigger with that `id`.
+ *
+ * @aliases popup, floating panel, flyout
  */
 #[Component]
 function Popover(
@@ -91,6 +93,7 @@ function PopoverTrigger(
     );
 }
 
+/** The box of the popover, with its content. The controller places it next to the trigger. */
 #[Component]
 function PopoverPopup(?Html $children = null, mixed ...$rest): Node
 {
@@ -107,6 +110,7 @@ function PopoverPopup(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** The arrow of the popup, at the side of the trigger. */
 #[Component]
 function PopoverArrow(mixed ...$rest): Node
 {
@@ -115,12 +119,14 @@ function PopoverArrow(mixed ...$rest): Node
     return <div data-phem-popover-target="arrow" aria-hidden="true" className={{ classes(base) }} {{ ...rest }} />;
 }
 
+/** The heading of the popover. It names the popup (`aria-labelledby`). */
 #[Component]
 function PopoverTitle(?Html $children = null, mixed ...$rest): Node
 {
     return <h2 data-phem-popover-target="title" className={{ classes('text-sm font-bold') }} {{ ...rest }}>{{ children }}</h2>;
 }
 
+/** The text that describes the popover (`aria-describedby`). */
 #[Component]
 function PopoverDescription(?Html $children = null, mixed ...$rest): Node
 {
@@ -129,6 +135,7 @@ function PopoverDescription(?Html $children = null, mixed ...$rest): Node
     return <p data-phem-popover-target="description" className={{ classes(base) }} {{ ...rest }}>{{ children }}</p>;
 }
 
+/** A button that closes the popover. */
 #[Component]
 function PopoverClose(?Html $children = null, mixed ...$rest): Node
 {

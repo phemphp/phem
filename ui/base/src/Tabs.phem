@@ -10,6 +10,8 @@ use Phem\{Dynamic, Html, Node};
  *
  * `defaultValue` selects a tab on load: the `value` of a tab. Each tab shows the panel with the same
  * `value`. With no `defaultValue`, the first tab that is not disabled is selected.
+ *
+ * @aliases tab bar, tabbed panels, segmented control
  */
 #[Component, Provide]
 class Tabs
@@ -46,6 +48,7 @@ class Tabs
     }
 }
 
+/** The row of the TabsTab buttons (`tablist`), with an optional TabsIndicator. */
 #[Component]
 function TabsList(?Html $children = null, mixed ...$rest): Node
 {
@@ -78,13 +81,17 @@ function TabsTab(string $value, #[Context] Tabs $tabs, bool $disabled = false, ?
     );
 }
 
-/** A box under the selected tab that moves with the selection (`--active-tab-left`, `--active-tab-width`). */
+/**
+ * A box under the selected tab that moves with the selection (`--active-tab-left`,
+ * `--active-tab-width`).
+ */
 #[Component]
 function TabsIndicator(mixed ...$rest): Node
 {
     return <span data-phem-tabs-target="indicator" className={{ classes('absolute top-0 left-0 -z-1 h-full w-(--active-tab-width) translate-x-(--active-tab-left) border-x border-t border-border bg-background transition-[translate,width] duration-150 ease-in-out') }} {{ ...rest }} />;
 }
 
+/** The content of one tab: it shows when the TabsTab with the same `value` is active. */
 #[Component]
 function TabsPanel(string $value, #[Context] Tabs $tabs, ?Html $children = null, mixed ...$rest): Node
 {

@@ -11,6 +11,8 @@ use Phem\{Html, Node};
  * In a ToggleGroup, the group owns the state: give the toggle a `value`. In a Toolbar, the toggle is
  * an item of the toolbar. Show the state with the `data-pressed` variant, for example
  * `group-data-pressed:block` on an icon in it.
+ *
+ * @aliases toggle button, pressed button, on off button
  */
 #[Component]
 function Toggle(
@@ -55,6 +57,8 @@ function Toggle(
 /**
  * A group of toggle buttons with one state: Base UI ToggleGroup, on the `phem-toggle-group`
  * controller. `defaultValue` lists the values of the pressed toggles. Give it an `aria-label`.
+ *
+ * @aliases segmented buttons, button group
  */
 #[Component, Provide]
 class ToggleGroup

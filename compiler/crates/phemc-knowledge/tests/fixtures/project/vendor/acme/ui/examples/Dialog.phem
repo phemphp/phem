@@ -8,6 +8,15 @@ use Phem\Node;
 
 use function Acme\Ui\{Button, DialogPopup, DialogTitle, DialogTrigger};
 
+// The fields of the form.
+const PROFILE_FIELDS = ['name', 'email'];
+
+// The values of the form: a class of the example file, not a component.
+final class Profile
+{
+    public ?string $name = null;
+}
+
 /**
  * Dialog with a form.
  *
@@ -16,12 +25,18 @@ use function Acme\Ui\{Button, DialogPopup, DialogTitle, DialogTrigger};
 #[Component]
 function DialogFormDemo(): Node
 {
+    $fields = PROFILE_FIELDS;
+    $profile = new Profile();
+
     return (
         <Dialog title="Edit">
             <DialogTrigger>Edit profile</DialogTrigger>
             <DialogPopup>
                 <DialogTitle>Edit profile</DialogTitle>
-                <form><Button type="submit">Save</Button></form>
+                <form>
+                    {% for field in fields %}<input key={{ field }} name={{ field }} />{% endfor %}
+                    <Button type="submit"><SaveIcon /> Save</Button>
+                </form>
             </DialogPopup>
         </Dialog>
     );
@@ -31,5 +46,12 @@ function DialogFormDemo(): Node
 #[Component]
 function DialogNestedDemo(): Node
 {
-    return <Dialog title="Outer"><DialogPopup><Dialog title="Inner" /></DialogPopup></Dialog>;
+    return <Dialog title="Outer"><DialogPopup><Dialog title="Inner" /><CloseIcon /></DialogPopup></Dialog>;
+}
+
+/** The icon of the save button: a helper of DialogFormDemo, not an example. */
+#[Component]
+function SaveIcon(): Node
+{
+    return <svg aria-hidden="true" />;
 }

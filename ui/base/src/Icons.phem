@@ -7,54 +7,65 @@ use Phem\Node;
 
 // The icons of the Base UI demos (16 px). They are decorative: `aria-hidden`.
 
+/** An icon: a plus. It inherits the color of the text (`currentColor`). */
 #[Component]
 function PlusIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="round" className={{ classes('block') }} {{ ...rest }}><path d="M1.5 8h13M8 14.5v-13" /></svg>;
 }
 
+/** An icon: a minus. It inherits the color of the text (`currentColor`). */
 #[Component]
 function MinusIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="round" className={{ classes('block') }} {{ ...rest }}><path d="M1.5 8h13" /></svg>;
 }
 
+/** An icon: a caret to the right. It inherits the color of the text (`currentColor`). */
 #[Component]
 function CaretRightIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={{ classes('block') }} {{ ...rest }}><path d="M6 12V4l4.5 4z" /></svg>;
 }
 
+/** An icon: a caret down. It inherits the color of the text (`currentColor`). */
 #[Component]
 function CaretDownIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={{ classes('block') }} {{ ...rest }}><path d="M12 6H4l4 4.5z" /></svg>;
 }
 
+/** An icon: a caret up. It inherits the color of the text (`currentColor`). */
 #[Component]
 function CaretUpIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={{ classes('block') }} {{ ...rest }}><path d="M12 10H4l4-4.5z" /></svg>;
 }
 
+/**
+ * An icon: a caret up and down, for a select. It inherits the color of the text (`currentColor`).
+ */
 #[Component]
 function CaretUpDownIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={{ classes('block') }} {{ ...rest }}><path d="M11 10H5l3 3.5zm0-4H5l3-3.5z" /></svg>;
 }
 
+/** An icon: a check mark. It inherits the color of the text (`currentColor`). */
 #[Component]
 function CheckIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className={{ classes('block') }} {{ ...rest }}><path d="m2.5 8.5 4 4 7-9" /></svg>;
 }
 
+/** An icon: an X, for a close button. It inherits the color of the text (`currentColor`). */
 #[Component]
 function XIcon(mixed ...$rest): Node
 {
     return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="round" className={{ classes('block') }} {{ ...rest }}><path d="m4.5 4.5 7 7m-7 0 7-7" /></svg>;
 }
 
+/** An icon: a warning sign. It inherits the color of the text (`currentColor`). */
 #[Component]
 function WarningIcon(mixed ...$rest): Node
 {

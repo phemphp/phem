@@ -9,6 +9,8 @@ use Phem\{Html, Node};
  * A row of controls with one tab stop: Base UI Toolbar.Root, on the `phem-toolbar` controller. The
  * arrow keys move the focus between the items. A Toggle, a ToggleGroup and a Select trigger in it
  * are items and groups of the toolbar.
+ *
+ * @aliases button bar, action bar
  */
 #[Component, Provide]
 class Toolbar
@@ -60,6 +62,7 @@ function ToolbarButton(bool $disabled = false, ?Html $children = null, mixed ...
     );
 }
 
+/** A link in the toolbar. The arrow keys move the focus to it, as to the other items. */
 #[Component]
 function ToolbarLink(string $href, ?Html $children = null, mixed ...$rest): Node
 {
@@ -75,7 +78,9 @@ function ToolbarLink(string $href, ?Html $children = null, mixed ...$rest): Node
     );
 }
 
-/** A text field of the toolbar. The arrow keys move the caret until it is at an edge of the text. */
+/**
+ * A text field of the toolbar. The arrow keys move the caret until it is at an edge of the text.
+ */
 #[Component]
 function ToolbarInput(mixed ...$rest): Node
 {
@@ -104,6 +109,7 @@ function ToolbarGroup(bool $disabled = false, ?Html $children = null, mixed ...$
     );
 }
 
+/** A line between two groups of items of the toolbar. */
 #[Component]
 function ToolbarSeparator(#[Context] Toolbar $toolbar, mixed ...$rest): Node
 {

@@ -47,7 +47,14 @@ fn an_enum_prop_shows_its_values() {
 fn an_example_shows_its_code() {
     let k = knowledge();
     let names: Vec<_> = k.examples.iter().map(|e| e.key.as_str()).collect();
+    // SaveIcon is a helper of DialogFormDemo: its code and the constant go with the example.
     assert_eq!(names, ["Acme\\Ui\\Examples\\DialogFormDemo", "Acme\\Ui\\Examples\\DialogNestedDemo"]);
+    assert_eq!((k.examples[0].declarations.len(), k.examples[0].helpers.len()), (2, 1));
+
+    // A helper of another file, with no docblock: its code starts at its attributes.
+    let nested = &k.examples[1];
+    assert_eq!(nested.helpers, ["#[Component]\nfunction CloseIcon(): Node\n{\n    return <svg aria-hidden=\"true\" />;\n}"]);
+    assert!(!nested.uses.iter().any(|u| u.ends_with("CloseIcon")));
 
     insta::assert_snapshot!(k.examples[0].md());
 }

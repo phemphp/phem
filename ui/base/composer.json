@@ -8,11 +8,11 @@
         { "name": "Yonel Ceruto", "email": "open@yceruto.dev" }
     ],
     "repositories": [
-        { "type": "path", "url": "../..", "options": { "symlink": true, "versions": { "phem/phem": "0.4.x-dev" } } }
+        { "type": "path", "url": "../..", "options": { "symlink": true, "versions": { "phem/phem": "0.6.x-dev" } } }
     ],
     "require": {
         "php": ">=8.4",
-        "phem/phem": "^0.4.9",
+        "phem/phem": "^0.6",
         "symfony/config": "^7.4|^8.0",
         "symfony/dependency-injection": "^7.4|^8.0",
         "symfony/http-kernel": "^7.4|^8.0"
@@ -35,7 +35,7 @@
         "psr-4": { "Phem\\Ui\\Base\\Tests\\": "tests/" }
     },
     "extra": {
-        "phem": { "source": "src" }
+        "phem": { "source": "src", "examples": "examples", "guide": "README.md" }
     },
     "minimum-stability": "dev",
     "prefer-stable": true,

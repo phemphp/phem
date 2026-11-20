@@ -24,6 +24,8 @@ use Phem\{Html, Node};
  * `autoHighlight` highlights the first match while the query is not empty (`'always'`: also when
  * it is empty). With `filter={{ false }}`, the browser hides no item: an `onInput` handler on the
  * MenuInput renders the items of the query.
+ *
+ * @aliases dropdown, dropdown menu, actions menu, kebab menu, overflow menu
  */
 #[Component, Provide]
 class Menu
@@ -201,6 +203,7 @@ function MenuSubmenuTrigger(#[Context] Menu $menu, bool $disabled = false, ?Html
     );
 }
 
+/** The box of the menu, with its items. The controller places it next to the trigger. */
 #[Component]
 function MenuPopup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
 {
@@ -210,6 +213,7 @@ function MenuPopup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest
     return <div popover="manual" hidden className={{ classes(base) }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The arrow of the popup, at the side of the trigger. */
 #[Component]
 function MenuArrow(#[Context] Menu $menu, mixed ...$rest): Node
 {
@@ -258,6 +262,7 @@ function MenuLinkItem(#[Context] Menu $menu, string $href, ?Html $children = nul
     return <a href={{ href }} className={{ classes(base) }} {{ ...target }} {{ ...rest }}>{{ children }}</a>;
 }
 
+/** A line between two items or two groups of the menu. */
 #[Component]
 function MenuSeparator(#[Context] Menu $menu, mixed ...$rest): Node
 {
@@ -266,6 +271,7 @@ function MenuSeparator(#[Context] Menu $menu, mixed ...$rest): Node
     return <div role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-border') }} {{ ...target }} {{ ...rest }} />;
 }
 
+/** A group of items of the menu, with a MenuGroupLabel. */
 #[Component]
 function MenuGroup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
 {
@@ -274,6 +280,7 @@ function MenuGroup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest
     return <div {{ ...target }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The label of a MenuGroup. */
 #[Component]
 function MenuGroupLabel(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
 {

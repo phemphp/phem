@@ -3,5 +3,6 @@ services:
         autowire: true
         autoconfigure: true
 
-    # The repository of the Async search demos: the components get it in their constructor.
-    App\People\PersonRepository: ~
+    # The repository of the Async search examples of phem/ui-base: the components get it in their
+    # constructor.
+    Phem\Ui\Base\Examples\PersonRepository: ~

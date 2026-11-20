@@ -1,0 +1,234 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\{Field, Fieldset, Orientation, Slider};
+
+use function Phem\Ui\Base\{FieldsetLegend, Form, SliderControl, SliderIndicator, SliderLabel, SliderThumb, SliderTrack, SliderValue};
+
+/**
+ * An easily stylable range input.
+ */
+#[Component]
+function SliderHeroDemo(): Node
+{
+    return (
+        <Slider defaultValue={{ 25 }}>
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb aria-label="Volume" />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
+    );
+}
+
+/**
+ * Labeling a slider.
+ *
+ * A single-thumb slider without a visible label (such as a volume control) can be labeled using
+ * `aria-label` on `SliderThumb`. A visible label can be created using `SliderLabel`. For a
+ * multi-thumb range slider with a visible label, add `aria-label` on each `SliderThumb` to
+ * distinguish them.
+ */
+#[Component]
+function SliderLabelingDemo(): Node
+{
+    return (
+        <div className="flex flex-col gap-6">
+            <Slider defaultValue={{ 50 }}>
+                <SliderControl>
+                    <SliderTrack>
+                        <SliderIndicator />
+                        <SliderThumb aria-label="Volume" />
+                    </SliderTrack>
+                </SliderControl>
+            </Slider>
+            <Slider defaultValue={{ 30 }}>
+                <SliderLabel>Volume</SliderLabel>
+                <SliderControl>
+                    <SliderTrack>
+                        <SliderIndicator />
+                        <SliderThumb />
+                    </SliderTrack>
+                </SliderControl>
+            </Slider>
+            <Slider defaultValue={{ [25, 75] }}>
+                <SliderLabel>Price range</SliderLabel>
+                <SliderControl>
+                    <SliderTrack>
+                        <SliderIndicator />
+                        <SliderThumb index={{ 0 }} aria-label="Minimum price" />
+                        <SliderThumb index={{ 1 }} aria-label="Maximum price" />
+                    </SliderTrack>
+                </SliderControl>
+            </Slider>
+        </div>
+    );
+}
+
+/**
+ * Range slider.
+ *
+ * To create a range slider, pass an array of values and place a `SliderThumb` for each value in
+ * the array, with the `index` of its value.
+ *
+ * Thumbs can be configured to behave differently when they collide during pointer interactions
+ * using the `thumbCollisionBehavior` prop on `Slider`.
+ */
+#[Component]
+function SliderRangeDemo(): Node
+{
+    return (
+        <Slider defaultValue={{ [25, 45] }}>
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb index={{ 0 }} aria-label="Minimum value" />
+                    <SliderThumb index={{ 1 }} aria-label="Maximum value" />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
+    );
+}
+
+/**
+ * Steps.
+ *
+ * Use the `step` prop to snap the value to multiples of a given increment, and `largeStep` to
+ * control the increment when using Shift + Arrow Up/Arrow Down.
+ */
+#[Component]
+function SliderStepsDemo(): Node
+{
+    return (
+        <Slider className="w-56" defaultValue={{ 400 }} min={{ 100 }} max={{ 900 }} step={{ 100 }} largeStep={{ 200 }}>
+            <SliderLabel className="cursor-default font-normal">Playback speed</SliderLabel>
+            <SliderValue className="text-end" />
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
+    );
+}
+
+/**
+ * Marks.
+ *
+ * Render your own tick marks, positioning each mark along the track as a percentage of the value
+ * range.
+ *
+ * Marks are independent of the value’s granularity—pair them with the `step` prop to snap the
+ * thumb to each mark.
+ */
+#[Component]
+function SliderMarksDemo(): Node
+{
+    $marks = [0, 25, 50, 75, 100];
+
+    return (
+        <Slider className="block w-56" defaultValue={{ 40 }}>
+            <SliderControl className="py-2.5">
+                <SliderTrack>
+                    <SliderIndicator />
+                    {% for mark in marks %}
+                        <div key={{ mark }} aria-hidden="true" className="absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 bg-neutral-950 dark:bg-white" style="left: {{ mark }}%"></div>
+                    {% endfor %}
+                    <SliderThumb aria-label="Volume" />
+                </SliderTrack>
+            </SliderControl>
+            <div className="relative h-4 select-none" aria-hidden="true">
+                {% for mark in marks %}
+                    <span key={{ mark }} className="absolute -translate-x-1/2 text-xs whitespace-nowrap text-neutral-600 dark:text-neutral-400" style="left: {{ mark }}%">{{ mark }}</span>
+                {% endfor %}
+            </div>
+        </Slider>
+    );
+}
+
+/**
+ * Thumb alignment.
+ *
+ * Set `thumbAlignment="edge"` to inset the thumb such that its edge aligns with the edge of the
+ * control when the value is at `min` or `max`, without overflowing the control like the default
+ * `"center"` alignment.
+ */
+#[Component]
+function SliderThumbAlignmentDemo(): Node
+{
+    return (
+        <Slider thumbAlignment="edge" defaultValue={{ 25 }}>
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb aria-label="Volume" />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
+    );
+}
+
+/**
+ * Vertical.
+ *
+ * Set `orientation` to `Orientation::Vertical` on `Slider` to build a vertical slider.
+ */
+#[Component]
+function SliderVerticalDemo(): Node
+{
+    return (
+        <Slider orientation={{ Orientation.Vertical }} defaultValue={{ 35 }}>
+            <SliderControl className="h-32">
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb aria-label="Volume" />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
+    );
+}
+
+/**
+ * Form integration.
+ *
+ * To use a slider in a form, pass the slider `name` to `Slider`. For grouped multi-thumb range
+ * sliders in forms, Fieldset can provide the shared visible label while each thumb keeps its own
+ * `aria-label`.
+ */
+#[Component]
+function SliderFormDemo(): Node
+{
+    return (
+        <Form className="items-center gap-8">
+            <Slider name="volume" defaultValue={{ 50 }}>
+                <SliderLabel>Volume</SliderLabel>
+                <SliderControl>
+                    <SliderTrack>
+                        <SliderIndicator />
+                        <SliderThumb />
+                    </SliderTrack>
+                </SliderControl>
+            </Slider>
+            <Field>
+                <Fieldset>
+                    <FieldsetLegend className="text-sm">Price range</FieldsetLegend>
+                    <Slider name="price[]" defaultValue={{ [25, 75] }}>
+                        <SliderControl>
+                            <SliderTrack>
+                                <SliderIndicator />
+                                <SliderThumb index={{ 0 }} aria-label="Minimum price" />
+                                <SliderThumb index={{ 1 }} aria-label="Maximum price" />
+                            </SliderTrack>
+                        </SliderControl>
+                    </Slider>
+                </Fieldset>
+            </Field>
+        </Form>
+    );
+}

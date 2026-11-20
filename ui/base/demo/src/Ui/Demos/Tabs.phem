@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{TabsIndicator, TabsList, TabsPanel, TabsTab};
-use Phem\Ui\Base\Tabs;
+use function Phem\Ui\Base\Examples\{TabsAnimatedPanelsDemo, TabsHeroDemo, TabsLinksDemo};
 
 #[Page('/components/tabs')]
 function TabsPage(): Node
@@ -33,86 +32,5 @@ function TabsPage(): Node
                 </Example>
             </Examples>
         </DemoPage>
-    );
-}
-
-#[Component]
-function TabsHeroDemo(): Node
-{
-    return (
-        <Tabs defaultValue="overview">
-            <TabsList>
-                <TabsTab value="overview">Overview</TabsTab>
-                <TabsTab value="projects">Projects</TabsTab>
-                <TabsTab value="account">Account</TabsTab>
-                <TabsIndicator />
-            </TabsList>
-            <div className="grid w-full min-h-32 grid-cols-1 border border-neutral-950 dark:border-white">
-                <TabsPanel value="overview">
-                    <p>Workspace stats and activity.</p>
-                </TabsPanel>
-                <TabsPanel value="projects">
-                    <p>Milestones and deadlines.</p>
-                </TabsPanel>
-                <TabsPanel value="account">
-                    <p>Profile and preferences.</p>
-                </TabsPanel>
-            </div>
-        </Tabs>
-    );
-}
-
-#[Component]
-function TabsAnimatedPanelsDemo(): Node
-{
-    $panel = 'col-start-1 row-start-1 flex w-full items-center justify-center bg-transparent p-4 text-center text-sm text-neutral-950 outline-none focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white [transition:opacity_175ms_ease,translate_350ms_cubic-bezier(0.22,1,0.36,1)] data-starting-style:opacity-0 data-ending-style:opacity-0 motion-safe:data-starting-style:data-[activation-direction=left]:translate-x-[-50%] motion-safe:data-starting-style:data-[activation-direction=right]:translate-x-[50%] motion-safe:data-ending-style:data-[activation-direction=left]:translate-x-[50%] motion-safe:data-ending-style:data-[activation-direction=right]:translate-x-[-50%]';
-
-    return (
-        <Tabs id="animated" defaultValue="overview">
-            <TabsList>
-                <TabsTab value="overview">Overview</TabsTab>
-                <TabsTab value="projects">Projects</TabsTab>
-                <TabsTab value="account">Account</TabsTab>
-                <TabsIndicator />
-            </TabsList>
-            <div className="relative grid min-h-32 w-full grid-cols-1 overflow-hidden border border-neutral-950 bg-white dark:border-white dark:bg-neutral-950">
-                <TabsPanel value="overview" className={{ panel }}>
-                    <p>Workspace stats and activity.</p>
-                </TabsPanel>
-                <TabsPanel value="projects" className={{ panel }}>
-                    <p>Milestones and deadlines.</p>
-                </TabsPanel>
-                <TabsPanel value="account" className={{ panel }}>
-                    <p>Profile and preferences.</p>
-                </TabsPanel>
-            </div>
-        </Tabs>
-    );
-}
-
-// Links that change the hash of this page: a hash link opens with no Turbo visit.
-#[Component]
-function TabsLinksDemo(): Node
-{
-    return (
-        <Tabs id="links" defaultValue="overview">
-            <TabsList>
-                <TabsTab value="overview" href="#overview">Overview</TabsTab>
-                <TabsTab value="projects" href="#projects">Projects</TabsTab>
-                <TabsTab value="account" href="#account">Account</TabsTab>
-                <TabsIndicator />
-            </TabsList>
-            <div className="grid w-full min-h-32 grid-cols-1 border border-neutral-950 dark:border-white">
-                <TabsPanel value="overview">
-                    <p>Workspace stats and activity.</p>
-                </TabsPanel>
-                <TabsPanel value="projects">
-                    <p>Milestones and deadlines.</p>
-                </TabsPanel>
-                <TabsPanel value="account">
-                    <p>Profile and preferences.</p>
-                </TabsPanel>
-            </div>
-        </Tabs>
     );
 }

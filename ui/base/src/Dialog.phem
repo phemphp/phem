@@ -17,6 +17,8 @@ use Phem\{Html, Node};
  * AlertDialog in the popup: a request to close opens it when the user changed a field. Its
  * DialogDiscard closes the two dialogs. `finalFocus` is a CSS selector of the element that gets
  * the focus after the close. For the first focus, give a field the `autofocus` attribute.
+ *
+ * @aliases modal, lightbox, popup window, overlay
  */
 #[Component, Provide]
 class Dialog
@@ -89,7 +91,10 @@ function DialogTrigger(
     );
 }
 
-/** The box of the dialog. In a DialogViewport, it is a `div` with the same border and background, and the classes of the caller place it. */
+/**
+ * The box of the dialog. In a DialogViewport, it is a `div` with the same border and background,
+ * and the classes of the caller place it.
+ */
 #[Component]
 function DialogPopup(#[Context] ?Dialog $dialog = null, #[Context] ?DialogViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
 {

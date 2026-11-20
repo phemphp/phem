@@ -1,0 +1,61 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\Button;
+
+/**
+ * A button component that can be rendered as another tag or focusable when disabled.
+ */
+#[Component]
+function ButtonHeroDemo(): Node
+{
+    return <Button>Submit</Button>;
+}
+
+/**
+ * Rendering as another tag.
+ *
+ * The button can remain keyboard accessible while being rendered as another tag, such as a
+ * `<div>`, by specifying `tag="div"`.
+ */
+#[Component]
+function ButtonAnotherTagDemo(): Node
+{
+    return <Button tag="div">Button that can contain complex children</Button>;
+}
+
+// The click sends a request that ends after 4 seconds, as in the Base UI demo. `phem:lock`
+// disables the button at once in the browser, and the label shows "Submitting": the server keeps
+// no loading state. The button keeps the focus, and the answer enables it again.
+/**
+ * Loading states.
+ *
+ * For buttons that enter a loading state after activation, specify `focusableWhenDisabled` so
+ * focus remains on the button while it is disabled. Because some browser and screen reader
+ * combinations do not reliably announce changes to a focused button’s descendant text, use
+ * `aria-labelledby` to make the changing text the button’s explicit accessible name.
+ */
+#[Component]
+final class ButtonLoadingDemo
+{
+    public function submit(): void
+    {
+        // Simulate a request that ends after 4 seconds.
+        sleep(4);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Button focusableWhenDisabled aria-labelledby="loading-label" onClick={{ submit }} phem:lock>
+                <span id="loading-label">
+                    <span className="in-aria-disabled:hidden">Submit</span>
+                    <span className="not-in-aria-disabled:hidden">Submitting</span>
+                </span>
+            </Button>
+        );
+    }
+}

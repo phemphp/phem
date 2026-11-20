@@ -13,6 +13,8 @@ use Phem\{Html, Node};
  * The other props are the props of Dialog: `handle` links detached triggers (an
  * AlertDialogTrigger with the same `handle`), and `triggerId` is the `id` of the trigger that
  * opened it.
+ *
+ * @aliases confirm, confirmation, destructive action, are you sure
  */
 #[Component]
 function AlertDialog(bool $defaultOpen = false, ?Html $children = null, mixed ...$rest): Node
@@ -20,30 +22,41 @@ function AlertDialog(bool $defaultOpen = false, ?Html $children = null, mixed ..
     return <Dialog defaultOpen={{ defaultOpen }} disablePointerDismissal {{ ...rest }}>{{ children }}</Dialog>;
 }
 
+/**
+ * The button that opens the alert dialog. With a `handle`, it is a detached trigger: it can be
+ * anywhere in the page.
+ */
 #[Component]
 function AlertDialogTrigger(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogTrigger {{ ...rest }}>{{ children }}</DialogTrigger>;
 }
 
+/**
+ * The box of the alert dialog: a DialogPopup with the `alertdialog` role. A press outside does not
+ * close it.
+ */
 #[Component]
 function AlertDialogPopup(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogPopup role="alertdialog" {{ ...rest }}>{{ children }}</DialogPopup>;
 }
 
+/** The heading of the alert dialog. It names the alert dialog (`aria-labelledby`). */
 #[Component]
 function AlertDialogTitle(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogTitle {{ ...rest }}>{{ children }}</DialogTitle>;
 }
 
+/** The text that describes the alert dialog (`aria-describedby`). */
 #[Component]
 function AlertDialogDescription(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogDescription {{ ...rest }}>{{ children }}</DialogDescription>;
 }
 
+/** A button that closes the alert dialog, for example "Cancel" or the button of the action. */
 #[Component]
 function AlertDialogClose(?Html $children = null, mixed ...$rest): Node
 {

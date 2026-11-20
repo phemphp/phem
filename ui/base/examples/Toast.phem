@@ -1,0 +1,331 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\{Component, State};
+use Phem\{Event, Node, Reply, ToastType};
+use Phem\Ui\Base\{Button, ToastViewport};
+
+use function Phem\Ui\Base\{ToastClose, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
+
+// The viewport with no name shows the toasts with no `viewport` option: the toasts of
+// the other examples also show in it.
+/**
+ * Generates toast notifications.
+ */
+#[Component]
+final class ToastHeroDemo
+{
+    #[State] public int $count = 0;
+
+    public function create(Reply $reply): void
+    {
+        ++$this->count;
+        $reply->toast(
+            'This is a toast notification.',
+            title: 'Toast '.$this->count.' created',
+        );
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div className="contents">
+                <Button onClick={{ create }}>Create toast</Button>
+                <ToastViewport />
+            </div>
+        );
+    }
+}
+
+// The click copies the text and shows the toast in the browser: no server event. While the toast
+// shows, the button has `data-copied`: its check icon, and the look of a disabled button.
+/**
+ * Anchored toasts.
+ *
+ * Toasts can be anchored to a specific element: give the toast the `anchor` option with the `id`
+ * of the element. This is useful for showing contextual feedback like transient "Copied" toasts
+ * that appear near the button that triggered the action.
+ *
+ * Anchored toasts should be rendered in a separate `ToastViewport` from stacked toasts: an
+ * `anchored` viewport with a `name`, and the `viewport` option of the toast. The anchored viewport
+ * places each toast on its `side`, with its `sideOffset`.
+ */
+#[Component]
+function ToastAnchoredDemo(): Node
+{
+    $toast = json_encode([
+        'message' => 'Copied',
+        'duration' => 1500,
+        'anchor' => 'toast-copy',
+        'viewport' => 'anchored',
+    ]);
+
+    return (
+        <div className="contents">
+            <Button
+                id="toast-copy"
+                aria-label="Copy to clipboard"
+                data-controller="phem-clipboard"
+                data-phem-clipboard-text-value="composer require phem/ui-base"
+                data-phem-clipboard-duration-value={{ 1500 }}
+                data-action="phem-clipboard#copy"
+                data-phem-toast-show={{ toast }}
+                className="group w-8 px-0 data-copied:pointer-events-none data-copied:border-neutral-500 data-copied:text-neutral-500 dark:data-copied:border-neutral-400 dark:data-copied:text-neutral-400"
+            >
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" className="block group-data-copied:hidden">
+                    <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                </svg>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="hidden group-data-copied:block">
+                    <path d="m2.5 8.5 4 4 7-9" />
+                </svg>
+            </Button>
+            <ToastViewport name="anchored" anchored sideOffset={{ 10 }} />
+        </div>
+    );
+}
+
+/**
+ * Custom position.
+ *
+ * The position of the toasts is controlled by the `position` prop of `ToastViewport`:
+ * `bottom-right` (the default) or `top-center`. A toast at the top closes with a swipe up. The
+ * following shows a top-center position.
+ */
+#[Component]
+final class ToastPositionDemo
+{
+    #[State] public int $count = 0;
+
+    /** A toast at the top of the screen. */
+    public function create(Reply $reply): void
+    {
+        ++$this->count;
+        $reply->toast(
+            'This is a toast notification.',
+            title: 'Toast '.$this->count.' created',
+            viewport: 'top',
+        );
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div className="contents">
+                <Button onClick={{ create }}>Create toast</Button>
+                <ToastViewport name="top" position="top-center" />
+            </div>
+        );
+    }
+}
+
+/**
+ * Undo action.
+ *
+ * When adding a toast, the `action` option gives the label of an action button inside of it. A
+ * click on the button closes the toast and calls the `onCall` handler of the viewport, with the
+ * `action`, the `id` and the `data` of the toast in `$e->detail`: this enables the ability to undo
+ * an action associated with the toast.
+ */
+#[Component]
+final class ToastUndoDemo
+{
+    /** A toast with an action button. */
+    public function perform(Reply $reply): void
+    {
+        $reply->toast(
+            'You can undo this action.',
+            ToastType::Success,
+            10000,
+            'Action performed',
+            action: 'Undo',
+            viewport: 'undo',
+        );
+    }
+
+    /** The action button of a toast calls the `onCall` handler of the viewport. */
+    public function undo(Event $e, Reply $reply): void
+    {
+        if ('Undo' === ($e->detail['action'] ?? null)) {
+            $reply->toast('Action undone', viewport: 'undo');
+        }
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div className="contents">
+                <Button onClick={{ perform }}>Perform action</Button>
+                <ToastViewport name="undo" onCall={{ undo }} />
+            </div>
+        );
+    }
+}
+
+// The toasts show in the viewport with no name, in the hero.
+/**
+ * Promise.
+ *
+ * An asynchronous toast can be created with three possible states: `loading`, `success`, and
+ * `error`. The `type` string matches these states to change the styling.
+ *
+ * Here, the button has `data-phem-toast-show` with the detail of a `loading` toast: it shows at
+ * the click, before the server answers. The handler answers after two seconds with a `success` or
+ * an `error` toast with the same `id`, which updates the loading toast.
+ */
+#[Component]
+final class ToastPromiseDemo
+{
+    #[State] public int $promises = 0;
+
+    /** The loading toast of the click becomes the toast of the answer. */
+    public function run(Reply $reply): void
+    {
+        $id = 'promise-'.++$this->promises;
+
+        // Simulate an API request that ends after 2 seconds.
+        usleep(2_000_000);
+
+        if (random_int(1, 10) <= 7) {
+            $reply->toast('Success: operation completed', ToastType::Success, id: $id);
+        } else {
+            $reply->toast('Error: operation failed', ToastType::Error, id: $id);
+        }
+    }
+
+    public function render(): Node
+    {
+        $loading = json_encode([
+            'message' => 'Loading data…',
+            'type' => 'loading',
+            'id' => 'promise-'.($this->promises + 1),
+            'duration' => 0,
+        ]);
+
+        return (
+            <Button onClick={{ run }} data-phem-toast-show={{ loading }}>Run promise</Button>
+        );
+    }
+}
+
+/**
+ * Custom.
+ *
+ * A toast with custom data can be created by passing an array to the `data` option. Each
+ * `ToastData` part of the template of the viewport shows the value of its `name`.
+ */
+#[Component]
+final class ToastCustomDemo
+{
+    /** A toast with data for the template. */
+    public function create(Reply $reply): void
+    {
+        $reply->toast(
+            'Toast with custom data',
+            data: ['userId' => '123'],
+            viewport: 'custom',
+        );
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div className="contents">
+                <Button onClick={{ create }}>Create custom toast</Button>
+                <ToastViewport name="custom">
+                    <ToastRoot>
+                        <ToastContent>
+                            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                <ToastDescription className="font-bold" />
+                                <p className="text-sm">data.userId is <ToastData name="userId" /></p>
+                            </div>
+                            <ToastClose>Dismiss</ToastClose>
+                        </ToastContent>
+                    </ToastRoot>
+                </ToastViewport>
+            </div>
+        );
+    }
+}
+
+/**
+ * Deduplicated toast.
+ *
+ * When you show the same toast by `id`, the toast on the screen updates, and its `data-update-key`
+ * attribute counts the updates. Its `data-updated` attribute comes again with each update, so a
+ * CSS animation on `[data-updated]` plays again while the same toast stays on the screen.
+ */
+#[Component]
+final class ToastDeduplicatedDemo
+{
+    /** The same id updates the toast on the screen. */
+    public function save(Reply $reply): void
+    {
+        $reply->toast(
+            'Click again while it is visible to replay the pulse.',
+            title: 'Draft saved',
+            id: 'save-status',
+            viewport: 'pulse',
+        );
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div className="contents">
+                <Button onClick={{ save }}>Save draft</Button>
+                <ToastViewport name="pulse">
+                    <ToastRoot className="data-updated:animate-[toast-pulse_0.28s_ease]">
+                        <ToastContent>
+                            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                <ToastTitle />
+                                <ToastDescription />
+                            </div>
+                            <ToastClose>Dismiss</ToastClose>
+                        </ToastContent>
+                    </ToastRoot>
+                </ToastViewport>
+            </div>
+        );
+    }
+}
+
+// The toasts show in the viewport with no name, in the hero.
+/**
+ * Varying heights.
+ *
+ * Toasts with varying heights are stacked by clamping every toast's height to the frontmost toast
+ * at index 0 using the `--toast-frontmost-height` CSS variable, while the `data-behind` attribute
+ * hides the content of the toasts behind it. Avoid sizing `ToastContent` to the root's height
+ * (such as `height: 100%`), as resizing it alongside the root cancels the root's height
+ * transition.
+ */
+#[Component]
+final class ToastVaryingHeightsDemo
+{
+    private const array TEXTS = [
+        'Short message.',
+        'A bit longer message that spans two lines.',
+        'This is a longer description that intentionally takes more vertical space to demonstrate stacking with varying heights.',
+        'An even longer description that should span multiple lines so we can verify the clamped collapsed height and smooth expansion animation when hovering or focusing the viewport.',
+    ];
+
+    #[State] public int $count = 0;
+
+    public function create(Reply $reply): void
+    {
+        ++$this->count;
+        $reply->toast(
+            self::TEXTS[random_int(0, \count(self::TEXTS) - 1)],
+            title: 'Toast '.$this->count.' created',
+        );
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Button onClick={{ create }}>Create varying height toast</Button>
+        );
+    }
+}

@@ -9,6 +9,8 @@ use Phem\{Html, Node};
  * A group of fields with a legend: Base UI Fieldset.Root. `--fieldset-gap` is the space between
  * the fields and after the legend: a `<legend>` is not a flex item, so it gets the space as a
  * margin. Change the space with the variable, for example `className="[--fieldset-gap:0.5rem]"`.
+ *
+ * @aliases group of fields, legend, form section
  */
 #[Component]
 function Fieldset(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
@@ -25,7 +27,10 @@ function Fieldset(bool $disabled = false, ?Html $children = null, mixed ...$rest
     );
 }
 
-/** The legend of a fieldset: Base UI Fieldset.Legend. It is a `<legend>`, so the browser names the group with it. */
+/**
+ * The legend of a fieldset: Base UI Fieldset.Legend. It is a `<legend>`, so the browser names the
+ * group with it.
+ */
 #[Component]
 function FieldsetLegend(?Html $children = null, mixed ...$rest): Node
 {

@@ -11,6 +11,8 @@ use Phem\Attribute\Component;
  *
  * Use the parts of Combobox in it: ComboboxLabel, ComboboxInput, ComboboxPopup, ComboboxList,
  * ComboboxItem, ComboboxEmpty, ComboboxStatus, ComboboxGroup…
+ *
+ * @aliases typeahead, suggestions, autosuggest, search input
  */
 #[Component]
 class Autocomplete extends Combobox

@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{CollapsiblePanel, CollapsibleTrigger};
-use Phem\Ui\Base\Collapsible;
+use function Phem\Ui\Base\Examples\{CollapsibleHeroDemo, CollapsibleHiddenUntilFoundDemo};
 
 #[Page('/components/collapsible')]
 function CollapsiblePage(): Node
@@ -27,36 +26,5 @@ function CollapsiblePage(): Node
                 </Example>
             </Examples>
         </DemoPage>
-    );
-}
-
-#[Component]
-function CollapsibleHeroDemo(): Node
-{
-    return (
-        <Collapsible>
-            <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
-            <CollapsiblePanel>
-                <div className="flex flex-col gap-2 px-3.5 py-2">
-                    <div>alien-bean-pasta</div>
-                    <div>wild-irish-burrito</div>
-                    <div>horse-battery-staple</div>
-                </div>
-            </CollapsiblePanel>
-        </Collapsible>
-    );
-}
-
-// The code example of base-ui.com, as a demo: search for “business days” to open the panel.
-#[Component]
-function CollapsibleHiddenUntilFoundDemo(): Node
-{
-    return (
-        <Collapsible>
-            <CollapsibleTrigger>Shipping details</CollapsibleTrigger>
-            <CollapsiblePanel hiddenUntilFound>
-                <div className="px-3.5 py-2">Standard shipping takes 3–5 business days.</div>
-            </CollapsiblePanel>
-        </Collapsible>
     );
 }

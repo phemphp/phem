@@ -12,22 +12,44 @@ Uses: Dialog, DialogTrigger, DialogPopup, DialogTitle, Button
 Source: vendor/acme/ui/examples/Dialog.phem
 
 ```php
-/**
- * Dialog with a form.
- *
- * Use it to edit a record without a page change.
- */
+<?phem
+
+use Acme\Ui\Dialog;
+use Phem\Attribute\Component;
+use Phem\Node;
+
+use function Acme\Ui\{Button, DialogPopup, DialogTitle, DialogTrigger};
+
+const PROFILE_FIELDS = ['name', 'email'];
+
+final class Profile
+{
+    public ?string $name = null;
+}
+
 #[Component]
 function DialogFormDemo(): Node
 {
+    $fields = PROFILE_FIELDS;
+    $profile = new Profile();
+
     return (
         <Dialog title="Edit">
             <DialogTrigger>Edit profile</DialogTrigger>
             <DialogPopup>
                 <DialogTitle>Edit profile</DialogTitle>
-                <form><Button type="submit">Save</Button></form>
+                <form>
+                    {% for field in fields %}<input key={{ field }} name={{ field }} />{% endfor %}
+                    <Button type="submit"><SaveIcon /> Save</Button>
+                </form>
             </DialogPopup>
         </Dialog>
     );
+}
+
+#[Component]
+function SaveIcon(): Node
+{
+    return <svg aria-hidden="true" />;
 }
 ```

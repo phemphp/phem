@@ -10,6 +10,8 @@ use Phem\{Bound, Dynamic, Html, Node};
  *
  * `defaultValue` is the value of the checked radio. A hidden input keeps the value for a form
  * (`name`). Bind it to a state of the app with `phem:bind`. Label the group with `aria-labelledby`.
+ *
+ * @aliases radio buttons, options, single choice
  */
 #[Component, Provide]
 class RadioGroup

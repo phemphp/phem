@@ -2,11 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
-use Phem\Ui\Base\Separator;
+use function Phem\Ui\Base\Examples\SeparatorHeroDemo;
 
 #[Page('/components/separator')]
 function SeparatorPage(): Node
@@ -17,23 +17,5 @@ function SeparatorPage(): Node
                 <SeparatorHeroDemo />
             </Hero>
         </DemoPage>
-    );
-}
-
-#[Component]
-function SeparatorHeroDemo(): Node
-{
-    $link = 'text-sm text-neutral-950 decoration-neutral-300 decoration-1 underline-offset-2 hover:underline focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:decoration-neutral-700';
-
-    return (
-        <div className="flex gap-4 text-nowrap">
-            <a href="#" className={{ link }}>Home</a>
-            <a href="#" className={{ link }}>Pricing</a>
-            <a href="#" className={{ link }}>Blog</a>
-            <a href="#" className={{ link }}>Support</a>
-            <Separator orientation="vertical" />
-            <a href="#" className={{ link }}>Log in</a>
-            <a href="#" className={{ link }}>Sign up</a>
-        </div>
     );
 }

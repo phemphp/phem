@@ -19,4 +19,4 @@ FRANKENPHP_WORKER_CONFIG=$(printf 'watch %s\n' \
     '/app/config/**/*.{php,yaml}')
 export FRANKENPHP_WORKER_CONFIG
 
-exec phemc watch src --exec "frankenphp run --config etc/Caddyfile"
+exec phemc watch src --examples-of phem/ui-base --exec "frankenphp run --config etc/Caddyfile"

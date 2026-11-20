@@ -10,14 +10,14 @@ help: ## Show the targets
 install: ## Install the Composer dependencies (phem/phem from the root of the repository). composer.lock is not in git: a newer composer.json updates it
 	$(DC) ui sh -c 'if [ ! -f composer.lock ] || [ composer.json -nt composer.lock ]; then composer update --no-interaction && touch composer.lock; else composer install --no-interaction; fi'
 
-test: install ## Run PHPUnit (render tests of the components)
+test: check ## Check the components and the examples, then run PHPUnit (render tests of the components)
 	$(DC) ui vendor/bin/phpunit $(ARGS)
 
 test-e2e: ## Run the browser tests of the demo (Playwright PHP, no web server). Pass PHPUnit options with ARGS="--filter Dialog"
 	$(DC) --build ui-e2e bin/test $(ARGS)
 
-check: install ## Check the components with phemc
-	$(DC) ui sh -c '"$$PHEMC_BIN" check src'
+check: install ## Check the components and the examples with phemc, and run the retrieval eval of the search
+	$(DC) ui sh -c '"$$PHEMC_BIN" check tests/app/src --examples-of phem/ui-base && "$$PHEMC_BIN" search --eval tests/retrieval.yaml --src tests/app/src'
 
 shell: ## Open a shell in the image
 	$(DC) ui bash

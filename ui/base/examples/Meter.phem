@@ -1,0 +1,26 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\Meter;
+
+use function Phem\Ui\Base\{MeterIndicator, MeterLabel, MeterTrack, MeterValue};
+
+/**
+ * A graphical display of a numeric value within a range.
+ */
+#[Component]
+function MeterHeroDemo(): Node
+{
+    return (
+        <Meter id="storage" value={{ 24 }}>
+            <MeterLabel>Storage Used</MeterLabel>
+            <MeterValue />
+            <MeterTrack>
+                <MeterIndicator />
+            </MeterTrack>
+        </Meter>
+    );
+}

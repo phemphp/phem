@@ -5,7 +5,11 @@ namespace Phem\Ui\Base;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-/** A separator: Base UI Separator. */
+/**
+ * A separator: Base UI Separator.
+ *
+ * @aliases divider, rule, line
+ */
 #[Component]
 function Separator(Orientation $orientation = Orientation::Horizontal, mixed ...$rest): Node
 {

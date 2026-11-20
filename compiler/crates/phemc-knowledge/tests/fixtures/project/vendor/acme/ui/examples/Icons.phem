@@ -1,0 +1,12 @@
+<?phem
+
+namespace Acme\Ui\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+#[Component]
+function CloseIcon(): Node
+{
+    return <svg aria-hidden="true" />;
+}

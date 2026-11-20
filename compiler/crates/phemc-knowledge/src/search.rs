@@ -18,7 +18,8 @@ pub struct Chunk {
     #[serde(skip)]
     pub text: String,
     /// Whether the index reads the context. The context of a component repeats the name of its
-    /// family, which its key has already: it would rank the parts with the root.
+    /// family, which its key has already: it would rank the parts with the root. The context of
+    /// an example lists all the components that it uses.
     #[serde(skip)]
     pub scored_context: bool,
 }

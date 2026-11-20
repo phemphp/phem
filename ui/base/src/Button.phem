@@ -15,6 +15,8 @@ use Phem\{Html, Node};
  *
  * A button with another tag (`tag="div"`), and a button with `focusableWhenDisabled`, use the
  * `phem-button` controller: Enter and Space click the button, and a disabled button does nothing.
+ *
+ * @aliases submit, action, link button
  */
 #[Component]
 function Button(

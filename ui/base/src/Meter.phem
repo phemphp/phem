@@ -5,7 +5,12 @@ namespace Phem\Ui\Base;
 use Phem\Attribute\{Component, Context, Prop, Provide};
 use Phem\{Html, Node};
 
-/** A graphical display of a value in a range: Base UI Meter.Root. Give an `id` to label it with its MeterLabel. */
+/**
+ * A graphical display of a value in a range: Base UI Meter.Root. Give an `id` to label it with its
+ * MeterLabel.
+ *
+ * @aliases gauge, level, quota, usage bar
+ */
 #[Component, Provide]
 class Meter
 {
@@ -52,6 +57,7 @@ class Meter
     }
 }
 
+/** The label of the meter. It names the meter (`aria-labelledby`). */
 #[Component]
 function MeterLabel(#[Context] Meter $meter, ?Html $children = null, mixed ...$rest): Node
 {
@@ -60,6 +66,7 @@ function MeterLabel(#[Context] Meter $meter, ?Html $children = null, mixed ...$r
     return <span id={{ id }} className={{ classes('text-sm font-normal text-foreground') }} {{ ...rest }}>{{ children }}</span>;
 }
 
+/** The value of the meter as a text, for example `24%`. Its children replace the text. */
 #[Component]
 function MeterValue(#[Context] Meter $meter, ?Html $children = null, mixed ...$rest): Node
 {
@@ -68,12 +75,14 @@ function MeterValue(#[Context] Meter $meter, ?Html $children = null, mixed ...$r
     return <span aria-hidden="true" className={{ classes('text-right text-sm text-foreground') }} {{ ...rest }}>{{ children ?? text }}</span>;
 }
 
+/** The bar of the meter: it holds the MeterIndicator. */
 #[Component]
 function MeterTrack(?Html $children = null, mixed ...$rest): Node
 {
     return <div className={{ classes('col-span-2 h-3 overflow-hidden bg-muted') }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The part of the track that shows the value: its width is the percentage of the value. */
 #[Component]
 function MeterIndicator(#[Context] Meter $meter, mixed ...$rest): Node
 {

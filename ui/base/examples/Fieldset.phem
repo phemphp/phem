@@ -1,0 +1,30 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\{Field, Fieldset};
+
+use function Phem\Ui\Base\{FieldControl, FieldLabel, FieldsetLegend};
+
+/**
+ * A native fieldset element with an easily stylable legend.
+ */
+#[Component]
+function FieldsetHeroDemo(): Node
+{
+    return (
+        <Fieldset>
+            <FieldsetLegend>Billing details</FieldsetLegend>
+            <Field id="company">
+                <FieldLabel>Company</FieldLabel>
+                <FieldControl placeholder="Enter company name" />
+            </Field>
+            <Field id="tax-id">
+                <FieldLabel>Tax ID</FieldLabel>
+                <FieldControl placeholder="Enter fiscal number" />
+            </Field>
+        </Fieldset>
+    );
+}

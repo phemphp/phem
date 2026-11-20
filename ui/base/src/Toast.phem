@@ -28,6 +28,8 @@ enum ToastPosition: string
  * UI Toast.Positioner, on the `side` with the `sideOffset`. Its default template has no arrow, as
  * the Base UI demo: put a ToastArrow in your template to point to the anchor. A `name` takes only
  * the toasts with this `viewport`: `$reply->toast('Copied', anchor: 'copy', viewport: 'anchored')`.
+ *
+ * @aliases toast, notification, snackbar, flash message
  */
 #[Component, Provide]
 class ToastViewport
@@ -92,7 +94,9 @@ class ToastViewport
     }
 }
 
-/** A toast: Base UI Toast.Root. Its look follows the `position` and the `anchored` of the viewport. */
+/**
+ * A toast: Base UI Toast.Root. Its look follows the `position` and the `anchored` of the viewport.
+ */
 #[Component]
 function ToastRoot(#[Context] ?ToastViewport $viewport = null, ?Html $children = null, mixed ...$rest): Node
 {

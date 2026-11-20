@@ -4,12 +4,12 @@
     "type": "project",
     "license": "MIT",
     "repositories": [
-        { "type": "path", "url": "../../..", "options": { "symlink": true, "versions": { "phem/phem": "0.4.x-dev" } } },
+        { "type": "path", "url": "../../..", "options": { "symlink": true, "versions": { "phem/phem": "0.6.x-dev" } } },
         { "type": "path", "url": "..", "options": { "symlink": true, "versions": { "phem/ui-base": "dev-main" } } }
     ],
     "require": {
         "php": ">=8.4",
-        "phem/phem": "^0.4.9",
+        "phem/phem": "^0.6",
         "phem/ui-base": "dev-main",
         "phiki/phiki": "^2.2",
         "symfony/asset-mapper": "^8.0",
@@ -35,7 +35,10 @@
         "symfony/css-selector": "^8.0"
     },
     "autoload": {
-        "psr-4": { "App\\": "src/" }
+        "psr-4": {
+            "App\\": "src/",
+            "Phem\\Ui\\Base\\Examples\\": "vendor/phem/ui-base/examples/"
+        }
     },
     "autoload-dev": {
         "psr-4": { "App\\Tests\\": "tests/" }

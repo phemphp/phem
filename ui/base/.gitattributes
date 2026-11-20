@@ -1,1 +1,9 @@
 *.phem linguist-language=PHP
+
+# The Composer dist has the components, the theme, the examples and the guide: the coding agents
+# read the examples in vendor/ (see the `extra.phem.examples` key of composer.json).
+/demo export-ignore
+/tests export-ignore
+/Makefile export-ignore
+/TODO.md export-ignore
+/phpunit.xml.dist export-ignore

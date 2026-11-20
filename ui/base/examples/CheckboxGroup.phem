@@ -1,0 +1,219 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\{Checkbox, CheckboxGroup, Field, Fieldset};
+
+use function Phem\Ui\Base\{CheckboxIndicator, FieldItem, FieldLabel, FieldsetLegend, Form};
+
+/**
+ * Provides shared state to a series of checkboxes.
+ */
+#[Component]
+function CheckboxGroupHeroDemo(): Node
+{
+    $apples = [
+        'fuji-apple' => 'Fuji',
+        'gala-apple' => 'Gala',
+        'granny-smith-apple' => 'Granny Smith',
+    ];
+
+    return (
+        <CheckboxGroup aria-labelledby="apples-caption" defaultValue={{ ['fuji-apple'] }}>
+            <div className="text-sm font-bold" id="apples-caption">Apples</div>
+            {% for value, name in apples %}
+                <label key={{ value }} className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+                    <Checkbox name="apple" value={{ value }}>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    {{ name }}
+                </label>
+            {% endfor %}
+        </CheckboxGroup>
+    );
+}
+
+/**
+ * Labeling a checkbox group.
+ *
+ * Label the group with `aria-labelledby` and a sibling label element. An enclosing `<label>` is
+ * the simplest labeling pattern for each checkbox.
+ */
+#[Component]
+function CheckboxGroupLabelingDemo(): Node
+{
+    $protocols = ['http' => 'HTTP', 'https' => 'HTTPS', 'ssh' => 'SSH'];
+
+    return (
+        <CheckboxGroup aria-labelledby="protocols-label">
+            <div id="protocols-label" className="text-sm font-bold">Allowed network protocols</div>
+            {% for value, name in protocols %}
+                <label key={{ value }} className="flex items-center gap-2 text-sm">
+                    <Checkbox value={{ value }}>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    {{ name }}
+                </label>
+            {% endfor %}
+        </CheckboxGroup>
+    );
+}
+
+/**
+ * Rendering as a native button.
+ *
+ * By default, `Checkbox` renders a `<span>` element to support enclosing labels. Prefer rendering
+ * each checkbox as a native button with `nativeButton` when using sibling labels (`for`/`id`).
+ */
+#[Component]
+function CheckboxGroupNativeButtonDemo(): Node
+{
+    $protocols = ['http' => 'HTTP', 'https' => 'HTTPS', 'ssh' => 'SSH'];
+
+    return (
+        <CheckboxGroup aria-labelledby="native-protocols-label">
+            <div id="native-protocols-label" className="text-sm font-bold">Allowed network protocols</div>
+            {% for value, name in protocols %}
+                <div key={{ value }} className="flex items-center gap-2 text-sm">
+                    <Checkbox id="protocol-{{ value }}" value={{ value }} nativeButton>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    <label htmlFor="protocol-{{ value }}">{{ name }}</label>
+                </div>
+            {% endfor %}
+        </CheckboxGroup>
+    );
+}
+
+/**
+ * Form integration.
+ *
+ * Use Field and Fieldset for group labeling and form integration.
+ */
+#[Component]
+function CheckboxGroupFormDemo(): Node
+{
+    $protocols = ['http' => 'HTTP', 'https' => 'HTTPS', 'ssh' => 'SSH'];
+
+    return (
+        <Form>
+            <Field>
+                <Fieldset>
+                    <FieldsetLegend className="text-sm">Allowed network protocols</FieldsetLegend>
+                    <CheckboxGroup aria-label="Allowed network protocols">
+                        {% for value, name in protocols %}
+                            <FieldItem key={{ value }}>
+                                <FieldLabel className="flex items-center gap-2 font-normal">
+                                    <Checkbox name="allowedNetworkProtocols[]" value={{ value }}>
+                                        <CheckboxIndicator />
+                                    </Checkbox>
+                                    {{ name }}
+                                </FieldLabel>
+                            </FieldItem>
+                        {% endfor %}
+                    </CheckboxGroup>
+                </Fieldset>
+            </Field>
+        </Form>
+    );
+}
+
+/**
+ * Parent checkbox.
+ *
+ * A checkbox that controls other checkboxes within a `CheckboxGroup` can be created:
+ *
+ * - Pass an array of all the child checkbox values to the `allValues` prop on the `CheckboxGroup`
+ * component
+ *
+ * - Add the `parent` boolean prop to the parent `Checkbox`
+ *
+ * The group controls the parent checkbox’s indeterminate state when some, but not all, child
+ * checkboxes are checked.
+ */
+#[Component]
+function CheckboxGroupParentDemo(): Node
+{
+    $apples = [
+        'fuji-apple' => 'Fuji',
+        'gala-apple' => 'Gala',
+        'granny-smith-apple' => 'Granny Smith',
+    ];
+
+    return (
+        <CheckboxGroup aria-labelledby="parent-apples" allValues={{ apples|keys }} className="ml-4">
+            <label id="parent-apples" className="-ml-4 flex items-center gap-2 text-sm">
+                <Checkbox parent>
+                    <CheckboxIndicator />
+                </Checkbox>
+                Apples
+            </label>
+            {% for value, name in apples %}
+                <label key={{ value }} className="flex items-center gap-2 text-sm">
+                    <Checkbox value={{ value }}>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    {{ name }}
+                </label>
+            {% endfor %}
+        </CheckboxGroup>
+    );
+}
+
+/**
+ * Nested parent checkbox.
+ *
+ * A `CheckboxGroup` with a `value` inside another group is an item of that group: the outer parent
+ * checks all its checkboxes, and is indeterminate when some of them are checked.
+ */
+#[Component]
+function CheckboxGroupNestedDemo(): Node
+{
+    $users = [
+        'create-user' => 'Create User',
+        'edit-user' => 'Edit User',
+        'delete-user' => 'Delete User',
+        'assign-roles' => 'Assign Roles',
+    ];
+
+    return (
+        <CheckboxGroup aria-labelledby="user-permissions" allValues={{ ['view-dashboard', 'manage-users', 'access-reports'] }} className="ml-4">
+            <label id="user-permissions" className="-ml-4 flex items-center gap-2 text-sm">
+                <Checkbox parent>
+                    <CheckboxIndicator />
+                </Checkbox>
+                User Permissions
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+                <Checkbox value="view-dashboard">
+                    <CheckboxIndicator />
+                </Checkbox>
+                View Dashboard
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+                <Checkbox value="access-reports">
+                    <CheckboxIndicator />
+                </Checkbox>
+                Access Reports
+            </label>
+            <CheckboxGroup value="manage-users" aria-labelledby="manage-users-caption" allValues={{ users|keys }} className="ml-4">
+                <label id="manage-users-caption" className="-ml-4 flex items-center gap-2 text-sm">
+                    <Checkbox parent>
+                        <CheckboxIndicator />
+                    </Checkbox>
+                    Manage Users
+                </label>
+                {% for value, name in users %}
+                    <label key={{ value }} className="flex items-center gap-2 text-sm">
+                        <Checkbox value={{ value }}>
+                            <CheckboxIndicator />
+                        </Checkbox>
+                        {{ name }}
+                    </label>
+                {% endfor %}
+            </CheckboxGroup>
+        </CheckboxGroup>
+    );
+}

@@ -11,6 +11,8 @@ use Phem\{Html, Node};
  * `defaultValue` is a number for one thumb, or a list for a range: put one SliderThumb for each
  * value, with its `index`. The server render places the thumbs, so they do not move when the
  * controller starts.
+ *
+ * @aliases range, range input, range slider
  */
 #[Component, Provide]
 class Slider
@@ -82,6 +84,7 @@ class Slider
     }
 }
 
+/** The label of the slider. */
 #[Component]
 function SliderLabel(?Html $children = null, mixed ...$rest): Node
 {
@@ -106,6 +109,7 @@ function SliderControl(#[Context] Slider $slider, ?Html $children = null, mixed 
     return <div data-phem-slider-target="control" className={{ classes('col-span-2 flex touch-none items-center select-none', vertical ? 'h-56 flex-col px-3' : 'w-56 py-3') }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The bar of the slider: it holds the SliderIndicator and the SliderThumb parts. */
 #[Component]
 function SliderTrack(#[Context] Slider $slider, ?Html $children = null, mixed ...$rest): Node
 {
@@ -128,7 +132,10 @@ function SliderIndicator(#[Context] Slider $slider, mixed ...$rest): Node
     return <div data-phem-slider-target="indicator" style={{ style }} className={{ classes('bg-primary select-none') }} {{ ...rest }} />;
 }
 
-/** A thumb, with a native range input for the keyboard, the ARIA and the form. Give it an `aria-label`. */
+/**
+ * A thumb, with a native range input for the keyboard, the ARIA and the form. Give it an
+ * `aria-label`.
+ */
 #[Component]
 function SliderThumb(#[Context] Slider $slider, int $index = 0, ?string $name = null, mixed ...$rest): Node
 {

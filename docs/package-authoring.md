@@ -480,7 +480,7 @@ class Dialog
 }
 ```
 
-An example is a `#[Component]` function in a `.phem` file of the examples directory, with one file for each family. The summary of its docblock is its title, and the next paragraph says when to use it. The components that it uses come from its tags:
+An example is a `#[Component]` function or class in a `.phem` file of the examples directory, with one file for each family. The summary of its docblock is its title, and the next paragraphs say when to use it. The components that it uses come from its tags. A component that another example uses (an icon, a part of a demo) is a helper, not an example. `phemc examples <key>` shows a complete file: the `use` statements that the code needs (as the example files write them), the top-level constants and the classes that it uses (for example the object of a `#[MapForm]`), the example, then its helpers:
 
 ```php
 // examples/Dialog.phem

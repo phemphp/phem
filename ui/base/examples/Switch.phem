@@ -1,0 +1,85 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\{Field, SwitchRoot};
+
+use function Phem\Ui\Base\{FieldLabel, Form, SwitchThumb};
+
+/**
+ * A control that indicates whether a setting is on or off.
+ */
+#[Component]
+function SwitchHeroDemo(): Node
+{
+    return (
+        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+            <SwitchRoot defaultChecked>
+                <SwitchThumb />
+            </SwitchRoot>
+            Notifications
+        </label>
+    );
+}
+
+/**
+ * Labeling a switch.
+ *
+ * An enclosing `<label>` is the simplest labeling pattern:
+ */
+#[Component]
+function SwitchLabelingDemo(): Node
+{
+    return (
+        <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+            <SwitchRoot>
+                <SwitchThumb />
+            </SwitchRoot>
+            Notifications
+        </label>
+    );
+}
+
+/**
+ * Rendering as a native button.
+ *
+ * By default, `SwitchRoot` renders a `<span>` element to support enclosing labels. Prefer
+ * rendering the switch as a native button with `nativeButton` when using sibling labels
+ * (`for`/`id`).
+ */
+#[Component]
+function SwitchNativeButtonDemo(): Node
+{
+    return (
+        <div className="flex items-center gap-2">
+            <label htmlFor="notifications-switch" className="text-sm text-neutral-950 dark:text-white">Notifications</label>
+            <SwitchRoot id="notifications-switch" nativeButton>
+                <SwitchThumb />
+            </SwitchRoot>
+        </div>
+    );
+}
+
+/**
+ * Form integration.
+ *
+ * Use Field to handle label associations and form integration:
+ */
+#[Component]
+function SwitchFormDemo(): Node
+{
+    return (
+        <Form>
+            <Field>
+                <FieldLabel className="flex items-center gap-2 font-normal">
+                    <SwitchRoot name="notifications">
+                        <SwitchThumb />
+                    </SwitchRoot>
+                    Notifications
+                </FieldLabel>
+            </Field>
+        </Form>
+    );
+}

@@ -1,0 +1,54 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\Collapsible;
+
+use function Phem\Ui\Base\{CollapsiblePanel, CollapsibleTrigger};
+
+/**
+ * A collapsible panel controlled by a button.
+ */
+#[Component]
+function CollapsibleHeroDemo(): Node
+{
+    return (
+        <Collapsible>
+            <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
+            <CollapsiblePanel>
+                <div className="flex flex-col gap-2 px-3.5 py-2">
+                    <div>alien-bean-pasta</div>
+                    <div>wild-irish-burrito</div>
+                    <div>horse-battery-staple</div>
+                </div>
+            </CollapsiblePanel>
+        </Collapsible>
+    );
+}
+
+// The code example of base-ui.com, as a demo: search for “business days” to open the panel.
+/**
+ * Hidden until found.
+ *
+ * The `hiddenUntilFound` prop hides the closed panel with `hidden="until-found"` so the browser
+ * can search its contents with find-in-page—Ctrl+F (Cmd+F on macOS)—and reveal the panel when a
+ * match is found. The closed panel always remains in the DOM, which also makes its contents
+ * indexable by search engines.
+ *
+ * Older browsers that don’t support `hidden="until-found"` keep the panel hidden until its trigger
+ * opens it, and find-in-page skips over the contents.
+ */
+#[Component]
+function CollapsibleHiddenUntilFoundDemo(): Node
+{
+    return (
+        <Collapsible>
+            <CollapsibleTrigger>Shipping details</CollapsibleTrigger>
+            <CollapsiblePanel hiddenUntilFound>
+                <div className="px-3.5 py-2">Standard shipping takes 3–5 business days.</div>
+            </CollapsiblePanel>
+        </Collapsible>
+    );
+}

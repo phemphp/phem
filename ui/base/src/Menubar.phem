@@ -8,6 +8,8 @@ use Phem\{Html, Node};
 /**
  * A bar of menus, as the menu bar of an application: Base UI Menubar, on the `phem-menubar`
  * controller. Put a Menu for each menu in it: its MenuTrigger gets the look of the bar.
+ *
+ * @aliases menu bar, app menu, file menu
  */
 #[Component, Provide]
 class Menubar

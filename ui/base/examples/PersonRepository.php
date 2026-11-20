@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\People;
+namespace Phem\Ui\Base\Examples;
 
 /**
- * The people of the Async search demos of Base UI. An app searches a database or an HTTP API: the
- * demo filters a fixed list, waits as a slow network, and fails for the text "will_error". The
- * assignment of a reviewer also waits, and fails for a person on leave.
+ * The people of the Async search examples of Base UI: a service that the components get in their
+ * constructor. An app searches a database or an HTTP API: the example filters a fixed list, waits
+ * as a slow network, and fails for the text "will_error". The assignment of a reviewer also waits,
+ * and fails for a person on leave.
  *
  * @phpstan-type Person array{id: string, name: string, username: string, email: string, title: string}
  */

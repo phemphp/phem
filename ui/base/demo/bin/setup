@@ -18,6 +18,7 @@ if [ ! -d assets/vendor ] || [ importmap.php -nt assets/vendor ]; then
     touch assets/vendor
 fi
 
-# PHEMC_BIN: the phemc that the images of the repository build from compiler/.
-"${PHEMC_BIN:-vendor/bin/phemc}" build src
+# PHEMC_BIN: the phemc that the images of the repository build from compiler/. The demo pages show
+# the examples of phem/ui-base, so the build compiles them too.
+"${PHEMC_BIN:-vendor/bin/phemc}" build src --examples-of phem/ui-base
 bin/console tailwind:build --quiet

@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
-use function Phem\Ui\Base\{FieldControl, FieldDescription, FieldError, FieldLabel};
-use Phem\Ui\Base\Field;
+use function Phem\Ui\Base\Examples\FieldHeroDemo;
 
 #[Page('/components/field')]
 function FieldPage(): Node
@@ -18,18 +17,5 @@ function FieldPage(): Node
                 <FieldHeroDemo />
             </Hero>
         </DemoPage>
-    );
-}
-
-#[Component]
-function FieldHeroDemo(): Node
-{
-    return (
-        <Field id="name">
-            <FieldLabel>Name</FieldLabel>
-            <FieldControl required placeholder="Required" />
-            <FieldError match="valueMissing">Please enter your name</FieldError>
-            <FieldDescription>Visible on your profile</FieldDescription>
-        </Field>
     );
 }

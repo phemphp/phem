@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
-use function Phem\Ui\Base\{MeterIndicator, MeterLabel, MeterTrack, MeterValue};
-use Phem\Ui\Base\Meter;
+use function Phem\Ui\Base\Examples\MeterHeroDemo;
 
 #[Page('/components/meter')]
 function MeterPage(): Node
@@ -18,19 +17,5 @@ function MeterPage(): Node
                 <MeterHeroDemo />
             </Hero>
         </DemoPage>
-    );
-}
-
-#[Component]
-function MeterHeroDemo(): Node
-{
-    return (
-        <Meter id="storage" value={{ 24 }}>
-            <MeterLabel>Storage Used</MeterLabel>
-            <MeterValue />
-            <MeterTrack>
-                <MeterIndicator />
-            </MeterTrack>
-        </Meter>
     );
 }

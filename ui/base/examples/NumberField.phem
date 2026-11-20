@@ -1,0 +1,29 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+use function Phem\Ui\Base\{NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput, NumberFieldScrubArea, NumberFieldScrubAreaCursor};
+
+/**
+ * A numeric input element with increment and decrement buttons, and a scrub area.
+ */
+#[Component]
+function NumberFieldHeroDemo(): Node
+{
+    return (
+        <NumberField defaultValue={{ 100 }}>
+            <NumberFieldScrubArea>
+                <label htmlFor="amount" className="cursor-ew-resize text-sm font-bold text-neutral-950 dark:text-white">Amount</label>
+                <NumberFieldScrubAreaCursor />
+            </NumberFieldScrubArea>
+            <NumberFieldGroup>
+                <NumberFieldDecrement />
+                <NumberFieldInput id="amount" />
+                <NumberFieldIncrement />
+            </NumberFieldGroup>
+        </NumberField>
+    );
+}

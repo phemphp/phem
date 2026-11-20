@@ -1,0 +1,115 @@
+<?phem
+
+namespace Phem\Ui\Base\Examples;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+use Phem\Ui\Base\{Align, ContextMenu, Menu, MenuSubmenu};
+
+use function Phem\Ui\Base\{ContextMenuTrigger, MenuItem, MenuPopup, MenuSeparator, MenuSubmenuTrigger, MenuTrigger};
+
+/**
+ * A menu that appears at the pointer on right click or long press.
+ */
+#[Component]
+function ContextMenuHeroDemo(): Node
+{
+    return (
+        <ContextMenu>
+            <ContextMenuTrigger>Right click here</ContextMenuTrigger>
+            <MenuPopup>
+                <MenuItem>Add to Library</MenuItem>
+                <MenuItem>Add to Playlist</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Play Next</MenuItem>
+                <MenuItem>Play Last</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Favorite</MenuItem>
+                <MenuItem>Share</MenuItem>
+            </MenuPopup>
+        </ContextMenu>
+    );
+}
+
+#[Component]
+function ImageActions(): Node
+{
+    return (
+        <MenuPopup>
+            {% for action in ['Preview', 'Download', 'Copy link', 'Rename'] %}
+                <MenuItem key={{ action }}>{{ action }}</MenuItem>
+            {% endfor %}
+            <MenuSeparator />
+            <MenuItem className="text-red-700 dark:text-red-400">Delete</MenuItem>
+        </MenuPopup>
+    );
+}
+
+/**
+ * Using with Menu.
+ *
+ * A context menu should supplement a primary way to perform the same actions. This image card
+ * exposes actions through a visible menu button and reuses them in the context menu for
+ * right-click and long-press users.
+ */
+#[Component]
+function ContextMenuWithMenuDemo(): Node
+{
+    return (
+        <div className="group relative w-full max-w-64 overflow-hidden border border-neutral-950 bg-white text-left text-neutral-950 select-none dark:border-white dark:bg-neutral-950 dark:text-white">
+            <ContextMenu>
+                <ContextMenuTrigger className="block aspect-auto max-w-none border-0 bg-transparent text-left">
+                    <img className="h-36 w-full object-cover" src="https://images.unsplash.com/photo-1619615391095-dfa29e1672ef?q=80&w=512&h=288" alt="" />
+                    <div className="p-2">
+                        <p className="m-0 text-sm leading-5">Station Hofplein</p>
+                        <p className="m-0 text-xs leading-4 text-neutral-500 dark:text-neutral-400">JPG, 2.4 MB</p>
+                    </div>
+                </ContextMenuTrigger>
+                <ImageActions />
+            </ContextMenu>
+            <Menu align={{ Align.End }} sideOffset={{ 8 }}>
+                <MenuTrigger caret={{ false }} aria-label="Image actions" className="absolute top-2 right-2 size-8 p-0 opacity-0 group-hover:opacity-100 data-pressed:opacity-100 any-pointer-coarse:opacity-100 focus-visible:opacity-100">
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M9.5 13c0 .8284-.67157 1.5-1.5 1.5s-1.5-.6716-1.5-1.5.67157-1.5 1.5-1.5 1.5.6716 1.5 1.5m0-5c0 .82843-.67157 1.5-1.5 1.5S6.5 8.82843 6.5 8 7.17157 6.5 8 6.5s1.5.67157 1.5 1.5m0-5c0 .82843-.67157 1.5-1.5 1.5S6.5 3.82843 6.5 3 7.17157 1.5 8 1.5s1.5.67157 1.5 1.5" />
+                    </svg>
+                </MenuTrigger>
+                <ImageActions />
+            </Menu>
+        </div>
+    );
+}
+
+/**
+ * Nested menu.
+ *
+ * To create a submenu, create a `MenuSubmenu` inside the parent context menu. Use the
+ * `MenuSubmenuTrigger` part for the menu item that opens the nested menu.
+ */
+#[Component]
+function ContextMenuSubmenuDemo(): Node
+{
+    return (
+        <ContextMenu>
+            <ContextMenuTrigger>Right click here</ContextMenuTrigger>
+            <MenuPopup>
+                <MenuItem>Add to Library</MenuItem>
+                <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
+                    <MenuSubmenuTrigger>Add to Playlist</MenuSubmenuTrigger>
+                    <MenuPopup>
+                        <MenuItem>Get Up!</MenuItem>
+                        <MenuItem>Inside Out</MenuItem>
+                        <MenuItem>Night Beats</MenuItem>
+                        <MenuSeparator />
+                        <MenuItem>New playlist…</MenuItem>
+                    </MenuPopup>
+                </MenuSubmenu>
+                <MenuSeparator />
+                <MenuItem>Play Next</MenuItem>
+                <MenuItem>Play Last</MenuItem>
+                <MenuSeparator />
+                <MenuItem>Favorite</MenuItem>
+                <MenuItem>Share</MenuItem>
+            </MenuPopup>
+        </ContextMenu>
+    );
+}

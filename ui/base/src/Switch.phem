@@ -10,6 +10,8 @@ use Phem\{Bound, Dynamic, Html, Node};
  *
  * Put it in a `<label>` with its text. A hidden checkbox keeps the state for a form (`name`, `value`).
  * Bind it to a state of the app with `phem:bind`: the checkbox gets the bound value.
+ *
+ * @aliases switch, toggle switch, on off
  */
 #[Component, Provide]
 class SwitchRoot

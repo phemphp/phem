@@ -38,6 +38,8 @@ use Phem\{Bound, Html, Node};
  *
  * The props of the Base UI Positioner are props of the root. The popup goes in the top layer
  * (`popover="manual"`), so it needs no Portal.
+ *
+ * @aliases multiselect, searchable select, tags input, chips, picker
  */
 #[Component, Provide]
 class Combobox
@@ -258,7 +260,10 @@ function ComboboxTrigger(?Html $children = null, mixed ...$rest): Node
     );
 }
 
-/** The label of the selected item, or the `placeholder`, in a trigger: for a combobox with its input in the popup. */
+/**
+ * The label of the selected item, or the `placeholder`, in a trigger: for a combobox with its
+ * input in the popup.
+ */
 #[Component]
 function ComboboxValue(?string $placeholder = null, mixed ...$rest): Node
 {
@@ -295,7 +300,10 @@ function ComboboxClear(?Html $children = null, mixed ...$rest): Node
     );
 }
 
-/** The spinner of a choice that waits for the server. It is hidden: a variant of its button shows it. */
+/**
+ * The spinner of a choice that waits for the server. It is hidden: a variant of its button shows
+ * it.
+ */
 #[Component]
 function ComboboxSpinner(mixed ...$rest): Node
 {
@@ -321,6 +329,10 @@ function ComboboxPopup(#[Context] Combobox $combobox, ?Html $children = null, mi
     );
 }
 
+/**
+ * The list of the items in the popup (`listbox`). The browser filters its ComboboxItem parts while
+ * the user types.
+ */
 #[Component]
 function ComboboxList(?Html $children = null, mixed ...$rest): Node
 {
@@ -433,18 +445,21 @@ function ComboboxStatus(?string $idle = null, ?string $pending = null, ?string $
     );
 }
 
+/** A group of items in the list, with a ComboboxGroupLabel. */
 #[Component]
 function ComboboxGroup(?Html $children = null, mixed ...$rest): Node
 {
     return <div role="group" data-phem-combobox-target="group" {{ ...rest }}>{{ children }}</div>;
 }
 
+/** The label of a ComboboxGroup. */
 #[Component]
 function ComboboxGroupLabel(?Html $children = null, mixed ...$rest): Node
 {
     return <div data-phem-combobox-target="groupLabel" className={{ classes('px-2 py-2 text-sm leading-4 font-normal text-muted-foreground select-none') }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** A line between two items or two groups of the list. */
 #[Component]
 function ComboboxSeparator(mixed ...$rest): Node
 {

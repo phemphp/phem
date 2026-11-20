@@ -1,0 +1,108 @@
+# The retrieval eval of phem/ui-base (`make check`): prompts of real UI tasks, and the keys that
+# `phemc search` must give in its top 20. Add a prompt when an agent did not find a component or an
+# example that it needed. See the "Help coding agents use the components" section of
+# docs/package-authoring.md in phem.
+
+# The components.
+- query: dropdown menu of actions
+  expect: [Phem\Ui\Base\Menu]
+- query: modal dialog
+  expect: [Phem\Ui\Base\Dialog]
+- query: confirm a destructive action
+  expect: [Phem\Ui\Base\AlertDialog]
+- query: tooltip on hover
+  expect: [Phem\Ui\Base\Tooltip]
+- query: tabs
+  expect: [Phem\Ui\Base\Tabs]
+- query: accordion of collapsible sections
+  expect: [Phem\Ui\Base\Accordion]
+- query: toggle switch
+  expect: [Phem\Ui\Base\SwitchRoot]
+- query: checkbox
+  expect: [Phem\Ui\Base\Checkbox]
+- query: radio buttons
+  expect: [Phem\Ui\Base\RadioGroup]
+- query: select dropdown
+  expect: [Phem\Ui\Base\Select]
+- query: autocomplete search input
+  expect: [Phem\Ui\Base\Autocomplete]
+- query: combobox with multiple choices
+  expect: [Phem\Ui\Base\Combobox]
+- query: range slider
+  expect: [Phem\Ui\Base\Slider]
+- query: progress bar
+  expect: [Phem\Ui\Base\Progress]
+- query: toast notification
+  expect: [Phem\Ui\Base\ToastViewport]
+- query: side drawer sheet
+  expect: [Phem\Ui\Base\Drawer]
+- query: one-time code input
+  expect: [Phem\Ui\Base\OTPField]
+- query: number input with steps
+  expect: [Phem\Ui\Base\NumberField]
+- query: avatar with a fallback
+  expect: [Phem\Ui\Base\Avatar]
+- query: popover
+  expect: [Phem\Ui\Base\Popover]
+- query: right click menu
+  expect: [Phem\Ui\Base\ContextMenu]
+- query: toolbar of buttons
+  expect: [Phem\Ui\Base\Toolbar]
+- query: form field with a label and an error
+  expect: [Phem\Ui\Base\Field]
+- query: navigation menu
+  expect: [Phem\Ui\Base\NavigationMenu]
+
+# The examples.
+- query: open a dialog from a menu item
+  expect: [Phem\Ui\Base\Examples\DialogFromMenuDemo]
+- query: nested dialogs
+  expect: [Phem\Ui\Base\Examples\DialogNestedDemo]
+- query: ask before closing a dialog with unsaved text
+  expect: [Phem\Ui\Base\Examples\DialogCloseConfirmationDemo]
+- query: a long dialog that scrolls
+  expect: [Phem\Ui\Base\Examples\DialogOutsideScrollDemo, Phem\Ui\Base\Examples\DialogInsideScrollDemo]
+- query: search people on the server while typing
+  expect: [Phem\Ui\Base\Examples\AutocompleteAsyncDemo, Phem\Ui\Base\Examples\ComboboxAsyncSingleDemo]
+- query: command palette
+  expect: [Phem\Ui\Base\Examples\AutocompleteCommandPaletteDemo]
+- query: button with a loading state
+  expect: [Phem\Ui\Base\Examples\ButtonLoadingDemo]
+- query: a parent checkbox that selects all
+  expect: [Phem\Ui\Base\Examples\CheckboxGroupParentDemo]
+- query: drawer with snap points
+  expect: [Phem\Ui\Base\Examples\DrawerSnapPointsDemo]
+- query: mobile navigation sheet
+  expect: [Phem\Ui\Base\Examples\DrawerMobileNavDemo]
+- query: menu with a submenu
+  expect: [Phem\Ui\Base\Examples\MenuSubmenuDemo]
+- query: menu with checkbox items
+  expect: [Phem\Ui\Base\Examples\MenuCheckboxDemo]
+- query: open a menu on hover
+  expect: [Phem\Ui\Base\Examples\MenuHoverDemo]
+- query: toast with an undo action
+  expect: [Phem\Ui\Base\Examples\ToastUndoDemo]
+- query: toast while a promise loads
+  expect: [Phem\Ui\Base\Examples\ToastPromiseDemo]
+- query: select with multiple values
+  expect: [Phem\Ui\Base\Examples\SelectMultipleDemo]
+- query: grouped options in a select
+  expect: [Phem\Ui\Base\Examples\SelectGroupedDemo]
+- query: slider with two thumbs for a range
+  expect: [Phem\Ui\Base\Examples\SliderRangeDemo]
+- query: vertical slider
+  expect: [Phem\Ui\Base\Examples\SliderVerticalDemo]
+- query: tabs that are links
+  expect: [Phem\Ui\Base\Examples\TabsLinksDemo]
+- query: tooltip in a toolbar
+  expect: [Phem\Ui\Base\Examples\ToolbarTooltipDemo]
+- query: create a new item from the combobox text
+  expect: [Phem\Ui\Base\Examples\ComboboxCreatableDemo]
+- query: map a form to an object with errors
+  expect: [Phem\Ui\Base\Examples\FormMapFormDemo]
+- query: one popover from several triggers
+  expect: [Phem\Ui\Base\Examples\PopoverMultipleDemo]
+- query: switch in a form
+  expect: [Phem\Ui\Base\Examples\SwitchFormDemo]
+- query: masked one-time code
+  expect: [Phem\Ui\Base\Examples\OTPFieldMaskDemo]

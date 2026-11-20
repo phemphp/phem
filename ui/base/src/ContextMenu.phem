@@ -11,6 +11,8 @@ use Phem\{Html, Node};
  *
  * Use the parts of Menu in it (MenuPopup, MenuItem, MenuSeparator…): they read the root, so they
  * get the targets of `phem-context-menu`.
+ *
+ * @aliases right click menu, long press menu
  */
 #[Component]
 class ContextMenu extends Menu

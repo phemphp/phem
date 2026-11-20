@@ -16,6 +16,8 @@ use Phem\{Html, Node};
  * one control. Give two errors with the same `match` their own `id`. With no `id`, the controller
  * links the parts with element references, and the `for`, `aria-labelledby` and
  * `aria-describedby` attributes stay empty.
+ *
+ * @aliases form field, label, validation, error message
  */
 #[Component, Provide]
 class Field
@@ -51,6 +53,7 @@ class Field
     }
 }
 
+/** The label of the control of the Field. It points to the control (`for`). */
 #[Component]
 function FieldLabel(#[Context] ?Field $field = null, ?Html $children = null, mixed ...$rest): Node
 {
@@ -66,6 +69,7 @@ function FieldControl(mixed ...$rest): Node
     return <Input className="w-auto self-stretch" {{ ...rest }} />;
 }
 
+/** The help text of the Field. The control gets it as its `aria-describedby`. */
 #[Component]
 function FieldDescription(#[Context] ?Field $field = null, ?Html $children = null, mixed ...$rest): Node
 {
@@ -97,7 +101,10 @@ function FieldError(#[Context] ?Field $field = null, ?string $match = null, ?Htm
     );
 }
 
-/** A control of a group of choices in a field, such as a checkbox with its label: Base UI Field.Item. */
+/**
+ * A control of a group of choices in a field, such as a checkbox with its label: Base UI
+ * Field.Item.
+ */
 #[Component]
 function FieldItem(?Html $children = null, mixed ...$rest): Node
 {
@@ -107,6 +114,8 @@ function FieldItem(?Html $children = null, mixed ...$rest): Node
 /**
  * A form that validates its fields before its submit: Base UI Form, on the `phem-form` controller.
  * An invalid form does not send its `onSubmit` event, and the first invalid control gets the focus.
+ *
+ * @aliases form validation, server errors, submit
  */
 #[Component]
 function Form(?string $validationMode = null, ?Html $children = null, mixed ...$rest): Node

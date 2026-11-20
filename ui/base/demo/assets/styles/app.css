@@ -6,8 +6,10 @@
 /* The theme and the components of phem/ui-base. In an app: @import "../../vendor/phem/ui-base/assets/theme.css"; */
 @import "../../../assets/theme.css";
 
-/* The pages of the demo. */
+/* The pages of the demo, and the examples of phem/ui-base that they show. In an app that copies an
+example: its own source has the classes. */
 @source "../../src";
+@source "../../../examples";
 
 /* The code of the demos (App\Ui\Highlighter): the background of its box, and GitHub Dark in the dark mode. */
 .phiki {

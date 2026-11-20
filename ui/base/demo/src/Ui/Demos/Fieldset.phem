@@ -2,12 +2,11 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page};
+use Phem\Attribute\Page;
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Hero};
-use function Phem\Ui\Base\{FieldControl, FieldLabel, FieldsetLegend};
-use Phem\Ui\Base\{Field, Fieldset};
+use function Phem\Ui\Base\Examples\FieldsetHeroDemo;
 
 #[Page('/components/fieldset')]
 function FieldsetPage(): Node
@@ -18,23 +17,5 @@ function FieldsetPage(): Node
                 <FieldsetHeroDemo />
             </Hero>
         </DemoPage>
-    );
-}
-
-#[Component]
-function FieldsetHeroDemo(): Node
-{
-    return (
-        <Fieldset>
-            <FieldsetLegend>Billing details</FieldsetLegend>
-            <Field id="company">
-                <FieldLabel>Company</FieldLabel>
-                <FieldControl placeholder="Enter company name" />
-            </Field>
-            <Field id="tax-id">
-                <FieldLabel>Tax ID</FieldLabel>
-                <FieldControl placeholder="Enter fiscal number" />
-            </Field>
-        </Fieldset>
     );
 }
