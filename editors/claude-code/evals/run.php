@@ -151,8 +151,9 @@ function make_app(string $dir, string $condition): void
     ]];
     file_put_contents("$dir/vendor/composer/installed.json", json_encode($installed, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES)."\n");
 
+    // Read-only: the session can run it (Bash(vendor/bin/phemc:*)), not change it with Write or Edit.
     file_put_contents("$dir/vendor/bin/phemc", shim());
-    chmod("$dir/vendor/bin/phemc", 0755);
+    chmod("$dir/vendor/bin/phemc", 0555);
 }
 
 /** The vendor/bin/phemc of the apps: a PHP script, as Composer installs it. */
@@ -191,7 +192,8 @@ function start_session(array $run): mixed
 {
     global $repo, $allTasks, $model;
 
-    $tools = 'Read,Glob,Grep,Write,Edit,Bash(ls:*),Bash(cat:*),Bash(grep:*),Bash(find:*)';
+    // No `find`: `find -exec` runs any command. Glob lists the files.
+    $tools = 'Read,Glob,Grep,Write,Edit,Bash(ls:*),Bash(cat:*),Bash(grep:*)';
     // Only the MCP servers of the condition: not the connectors of the account that runs the eval.
     $command = ['claude', '-p', $allTasks[$run['task']]['prompt'].' Do not run a build or a server. Stop when the file is written.', '--model', $model, '--setting-sources', 'project,local', '--output-format', 'stream-json', '--verbose', '--strict-mcp-config'];
     if ('plugin' === $run['condition']) {
