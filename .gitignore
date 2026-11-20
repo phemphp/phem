@@ -25,4 +25,6 @@ composer.lock
 /bin/phemc-*
 /bin/.phemc-*
 # The plans that the ship-change workflow writes (.claude/workflows/ship-change.js).
-/.claude/plans/
+# The design plans that we keep are listed below.
+/.claude/plans/*
+!/.claude/plans/agent-knowledge.md
