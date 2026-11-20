@@ -59,7 +59,7 @@ On the first start, the watcher downloads `phemc` and compiles your `.phem` file
 [phemc] phemc: watching 1 source dir(s) for changes
 ```
 
-Open the URL that `symfony serve` prints. By default, it’s `https://127.0.0.1:8000`. The page shows “Hello, Phem!”. Keep the server running for the rest of this guide.
+Open the URL that `symfony serve` prints. By default, it’s `https://127.0.0.1:8000`. The page shows “Hello, World!”. Keep the server running for the rest of this guide.
 
 ## Step 3: Look at the document and the home page
 
@@ -101,7 +101,7 @@ Two lines in this file make the page interactive:
 - **`<Root>`**: it marks the part of the page where Phem listens for events, such as clicks
 - **`{{ importmap('app') }}`**: it loads `assets/app.js`, which starts the `phem` Stimulus controller in the browser
 
-A page passes its title with the `title` prop: `<Document title="Phem">`. Everything else inside `<Document>` goes to `children`.
+A page passes its title with the `title` prop: `<Document title="World">`. Everything else inside `<Document>` goes to `children`.
 
 ### The home page
 
@@ -121,8 +121,8 @@ use function App\Ui\Layout\Document;
 function HomePage(): Node
 {
     return (
-        <Document title="Phem">
-            <h1>Hello, Phem!</h1>
+        <Document title="World">
+            <h1>Hello, World!</h1>
         </Document>
     );
 }
@@ -173,8 +173,8 @@ Next, use the counter twice on the home page. `Counter` is in the same namespace
 function HomePage(): Node
 {
     return (
-        <Document title="Phem">
-            <h1>Hello, Phem!</h1>
+        <Document title="World">
+            <h1>Hello, World!</h1>
             <Counter />
             <Counter />
         </Document>
