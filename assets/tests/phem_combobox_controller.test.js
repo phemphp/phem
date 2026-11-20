@@ -588,6 +588,45 @@ describe("phem-combobox", () => {
       expect($("input").getAttribute("aria-activedescendant")).toBe("tag-a")
     })
 
+    it("removes a kept item when a morph of the chips alone removes its chip", async () => {
+      // The chips are in their own component (`c2`): an answer that changes only the chips
+      // morphs only this component, and not the list.
+      const chips = (values) => `<div data-phem-c="c2">${values.map((t) => `<span id="chip-${t}" data-value="${t}" data-phem-combobox-target="chip">${t}</span>`).join("")}</div>`
+      function chosen(values, results) {
+        const item = (t) => `<li id="tag-${t}" data-value="${t}" data-phem-combobox-target="item" aria-selected="${values.includes(t)}">${t}</li>`
+
+        return `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-multiple-value="true">
+            ${chips(values)}
+            <input id="input" data-phem-combobox-target="input" data-phem-on-input="c1.search" aria-label="Tags" />
+            <div id="popup" data-phem-combobox-target="popup" hidden>
+              <ul id="list" data-phem-combobox-target="list">${results.map(item).join("")}</ul>
+            </div>
+          </div>`
+      }
+
+      const ids = () => [...$("list").children].map((el) => el.id)
+      async function search(text) {
+        const done = nextDone()
+        $("input").focus()
+        $("input").value = text
+        $("input").dispatchEvent(new Event("input", { bubbles: true }))
+        await done
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      }
+
+      await mountField(chosen(["a", "b"], ["a", "b"]))
+      respond(chosen(["a", "b"], []))
+      await search("")
+      expect(ids()).toEqual(["tag-a", "tag-b"])
+
+      // The chip of "b" goes, and the list of the server does not change: its item leaves the
+      // list.
+      respond("", {}, { streams: `<turbo-stream action="replace" method="morph" targets="[data-phem-c=c2]"><template>${chips(["a"])}</template></turbo-stream>` })
+      await search("")
+      expect($("chip-b")).toBe(null)
+      expect(ids()).toEqual(["tag-a"])
+    })
+
     it("clears the text when the popup closes, with its input event", async () => {
       await mount(tags())
       $("input").focus()

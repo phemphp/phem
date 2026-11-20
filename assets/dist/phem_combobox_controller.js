@@ -789,12 +789,26 @@ export default class PhemComboboxController extends Controller {
     for (const item of this.kept) {
       if (!item.isConnected) continue
 
-      const chosen = !this.#multiple || this.chipTargets.some((chip) => chip.getAttribute("data-value") === valueOf(item))
+      const chosen = !this.#multiple || this.#hasChip(item)
       if (!chosen) item.remove()
       else if (item.nextElementSibling) item.parentElement.append(item)
     }
 
     this.kept.clear()
+
+    // The morph of the chips alone: phem morphs only the components that changed, so a component
+    // around the chips changes with no morph of the list. An item that the browser kept in an
+    // earlier morph leaves the list when its chip goes. The `multiple` selection mode removes
+    // its kept items in #makeChips().
+    if (!this.#multiple || this.#selectingMany) return
+
+    for (const item of this.itemTargets) {
+      if (this.held.has(item) && !this.#hasChip(item)) item.remove()
+    }
+  }
+
+  #hasChip(item) {
+    return this.chipTargets.some((chip) => chip.getAttribute("data-value") === valueOf(item))
   }
 
   // After a morph that changed the selection of the server: the selection, the text of the input

@@ -8,6 +8,11 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Fix: a `phem-combobox` with `multiple` and a list of the server removes a kept item from the
+  list when its chip goes, also when the morph of the answer changes only the chips. Before, the
+  item stayed with `aria-selected="true"` when the chips were in a component of their own (for
+  example a class component around them), because phem morphs only the components that changed,
+  and the list did not change.
 - `phem:error` gives the ids of the DOM events of the request in `detail.ids`, as `phem:send`,
   `phem:receive` and `phem:done` do, and `phem:queue` gives the id of its DOM event in
   `detail.id`. A listener can tell which DOM event failed.

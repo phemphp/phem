@@ -59,7 +59,7 @@ Next, the server renders again only the components that can change:
 - The components whose state changed
 - Their children that get new props or slots
 
-The server compares the new HTML of each of these components with the hash it had before. For each component that changed, it answers with a Turbo Stream `replace` (`method="morph"`). The response also contains the state entries that changed and the new signature, and the browser writes them into its copy of the state, so a big page doesn’t download all its state again on every event.
+The server compares the new HTML of each of these components with the hash it had before. For each component that changed, it answers with a Turbo Stream `replace` (`method="morph"`). The HTML of a component has a placeholder for each child component, so a change in a child doesn't change its parent: the stream morphs only the element of the child, and the elements around it stay as they are. A class component that only wraps a slot is a component too. When only the content of its slot changes, the stream morphs only its element, not its siblings. The response also contains the state entries that changed and the new signature, and the browser writes them into its copy of the state, so a big page doesn’t download all its state again on every event.
 
 The response stays small in four more ways:
 
