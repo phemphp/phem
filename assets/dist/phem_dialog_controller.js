@@ -591,6 +591,7 @@ export default class PhemDialogController extends Controller {
 
       if (el.open) el.close()
       el.showModal()
+      this.#unscroll(el)
       this.#focusPopup(el)
 
       return
@@ -598,6 +599,7 @@ export default class PhemDialogController extends Controller {
 
     if (!el.open) {
       el.show()
+      this.#unscroll(el)
       this.#focusPopup(el)
     }
 
@@ -613,6 +615,16 @@ export default class PhemDialogController extends Controller {
     }))
   }
 
+  // The first focus of the browser scrolled the dialog (a viewport) and the content of the popup
+  // to its element, also while the start transition moves the popup out of the screen. Base UI
+  // gives the first focus with `preventScroll`: the content starts at the top.
+  #unscroll(el) {
+    for (let node = document.activeElement; node && el.contains(node); node = node.parentElement) {
+      node.scrollTop = 0
+      node.scrollLeft = 0
+    }
+  }
+
   // After an open with a touch, the focus goes to the popup: a field with the focus shows the
   // keyboard of the device. A drawer always gives the focus to its popup, as in Base UI, so no
   // button of the drawer shows a focus ring. An `[autofocus]` element in the drawer keeps the
@@ -620,15 +632,6 @@ export default class PhemDialogController extends Controller {
   #focusPopup(el) {
     const drawer = Boolean(AXES[this.swipeDirectionValue]) && !el.querySelector("[autofocus]")
     if (!this.touch && !drawer) return
-
-    // The first focus of the browser scrolled the dialog (a viewport) and the content of the popup
-    // to its element. A drawer gives the focus to its popup: its content starts at the top.
-    if (drawer) {
-      for (let node = document.activeElement; node && el.contains(node); node = node.parentElement) {
-        node.scrollTop = 0
-        node.scrollLeft = 0
-      }
-    }
 
     const popup = this.#popupOf(el)
     if (!popup.hasAttribute("tabindex")) {

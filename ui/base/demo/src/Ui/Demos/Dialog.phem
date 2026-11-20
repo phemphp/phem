@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\{AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogPopup, AlertDialogTitle, DialogClose, DialogDescription, DialogDiscard, DialogPayload, DialogPopup, DialogTitle, DialogTrigger, FieldControl, FieldLabel, Fieldset, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, ScrollArea, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport};
+use function Phem\Ui\Base\{AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogPopup, AlertDialogTitle, DialogClose, DialogDescription, DialogDiscard, DialogPayload, DialogPopup, DialogTitle, DialogTrigger, FieldControl, FieldLabel, Fieldset, MenuItem, MenuPopup, MenuSeparator, MenuTrigger};
 use Phem\Ui\Base\{Align, Dialog, DialogViewport, Field, Menu};
 
 // The sections of the scroll examples of base-ui.com.
@@ -141,13 +141,13 @@ function DialogPage(): Node
                 </Example>
                 <Example title="Outside scroll dialog" source="DialogOutsideScrollDemo">
                     <Example.description>
-                        <p>The dialog can be made scrollable by using <code>DialogViewport</code> as an outer scrollable container for <code>DialogPopup</code> while the popup can extend past the bottom edge. The scrollable area uses the <a href="/components/scroll-area" className="underline">Scroll Area component</a> to provide custom scrollbars.</p>
+                        <p>The dialog can be made scrollable by using <code>DialogViewport</code> as an outer scrollable container for <code>DialogPopup</code> while the popup can extend past the bottom edge.</p>
                     </Example.description>
                     <DialogOutsideScrollDemo />
                 </Example>
                 <Example title="Inside scroll dialog" source="DialogInsideScrollDemo">
                     <Example.description>
-                        <p>The dialog can be made scrollable by making an inner container scrollable while the popup stays fully on screen. <code>DialogViewport</code> is used as a positioning container for <code>DialogPopup</code>, while an inner scrollable area is created using the <a href="/components/scroll-area" className="underline">Scroll Area component</a>.</p>
+                        <p>The dialog can be made scrollable by making an inner container scrollable while the popup stays fully on screen. <code>DialogViewport</code> is used as a positioning container for <code>DialogPopup</code>.</p>
                     </Example.description>
                     <DialogInsideScrollDemo />
                 </Example>
@@ -379,27 +379,20 @@ function DialogOutsideScrollDemo(): Node
     return (
         <Dialog>
             <DialogTrigger>Open dialog</DialogTrigger>
-            <DialogViewport className="group/dialog backdrop:duration-[600ms] data-ending-style:backdrop:duration-[350ms]">
-                <ScrollArea className="h-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
-                    <ScrollAreaViewport className="overscroll-contain group-data-ending-style/dialog:pointer-events-none">
-                        <ScrollAreaContent className="min-h-full items-center justify-center">
-                            <DialogPopup tabindex="-1" className="relative mx-auto my-16 flex w-[min(40rem,calc(100vw-2rem))] flex-col gap-4 p-4 transition-[translate] duration-[700ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] data-starting-style:translate-y-[100dvh] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] motion-reduce:transition-none">
-                                <div className="relative flex flex-col gap-1 pr-8">
-                                    <DialogTitle>Dialog</DialogTitle>
-                                    <DialogDescription>This layout keeps an outer container scrollable while the dialog can extend past the bottom edge.</DialogDescription>
-                                    <DialogClose aria-label="Close" className="inline-flex w-8 border-none bg-transparent p-0 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 absolute -top-1 -right-1">
-                                        <DialogXIcon />
-                                    </DialogClose>
-                                </div>
-                                <DialogSections sections={{ sections }} />
-                                <p className="text-sm text-neutral-600 dark:text-neutral-400">Related docs: <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/scroll-area">Scroll Area</a>, <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/drawer">Drawer</a>, <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline" href="/components/popover">Popover</a>.</p>
-                            </DialogPopup>
-                        </ScrollAreaContent>
-                    </ScrollAreaViewport>
-                    <ScrollAreaScrollbar className="duration-[250ms] data-scrolling:duration-[75ms] hover:pointer-events-auto hover:opacity-100 hover:duration-[75ms] group-data-ending-style/dialog:opacity-0">
-                        <ScrollAreaThumb />
-                    </ScrollAreaScrollbar>
-                </ScrollArea>
+            <DialogViewport className="overflow-y-auto overscroll-contain backdrop:duration-[600ms] backdrop:ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:backdrop:duration-[350ms] data-ending-style:backdrop:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]">
+                <div className="flex min-h-full items-center overflow-clip">
+                    <DialogPopup tabindex="-1" autofocus className="relative mx-auto my-16 flex w-[min(40rem,calc(100vw-2rem))] flex-col gap-4 p-4 transition-[translate] duration-[700ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] data-starting-style:translate-y-[100dvh] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] motion-reduce:transition-none">
+                        <div className="relative flex flex-col gap-1 pr-8">
+                            <DialogTitle>Dialog</DialogTitle>
+                            <DialogDescription>This layout keeps an outer container scrollable while the dialog can extend past the bottom edge.</DialogDescription>
+                            <DialogClose aria-label="Close" className="absolute -top-1 -right-1 inline-flex w-8 border-none bg-transparent p-0 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700">
+                                <DialogXIcon />
+                            </DialogClose>
+                        </div>
+                        <DialogSections sections={{ sections }} />
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400">Related docs: <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white focus-visible:outline-offset-2" href="/components/scroll-area">Scroll Area</a>, <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white focus-visible:outline-offset-2" href="/components/drawer">Drawer</a>, <a className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white focus-visible:outline-offset-2" href="/components/popover">Popover</a>.</p>
+                    </DialogPopup>
+                </div>
             </DialogViewport>
         </Dialog>
     );
@@ -439,18 +432,9 @@ function DialogInsideScrollDemo(): Node
                         <DialogTitle>Dialog</DialogTitle>
                         <DialogDescription>This layout keeps the popup fully on screen while allowing its content to scroll.</DialogDescription>
                     </div>
-                    <ScrollArea className="relative flex min-h-0 flex-auto overflow-hidden">
-                        <ScrollAreaViewport className="flex-auto min-h-0 overflow-y-auto overscroll-contain">
-                            <ScrollAreaContent>
-                                <DialogSections sections={{ sections }} className="flex flex-col" itemClass="flex flex-col gap-1 p-4" />
-                            </ScrollAreaContent>
-                        </ScrollAreaViewport>
-                        <ScrollAreaScrollbar className="duration-150">
-                            <ScrollAreaThumb />
-                        </ScrollAreaScrollbar>
-                    </ScrollArea>
+                    <DialogSections sections={{ sections }} className="flex-auto overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-neutral-950 dark:focus-visible:outline-white" itemClass="flex flex-col gap-1 p-4" />
                     <div className="flex justify-end gap-3 p-4 border-t border-neutral-950 dark:border-white">
-                        <DialogClose>Close</DialogClose>
+                        <DialogClose autofocus>Close</DialogClose>
                     </div>
                 </DialogPopup>
             </DialogViewport>
@@ -468,7 +452,7 @@ function DialogUncontainedDemo(): Node
         <Dialog>
             <DialogTrigger>Open dialog</DialogTrigger>
             <DialogViewport className="open:grid place-items-center px-4 py-12 xl:py-6">
-                <DialogPopup className="group/popup relative flex h-full w-full max-w-[70rem] xl:max-w-none justify-center border-0 bg-transparent shadow-none dark:bg-transparent pointer-events-none transition-opacity duration-150 data-starting-style:opacity-0 data-ending-style:opacity-0">
+                <DialogPopup className="group/popup relative flex h-full w-full max-w-[70rem] xl:max-w-none justify-center border-0 bg-transparent shadow-none pointer-events-none transition-opacity duration-150 data-starting-style:opacity-0 data-ending-style:opacity-0">
                     <DialogClose aria-label="Close" className="absolute right-0 -top-10 w-8 p-0 shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none xl:top-0 pointer-events-auto">
                         <DialogXIcon />
                     </DialogClose>

@@ -1725,7 +1725,7 @@ With no changed field, the dialog closes at once. A `<form method="dialog">` clo
 
 ### Choose the focus
 
-The browser gives the first focus to the `[autofocus]` element of the dialog, or else to its first element that can have the focus. After the close, the browser gives the focus back to the element that had it before the open. Set the `final-focus` value to a CSS selector to give it to another element: `data-phem-dialog-final-focus-value="#next-step"`.
+The browser gives the first focus to the `[autofocus]` element of the dialog, or else to its first element that can have the focus. As in Base UI, this first focus does not scroll: the dialog and the content of the popup start at the top, also when the element is lower than the screen or when a start transition moves the popup out of the screen. After the close, the browser gives the focus back to the element that had it before the open. Set the `final-focus` value to a CSS selector to give it to another element: `data-phem-dialog-final-focus-value="#next-step"`.
 
 ### Add a backdrop and a viewport
 

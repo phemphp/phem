@@ -560,7 +560,11 @@ final class OverlaysTest extends DemoTestCase
         $outside = $page->getByRole('dialog', ['name' => 'Dialog', 'exact' => true]);
         expect($outside)->toBeVisible();
         $onScreen = 'el => { const box = el.getBoundingClientRect(); return box.top >= 0 && box.bottom <= innerHeight }';
-        self::assertTrue($outside->locator('[data-phem-dialog-target="popup"]')->evaluate('el => el.offsetHeight > innerHeight'));
+        $popup = $outside->locator('[data-phem-dialog-target="popup"]');
+        self::assertTrue($popup->evaluate('el => el.offsetHeight > innerHeight'));
+        // The first focus goes to the popup, and the viewport does not scroll to it.
+        expect($popup)->toBeFocused();
+        self::assertSame(0, $outside->evaluate('el => el.scrollTop'));
         $outside->getByRole('link', ['name' => 'Popover'])->scrollIntoViewIfNeeded();
         self::assertTrue($outside->getByRole('link', ['name' => 'Popover'])->evaluate($onScreen));
         $outside->getByRole('button', ['name' => 'Close'])->click();
@@ -570,6 +574,7 @@ final class OverlaysTest extends DemoTestCase
         $region('Inside scroll dialog')->getByRole('button', ['name' => 'Open dialog'])->click();
         $inside = $page->getByRole('dialog', ['name' => 'Dialog', 'exact' => true]);
         expect($inside)->toBeVisible();
+        expect($inside->getByRole('button', ['name' => 'Close']))->toBeFocused();
         self::assertTrue($inside->getByRole('button', ['name' => 'Close'])->evaluate($onScreen));
         $inside->getByRole('button', ['name' => 'Close'])->click();
         expect($inside)->toBeHidden();

@@ -949,6 +949,32 @@ describe("phem-dialog: the focus of a touch open", () => {
   })
 })
 
+describe("phem-dialog: the first focus", () => {
+  // The browser scrolls the dialog to the element of its first focus.
+  function scrollable(el) {
+    let top = 0
+    Object.defineProperty(el, "scrollTop", { configurable: true, get: () => top, set: (value) => { top = value } })
+
+    return () => top
+  }
+
+  it("does not scroll the dialog to the element of the first focus", async () => {
+    await mount(edit())
+    const top = scrollable(dialog())
+    const showModal = dialog().showModal
+    dialog().showModal = function () {
+      showModal.call(this)
+      document.getElementById("close").focus()
+      this.scrollTop = 300
+    }
+
+    click("#open")
+
+    expect(document.activeElement).toBe(document.getElementById("close"))
+    expect(top()).toBe(0)
+  })
+})
+
 describe("phem-dialog: the focus of a drawer", () => {
   const drawer = (content = "") => edit('data-phem-dialog-swipe-direction-value="down"', content)
 

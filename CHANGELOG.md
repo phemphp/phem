@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Fix: the first focus of a `phem-dialog` does not scroll the dialog and the content of its
+  popup, as in Base UI. Before, a viewport that scrolls (the "outside scroll" layout) opened at the
+  bottom of a tall popup: the browser gave the focus while the start transition moved the popup
+  out of the screen, and scrolled to it. Only a drawer went back to the top.
 - Fix: a `phem-combobox` with `multiple` and a list of the server removes a kept item from the
   list when its chip goes, also when the morph of the answer changes only the chips. Before, the
   item stayed with `aria-selected="true"` when the chips were in a component of their own (for
