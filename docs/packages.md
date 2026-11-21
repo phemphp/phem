@@ -1,6 +1,6 @@
 # Use and customize component packages
 
-Install a Composer package of `.phem` components and use its components like your own. This guide also shows how to import its pages, replace one of its components, merge Tailwind classes, and add its styles to your Tailwind build. To write a package, see [Make a component package](package-authoring.md).
+Install a Composer package of `.phem` components and use its components like your own. This guide also shows how to install the Base UI components of `phem/ui-base`, import the pages of a package, replace one of its components, merge Tailwind classes, and add its styles to your Tailwind build. To write a package, see [Make a component package](package-authoring.md).
 
 ## Install a package
 
@@ -24,6 +24,100 @@ function HomePage(): Node
 ```
 
 Add classes where you use a component, for example `<Button className="w-full" />`. The package’s classes stay, and `classes()` merges yours in (see [Merge of classes](syntax.md#merge-of-classes)).
+
+## Install the Base UI components
+
+[`phem/ui-base`](https://github.com/phemphp/ui-base) has the components of [Base UI](https://base-ui.com/react/components) (dialogs, menus, selects, comboboxes, tabs, toasts, fields and more), styled with Tailwind CSS v4. The package has no JavaScript: the controllers of phem give the behavior.
+
+1. Require the package:
+
+   ```sh
+   composer require phem/ui-base
+   ```
+
+   Flex adds `Phem\Ui\Base\PhemUiBaseBundle` to `config/bundles.php`. Without Flex, add it yourself. The bundle maps the `assets/` folder of the package to the `@phem/ui-base` path of AssetMapper.
+
+2. Import the theme in your input CSS. The theme sets the colors, the radius and the shadows, and adds the sources of the components to the build, so you need no `@source` for them:
+
+   ```css
+   /* assets/styles/app.css */
+   @import "tailwindcss";
+   @import "../../vendor/phem/ui-base/assets/theme.css";
+   ```
+
+3. Enable the controllers of phem that the components use, in `assets/controllers.json` (see [Enable the controllers](controllers.md#enable-the-controllers)). Enable only the controllers of the components that you use, or all of them:
+
+   ```json
+   "@phem/phem": {
+       "accordion": { "enabled": true, "fetch": "lazy" },
+       "avatar": { "enabled": true, "fetch": "lazy" },
+       "button": { "enabled": true, "fetch": "lazy" },
+       "checkbox-group": { "enabled": true, "fetch": "lazy" },
+       "collapsible": { "enabled": true, "fetch": "lazy" },
+       "combobox": { "enabled": true, "fetch": "lazy" },
+       "context-menu": { "enabled": true, "fetch": "lazy" },
+       "dialog": { "enabled": true, "fetch": "lazy" },
+       "drawer-provider": { "enabled": true, "fetch": "lazy" },
+       "field": { "enabled": true, "fetch": "lazy" },
+       "form": { "enabled": true, "fetch": "lazy" },
+       "menu": { "enabled": true, "fetch": "lazy" },
+       "menubar": { "enabled": true, "fetch": "lazy" },
+       "navigation-menu": { "enabled": true, "fetch": "lazy" },
+       "number-field": { "enabled": true, "fetch": "lazy" },
+       "otp-field": { "enabled": true, "fetch": "lazy" },
+       "popover": { "enabled": true, "fetch": "lazy" },
+       "radio-group": { "enabled": true, "fetch": "lazy" },
+       "scroll-area": { "enabled": true, "fetch": "lazy" },
+       "select": { "enabled": true, "fetch": "lazy" },
+       "slider": { "enabled": true, "fetch": "lazy" },
+       "tabs": { "enabled": true, "fetch": "lazy" },
+       "toast": { "enabled": true, "fetch": "lazy" },
+       "toggle": { "enabled": true, "fetch": "lazy" },
+       "toggle-group": { "enabled": true, "fetch": "lazy" },
+       "toolbar": { "enabled": true, "fetch": "lazy" },
+       "tooltip": { "enabled": true, "fetch": "lazy" }
+   }
+   ```
+
+4. Optional: turn on the Tailwind class merger, so that a class that you give in `className` replaces the class of the same group of the component. Set `css` to the input CSS that imports the theme, so that the merger also knows the names of the theme (`rounded-control`, `rounded-popup`, `shadow-popup`). See [Turn on the Tailwind class merger](styling.md#merge-tailwind-classes):
+
+   ```sh
+   composer require tales-from-a-dev/tailwind-merge-php
+   ```
+
+   ```yaml
+   # config/packages/phem.yaml
+   phem:
+       class_merger:
+           tailwind:
+               css: '%kernel.project_dir%/assets/styles/app.css'
+   ```
+
+5. Build, then use the components. Each Base UI part is a tag: the `X.Root` of Base UI is `X`, and each other part is `X<Part>`:
+
+   ```sh
+   vendor/bin/phemc build src
+   ```
+
+   ```php
+   use Phem\Ui\Base\{Accordion, AccordionItem};
+   use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger};
+
+   #[Page('/faq')]
+   function FaqPage(): Node
+   {
+       return <Document title="FAQ">
+           <Accordion>
+               <AccordionItem value="what">
+                   <AccordionHeader><AccordionTrigger>What is Base UI?</AccordionTrigger></AccordionHeader>
+                   <AccordionPanel>A library of unstyled components.</AccordionPanel>
+               </AccordionItem>
+           </Accordion>
+       </Document>;
+   }
+   ```
+
+`vendor/bin/phemc components` lists the components of the package. `vendor/bin/phemc components Dialog` shows the imports, the props and the parts of one component, and `vendor/bin/phemc examples Dialog` shows its examples. The guide of the package (`vendor/phem/ui-base/README.md`) shows how to change the theme and the dark mode.
 
 ## Import the pages of a package
 
