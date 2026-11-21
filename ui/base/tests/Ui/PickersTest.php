@@ -91,6 +91,29 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorTextContains('[data-phem-combobox-status="error"][hidden]', 'Failed.');
     }
 
+    public function testTheStatusHasTheResultsAndTheMoreTemplateAndTheEmptyPartHasATextTemplate(): void
+    {
+        $this->mount(self::APP.'ComboboxStatusTextsDemo')
+            ->assertSelectorExists('[data-phem-combobox-limit-value="1"]')
+            ->assertSelectorTextContains('[data-phem-combobox-target="status"] [data-phem-combobox-status="results"][hidden]', '2 results found')
+            // The browser fills the templates at each render.
+            ->assertSelectorExists('[data-phem-combobox-target="status"] [data-phem-combobox-status="more"][hidden] > span[data-phem-combobox-text="Hiding {count} results"]:empty')
+            ->assertSelectorExists('[data-phem-combobox-target="empty"] > span[data-phem-combobox-text=\'No results found for "{query}"\']:empty')
+            ->assertSelectorNotExists('[data-phem-combobox-status="pending"]');
+    }
+
+    public function testAFuzzyFilterHasTheKeywordsOfAnItemAndAHighlightPart(): void
+    {
+        $this->mount(self::APP.'ComboboxFuzzyDemo')
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-filter-value="fuzzy"]')
+            // One keyword on each line: the browser tests each one alone.
+            ->assertSelectorExists('#fuzzy-item-lemon[data-keywords="citrus\\A sour"]')
+            ->assertSelectorNotExists('#fuzzy-item-apple[data-keywords]')
+            ->assertSelectorExists('#fuzzy-item-lemon > span[data-phem-combobox-target="highlight"][data-phem-combobox-mark-class="bg-transparent font-bold text-blue-800 dark:text-blue-500"]')
+            ->assertSelectorTextContains('#fuzzy-item-lemon > span[data-phem-combobox-target="highlight"]', 'Lemon')
+            ->assertSelectorExists('#fuzzy-item-apple > span[data-phem-combobox-target="highlight"][data-phem-combobox-mark-class="font-bold"]');
+    }
+
     public function testAListOfTheServerWithMultipleOpensOnAClickOnTheInput(): void
     {
         $this->mount(self::APP.'ComboboxServerMultipleDemo')
@@ -122,6 +145,13 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-combobox-auto-highlight-value="true"][data-phem-combobox-grid-value="true"]:not([data-phem-combobox-keep-highlight-value]):not([data-phem-combobox-highlight-item-on-hover-value])')
             ->assertSelectorExists('#palette-input ~ [data-phem-combobox-target="list"]')
             ->assertSelectorExists('[role="row"][data-phem-combobox-target="row"] #typed-item-a');
+    }
+
+    public function testAComboboxInsertsTheChoiceIntoAField(): void
+    {
+        $this->mount(self::APP.'ComboboxInsertIntoDemo')
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-insert-into-value="message"][data-phem-combobox-grid-value="true"][data-phem-combobox-filter-value="contains"]')
+            ->assertSelectorExists('[data-phem-combobox-target="row"] #emoji-item-😀[data-value="😀"][data-label="grinning face"]');
     }
 
     public function testAMultipleComboboxWithAListOfTheBrowserKeepsTheChosenItems(): void

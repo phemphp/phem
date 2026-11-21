@@ -11,13 +11,23 @@ use function App\Ui\Layout\Document;
 // A city field: the server gives the cities that start with the text. A fruit field: the server
 // renders the fruits one time, and the browser filters them. A color field: as the fruit field,
 // with no id on the list and the items. A reviewer field: the server searches the people in the
-// handler of the input, and the browser selects one of them.
+// handler of the input, and the browser selects one of them. An emoji picker: a grid that the
+// browser filters, and a choice goes into the message. A command palette in a dialog: an inline
+// list that starts again when the dialog closes, after its close animation.
 #[Page('/combobox')]
 final class ComboboxPage
 {
     private const array CITIES = ['Lyon', 'Paris', 'Parma', 'Porto'];
     private const array FRUITS = ['Apple', 'Banana', 'Cherry', 'Éclair', 'Lemon'];
     private const array COLORS = ['Blue', 'Green', 'Red'];
+    /** The emojis of each group, in rows of three. */
+    private const array EMOJIS = [
+        'smileys' => [
+            ['😀' => 'grinning face', '😂' => 'face with tears of joy', '😍' => 'smiling face with heart eyes'],
+            ['😎' => 'smiling face with sunglasses', '😴' => 'sleeping face', '🤔' => 'thinking face'],
+        ],
+        'animals' => [['🐱' => 'cat face', '🐶' => 'dog face']],
+    ];
     private const array PEOPLE = ['leslie' => 'Leslie Alexander', 'lindsay' => 'Lindsay Walton', 'tom' => 'Tom Cook'];
 
     #[State] public string $query = '';
@@ -57,6 +67,7 @@ final class ComboboxPage
         ));
         $fruits = self::FRUITS;
         $colors = self::COLORS;
+        $emojis = self::EMOJIS;
 
         return (
             <Document title="Combobox">
@@ -109,6 +120,27 @@ final class ComboboxPage
                     </div>
                 </div>
 
+                <input id="message" aria-label="Message" />
+                <div id="emoji" data-controller="phem-combobox" data-phem-combobox-grid-value="true" data-phem-combobox-filter-value="contains" data-phem-combobox-insert-into-value="message">
+                    <button type="button" id="emoji-trigger" data-phem-combobox-target="trigger" aria-label="Choose emoji">😀</button>
+                    <div id="emoji-popup" data-phem-combobox-target="popup" hidden>
+                        <input id="emoji-input" data-phem-combobox-target="input" aria-label="Search emojis" />
+                        <div id="emoji-list" data-phem-combobox-target="list">
+                            {% for group, rows in emojis %}
+                                <div key={{ group }} id={{ 'emoji-' ~ group }} data-phem-combobox-target="group">
+                                    {% for row in rows %}
+                                        <div key={{ loop.index }} id={{ 'emoji-' ~ group ~ '-' ~ loop.index }} data-phem-combobox-target="row">
+                                            {% for emoji, name in row %}
+                                                <span key={{ emoji }} data-value={{ emoji }} data-label={{ name }} aria-label={{ name }} data-phem-combobox-target="item">{{ emoji }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
                 <div id="reviewer" data-controller="phem-combobox" data-phem-combobox-selection-mode-value="single">
                     <input id="reviewer-input" data-phem-combobox-target="input" onChange={{ searchPeople }} aria-label="Reviewer" />
                     <button type="button" id="reviewer-clear" data-phem-combobox-target="clear">Clear</button>
@@ -120,6 +152,22 @@ final class ComboboxPage
                             {% endfor %}
                         </ul>
                     </div>
+                </div>
+
+                <div id="commands" data-controller="phem-dialog">
+                    <style>{{ '#commands-dialog { transition: opacity 600ms } #commands-dialog[data-ending-style] { opacity: 0 }' }}</style>
+                    <button type="button" id="commands-open" data-phem-dialog-target="trigger">Commands</button>
+                    <dialog id="commands-dialog" data-phem-dialog-target="popup">
+                        <div id="palette" data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-auto-highlight-value="always">
+                            <input id="palette-input" data-phem-combobox-target="input" aria-label="Search commands" />
+                            <div id="palette-list" data-phem-combobox-target="list">
+                                {% for name in fruits %}
+                                    <div key={{ name }} data-phem-combobox-target="item">{{ name }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="button" id="commands-close" data-phem-dialog-target="close">Close</button>
+                    </dialog>
                 </div>
             </Document>
         );

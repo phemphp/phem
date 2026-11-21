@@ -9,7 +9,8 @@ use Phem\{Bound, Html, Node};
  * A text field with a list of suggestions: Base UI Combobox.Root, on the `phem-combobox` controller.
  *
  * The browser filters a list that the server renders one time, as in Base UI: set `filter` to
- * `contains` or `starts-with`. A choice writes the label of the item in the input. With `multiple`,
+ * `contains`, `starts-with` or `fuzzy` (the characters of the text in the same order, as
+ * match-sorter). A choice writes the label of the item in the input. With `multiple`,
  * the browser also keeps the chosen items: render a ComboboxChip with a `value` for each item, and
  * the chips of the chosen items show. For a long list,
  * the server filters: bind the input to a state (`phem:bind`), filter the items in the render, and
@@ -34,7 +35,8 @@ use Phem\{Bound, Html, Node};
  * open list a highlight at all times. `keepHighlight` keeps the highlight when the pointer leaves
  * the items, and `highlightItemOnHover: false` stops the highlight on hover. With no ComboboxPopup,
  * the ComboboxList is inline and always open (a command palette). `grid` makes the list a grid:
- * put the items in ComboboxRow parts.
+ * put the items in ComboboxRow parts. With `filter`, the visible items fill the rows again after
+ * each filter, and a row with no visible item hides.
  *
  * The props of the Base UI Positioner are props of the root. The popup goes in the top layer
  * (`popover="manual"`), so it needs no Portal.
@@ -54,6 +56,12 @@ class Combobox
     #[Prop] public bool $keepHighlight = false;
     #[Prop] public bool $highlightItemOnHover = true;
     #[Prop] public bool $grid = false;
+    /**
+     * The id of a text field (an input or a textarea): a choice inserts the `value` of the item
+     * into the field at its caret, as the emoji picker of Base UI. The popup closes, the search
+     * input gets no text, and the field gets the focus. The choice selects no item.
+     */
+    #[Prop] public ?string $insertInto = null;
     #[Prop] public bool $loopFocus = true;
     #[Prop] public Side $side = Side::Bottom;
     #[Prop] public Align $align = Align::Start;
@@ -159,6 +167,7 @@ class Combobox
                 data-phem-combobox-keep-highlight-value={{ keepHighlight ? 'true' : null }}
                 data-phem-combobox-highlight-item-on-hover-value={{ highlightItemOnHover ? null : 'false' }}
                 data-phem-combobox-grid-value={{ grid ? 'true' : null }}
+                data-phem-combobox-insert-into-value={{ insertInto }}
                 data-phem-combobox-loop-focus-value={{ loopFocus ? null : 'false' }}
                 data-phem-combobox-side-value={{ side.value }}
                 data-phem-combobox-align-value={{ align.value }}
@@ -348,7 +357,7 @@ function ComboboxList(?Html $children = null, mixed ...$rest): Node
     );
 }
 
-/** A row of items in a list with `grid`. */
+/** A row of items in a list with `grid`. Put the ComboboxItem parts directly in the row. */
 #[Component]
 function ComboboxRow(?Html $children = null, mixed ...$rest): Node
 {
@@ -365,19 +374,24 @@ function ComboboxRow(?Html $children = null, mixed ...$rest): Node
  * `selected` to the chosen items. With a list of the server and the `single` selection mode, a
  * click selects the item in the browser, and the item with the bound `value` of the root is
  * selected. `label` is the text of the item for the input and the filter, when it is not the text
- * of the item.
+ * of the item. `keywords` are more texts that the filter of the browser finds the item with, for
+ * example `['citrus', 'sour']`: each keyword matches alone, and the label still fills the input.
+ *
+ * @param list<string> $keywords
  */
 #[Component]
-function ComboboxItem(#[Context] Combobox $combobox, string $value, ?string $label = null, bool $selected = false, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+function ComboboxItem(#[Context] Combobox $combobox, string $value, ?string $label = null, array $keywords = [], bool $selected = false, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
     $id = $combobox->partId('item-'.$value);
     $selected = $selected || $combobox->isSelected($value);
+    $keywords = [] === $keywords ? null : implode("\n", $keywords);
 
     return (
         <div
             id={{ id }}
             data-value={{ value }}
             data-label={{ label }}
+            data-keywords={{ keywords }}
             aria-selected={{ combobox.multiple ? (selected ? 'true' : 'false') : null }}
             aria-disabled={{ disabled ? 'true' : null }}
             data-selected={{ selected ? '' : null }}
@@ -405,11 +419,32 @@ function ComboboxItemLabel(?Html $children = null, mixed ...$rest): Node
     return <span className={{ classes('col-start-2') }} {{ ...rest }}>{{ children }}</span>;
 }
 
-/** The text that shows when the list has no item. */
+/**
+ * The text of an item, with the text of the user in a `mark` element, as the `highlightText` of
+ * the Base UI demos. The browser marks the parts of the text that are the text of the input (the
+ * case and the accents do not count). `markClassName` is the class of the `mark` elements.
+ */
 #[Component]
-function ComboboxEmpty(?Html $children = null, mixed ...$rest): Node
+function ComboboxHighlight(string $markClassName = 'bg-transparent font-bold text-blue-800 dark:text-blue-500', ?Html $children = null, mixed ...$rest): Node
 {
-    return <div data-phem-combobox-target="empty" className={{ classes('py-4 pr-4 pl-2 text-sm leading-4 font-normal text-muted-foreground empty:m-0 empty:p-0') }} {{ ...rest }}>{{ children }}</div>;
+    return <span data-phem-combobox-target="highlight" data-phem-combobox-mark-class={{ markClassName }} {{ ...rest }}>{{ children }}</span>;
+}
+
+/**
+ * The text that shows when the list has no item.
+ *
+ * `text` is a template that the browser fills at each render: `{query}` is the text of the input,
+ * for example `No results found for "{query}"`.
+ */
+#[Component]
+function ComboboxEmpty(?string $text = null, ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div data-phem-combobox-target="empty" className={{ classes('py-4 pr-4 pl-2 text-sm leading-4 font-normal text-muted-foreground empty:m-0 empty:p-0') }} {{ ...rest }}>
+            {% if text is not null %}<span data-phem-combobox-text={{ text }}></span>{% endif %}
+            {{ children }}
+        </div>
+    );
 }
 
 /**
@@ -417,13 +452,19 @@ function ComboboxEmpty(?Html $children = null, mixed ...$rest): Node
  *
  * For a search of the server, give the texts of its states: `pending` shows with a spinner while
  * the search runs, `error` when the search fails (the handler of the input throws), `idle` when the
- * input has no text and the list has no item, and `empty` when no item matches the text. The
- * browser shows one of them, and the content always shows. With no text to show, the status hides.
+ * input has no text and the list has no item, `empty` when no item matches the text, and
+ * `results` when items show (the server renders the text, for example "3 results found"). The
+ * browser shows one of them, and the content always shows. With no text to show, the status hides,
+ * and it does not open the popup.
+ *
+ * `more` shows with `results` when the `limit` of the root hides matches of the filter of the
+ * browser. It is a template: `{count}` is the number of hidden matches, for example
+ * `Hiding {count} results (type a more specific query to narrow results)`.
  */
 #[Component]
-function ComboboxStatus(?string $idle = null, ?string $pending = null, ?string $empty = null, ?string $error = null, ?Html $children = null, mixed ...$rest): Node
+function ComboboxStatus(?string $idle = null, ?string $pending = null, ?string $empty = null, ?string $error = null, ?string $results = null, ?string $more = null, ?Html $children = null, mixed ...$rest): Node
 {
-    if (null === $idle && null === $pending && null === $empty && null === $error) {
+    if (null === $idle && null === $pending && null === $empty && null === $error && null === $results && null === $more) {
         return <div data-phem-combobox-target="status" className={{ classes('px-2 py-1 text-sm font-normal text-muted-foreground') }} {{ ...rest }}>{{ children }}</div>;
     }
 
@@ -440,6 +481,8 @@ function ComboboxStatus(?string $idle = null, ?string $pending = null, ?string $
             {% if error is not null %}<span data-phem-combobox-status="error" hidden className={{ part }}>{{ error }}</span>{% endif %}
             {% if idle is not null %}<span data-phem-combobox-status="idle" hidden className={{ part }}>{{ idle }}</span>{% endif %}
             {% if empty is not null %}<span data-phem-combobox-status="empty" hidden className={{ part }}>{{ empty }}</span>{% endif %}
+            {% if results is not null %}<span data-phem-combobox-status="results" hidden className={{ part }}>{{ results }}</span>{% endif %}
+            {% if more is not null %}<span data-phem-combobox-status="more" hidden className={{ part }}><span data-phem-combobox-text={{ more }}></span></span>{% endif %}
             {% if children %}<span className="empty:hidden">{{ children }}</span>{% endif %}
         </div>
     );

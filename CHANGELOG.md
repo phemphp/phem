@@ -8,6 +8,54 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- An inline `phem-combobox` list (no `popup` part) in a `<dialog>` starts again when the dialog
+  closes (its `close` event, after the close animation of `phem-dialog`), as Base UI unmounts the
+  popup: the input gets its default value, the filter shows the items of that text, the highlight
+  goes and the list scrolls to its top. With `autoHighlight="always"`, the first item gets the
+  highlight at the next open. The focus that leaves an inline list keeps its text, its filter and
+  its highlight, as in Base UI: a close button of the dialog shows no change of the highlight
+  during the close animation.
+- A `phem-combobox` grid with a filter of the browser fills its rows again after each filter: the
+  visible items of each group go into its rows in their order, with as many items in each row as
+  the first row has. A row with no visible item gets `hidden`. An empty text, a morph and the
+  Turbo cache put the items back in their first rows. The new `data-phem-combobox-insert-into-value` (the id of a text
+  field) inserts the `data-value` of a chosen item into the field at its caret, closes the popup
+  and gives the field the focus. phem/ui-base: the `insertInto` prop of Combobox and Autocomplete.
+- `phem-combobox` has a `fuzzy` filter of the browser
+  (`data-phem-combobox-filter-value="fuzzy"`): the characters of the text are in the label in the
+  same order, as the `MATCHES` rank of match-sorter. The lines of the `data-keywords` attribute of
+  an item are more keys of the filter (all the modes): each key matches alone. A `highlight`
+  target shows the text of the user in `mark` elements. phem/ui-base: `filter="fuzzy"`, the
+  `keywords` prop of ComboboxItem, and the new ComboboxHighlight part.
+- A `status` part of a `phem-combobox` opens the popup only when it shows something: a part of
+  its state, or a text that is not hidden. The new `results` part shows when items show, and the
+  new `more` part shows with it when the `limit` value hides matches of the filter of the browser.
+  An element with `data-phem-combobox-text` is a text template: `{count}` is the number of hidden
+  matches, and `{query}` is the text of the input. The morph keeps its text. The ComboboxStatus
+  of `phem/ui-base` has the `results` and `more` props, and the ComboboxEmpty has a `text` prop.
+  The state of a filter of the browser does not wait for the server.
+- **Breaking**: The items of a `phem-combobox` with no selection (an Autocomplete) get no
+  `aria-selected` now, as in Base UI: the highlight is `data-highlighted` and
+  `aria-activedescendant`. A CSS rule on `[aria-selected="true"]` for the highlight must use
+  `[data-highlighted]`. The input gets `aria-controls` only while the popup is open (an inline
+  list keeps it), and `spellcheck="false"`, `autocorrect="off"` and `autocapitalize="none"` unless
+  the markup gives them. A `groupLabel` part gets `aria-hidden="true"`. The items of a closed popup
+  lose `data-highlighted` at the end of the close animation.
+- A `phem-combobox` popup with nothing to show (a text with no match, no `empty` part, and no
+  `status` part that shows something) closes on the first Escape, and the text stays, as in Base
+  UI. The second Escape clears the text. Before, the first Escape cleared the text and opened the
+  popup with all the items.
+- An input of a `phem-combobox` that the user empties closes the popup, as in Base UI. The next
+  ArrowDown opens it with all the items. With `openOnInputClick`, or with the input in the
+  popup, the popup stays open.
+- With `autoHighlight: true`, a `phem-combobox` gives the highlight to the first item only after
+  the user types a text, or when an arrow key opens the popup. The pointer that leaves the items
+  removes the highlight, as in Base UI, and the next ArrowDown goes to the first item. Before, the
+  first item got the highlight again at each render.
+- A choice in a `phem-combobox` with a list of the server and no selection (an Autocomplete)
+  writes the label of the item in the input. The `input` and `change` events go after the event
+  of the click, so the server searches the label. An `onClick` handler of the item does not have
+  to set the text of the input.
 - `phemc mcp` has the `--project <dir>` option: the project root, for an agent that starts the
   server in another directory (for example Cursor and VS Code, with `${workspaceFolder}`). The new
   doc "Connect a coding agent to the MCP server" (`docs/mcp-server.md`) shows the setup for Claude

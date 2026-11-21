@@ -76,6 +76,44 @@ final class ComboboxTest extends E2eTestCase
         expect($page->locator('#fruit-popup'))->toHaveAttribute('data-empty', '');
     }
 
+    public function testAFilteredGridFillsItsRowsAndAChoiceGoesIntoTheField(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $message = $page->locator('#message');
+        $message->fill('Hi !');
+        $page->evaluate("document.getElementById('message').setSelectionRange(3, 3)");
+
+        $page->locator('#emoji-trigger')->click();
+        $search = $page->locator('#emoji-input');
+        expect($search)->toBeFocused();
+        $search->pressSequentially('sm');
+
+        // The two matches go into the first row, and the empty rows and groups hide.
+        expect($page->locator('#emoji-smileys-1 [data-phem-combobox-target="item"]:visible'))->toHaveCount(2);
+        expect($page->locator('#emoji-smileys-2'))->toBeHidden();
+        expect($page->locator('#emoji-animals'))->toBeHidden();
+
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('ArrowRight');
+        expect($page->getByLabel('smiling face with sunglasses'))->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('Enter');
+
+        // The emoji goes in at the caret, and the field gets the focus with the caret after it.
+        expect($message)->toHaveValue('Hi 😎!');
+        expect($message)->toBeFocused();
+        self::assertSame([5, 5], $page->evaluate("[document.getElementById('message').selectionStart, document.getElementById('message').selectionEnd]"));
+        expect($page->locator('#emoji-popup'))->toBeHidden();
+        expect($search)->toHaveValue('');
+
+        // The next open shows all the emojis in their first rows.
+        $page->locator('#emoji-trigger')->click();
+        expect($page->locator('#emoji-smileys-1 [data-phem-combobox-target="item"]:visible'))->toHaveCount(3);
+        expect($page->locator('#emoji-smileys-2'))->toBeVisible();
+        expect($page->locator('#emoji-animals'))->toBeVisible();
+    }
+
     public function testTheBothModeCompletesTheInputAndChoosesAnItem(): void
     {
         $page = $this->visit('/combobox');
@@ -129,9 +167,14 @@ final class ComboboxTest extends E2eTestCase
         $page->keyboard()->press('Escape');
         self::assertNull($page->evaluate($active));
 
-        // The morph of an event keeps the list with no id, and the link.
+        // The input points to the list only while the popup is open.
+        self::assertFalse($page->evaluate($controls));
+
+        // The morph of an event keeps the list with no id, and the link of the open popup.
         $page->locator('#input')->pressSequentially('ly');
         expect($page->locator('#list li'))->toHaveCount(1);
+        $input->focus();
+        $page->keyboard()->press('ArrowDown');
         self::assertTrue($page->evaluate($controls));
         self::assertSame(0, $page->evaluate("document.querySelectorAll('.color-list[id], .color-list li[id]').length"));
     }
@@ -275,5 +318,61 @@ final class ComboboxTest extends E2eTestCase
 
         $page->keyboard()->press('ArrowDown');
         expect($page->locator('.color-list li[data-highlighted]'))->toHaveText('Blue');
+    }
+
+    public function testAnInlineListInADialogStartsAgainAfterTheCloseAnimation(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#commands-open')->click();
+        $input = $page->locator('#palette-input');
+        expect($input)->toBeVisible();
+        expect($page->locator('#palette-list [data-highlighted]'))->toHaveText('Apple');
+
+        $input->pressSequentially('le');
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#palette-list [data-phem-combobox-target="item"]:visible'))->toHaveCount(2);
+        expect($page->locator('#palette-list [data-highlighted]'))->toHaveText('Lemon');
+
+        // While the dialog closes, the palette keeps its text, its filter and its highlight.
+        $page->keyboard()->press('Escape');
+        expect($page->locator('#commands-dialog'))->toHaveAttribute('data-ending-style', '');
+        expect($input)->toHaveValue('le');
+        expect($page->locator('#palette-list [data-highlighted]'))->toHaveText('Lemon');
+
+        expect($page->locator('#commands-dialog'))->toBeHidden();
+        expect($input)->toHaveValue('');
+
+        $page->locator('#commands-open')->click();
+        expect($input)->toBeVisible();
+        expect($input)->toHaveValue('');
+        expect($page->locator('#palette-list [data-phem-combobox-target="item"]:visible'))->toHaveCount(5);
+        expect($page->locator('#palette-list [data-highlighted]'))->toHaveText('Apple');
+    }
+
+    public function testAnInlineListInADialogKeepsItsHighlightWhenTheCloseButtonClosesTheDialog(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#commands-open')->click();
+        $input = $page->locator('#palette-input');
+        $input->pressSequentially('le');
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#palette-list [data-highlighted]'))->toHaveText('Lemon');
+
+        // The focus goes to the close button: while the dialog closes, the palette does not change.
+        $page->locator('#commands-close')->click();
+        expect($page->locator('#commands-dialog'))->toHaveAttribute('data-ending-style', '');
+        expect($input)->toHaveValue('le');
+        expect($page->locator('#palette-list [data-highlighted]'))->toHaveText('Lemon');
+
+        expect($page->locator('#commands-dialog'))->toBeHidden();
+        expect($input)->toHaveValue('');
+
+        $page->locator('#commands-open')->click();
+        expect($page->locator('#palette-list [data-phem-combobox-target="item"]:visible'))->toHaveCount(5);
+        expect($page->locator('#palette-list [data-highlighted]'))->toHaveText('Apple');
     }
 }

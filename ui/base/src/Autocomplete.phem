@@ -10,7 +10,7 @@ use Phem\Attribute\Component;
  * input, and does not become a chosen value.
  *
  * Use the parts of Combobox in it: ComboboxLabel, ComboboxInput, ComboboxPopup, ComboboxList,
- * ComboboxItem, ComboboxEmpty, ComboboxStatus, ComboboxGroup…
+ * ComboboxItem, ComboboxHighlight, ComboboxEmpty, ComboboxStatus, ComboboxGroup…
  *
  * @aliases typeahead, suggestions, autosuggest, search input
  */

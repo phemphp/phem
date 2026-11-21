@@ -467,117 +467,480 @@ final class PickersTest extends DemoTestCase
         expect($input)->toHaveCSS('outline-style', 'solid');
         expect($input)->toHaveCSS('outline-width', '2px');
 
+        // The browser does all the steps below: no request goes to the server.
+        $resources = '() => performance.getEntriesByType("resource").length';
+        $requests = $page->evaluate($resources);
+
+        // The input has the attributes of the Base UI input, and points to the list only while
+        // the popup is open.
+        expect($input)->toHaveAttribute('spellcheck', 'false');
+        expect($input)->toHaveAttribute('autocapitalize', 'none');
+        expect($hero->locator('#tags-input:not([aria-controls])'))->toHaveCount(1);
+
+        // A click does not open the popup. ArrowDown opens it with all the tags and no highlight.
+        $input->click();
+        expect($input)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('ArrowDown');
+        expect($input)->toHaveAttribute('aria-expanded', 'true');
+        expect($hero->locator('#tags-input[aria-controls]'))->toHaveCount(1);
+        expect($hero->getByRole('option'))->toHaveCount(41);
+        expect($hero->locator('[data-highlighted]'))->toHaveCount(0);
+
         $input->pressSequentially('too');
         expect($hero->getByRole('option', ['name' => 'component: tooltip', 'exact' => true]))->toBeVisible();
         expect($hero->getByRole('option', ['name' => 'component: toolbar', 'exact' => true]))->toBeVisible();
         expect($hero->getByRole('option', ['name' => 'feature', 'exact' => true]))->toHaveCount(0);
 
-        $hero->getByRole('option', ['name' => 'component: toolbar', 'exact' => true])->click();
+        // An Autocomplete has no selection: the items have no aria-selected.
+        $toolbar = $hero->getByRole('option', ['name' => 'component: toolbar', 'exact' => true]);
+        $tooltip = $hero->getByRole('option', ['name' => 'component: tooltip', 'exact' => true]);
+        $page->keyboard()->press('ArrowDown');
+        expect($toolbar)->toHaveAttribute('data-highlighted', '');
+        expect($hero->locator('[role=option][aria-selected]'))->toHaveCount(0);
+
+        // ArrowUp from the first item goes back to the input, then to the last item.
+        $page->keyboard()->press('ArrowUp');
+        expect($hero->locator('[data-highlighted]'))->toHaveCount(0);
+        $page->keyboard()->press('ArrowUp');
+        expect($tooltip)->toHaveAttribute('data-highlighted', '');
+
+        // Enter writes the label in the input, closes the popup and keeps the focus.
+        $page->keyboard()->press('Enter');
+        expect($input)->toHaveValue('component: tooltip');
+        expect($input)->toHaveAttribute('aria-expanded', 'false');
+        expect($input)->toBeFocused();
+
+        // Escape closes the popup, and a second Escape clears the input.
+        $page->keyboard()->press('ArrowDown');
+        expect($input)->toHaveAttribute('aria-expanded', 'true');
+        $page->keyboard()->press('Escape');
+        expect($input)->toHaveAttribute('aria-expanded', 'false');
+        expect($input)->toHaveValue('component: tooltip');
+        $page->keyboard()->press('Escape');
+        expect($input)->toHaveValue('');
+
+        // A click on an item writes its label in the input.
+        $input->pressSequentially('too');
+        $toolbar->click();
         expect($input)->toHaveValue('component: toolbar');
+        expect($input)->toHaveAttribute('aria-expanded', 'false');
 
         $input->fill('zzz');
         expect($hero->locator('text=No tags found.'))->toBeVisible();
+
+        self::assertSame($requests, $page->evaluate($resources));
     }
 
     public function testAutocompleteExamples(): void
     {
         $page = $this->visitComponent('autocomplete');
 
-        // Async search: the server searches, and the status gives the number of results.
+        // Async search: the handler of the input searches, and the status shows the state of the
+        // search. With no text, the popup does not open.
         $async = $page->getByRole('region', ['name' => 'Async search'])->locator('[data-demo="preview"]');
         $movies = $async->getByRole('combobox', ['name' => 'Search movies by name or year']);
-        $movies->fill('god');
+        $movies->focus();
+        $page->keyboard()->press('ArrowDown');
+        expect($movies)->toHaveAttribute('aria-expanded', 'false');
+
+        $movies->pressSequentially('god');
         expect($async->locator('text=3 results found'))->toBeVisible();
+        expect($async->locator('text=Searching…'))->toBeHidden();
+        expect($async->getByRole('option'))->toHaveCount(3);
+        $page->keyboard()->press('ArrowDown');
+        expect($async->getByRole('option', ['name' => 'The Godfather 1972']))->toHaveAttribute('data-highlighted', '');
+
+        // A choice writes the title in the input and closes the popup. The title is the next
+        // search.
         $async->getByRole('option', ['name' => 'City of God 2002'])->click();
         expect($movies)->toHaveValue('City of God');
+        expect($movies)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('ArrowDown');
+        expect($async->locator('text=1 result found'))->toBeVisible();
+        expect($async->getByRole('option'))->toHaveCount(1);
+
         $movies->fill('will_error');
         expect($async->locator('text=Failed to fetch movies. Please try again.'))->toBeVisible();
+        expect($async->getByRole('option'))->toHaveCount(0);
         $movies->fill('zzz');
         expect($async->locator('text=Movie or year "zzz" does not exist in the Top 100 IMDb movies'))->toBeVisible();
-        $page->keyboard()->press('Escape');
 
-        // Inline: the arrow keys write the label of the highlighted item in the input.
-        $inline = $page->getByRole('region', ['name' => 'Inline autocomplete'])->locator('[data-demo="preview"]')->getByRole('combobox', ['name' => 'Search tags']);
+        // Escape closes the popup, and a second Escape clears the input.
+        $page->keyboard()->press('Escape');
+        expect($movies)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('Escape');
+        expect($movies)->toHaveValue('');
+
+        // Inline: the arrow keys write the label of the highlighted item in the input, and the list
+        // stays filtered on the typed text.
+        $inlineDemo = $page->getByRole('region', ['name' => 'Inline autocomplete'])->locator('[data-demo="preview"]');
+        $inline = $inlineDemo->getByRole('combobox', ['name' => 'Search tags']);
         expect($inline)->toHaveAttribute('aria-autocomplete', 'both');
-        $inline->pressSequentially('fe');
+        $inline->pressSequentially('co');
+        expect($inlineDemo->getByRole('option'))->toHaveCount(35);
         $page->keyboard()->press('ArrowDown');
-        expect($inline)->toHaveValue('feature');
-        $page->keyboard()->press('Escape');
-        expect($inline)->toHaveValue('fe');
-        $page->keyboard()->press('Escape');
+        expect($inline)->toHaveValue('component: accordion');
+        $page->keyboard()->press('ArrowDown');
+        expect($inline)->toHaveValue('component: alert dialog');
+        expect($inlineDemo->getByRole('option'))->toHaveCount(35);
 
-        // Grouped: the filter hides a group with no match.
+        // Up from the first item goes back to the typed text, then wraps to the last item.
+        $page->keyboard()->press('ArrowUp');
+        $page->keyboard()->press('ArrowUp');
+        expect($inline)->toHaveValue('co');
+        expect($inlineDemo->locator('[data-highlighted]'))->toHaveCount(0);
+        $page->keyboard()->press('ArrowUp');
+        expect($inline)->toHaveValue('component: tooltip');
+
+        // Escape closes the popup and puts back the typed text.
+        $page->keyboard()->press('Escape');
+        expect($inline)->toHaveValue('co');
+        expect($inline)->toHaveAttribute('aria-expanded', 'false');
+
+        // Enter writes the highlighted item in the input and closes the popup.
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('Enter');
+        expect($inline)->toHaveValue('component: accordion');
+        expect($inline)->toHaveAttribute('aria-expanded', 'false');
+
+        // No match: the first Escape keeps the text, the second clears it, and the popup stays
+        // closed.
+        $inline->fill('zzz');
+        $page->keyboard()->press('Escape');
+        expect($inline)->toHaveValue('zzz');
+        $page->keyboard()->press('Escape');
+        expect($inline)->toHaveValue('');
+        expect($inline)->toHaveAttribute('aria-expanded', 'false');
+
+        // Grouped: the browser does all the steps: no request goes to the server.
         $grouped = $page->getByRole('region', ['name' => 'Grouped'])->locator('[data-demo="preview"]');
-        $grouped->getByRole('combobox', ['name' => 'Select a tag'])->fill('dial');
+        $tag = $grouped->getByRole('combobox', ['name' => 'Select a tag']);
+        $resources = '() => performance.getEntriesByType("resource").length';
+        $requests = $page->evaluate($resources);
+
+        // The input has the attributes of the Base UI input.
+        expect($tag)->toHaveAttribute('spellcheck', 'false');
+
+        // The filter hides a group with no match. The group labels name their groups, and screen
+        // readers do not read them again.
+        $tag->fill('co');
         expect($grouped->getByRole('group', ['name' => 'Component']))->toBeVisible();
         expect($grouped->getByRole('group', ['name' => 'Type']))->toBeHidden();
+        expect($grouped->getByRole('option'))->toHaveCount(35);
+        expect($grouped->locator('[data-phem-combobox-target="groupLabel"]')->first())->toHaveAttribute('aria-hidden', 'true');
+
+        // The arrow keys go across the groups and skip the labels. An item of an autocomplete has
+        // no aria-selected.
+        $tag->fill('o');
+        $page->keyboard()->press('ArrowDown');
+        expect($grouped->getByRole('option', ['name' => 'docs']))->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('ArrowDown');
+        expect($grouped->getByRole('option', ['name' => 'component: accordion']))->toHaveAttribute('data-highlighted', '');
+        expect($grouped->locator('[role="option"][aria-selected]'))->toHaveCount(0);
+
+        // Enter writes the label in the input and closes the popup.
+        $page->keyboard()->press('Enter');
+        expect($tag)->toHaveValue('component: accordion');
+        expect($tag)->toHaveAttribute('aria-expanded', 'false');
+
+        // No match: the popup shows the empty text. The first Escape closes the popup and keeps the
+        // text, and the second clears the input.
+        $tag->fill('zzz');
+        expect($grouped->locator('text=No tags found.'))->toBeVisible();
+        $page->keyboard()->press('Escape');
+        expect($tag)->toHaveValue('zzz');
+        expect($tag)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('Escape');
+        expect($tag)->toHaveValue('');
+
+        // ArrowUp opens the popup with no highlight, and the next ArrowUp highlights the last item.
+        $page->keyboard()->press('ArrowUp');
+        expect($tag)->toHaveAttribute('aria-expanded', 'true');
+        expect($grouped->locator('[data-highlighted]'))->toHaveCount(0);
+        $page->keyboard()->press('ArrowUp');
+        expect($grouped->getByRole('option', ['name' => 'component: tooltip']))->toHaveAttribute('data-highlighted', '');
         $page->keyboard()->press('Escape');
 
-        // Fuzzy matching: the characters in order match, and the query is marked.
+        // An input that the user empties closes the popup.
+        $tag->fill('f');
+        expect($tag)->toHaveAttribute('aria-expanded', 'true');
+        $tag->fill('');
+        expect($tag)->toHaveAttribute('aria-expanded', 'false');
+
+        // A click on an item writes its label in the input, and the focus stays in the input.
+        $tag->fill('co');
+        $grouped->getByRole('option', ['name' => 'component: avatar'])->click();
+        expect($tag)->toHaveValue('component: avatar');
+        expect($tag)->toBeFocused();
+
+        self::assertSame($requests, $page->evaluate($resources));
+
+        // Fuzzy matching: the browser matches the characters of the query in order, in the label
+        // and in each keyword of an item. The items keep the order of the data, and the browser
+        // marks the text that has the query. No request goes to the server.
+        $requests = $page->evaluate($resources);
         $fuzzy = $page->getByRole('region', ['name' => 'Fuzzy matching'])->locator('[data-demo="preview"]');
         $docs = $fuzzy->getByRole('combobox', ['name' => 'Fuzzy search documentation']);
-        $docs->fill('rct hks');
-        expect($fuzzy->getByRole('option'))->toHaveCount(1);
-        expect($fuzzy->getByRole('option', ['name' => 'React Hooks Guide']))->toBeVisible();
-        $docs->fill('grid');
+        $results = $fuzzy->getByRole('option');
+        $docs->pressSequentially('rct hks');
+        expect($results)->toHaveCount(1);
+        expect($results->first())->toContainText('React Hooks Guide');
+        expect($results->first()->locator('mark'))->toHaveCount(0);
+
         // The title and the description of CSS Grid Layout have the query.
-        expect($fuzzy->getByRole('option', ['name' => 'CSS Grid Layout'])->locator('mark'))->toHaveCount(2);
+        $docs->fill('grid');
+        expect($results)->toHaveCount(7);
+        expect($results->first())->toContainText('CSS Flexbox Layout');
+        $marks = $fuzzy->getByRole('option', ['name' => 'CSS Grid Layout'])->locator('mark');
+        expect($marks)->toHaveCount(2);
+        expect($marks->first())->toHaveText('Grid');
+        expect($marks->last())->toHaveText('Grid');
+
+        // The category is a keyword.
+        $docs->fill('database');
+        expect($results)->toHaveCount(1);
+        expect($results->first())->toContainText('MongoDB Queries');
+
+        // Enter writes the title in the input, and the next open marks all the title.
+        $docs->fill('react');
+        expect($results)->toHaveCount(7);
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('Enter');
+        expect($docs)->toHaveValue('React Hooks Guide');
+        expect($docs)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('ArrowDown');
+        expect($results)->toHaveCount(1);
+        expect($results->first()->locator('mark')->first())->toHaveText('React Hooks Guide');
+        $page->keyboard()->press('Escape');
+
         $docs->fill('zzz');
         expect($fuzzy->locator('text=No results found for "zzz"'))->toBeVisible();
         $page->keyboard()->press('Escape');
+        $page->keyboard()->press('Escape');
+        expect($docs)->toHaveValue('');
+        self::assertSame($requests, $page->evaluate($resources));
 
-        // Limit results: 8 items show, and the status gives the number of hidden items.
+        // Limit results: 8 items show, and the browser counts the hidden matches for the status.
+        // The browser filters: no request.
+        $requests = $page->evaluate($resources);
         $limit = $page->getByRole('region', ['name' => 'Limit results'])->locator('[data-demo="preview"]');
         $limited = $limit->getByRole('combobox', ['name' => 'Limit results to 8']);
+        $items = $limit->locator('[data-phem-combobox-target="item"]:not([hidden])');
+
+        // With no text, ArrowDown opens the popup: 50 tags, 8 show.
+        $limited->focus();
+        $page->keyboard()->press('ArrowDown');
+        expect($items)->toHaveCount(8);
+        expect($limit->getByText('Hiding 42 results (type a more specific query to narrow results)'))->toBeVisible();
+
         $limited->fill('component');
-        expect($limit->locator('[data-phem-combobox-target="item"]:not([hidden])'))->toHaveCount(8);
-        expect($limit->locator('text=Hiding 27 results (type a more specific query to narrow results)'))->toBeVisible();
+        expect($items)->toHaveCount(8);
+        expect($limit->getByText('Hiding 27 results (type a more specific query to narrow results)'))->toBeVisible();
+
         $limited->fill('tool');
-        expect($limit->locator('[data-phem-combobox-target="item"]:not([hidden])'))->toHaveCount(2);
-        expect($limit->locator('text=Hiding'))->toHaveCount(0);
-        $page->keyboard()->press('Escape');
+        expect($items)->toHaveCount(2);
+        expect($limit->getByText('Hiding'))->toHaveCount(0);
 
-        // Auto highlight: the first match gets the highlight as the user types.
+        $limited->fill('compzz');
+        expect($items)->toHaveCount(0);
+        expect($limit->getByText('No results found for "compzz"'))->toBeVisible();
+
+        // A choice writes the label of the item in the input.
+        $limited->fill('tool');
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('Enter');
+        expect($limited)->toHaveValue('component: tooltip');
+        expect($limited)->toHaveAttribute('aria-expanded', 'false');
+        self::assertSame($requests, $page->evaluate($resources));
+
+        // Auto highlight: the first match gets the highlight as the user types. The browser does
+        // all the steps: no request goes to the server.
+        $requests = $page->evaluate($resources);
         $highlight = $page->getByRole('region', ['name' => 'Auto highlight'])->locator('[data-demo="preview"]');
-        $highlight->getByRole('combobox', ['name' => 'Auto highlight on type'])->pressSequentially('d');
-        expect($highlight->getByRole('option', ['name' => 'docs', 'exact' => true]))->toHaveAttribute('data-highlighted', '');
-        $page->keyboard()->press('Escape');
+        $tags = $highlight->getByRole('combobox', ['name' => 'Auto highlight on type']);
+        $first = $highlight->getByRole('option', ['name' => 'component: accordion', 'exact' => true]);
+        $tags->pressSequentially('comp');
+        expect($first)->toHaveAttribute('data-highlighted', '');
+        expect($tags)->toHaveAttribute('aria-activedescendant', 'highlighted-tags-item-c-accordion');
 
-        // Command palette: the inline list always has a highlight, and Enter closes the dialog.
+        // The keys loop: ArrowUp on the first item goes to the last item.
+        $page->keyboard()->press('ArrowUp');
+        expect($highlight->getByRole('option', ['name' => 'component: tooltip', 'exact' => true]))->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('ArrowDown');
+        expect($first)->toHaveAttribute('data-highlighted', '');
+
+        // The pointer moves the highlight. When the pointer leaves the list, the highlight goes,
+        // and ArrowDown starts again at the first item.
+        $autocomplete = $highlight->getByRole('option', ['name' => 'component: autocomplete', 'exact' => true]);
+        $autocomplete->hover();
+        expect($autocomplete)->toHaveAttribute('data-highlighted', '');
+        $page->mouse()->move(5, 5);
+        expect($highlight->locator('[role="option"][data-highlighted]'))->toHaveCount(0);
+        expect($highlight->locator('input[aria-activedescendant]'))->toHaveCount(0);
+        $page->keyboard()->press('ArrowDown');
+        expect($first)->toHaveAttribute('data-highlighted', '');
+
+        // A new character gives the highlight to the first match again.
+        $page->keyboard()->press('ArrowDown');
+        $tags->pressSequentially('onent: to');
+        expect($highlight->getByRole('option', ['name' => 'component: toast', 'exact' => true]))->toHaveAttribute('data-highlighted', '');
+
+        // An input that the user empties closes the popup.
+        $tags->fill('');
+        expect($tags)->toHaveAttribute('aria-expanded', 'false');
+
+        // Enter writes the highlighted item in the input and closes the popup.
+        $tags->pressSequentially('fe');
+        $page->keyboard()->press('Enter');
+        expect($tags)->toHaveValue('feature');
+        expect($tags)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('Escape');
+        expect($tags)->toHaveValue('');
+        self::assertSame($requests, $page->evaluate($resources));
+
+        // Command palette: the inline list always has a highlight, the list scrolls, and a choice
+        // closes the dialog. The browser filters and chooses: no request goes to the server.
         $palette = $page->getByRole('region', ['name' => 'Command palette'])->locator('[data-demo="preview"]');
-        $palette->getByRole('button', ['name' => 'Open command palette'])->click();
+        $fetches = "() => performance.getEntriesByType('resource').filter((e) => e.initiatorType === 'fetch').length";
+        $sent = $page->evaluate($fetches);
+        $open = $palette->getByRole('button', ['name' => 'Open command palette']);
+        $open->click();
         $dialog = $page->getByRole('dialog', ['name' => 'Command palette']);
         $commands = $dialog->getByRole('combobox', ['name' => 'Search commands']);
+        $linear = $dialog->getByRole('option', ['name' => 'Linear Application']);
         expect($commands)->toBeFocused();
         expect($commands)->toHaveAttribute('aria-expanded', 'true');
-        expect($dialog->getByRole('option', ['name' => 'Linear Application']))->toHaveAttribute('data-highlighted', '');
-        $commands->pressSequentially('tab');
+        expect($linear)->toHaveAttribute('data-highlighted', '');
+        expect($linear)->not()->toHaveAttribute('aria-selected', 'true');
+
+        // ArrowUp goes to the last command, and the list scrolls to it.
+        $page->keyboard()->press('ArrowUp');
+        $last = $dialog->getByRole('option', ['name' => 'Run Script Command']);
+        expect($last)->toHaveAttribute('data-highlighted', '');
+        // The item is in the visible box of the scroll area.
+        $page->waitForFunction(<<<'JS'
+            () => {
+                const item = document.querySelector('#palette-item-run-script').getBoundingClientRect();
+                const box = document.querySelector('#palette-item-run-script').closest('[data-controller~="phem-scroll-area"]').getBoundingClientRect();
+
+                return item.top >= box.top && item.bottom <= box.bottom;
+            }
+            JS);
+
+        // The filter uses the label of the item, not its kind.
+        $commands->fill('command');
+        expect($dialog->locator('text=No results found.'))->toBeVisible();
+        $commands->fill('tab');
         expect($dialog->getByRole('option', ['name' => 'New Tab Command']))->toHaveAttribute('data-highlighted', '');
         $page->keyboard()->press('Enter');
         expect($dialog)->toBeHidden();
+        expect($open)->toBeFocused();
 
-        // Grid layout: the arrow keys move in the rows and in the columns, and a choice adds the
-        // emoji to the message.
+        // Each open starts with an empty search.
+        $open->click();
+        expect($commands)->toHaveValue('');
+        expect($linear)->toHaveAttribute('data-highlighted', '');
+
+        // A click on an item closes the dialog, and Escape closes it too.
+        $dialog->getByRole('option', ['name' => 'Slack Application'])->click();
+        expect($dialog)->toBeHidden();
+        $open->click();
+        $commands->pressSequentially('fig');
+        $page->keyboard()->press('Escape');
+        expect($dialog)->toBeHidden();
+        self::assertSame($sent, $page->evaluate($fetches));
+
+        // Grid layout: the browser filters the emojis and fills the rows again, and a choice
+        // inserts the emoji at the caret of the message, with no request to the server.
         $grid = $page->getByRole('region', ['name' => 'Grid layout'])->locator('[data-demo="preview"]');
-        $grid->getByRole('button', ['name' => 'Choose emoji'])->click();
+        $message = $grid->getByRole('textbox', ['name' => 'Message']);
+        $search = $grid->getByRole('combobox', ['name' => 'Search emojis']);
         $emojis = $grid->getByRole('grid', ['name' => 'Emoji results']);
-        expect($grid->getByRole('combobox', ['name' => 'Search emojis']))->toBeFocused();
+        $sent = $page->evaluate($fetches);
+        $message->fill('Hi there');
+        $message->evaluate('(el) => el.setSelectionRange(2, 2)');
+        $grid->getByRole('button', ['name' => 'Choose emoji'])->click();
+        expect($search)->toBeFocused();
         $page->keyboard()->press('ArrowDown');
         $page->keyboard()->press('ArrowRight');
         $page->keyboard()->press('ArrowDown');
-        expect($emojis->getByRole('gridcell', ['name' => 'rolling on the floor laughing']))->toHaveAttribute('data-highlighted', '');
+        expect($emojis->getByRole('gridcell', ['name' => '🤣']))->toHaveAttribute('data-highlighted', '');
         $page->keyboard()->press('Enter');
-        expect($grid->getByRole('textbox', ['name' => 'Message']))->toHaveValue('🤣');
-        $grid->getByRole('button', ['name' => 'Choose emoji'])->click();
-        $grid->getByRole('combobox', ['name' => 'Search emojis'])->fill('cat');
-        expect($emojis->getByRole('gridcell'))->toHaveCount(1);
-        $page->keyboard()->press('Escape');
+        expect($message)->toHaveValue('Hi🤣 there');
+        expect($message)->toBeFocused();
+        // The caret is after the emoji: 2 characters and the 2 UTF-16 units of the emoji.
+        self::assertSame(4, $message->evaluate('(el) => el.selectionStart'));
 
-        // Large datasets: a click on the input opens the first 50 items, with the total in the status.
-        $large = $page->getByRole('region', ['name' => 'Large datasets'])->locator('[data-demo="preview"]');
-        $large->getByRole('combobox', ['name' => 'Search 10,000 items'])->click();
-        expect($large->getByRole('option'))->toHaveCount(50);
-        expect($large->locator('text=Showing 50 of 10,000 items. Type to refine.'))->toBeVisible();
+        // The search starts with no text at the next open, with all the emojis.
+        $grid->getByRole('button', ['name' => 'Choose emoji'])->click();
+        expect($search)->toHaveValue('');
+        expect($emojis->getByRole('gridcell'))->toHaveCount(90);
+
+        // "fa" gives 9 animals in rows of 5 and 4, and hides the food.
+        $search->fill('fa');
+        $animals = $emojis->getByRole('group', ['name' => 'Animals & Nature']);
+        expect($animals->getByRole('row'))->toHaveCount(2);
+        expect($animals->getByRole('row')->nth(0)->getByRole('gridcell'))->toHaveCount(5);
+        expect($animals->getByRole('row')->nth(1)->getByRole('gridcell'))->toHaveCount(4);
+        expect($emojis->getByRole('group', ['name' => 'Food & Drink']))->toBeHidden();
+
+        // The arrow keys move in the new rows: "monkey" gives one row of 5.
+        $search->fill('monkey');
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('ArrowRight');
+        $page->keyboard()->press('ArrowRight');
+        $page->keyboard()->press('ArrowRight');
+        $page->keyboard()->press('ArrowRight');
+        expect($emojis->getByRole('gridcell', ['name' => '🐒']))->toHaveAttribute('data-highlighted', '');
+
+        $search->fill('zzz');
+        expect($grid->getByText('No emojis found'))->toBeVisible();
+        expect($emojis->getByRole('gridcell'))->toHaveCount(0);
+        $page->keyboard()->press('Escape');
+        self::assertSame($sent, $page->evaluate($fetches));
+
+        // Virtualized: a click on the input opens the first 50 items, with the total in the status.
+        $virtualized = $page->getByRole('region', ['name' => 'Virtualized'])->locator('[data-demo="preview"]');
+        $many = $virtualized->getByRole('combobox', ['name' => 'Search 10,000 items']);
+        $many->click();
+        expect($virtualized->getByRole('option'))->toHaveCount(50);
+        expect($virtualized->getByRole('option')->first())->toHaveText('Item 0001');
+        expect($virtualized->getByText('Showing 50 of 10,000 items. Type to refine.'))->toBeVisible();
+
+        // The onChange handler searches on the server.
+        $many->fill('42');
+        expect($virtualized->getByText('Showing 50 of 299 items. Type to refine.'))->toBeVisible();
+        expect($virtualized->getByRole('option')->first())->toHaveText('Item 0042');
+
+        // A choice writes the label in the input, with no handler of the item: one search of the
+        // label goes to the server.
+        $sent = $page->evaluate($fetches);
+        $virtualized->getByRole('option', ['name' => 'Item 0142'])->click();
+        expect($many)->toHaveValue('Item 0142');
+        expect($many)->toHaveAttribute('aria-expanded', 'false');
+        $many->click();
+        expect($virtualized->getByRole('option'))->toHaveCount(1);
+        expect($virtualized->getByRole('option', ['name' => 'Item 0142']))->toBeVisible();
+        self::assertSame($sent + 1, $page->evaluate($fetches));
+        expect($virtualized->getByText('Showing 50 of'))->toBeHidden();
+
+        // The keyboard: ArrowDown highlights the first match, and Enter writes its label.
+        $many->fill('99');
+        expect($virtualized->getByRole('option')->first())->toHaveText('Item 0099');
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('Enter');
+        expect($many)->toHaveValue('Item 0099');
+
+        // No match: the empty text. Escape closes the popup, then clears the input.
+        $many->fill('zzz');
+        expect($virtualized->getByText('No items found.'))->toBeVisible();
+        $page->keyboard()->press('Escape');
+        expect($many)->toHaveAttribute('aria-expanded', 'false');
+        $page->keyboard()->press('Escape');
+        expect($many)->toHaveValue('');
     }
 
     public function testSelect(): void

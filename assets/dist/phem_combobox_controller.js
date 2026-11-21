@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { textMatcher } from "./phem_match.js"
+import { textMatcher, textParts } from "./phem_match.js"
 import { ClientState } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { Popup } from "./phem_popup.js"
@@ -27,28 +27,42 @@ import { PendingChoices } from "./phem_pending_choices.js"
 // The server filters: the input sends the text (with `phem:bind` or `onInput`), and the render of
 // the server gives the items. The controller adds the roles and the keyboard. The popup opens when
 // the user types, on ArrowDown or ArrowUp, and on a click on the `trigger` target. It shows when
-// it has an item, an `empty` target or a `status` target. The focus stays in the input: ArrowDown
+// it has an item, an `empty` target or a `status` target that shows something (a part of its state,
+// or a text that is not hidden). The focus stays in the input: ArrowDown
 // and ArrowUp move the highlight. With no selection (an Autocomplete) and no `autoHighlight`, the
 // key that opens the popup gives no highlight: the next key moves it. With the `loopFocus` value, a
 // move after the last item goes back to the input (no highlight), and the next move goes to the
 // first item (with `autoHighlight`, it goes to the first item at once), and Enter chooses the
 // highlighted item. Enter on an open popup with no highlight closes the popup, and keeps its
 // default action. With the `autoHighlight` value, the first item gets the highlight when the items
-// change. A move of the pointer on an item highlights it: an item that comes under a pointer that
-// does not move (the list changes) does not get the highlight. The pointer that goes out of the
-// items removes the highlight.
+// change after the user types (not after an empty text), and when an arrow key opens the popup. A
+// move of the pointer on an item highlights it: an item that comes under a pointer that does not
+// move (the list changes) does not get the highlight. The pointer that goes out of the items
+// removes the highlight, also with `autoHighlight`: the next arrow key goes to the first item. An
+// input that the user empties closes the popup, as in Base UI (not with the `openOnInputClick`
+// value, and not for an input in the popup): the next arrow key opens it again.
 //
-// To choose an item is a click on it: its handler (`onClick`) runs, or its link opens. The handler
-// sets the state (the text of the input, the selected value), and the morph shows it. Then the popup
-// closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail.
+// To choose an item is a click on it: its handler (`onClick`) runs, or its link opens. The input
+// gets the label of the item, the handler sets the state (the selected value), and the morph shows
+// it. Then the popup closes, and the controller dispatches `phem-combobox:select` with the `item`
+// in the detail.
 // Escape closes the popup, and a second Escape clears the input, the selection and the chips, as
-// in Base UI (a shown `clear` target gets the click). A click on the `clear` target clears the
-// input. A clear (the `clear` target or the second Escape) does not open a closed popup. A click
-// outside and the focus out of the combobox close the popup.
+// in Base UI (a shown `clear` target gets the click). Escape after a text with no content to show
+// (no item, no `empty` target, and no `status` target that shows something) is the first Escape: the text stays. A click on the
+// `clear` target clears the input. A clear (the `clear` target or the second Escape) does not open
+// a closed popup. A click outside and the focus out of the combobox close the popup.
 //
-// The input gets `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, `aria-controls`
-// and `aria-activedescendant`. The list (or the popup, with no list) gets `role="listbox"`, the
-// items `role="option"`, and the highlighted item `aria-selected="true"` and `data-highlighted`.
+// With a list of the server, the `input` and `change` events of the label go after the handler of
+// the item, so the server searches the label (an Autocomplete too).
+//
+// The input gets `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`,
+// `aria-activedescendant`, and `aria-controls` while the popup is open (an inline list: always).
+// It also gets `autocomplete="off"`, `spellcheck="false"`, `autocorrect="off"` and
+// `autocapitalize="none"`, unless the markup gives them. The list (or the popup, with no list)
+// gets `role="listbox"`, the items `role="option"`, and the highlighted item `data-highlighted`.
+// With no selection (an Autocomplete), the items get no `aria-selected`: the highlight is
+// `data-highlighted` and `aria-activedescendant`, as in Base UI. A closed popup keeps the
+// `data-highlighted` of its item until the end of its close animation.
 // A list or an item with no `id` gets no id: the input points to it with an element reference
 // (`ariaControlsElements`, `ariaActiveDescendantElement`). The input also gets
 // `aria-haspopup="listbox"`, and `data-list-empty` when there is no item. A `trigger` gets
@@ -57,8 +71,8 @@ import { PendingChoices } from "./phem_pending_choices.js"
 // `role="dialog"`, and the trigger gets `aria-haspopup="dialog"` and points to the popup, as in
 // Base UI. A trigger with a `value` target gets `data-placeholder` while no item is selected.
 // An `inputGroup` gets `role="group"` and `data-popup-open`. A `group` of items gets
-// `role="group"` and the name of its `groupLabel` target. The popup and the list
-// get `data-empty` when there is no item. An `empty` target is a live region (`role="status"`,
+// `role="group"` and the name of its `groupLabel` target, which gets `aria-hidden="true"`. The
+// popup and the list get `data-empty` when there is no item. An `empty` target is a live region (`role="status"`,
 // `aria-live="polite"`, `aria-atomic="true"`) that stays in the page, as the Empty part of Base UI:
 // it has its content only when there is no item, so a screen reader reads it then, and `:empty`
 // matches it when the list has items. Do not give it `hidden`. A `status` target gets
@@ -73,8 +87,9 @@ import { PendingChoices } from "./phem_pending_choices.js"
 // targets show the chosen values, each with a
 // `chipRemove` target whose handler removes its value. ArrowLeft at the start of the input goes
 // to the last chip, ArrowLeft and ArrowRight move between the chips and back to the input, and
-// Backspace or Delete on a chip clicks its `chipRemove`. An input that the user empties gives the
-// highlight to the first chosen item, as an open does. Backspace in an empty input clicks the
+// Backspace or Delete on a chip clicks its `chipRemove`. An input that the user empties in a popup
+// that stays open (the `openOnInputClick` value, or an input in the popup) gives the highlight to
+// the first chosen item, as an open does. Backspace in an empty input clicks the
 // `chipRemove` of the last chip. The chips and their `chipRemove` targets get `tabindex="-1"`,
 // and a chosen item gets `data-selected`.
 //
@@ -104,11 +119,16 @@ import { PendingChoices } from "./phem_pending_choices.js"
 // `data-value` removes the value. A choice shows
 // no pending state: an `onClick` handler of the item still runs, but the browser keeps the choice.
 //
-// With the `filter` value (`contains` or `starts-with`), the browser filters the items that the
-// server rendered one time: an item that does not match the text of the input gets `hidden`, and
-// a `group` target with no visible item too. The match ignores the case and the accents
-// (`Intl.Collator` with the `locale` value, or the language of the page). The label of an item is
-// its `data-label` attribute, or its text. The `limit` value shows only the first matches. A
+// With the `filter` value (`contains`, `starts-with` or `fuzzy`), the browser filters the items
+// that the server rendered one time: an item that does not match the text of the input gets
+// `hidden`, and a `group` target with no visible item too. With `fuzzy`, the characters of the
+// text are in the key in the same order, with other characters between them. The match ignores
+// the case and the accents (`Intl.Collator` with the `locale` value, or the language of the page).
+// The label of an item is its `data-label` attribute, or its text. The lines of its
+// `data-keywords` attribute are more keys: each key matches alone, and the label still fills the
+// input. A `highlight` target shows the parts of its text that are the text of the user in `mark`
+// elements, with the class of its `data-phem-combobox-mark-class` attribute, also with a list of
+// the server. The `limit` value shows only the first matches. A
 // popup that closes keeps its items and its highlight until the next open, as in Base UI: a choice
 // writes the label of the item in the input, and the close animation shows the same items.
 //
@@ -162,12 +182,19 @@ import { PendingChoices } from "./phem_pending_choices.js"
 // a `data-phem-combobox-status` attribute. The part of the state shows, and the others get
 // `hidden`: `pending` while an event of the input runs (after the loading delay), `error` when the
 // last event of the input failed, `idle` when the list has no item and the input has no text to
-// search, and `empty` when no item matches the text (the items that the browser keeps do not
-// count). From the input of the user until the event of the input runs, the state of a text
-// stays: the parts do not show a result of the old text. The content with no attribute always shows. While
+// search, `empty` when no item matches the text (the items that the browser keeps do not
+// count), and `results` when items show. The `more` part shows with `results` when the `limit`
+// value hides matches of the filter of the browser. From the input of the user until the event of
+// the input runs, the state of a text stays: the parts do not show a result of the old text (a
+// filter of the browser does not wait). The content with no attribute always shows. While
 // the `error` part shows, the items get `hidden`, and phem shows no error message for the event
 // (`phem:error` is cancelled). While the `pending`, `error` or `idle` part shows, the `empty`
 // targets have no content.
+//
+// An element with a `data-phem-combobox-text` attribute is a text template: at each render, its
+// text is the template, with `{count}` the number of matches that the `limit` value hides, and
+// `{query}` the text of the input (for example `Hiding {count} results` in the `more` part, or
+// `No results for "{query}"` in an `empty` target). The morph keeps the text of the browser.
 //
 // The `clear` targets show only when there is something to clear: a selected item with the
 // `single` selection mode, a chip with the `multiple` value or selection mode, and else a text in the input. A
@@ -180,13 +207,27 @@ import { PendingChoices } from "./phem_pending_choices.js"
 //
 // With no `popup` target, the list is inline (in a command palette, for example): it is always
 // open. With the `autoHighlight` value `always`, an open list always has a highlight on an item
-// (the first item at first). With the `keepHighlight` value, the highlight stays when the pointer
+// (the first item at first). The focus that leaves an inline list keeps its text and its
+// highlight, as in Base UI. An inline list in a `<dialog>` starts again when the dialog closes
+// (its `close` event, after the close animation), as Base UI unmounts the popup: the input gets
+// its default value, the filter shows all the items again, and the highlight goes (with
+// `autoHighlight="always"`, the first item gets it). With the `keepHighlight` value, the highlight stays when the pointer
 // goes out of the items. With the `highlightItemOnHover` value `false`, the pointer does not move
 // the highlight.
 //
 // With the `grid` value, the list is a grid (`role="grid"`): the `row` targets get `role="row"`
 // and their items `role="gridcell"`. ArrowLeft and ArrowRight move the highlight to the item before
 // or after it, and ArrowUp and ArrowDown to the item in the same column of the row above or below.
+// With a client filter, the visible items of each group (or of the list) go back into its rows in
+// their order after each filter: each row gets as many items as the first row of its group has in
+// the server render. A row with no visible item gets `hidden`. An empty text, and the morph, put
+// each item back in its first row.
+//
+// With the `insertInto` value (the id of a text field), a choice inserts the `data-value` of the
+// item into that field at its caret (it replaces the selected text), as the emoji picker of Base
+// UI. The field gets the `input` and `change` events, the popup closes, the search input gets no
+// text, and the field gets the focus with the caret after the inserted text. The choice does not
+// change the selection or the text of the search input.
 //
 // With the `openOnInputClick` value, a click on the input opens the popup. With an `inputGroup`
 // target (the box around the input and its buttons), the popup is positioned against it.
@@ -195,14 +236,23 @@ import { PendingChoices } from "./phem_pending_choices.js"
 // popup gets it too.
 // The elements that take the focus of a press in the popup.
 const FIELDS = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
+// The attributes of the input that the markup can give: no autofill and no spelling help of the
+// browser on a text that searches.
+const INPUT_ATTRIBUTES = [
+  ["autocomplete", "off"],
+  ["spellcheck", "false"],
+  ["autocorrect", "off"],
+  ["autocapitalize", "none"],
+]
 
 export default class PhemComboboxController extends Controller {
-  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "row", "item", "group", "groupLabel", "empty", "status", "chips", "chip", "chipRemove", "chipTemplate"]
+  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "row", "item", "group", "groupLabel", "empty", "status", "chips", "chip", "chipRemove", "chipTemplate", "highlight"]
   static values = {
     autoHighlight: String,
     keepHighlight: Boolean,
     highlightItemOnHover: { type: Boolean, default: true },
     grid: Boolean,
+    insertInto: String,
     multiple: Boolean,
     loopFocus: { type: Boolean, default: true },
     filter: String,
@@ -224,6 +274,11 @@ export default class PhemComboboxController extends Controller {
     this.typed = null
     // The items and the groups that the client filter hid.
     this.filtered = new WeakSet()
+    // The first row of each item of a grid, and its place in the row: a filter puts the visible
+    // items again in the rows, and an empty text puts them back. `reflowed` is true while an item
+    // is out of its first row.
+    this.homes = new WeakMap()
+    this.reflowed = false
     // The selected item of the `single` selection mode. It stays through the morph: the same
     // element, or an item with its id. `undefined` until the first render reads the server render.
     this.selected = undefined
@@ -248,6 +303,9 @@ export default class PhemComboboxController extends Controller {
     this.clearing = false
     // The item that the pointer highlighted. A highlight of the keyboard is another item.
     this.pointerItem = null
+    // `autoHighlight`: the first item gets the highlight, after a change of the text or an arrow key
+    // that opens the popup. The pointer that leaves the items stops it.
+    this.autoHighlighting = false
     // The selected items that the last morph did not remove (a list of the server), and all the
     // items that the browser keeps until a server render has them again: they are not results.
     this.kept = new Set()
@@ -259,6 +317,9 @@ export default class PhemComboboxController extends Controller {
     // The state of the `status` parts. It stays from the input of the user until the event of the
     // input runs: the parts do not show a result of the old text.
     this.statusState = null
+    // The matches of the client filter that the `limit` value hides: the `more` part of a status
+    // and `{count}` in a text template.
+    this.moreCount = 0
     this.typing = false
     this.awaiting = false
     // The choices that show before the answer of their event.
@@ -302,8 +363,16 @@ export default class PhemComboboxController extends Controller {
     this.element.addEventListener("phem:queue", this.onQueue, options)
     this.element.addEventListener("phem:send", this.onSend, options)
     this.element.addEventListener("phem:done", this.onDone, options)
+    // A morph of the combobox, or of an element around it: the items of a grid go back to their
+    // first rows before the morph compares them with the server render.
+    document.addEventListener("turbo:before-morph-element", this.onBeforeAnyMorph, options)
     // phem dispatches `phem:error` on the element of the component, around the combobox.
     document.addEventListener("phem:error", this.onError, options)
+    // The `close` event of a `<dialog>` does not bubble: the capture phase gets it, also for a
+    // dialog that the morph puts around the combobox.
+    document.addEventListener("close", this.onDialogClose, { ...options, capture: true })
+    // The snapshot of the Turbo cache keeps the rows of the server render for the next controller.
+    document.addEventListener("turbo:before-cache", this.onBeforeCache, options)
 
     // The loading state of phem on the input goes to the popup.
     this.busy = new MutationObserver((records) => {
@@ -374,12 +443,16 @@ export default class PhemComboboxController extends Controller {
     if (!this.clearing) this.wanted = true
     this.queryChanged = true
     this.highlighted = null
+    this.autoHighlighting = this.#autoHighlight && event.target.value.trim() !== ""
+    // An input that the user empties closes the popup, as in Base UI: the next arrow key opens it
+    // with all the items. A clear keeps an open popup open.
+    if (event.target.value === "" && !this.clearing && !this.openOnInputClickValue && !this.#inPopup) this.wanted = false
     // The user deleted all the text: the selection goes, as in Base UI. A search in the popup
     // keeps it.
     if (this.#selecting && !this.#inPopup && event.target.value === "" && this.#selectedItem) this.#select(null)
-    // With `multiple`, an input that the user empties is as an open: the first chosen item gets
-    // the highlight, as in Base UI.
-    const emptied = this.#multiple && event.target.value === ""
+    // With `multiple`, an input that the user empties in a popup that stays open is as an open: the
+    // first chosen item gets the highlight, as in Base UI.
+    const emptied = this.#multiple && event.target.value === "" && this.wanted
     if (emptied) this.queryChanged = false
 
     this.typing = true
@@ -411,6 +484,7 @@ export default class PhemComboboxController extends Controller {
       event.preventDefault()
       const opening = !this.#open
       this.wanted = true
+      if (opening) this.autoHighlighting = this.#autoHighlight
 
       // An Autocomplete (no selection) opens with no highlight: the next key moves it. With
       // `autoHighlight`, the render gives the highlight to the first item.
@@ -457,6 +531,15 @@ export default class PhemComboboxController extends Controller {
 
       event.preventDefault()
       item.click()
+
+      return
+    }
+
+    // The user wants the popup, but it has no content to show (a text with no match): Escape
+    // closes it, as an open popup, and the text stays. The next Escape clears.
+    if (event.key === "Escape" && !this.#open && this.wanted) {
+      event.preventDefault()
+      this.#dismiss()
 
       return
     }
@@ -516,6 +599,8 @@ export default class PhemComboboxController extends Controller {
         else setTimeout(() => this.#fill(""))
       }
 
+      const field = this.#insertField
+
       // A choice of more than one item keeps the popup open, with its highlight.
       if (!this.#multiple) {
         this.wanted = false
@@ -523,15 +608,25 @@ export default class PhemComboboxController extends Controller {
         this.highlighted = null
         this.typed = null
         if (this.#input) delete this.#input.phemValue
-        if (this.#selecting) this.#select(item)
-        // With a list of the server, the input shows the label at once, and its events go after
-        // the click: the handler of the item runs first, as with `multiple`.
-        if (this.#clientList || this.#selecting) this.#fill(this.#inPopup ? "" : this.#labelOf(item), { later: !this.#clientList })
+        if (this.#selecting && !field) this.#select(item)
+      }
+
+      // The `insertInto` value: the value of the item goes into the field, and the search ends
+      // with no text.
+      if (field) {
+        insertText(field, valueOf(item))
+        if ((this.#input?.value ?? "") !== "") this.#fill("", { later: !this.#clientList })
+      } else if (!this.#multiple) {
+        // The input gets the label of the item. With a list of the server, it shows the label at
+        // once, and its events go after the click: the handler of the item runs first, as with
+        // `multiple`, and then the server searches the label.
+        this.#fill(this.#inPopup ? "" : this.#labelOf(item), { later: !this.#clientList })
       }
 
       this.#render()
-      // With the input in the popup, a choice gives the focus back to the trigger.
-      const focus = this.#inPopup && !this.#multiple ? this.triggerTargets[0] : this.#input
+      // With the input in the popup, a choice gives the focus back to the trigger. A field of
+      // `insertInto` gets it, with its caret after the inserted text.
+      const focus = field ?? (this.#inPopup && !this.#multiple ? this.triggerTargets[0] : this.#input)
       focus?.focus({ preventScroll: true })
       this.dispatch("select", { detail: { item } })
 
@@ -612,10 +707,19 @@ export default class PhemComboboxController extends Controller {
     if (!this.pointerItem || this.pointerItem !== this.highlighted) return
 
     leaveList(event, this.itemTargets, () => {
+      this.autoHighlighting = false
       this.#highlight(null, { scroll: false })
       this.#complete(null)
     })
   }
+
+  onBeforeAnyMorph = (event) => {
+    if (!this.reflowed || !(event.target instanceof Node)) return
+
+    if (event.target.contains(this.element) || this.element.contains(event.target)) this.#restoreRows()
+  }
+
+  onBeforeCache = () => this.#restoreRows()
 
   // The morph of an item in the `single` or `multiple` selection mode: a server render that changes
   // the `data-selected` of an item sets the selection, as a new state value does
@@ -625,6 +729,14 @@ export default class PhemComboboxController extends Controller {
 
     // The morph compares the content of an `empty` target with the server render.
     if (this.emptyTargets.includes(item)) this.#renderEmpty(item, true)
+    // A text template keeps the text of the browser, not the text of the server render.
+    const template = event.detail.newElement?.getAttribute?.("data-phem-combobox-text")
+    if (template != null) event.detail.newElement.textContent = this.#text(template)
+    // A `highlight` target keeps its marks: the server render gets them too.
+    if (this.highlightTargets.includes(item) && event.detail.newElement) {
+      const target = event.detail.newElement
+      target.replaceChildren(...this.#marks(target, target.textContent))
+    }
 
     // The chip of a choice that waits for its answer stays, and so does a chip that the browser
     // made for a chosen value.
@@ -840,7 +952,22 @@ export default class PhemComboboxController extends Controller {
     for (const el of this.valueTargets) el.value = item?.getAttribute("data-value") ?? ""
   }
 
+  // An inline list in a `<dialog>` starts again when the dialog closes, as Base UI unmounts the
+  // popup. The `close` event comes after the close animation (phem_dialog_controller.js), and in a
+  // later task: a dialog that is open again keeps the state.
+  onDialogClose = (event) => {
+    const dialog = event.target
+    if (!(dialog instanceof HTMLDialogElement) || dialog.open || !dialog.contains(this.element) || !this.#inline) return
+
+    this.#reset()
+  }
+
+  // An inline list stays open, as in Base UI: the focus that leaves it keeps its text and its
+  // highlight (a palette in a dialog that its close button closes does not change while it fades
+  // out). The close of its dialog starts it again (`onDialogClose`).
   onFocusOut = (event) => {
+    if (this.#inline) return
+
     const to = event.relatedTarget
     if (to instanceof Node && (this.element.contains(to) || this.popupTargets.some((el) => el.contains(to)))) return
 
@@ -937,10 +1064,33 @@ export default class PhemComboboxController extends Controller {
     this.wanted = false
     this.queryChanged = false
     this.highlighted = null
+    this.autoHighlighting = false
     this.#complete(null)
     this.#restore()
     this.#render()
     if (refocus) this.triggerTargets[0]?.focus({ preventScroll: true })
+  }
+
+  // The input gets its default value (the label of the selection with a selection mode), the
+  // filter shows the items of that text, and the highlight goes: with `autoHighlight="always"`, the
+  // first item gets it. The list scrolls back to its top.
+  #reset() {
+    this.wanted = false
+    this.queryChanged = false
+    this.highlighted = null
+    this.pointerItem = null
+    this.autoHighlighting = false
+    this.typed = null
+
+    const input = this.#input
+    if (input) {
+      delete input.phemValue
+      if (this.#selecting || this.#multiple) this.#restore()
+      else if (input.value !== input.defaultValue) this.#fill(input.defaultValue)
+    }
+
+    this.#render()
+    for (const el of this.listTargets) el.scrollTop = 0
   }
 
   // A combobox with a selection has no free text, as in Base UI: the input gets the label of the
@@ -1058,21 +1208,37 @@ export default class PhemComboboxController extends Controller {
   // until the loading state, the state stays.
   #renderStatus(empty, noResult, busy) {
     const text = this.#searchText
-    // No text to search: the state does not wait for the server.
-    const waiting = (this.typing || this.awaiting) && !busy && text !== ""
-    const state = waiting ? this.statusState : busy ? "pending" : this.failed ? "error" : empty && text === "" ? "idle" : noResult && text !== "" ? "empty" : null
+    // No text to search, or a filter of the browser: the state does not wait for the server.
+    const waiting = (this.typing || this.awaiting) && !busy && text !== "" && !this.#filtering
+    const state = waiting ? this.statusState : busy ? "pending" : this.failed ? "error" : empty && text === "" ? "idle" : noResult && text !== "" ? "empty" : empty ? null : "results"
     this.statusState = state
+    // The `more` part shows with the part of the results.
+    const more = state === "results" && this.moreCount > 0
     let shown = false
 
     for (const status of this.statusTargets) {
       for (const part of status.querySelectorAll("[data-phem-combobox-status]")) {
-        const show = part.getAttribute("data-phem-combobox-status") === state
+        const name = part.getAttribute("data-phem-combobox-status")
+        const show = name === state || (name === "more" && more)
         part.hidden = !show
         if (show) shown = true
       }
     }
 
     return shown && state !== "empty"
+  }
+
+  // The elements with a `data-phem-combobox-text` template get its text: `{count}` is the number of
+  // matches that the `limit` value hides, and `{query}` is the text of the input.
+  #renderTexts() {
+    for (const el of this.element.querySelectorAll("[data-phem-combobox-text]")) {
+      const text = this.#text(el.getAttribute("data-phem-combobox-text"))
+      if (el.textContent !== text) el.textContent = text
+    }
+  }
+
+  #text(template) {
+    return template.replaceAll("{count}", String(this.moreCount)).replaceAll("{query}", this.#searchText)
   }
 
   // An empty input sends its event, as when the user deletes the text. The selection goes too.
@@ -1083,6 +1249,9 @@ export default class PhemComboboxController extends Controller {
     if (this.#selecting && this.#selectedItem) this.#select(null)
     if (this.#selectingMany && this.values.length > 0) this.#choose([], null)
     this.queryChanged = false
+    this.autoHighlighting = false
+    // A clear does not open a closed popup: the user wanted a popup with no content.
+    if (!this.#open) this.wanted = false
     input.value = ""
 
     this.clearing = true
@@ -1126,6 +1295,7 @@ export default class PhemComboboxController extends Controller {
     const text = (this.typed ?? this.#input?.value ?? "").trim()
     const selected = this.#selecting ? this.#selectedItem : null
     const query = selected && !this.queryChanged && text === this.#labelOf(selected) ? "" : text
+    this.markQuery = query
 
     // The same text and the same items (a highlight, an arrow key): the filter stays.
     const items = this.itemTargets
@@ -1133,22 +1303,90 @@ export default class PhemComboboxController extends Controller {
     const same = last && last.failed === this.failed && last.filtering === filtering && last.query === query && last.limit === this.limitValue && last.items.length === items.length && last.items.every((el, i) => el === items[i] && el.hidden === last.hidden[i])
     if (same) return
 
+    // The filter goes over the items in the order of the server render.
+    this.#restoreRows()
     const matches = filtering ? this.#matcher() : null
-    let shown = 0
+    const limited = filtering && this.limitValue >= 0
+    let matched = 0
 
     for (const item of this.itemTargets) {
       // A failed search shows no item.
-      const match = !this.failed && (!filtering || ((query === "" || matches(this.#labelOf(item), query)) && (this.limitValue < 0 || shown < this.limitValue)))
-      if (match && filtering) shown++
-      this.#hide(item, !match)
+      const found = !this.failed && (!filtering || query === "" || this.#keysOf(item).some((key) => matches(key, query)))
+      if (found) matched++
+      this.#hide(item, !found || (limited && matched > this.limitValue))
     }
+
+    // The matches that the limit hides.
+    this.moreCount = limited ? Math.max(0, matched - this.limitValue) : 0
 
     for (const group of this.groupTargets) {
       const inGroup = items.filter((el) => group.contains(el))
       this.#hide(group, filtering && inGroup.length > 0 && inGroup.every((el) => el.hidden))
     }
 
-    this.lastFilter = { failed: this.failed, filtering, query, limit: this.limitValue, items, hidden: items.map((el) => el.hidden) }
+    if (filtering && query !== "") this.#reflowRows()
+
+    const placed = this.itemTargets
+    this.lastFilter = { failed: this.failed, filtering, query, limit: this.limitValue, items: placed, hidden: placed.map((el) => el.hidden) }
+  }
+
+  // A grid with a client filter: the visible items of each group (or of the list) go into its
+  // rows in their order, as many in each row as the first row has in the server render. The
+  // hidden items go after them. A row with no visible item gets `hidden`, so the grid has no empty
+  // row.
+  #reflowRows() {
+    if (!this.gridValue || this.rowTargets.length === 0) return
+
+    const rows = this.rowTargets
+    const items = this.itemTargets
+
+    // The items are in their first rows: the restore puts them back there.
+    for (const row of rows) items.filter((el) => row.contains(el)).forEach((item, index) => this.homes.set(item, { row, index }))
+
+    // The rows of each group, and the rows out of a group.
+    const sections = new Map()
+    for (const row of rows) {
+      const group = this.groupTargets.find((el) => el.contains(row)) ?? null
+      if (!sections.has(group)) sections.set(group, [])
+      sections.get(group).push(row)
+    }
+
+    for (const section of sections.values()) {
+      const inSection = items.filter((el) => section.some((row) => row.contains(el)))
+      const size = Math.max(1, inSection.filter((el) => section[0].contains(el)).length)
+      const order = [...inSection.filter((el) => !el.hidden), ...inSection.filter((el) => el.hidden)]
+
+      section.forEach((row, at) => {
+        const last = at === section.length - 1
+        placeItems(row, order.slice(at * size, last ? undefined : (at + 1) * size))
+      })
+    }
+
+    for (const row of rows) this.#hide(row, !items.some((el) => !el.hidden && row.contains(el)))
+
+    this.reflowed = true
+  }
+
+  // Each item of a grid goes back to its first row, in the order of the server render, and the
+  // rows show again. The morph and the filter compare the rows of the server render.
+  #restoreRows() {
+    if (!this.reflowed) return
+
+    this.reflowed = false
+    this.lastFilter = null
+
+    const byRow = new Map()
+    for (const item of this.itemTargets) {
+      const home = this.homes.get(item)
+      if (!home?.row.isConnected) continue
+
+      if (!byRow.has(home.row)) byRow.set(home.row, [])
+      byRow.get(home.row).push(item)
+    }
+
+    for (const [row, items] of byRow) placeItems(row, items.sort((a, b) => this.homes.get(a).index - this.homes.get(b).index))
+
+    for (const row of this.rowTargets) this.#hide(row, false)
   }
 
   // Hides or shows a part. The client shows again only the parts that it hid.
@@ -1163,7 +1401,39 @@ export default class PhemComboboxController extends Controller {
   }
 
   #matcher() {
-    return textMatcher({ locale: this.localeValue, mode: this.filterValue === "starts-with" ? "starts-with" : "contains" })
+    return textMatcher({ locale: this.localeValue, mode: ["starts-with", "fuzzy"].includes(this.filterValue) ? this.filterValue : "contains" })
+  }
+
+  // The keys of the client filter: the label, and each line of the `data-keywords` attribute. Each
+  // key matches alone, as the keys of match-sorter.
+  #keysOf(item) {
+    const keywords = (item.getAttribute("data-keywords") ?? "").split("\n").map((word) => word.trim()).filter((word) => word !== "")
+
+    return [this.#labelOf(item), ...keywords]
+  }
+
+  // The `highlight` targets show the parts of their text that are the text of the user in a
+  // `mark` element, with the class of the `data-phem-combobox-mark-class` attribute. Their text
+  // stays the same: `textContent` is still the label.
+  #renderMarks() {
+    for (const el of this.highlightTargets) {
+      const nodes = this.#marks(el, el.textContent)
+      if (!sameNodes(el.childNodes, nodes)) el.replaceChildren(...nodes)
+    }
+  }
+
+  #marks(el, text) {
+    const className = el.getAttribute("data-phem-combobox-mark-class")
+
+    return textParts(text, this.markQuery ?? "", { locale: this.localeValue }).map(({ text, mark }) => {
+      if (!mark) return document.createTextNode(text)
+
+      const node = document.createElement("mark")
+      if (className) node.className = className
+      node.textContent = text
+
+      return node
+    })
   }
 
   // The selected item of a popup that opens, when the user did not type: it gets the highlight.
@@ -1272,13 +1542,17 @@ export default class PhemComboboxController extends Controller {
       this.#renderEmpty(el, empty && !status)
     }
     for (const el of this.statusTargets) if (!el.hasAttribute("role")) el.setAttribute("role", "status")
+    this.#renderTexts()
+    this.#renderMarks()
 
     for (const el of this.popupTargets) {
       if (busy && el.getAttribute("aria-busy") !== "true") el.setAttribute("aria-busy", "true")
       else if (!busy) el.removeAttribute("aria-busy")
     }
 
-    const content = !empty || this.emptyTargets.length > 0 || this.statusTargets.length > 0
+    // A `status` target is content only when it shows something: a popup with nothing to show
+    // stays closed.
+    const content = !empty || this.emptyTargets.length > 0 || this.statusTargets.some(showsContent)
     // An inline list (no popup) is always open.
     const open = this.#inline || (this.wanted && content)
     const opening = open && !this.#open
@@ -1288,9 +1562,9 @@ export default class PhemComboboxController extends Controller {
     let active = this.#active
     if (active && isDisabled(active)) active = null
     if (!active && opening) active = this.#selection(items)
-    // With `autoHighlight`, the first item gets the highlight when the user wants the popup. With
-    // `always`, an open list always has a highlight.
-    if (!active && (this.autoHighlightValue === "always" ? open : this.#autoHighlight && this.wanted)) active = nextItem(items, null, "Home") ?? null
+    // With `autoHighlight`, the first item gets the highlight after a change of the text or an
+    // arrow key that opens the popup. With `always`, an open list always has a highlight.
+    if (!active && (this.autoHighlightValue === "always" ? open : this.autoHighlighting && this.wanted)) active = nextItem(items, null, "Home") ?? null
     this.highlighted = active
 
     for (const row of this.rowTargets) if (!row.hasAttribute("role")) row.setAttribute("role", "row")
@@ -1321,7 +1595,8 @@ export default class PhemComboboxController extends Controller {
       }
 
       // One selected item: `aria-selected` is the selection, and the highlight is the active
-      // descendant of the input.
+      // descendant of the input. With no selection (an Autocomplete), the items get no
+      // `aria-selected`, as in Base UI.
       if (this.#selecting) {
         const selected = item === this.#selectedItem
         item.setAttribute("aria-selected", String(selected))
@@ -1329,8 +1604,6 @@ export default class PhemComboboxController extends Controller {
 
         continue
       }
-
-      item.setAttribute("aria-selected", String(item === active))
     }
 
     // A clear button shows only when there is something to clear.
@@ -1343,9 +1616,12 @@ export default class PhemComboboxController extends Controller {
     if (input) {
       if (!input.hasAttribute("role")) input.setAttribute("role", "combobox")
       if (!input.hasAttribute("aria-autocomplete")) input.setAttribute("aria-autocomplete", this.modeValue)
-      if (!input.hasAttribute("autocomplete")) input.setAttribute("autocomplete", "off")
+      for (const [name, value] of INPUT_ATTRIBUTES) if (!input.hasAttribute(name)) input.setAttribute(name, value)
       if (!input.hasAttribute("aria-haspopup")) input.setAttribute("aria-haspopup", this.#popupRole)
-      if (list) link(input, "aria-controls", "ariaControlsElements", list)
+      // The input points to the list while the popup is open, as the trigger. An inline list is
+      // always open.
+      if (this.#inline) link(input, "aria-controls", "ariaControlsElements", list)
+      else controlWhileOpen(input, list, open)
       input.setAttribute("aria-expanded", String(open))
       activeDescendant(input, open ? active : null)
       input.toggleAttribute("data-popup-open", open)
@@ -1379,10 +1655,20 @@ export default class PhemComboboxController extends Controller {
       if (label) link(group, "aria-labelledby", "ariaLabelledByElements", label)
     }
 
-    if (!this.#inline && open !== this.popup.open) open ? this.popup.show() : this.popup.hide()
+    // The group has the name of its label: a screen reader does not read the label again.
+    for (const label of this.groupLabelTargets) if (!label.hasAttribute("aria-hidden")) label.setAttribute("aria-hidden", "true")
+
+    if (!this.#inline && open !== this.popup.open) open ? this.popup.show() : this.popup.hide().then(() => this.#unhighlight())
     this.rendered = true
     // The selected item of a popup that opens is in view.
     if (opening && active && active === this.#selection(items)) active.scrollIntoView?.({ block: "nearest" })
+  }
+
+  // A closed popup: its items lose the highlight at the end of the close animation.
+  #unhighlight() {
+    if (this.popup.open) return
+
+    for (const item of this.itemTargets) item.removeAttribute("data-highlighted")
   }
 
   // The `multiple` selection mode: the chips of the chosen values show, in the order of the
@@ -1488,7 +1774,7 @@ export default class PhemComboboxController extends Controller {
     }
     if (this.triggerTargets.includes(el)) return ["aria-expanded", "aria-haspopup", "data-popup-open"].includes(name) || (name === "data-placeholder" && this.#showsValue(el))
     if (this.inputGroupTargets.includes(el)) return name === "role" || name === "data-popup-open" || (name === "data-placeholder" && (this.#selecting || this.#selectingMany))
-    if (this.itemTargets.includes(el)) return (name === "aria-selected" && (!this.#multiple || this.#selectingMany || this.choices.chooses(el))) || name === "data-highlighted" || (name === "data-selected" && (this.#selecting || this.#selectingMany || this.choices.chooses(el)))
+    if (this.itemTargets.includes(el)) return (name === "aria-selected" && (this.#selecting || this.#selectingMany || this.choices.chooses(el))) || name === "data-highlighted" || (name === "data-selected" && (this.#selecting || this.#selectingMany || this.choices.chooses(el)))
     if (this.chipTargets.includes(el)) return name === "hidden" && this.#selectingMany && el.hasAttribute("data-value")
     if (this.chipsTargets.includes(el)) return name === "role" || (name === "aria-label" && this.#selectingMany)
     if (this.emptyTargets.includes(el)) return name === "role" || name === "aria-live" || name === "aria-atomic"
@@ -1602,6 +1888,15 @@ export default class PhemComboboxController extends Controller {
     return this.inputTargets[0] ?? null
   }
 
+  // The text field of the `insertInto` value, or null.
+  get #insertField() {
+    if (this.insertIntoValue === "") return null
+
+    const field = document.getElementById(this.insertIntoValue)
+
+    return field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement ? field : null
+  }
+
   get #items() {
     return this.itemTargets.filter((el) => !el.hidden)
   }
@@ -1644,6 +1939,56 @@ export default class PhemComboboxController extends Controller {
 
 // The number of the chips that the choices added: each gets its own id.
 let choices = 0
+
+// A `status` target shows something: a part of the state, or a text that is not in a part and
+// not hidden.
+function showsContent(status) {
+  for (const part of status.querySelectorAll("[data-phem-combobox-status]")) if (!part.hidden) return true
+
+  const walker = document.createTreeWalker(status, NodeFilter.SHOW_TEXT)
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.data.trim() === "") continue
+
+    let el = node.parentElement
+    while (el !== status && !el.hidden && !el.hasAttribute("data-phem-combobox-status")) el = el.parentElement
+    if (el === status) return true
+  }
+
+  return false
+}
+
+// The children of an element are the same as the nodes: the same text nodes and the same `mark`
+// elements, with the same class and text.
+function sameNodes(children, nodes) {
+  if (children.length !== nodes.length) return false
+
+  return nodes.every((node, i) => {
+    const child = children[i]
+
+    return child.nodeName === node.nodeName && child.textContent === node.textContent && (node.nodeType === Node.TEXT_NODE || child.className === node.className)
+  })
+}
+
+// Inserts the text into a text field at its caret, in place of the selected text, and sends the
+// `input` and `change` events of the field. The caret goes after the text. A field with no caret
+// (an `email` or a `number` input) gets the text at the end.
+function insertText(field, text) {
+  const start = field.selectionStart
+  if (start === null) field.value += text
+  else field.setRangeText(text, start, field.selectionEnd ?? start, "end")
+
+  field.dispatchEvent(new Event("input", { bubbles: true }))
+  field.dispatchEvent(new Event("change", { bubbles: true }))
+}
+
+// Puts the items in the row in this order, after its other content. An item that is in its place
+// does not move.
+function placeItems(row, items) {
+  const current = [...row.children].filter((el) => items.includes(el) || el.matches("[data-phem-combobox-target~='item']"))
+  if (current.length === items.length && current.every((el, i) => el === items[i])) return
+
+  row.append(...items)
+}
 
 // The value of an item: its `data-value` attribute.
 function valueOf(item) {

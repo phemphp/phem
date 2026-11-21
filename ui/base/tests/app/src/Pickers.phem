@@ -5,7 +5,7 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\{Component, State};
 use Phem\Node;
 
-use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxChip, ComboboxChipRemove, ComboboxChips, ComboboxClear, ComboboxEmpty, ComboboxHighlight, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxStatus, ComboboxTrigger, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastAction, ToastArrow, ToastContent, ToastData, ToastDescription, ToastRoot, ToastTitle};
 use Phem\Ui\Base\{Autocomplete, Combobox, ComboboxChipTemplate, Drawer, DrawerViewport, ToastViewport};
 
 // A Combobox with a list of the browser has one selected item, and an Autocomplete has none.
@@ -140,6 +140,60 @@ function ComboboxHighlightDemo(): Node
                 <ComboboxPopup><ComboboxList><ComboboxRow><ComboboxItem value="a">a</ComboboxItem></ComboboxRow></ComboboxList></ComboboxPopup>
             </Autocomplete>
         </div>
+    );
+}
+
+// The texts of a status and of an empty part that the browser fills: the results, the matches
+// that the limit hides, and the text of the input.
+#[Component]
+function ComboboxStatusTextsDemo(): Node
+{
+    return (
+        <Autocomplete id="texts" filter="contains" limit={{ 1 }}>
+            <ComboboxInput />
+            <ComboboxPopup>
+                <ComboboxStatus results="2 results found" more="Hiding {count} results" />
+                <ComboboxEmpty text='No results found for "{query}"' />
+                <ComboboxList><ComboboxItem value="a">a</ComboboxItem><ComboboxItem value="ab">ab</ComboboxItem></ComboboxList>
+            </ComboboxPopup>
+        </Autocomplete>
+    );
+}
+
+// An emoji picker: a grid that the browser filters, and a choice goes into the message.
+#[Component]
+function ComboboxInsertIntoDemo(): Node
+{
+    return (
+        <div>
+            <input id="message" aria-label="Message" />
+            <Autocomplete id="emoji" grid filter="contains" insertInto="message">
+                <ComboboxTrigger aria-label="Choose emoji">😀</ComboboxTrigger>
+                <ComboboxPopup>
+                    <ComboboxInput aria-label="Search emojis" />
+                    <ComboboxList>
+                        <ComboboxRow><ComboboxItem value="😀" label="grinning face">😀</ComboboxItem><ComboboxItem value="🐱" label="cat face">🐱</ComboboxItem></ComboboxRow>
+                    </ComboboxList>
+                </ComboboxPopup>
+            </Autocomplete>
+        </div>
+    );
+}
+
+// A fuzzy filter, with the keywords of an item and the marks of the text of the user.
+#[Component]
+function ComboboxFuzzyDemo(): Node
+{
+    return (
+        <Autocomplete id="fuzzy" filter="fuzzy">
+            <ComboboxInput />
+            <ComboboxPopup>
+                <ComboboxList>
+                    <ComboboxItem value="lemon" keywords={{ ['citrus', 'sour'] }}><ComboboxHighlight>Lemon</ComboboxHighlight></ComboboxItem>
+                    <ComboboxItem value="apple"><ComboboxHighlight markClassName="font-bold">Apple</ComboboxHighlight></ComboboxItem>
+                </ComboboxList>
+            </ComboboxPopup>
+        </Autocomplete>
     );
 }
 

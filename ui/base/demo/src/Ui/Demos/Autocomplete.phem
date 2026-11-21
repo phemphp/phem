@@ -4,10 +4,10 @@ namespace App\Ui\Demos;
 
 use Phem\Attribute\Page;
 use Phem\Node;
-use Phem\Ui\Base\Examples\{AutocompleteAsyncDemo, AutocompleteFuzzyDemo, AutocompleteGridDemo, AutocompleteLargeDatasetDemo, AutocompleteLimitDemo};
+use Phem\Ui\Base\Examples\{AutocompleteAsyncDemo, AutocompleteGridDemo, AutocompleteVirtualizedDemo};
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
-use function Phem\Ui\Base\Examples\{AutocompleteAutoHighlightDemo, AutocompleteCommandPaletteDemo, AutocompleteGroupedDemo, AutocompleteHeroDemo, AutocompleteInlineDemo};
+use function Phem\Ui\Base\Examples\{AutocompleteAutoHighlightDemo, AutocompleteCommandPaletteDemo, AutocompleteFuzzyDemo, AutocompleteGroupedDemo, AutocompleteHeroDemo, AutocompleteInlineDemo, AutocompleteLimitDemo};
 
 #[Page('/components/autocomplete')]
 function AutocompletePage(): Node
@@ -20,7 +20,7 @@ function AutocompletePage(): Node
             <Examples>
                 <Example title="Async search" source="AutocompleteAsyncDemo">
                     <Example.description>
-                        <p>Load items asynchronously while typing and render custom status content. Bind the input with <code>phem:bind</code>: the server searches, and renders the results and the status. While the search runs, the popup gets <code>aria-busy</code>, and the status shows a spinner.</p>
+                        <p>Load items asynchronously while typing and render custom status content. The <code>onChange</code> handler of <code>ComboboxInput</code> calls a repository service, and <code>ComboboxStatus</code> shows the state of the search: a spinner while it runs, the number of results, no match, or an error. Type "will_error" to see a failure.</p>
                     </Example.description>
                     <AutocompleteAsyncDemo />
                 </Example>
@@ -39,7 +39,7 @@ function AutocompletePage(): Node
                 </Example>
                 <Example title="Fuzzy matching" source="AutocompleteFuzzyDemo">
                     <Example.description>
-                        <p>Use fuzzy matching to find relevant results even when the query doesn’t exactly match the item text. Here the server matches the characters of the query in order, and marks the text that matches.</p>
+                        <p>Use fuzzy matching to find relevant results even when the query doesn’t exactly match the item text. Here <code>filter="fuzzy"</code> matches the characters of the query in order, in the label and in each of the <code>keywords</code> of an item, and <code>ComboboxHighlight</code> marks the text that has the query.</p>
                     </Example.description>
                     <AutocompleteFuzzyDemo />
                 </Example>
@@ -58,22 +58,22 @@ function AutocompletePage(): Node
                 </Example>
                 <Example title="Command palette" source="AutocompleteCommandPaletteDemo">
                     <Example.description>
-                        <p>Use the autocomplete input to filter a list of command items that perform an action when clicked. With no <code>ComboboxPopup</code>, the list is inline and always open. Give the items <code>data-phem-dialog-target="close"</code> to close the dialog on a choice.</p>
+                        <p>Use the autocomplete input to filter a list of command items that perform an action when clicked. With no <code>ComboboxPopup</code>, the list is inline and always open. Give the items <code>data-phem-dialog-target="close"</code> to close the dialog on a choice. Each open starts with an empty search.</p>
                     </Example.description>
                     <AutocompleteCommandPaletteDemo />
                 </Example>
                 <Example title="Grid layout" source="AutocompleteGridDemo">
                     <Example.description>
                         <p>Display items in a grid layout, wrapping each row in <code>ComboboxRow</code> components, and add the <code>grid</code> prop to <code>Autocomplete</code>. The arrow keys move in the rows and in the columns.</p>
-                        <p>A choice runs the <code>onClick</code> handler of the item, which adds the emoji to the end of the message, and the focus goes back to the trigger.</p>
+                        <p>The browser filters the emojis, and the matches of each category fill its rows again. Give the root <code>insertInto</code> with the id of a text field: a choice inserts the <code>value</code> of the item at the caret of the field, and the focus goes back to the field.</p>
                     </Example.description>
                     <AutocompleteGridDemo />
                 </Example>
-                <Example title="Large datasets" source="AutocompleteLargeDatasetDemo">
+                <Example title="Virtualized" source="AutocompleteVirtualizedDemo">
                     <Example.description>
-                        <p>For a large dataset, render only the first matches in the popup, and show the total in the status. The server searches the dataset at each change of the input.</p>
+                        <p>Efficiently handle large datasets by rendering only the first matches. The <code>onChange</code> handler of <code>ComboboxInput</code> searches the dataset on the server, and the state keeps the first 50 matches. <code>ComboboxStatus</code> shows the number of matches, and a choice writes the <code>label</code> of the item in the input.</p>
                     </Example.description>
-                    <AutocompleteLargeDatasetDemo />
+                    <AutocompleteVirtualizedDemo />
                 </Example>
             </Examples>
         </DemoPage>

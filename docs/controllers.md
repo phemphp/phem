@@ -990,7 +990,6 @@ final class CityField
     public function choose(string $city): void
     {
         $this->city = $city;
-        $this->query = $city;
     }
 
     public function render(): Node
@@ -1018,15 +1017,16 @@ final class CityField
 }
 ```
 
-The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when it has an item, an `empty` part or a `status` part. The `empty` part is a live region that stays in the page, as the Empty part of Base UI: it gets `role="status"`, `aria-live="polite"` and `aria-atomic="true"`, and it has its content only when the list has no item. So a screen reader reads "No city." when the list becomes empty, and `:empty` matches the part when the list has items (`.empty:empty { padding: 0; }`). Do not give it `hidden`. The focus stays in the input. When the user types "pa" and presses ArrowDown two times, the browser shows:
+The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when it has an item, an `empty` part or a `status` part that shows something: a part of its state, or a text that is not hidden. A `status` part with nothing to show does not open the popup, and the input keeps `aria-expanded="false"`. The `empty` part is a live region that stays in the page, as the Empty part of Base UI: it gets `role="status"`, `aria-live="polite"` and `aria-atomic="true"`, and it has its content only when the list has no item. So a screen reader reads "No city." when the list becomes empty, and `:empty` matches the part when the list has items (`.empty:empty { padding: 0; }`). Do not give it `hidden`. The focus stays in the input. An input that the user empties closes the popup, as in Base UI, and the next ArrowDown opens it again. With `data-phem-combobox-open-on-input-click-value="true"`, or with the input in the popup, the popup stays open. The input gets `autocomplete="off"`, `spellcheck="false"`, `autocorrect="off"` and `autocapitalize="none"`, unless the markup gives them. With no selection (an Autocomplete), the items get no `aria-selected`, as in Base UI: the highlight is `data-highlighted` and `aria-activedescendant`. When the user types "pa" and presses ArrowDown two times, the browser shows:
 
 ```html
 <input data-phem-combobox-target="input" role="combobox" aria-autocomplete="list" autocomplete="off"
+       spellcheck="false" autocorrect="off" autocapitalize="none"
        aria-haspopup="listbox" aria-controls="" aria-expanded="true" aria-activedescendant="city-Parma" data-popup-open value="pa">
 <div data-phem-combobox-target="popup" data-open data-side="bottom" data-align="start" style="...">
     <ul data-phem-combobox-target="list" role="listbox">
-        <li id="city-Paris" role="option" aria-selected="false">Paris</li>
-        <li id="city-Parma" role="option" aria-selected="true" data-highlighted>Parma</li>
+        <li id="city-Paris" role="option">Paris</li>
+        <li id="city-Parma" role="option" data-highlighted>Parma</li>
     </ul>
     <p data-phem-combobox-target="empty" hidden>No city.</p>
 </div>
@@ -1036,9 +1036,9 @@ The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when 
 |---|---|
 | ArrowDown, ArrowUp | Opens the popup. With no selection (an Autocomplete) and no `auto-highlight`, the key that opens the popup gives no highlight, and the next key goes to the first item (ArrowDown) or the last item (ArrowUp). Then it moves the highlight. After the last item, the highlight goes back to the input, and the next key goes to the first item (with `auto-highlight`, the key goes to the first item at once). With `data-phem-combobox-loop-focus-value="false"`, the highlight stays on the last item |
 | Enter | Chooses the highlighted item. With an open popup and no highlight, Enter closes the popup and keeps its default action (the submit of the form). With a closed popup, Enter has its default action |
-| Escape | Closes the popup. A second Escape, on the closed popup, clears all that the `clear` part clears (the text, the selected item or the chips), as in Base UI, and the popup stays closed. A shown `clear` part gets the click, with its handler. With `multiple` and a list of the server, the `chipRemove` of each chip gets a click |
+| Escape | Closes the popup. A second Escape, on the closed popup, clears all that the `clear` part clears (the text, the selected item or the chips), as in Base UI, and the popup stays closed. A shown `clear` part gets the click, with its handler. With `multiple` and a list of the server, the `chipRemove` of each chip gets a click. After a text with nothing to show (no item, no `empty` part, and no `status` part that shows something), the popup does not show, but the first Escape is the same: the text stays, and the second Escape clears it |
 
-To choose an item is a click on it: its handler runs (here `choose`), or its link opens. The handler sets the state, and the morph shows the new text in the input. Then the popup closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail. A click on a `clear` part clears the input and sends its `input` event, as when the user deletes the text. The popup stays closed when it was closed. A click on a `trigger` part opens or closes the popup. A click outside and the focus out of the combobox close the popup. A `trigger` part gets `aria-haspopup="listbox"`, `aria-expanded` and `data-popup-open`, and `aria-controls` only while the popup is open. An `inputGroup` part gets `role="group"` and `data-popup-open`. A press on an `inputGroup` out of the input, the chips and the buttons gives the focus to the input, as a press on the input. The input gets `aria-haspopup="listbox"`, and `data-list-empty` when the list has no visible item.
+To choose an item is a click on it: its handler runs (here `choose`), or its link opens. The input gets the label of the item at once (its `data-label`, or its text), and the popup closes. The `input` and `change` events of the input go in the next task, after the event of the click: the handler of the item runs first, and then the input sends the label, as when the user types it. Here the click sends `choose('Paris')`, and then `phem:bind` sends `query: "Paris"`, so the handler does not write the text of the input. Then the controller dispatches `phem-combobox:select` with the `item` in the detail. A click on a `clear` part clears the input and sends its `input` event, as when the user deletes the text. The popup stays closed when it was closed. A click on a `trigger` part opens or closes the popup. A click outside and the focus out of the combobox close the popup. A `trigger` part gets `aria-haspopup="listbox"`, `aria-expanded` and `data-popup-open`, and `aria-controls` only while the popup is open. The input also gets `aria-controls` only while the popup is open, as in Base UI. An inline list (no `popup` part) is always open, so its input always has it. An `inputGroup` part gets `role="group"` and `data-popup-open`. A press on an `inputGroup` out of the input, the chips and the buttons gives the focus to the input, as a press on the input. The input gets `aria-haspopup="listbox"`, and `data-list-empty` when the list has no visible item.
 
 The input can be in the popup, as a search. A `trigger` button opens the popup, and a `value` part in it that is not an input shows the label of the selection, or its `placeholder` (with `data-placeholder`):
 
@@ -1066,7 +1066,7 @@ As in Base UI, the popup is a dialog that has the search and the list. The popup
 </div>
 ```
 
-The list has no `id`, so the input points to it with an element reference (`ariaControlsElements`). An item with no `id` gets no id: the input points to the highlighted item with `ariaActiveDescendantElement`, and the browser shows `aria-activedescendant=""`. The highlight stays on the same item through the morph of another event. When the morph replaces the item, the highlight stays only on an item with the same `id`, so give each item a stable `id` in a list that changes. A move of the pointer on an item highlights it. An item that comes under a pointer that does not move, for example when the list changes, does not get the highlight. When the pointer goes out of the items, the highlight goes. A highlight of the keyboard stays, also on an item that the pointer highlighted before: for example, an input that the user empties gives the highlight to the first chosen item, and it stays when the list changes under the pointer. With `both` and `inline`, the input gets the text of the user again. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight. The popup and the list get `data-empty` when there is no visible item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
+The list has no `id`, so the input points to it with an element reference (`ariaControlsElements`). An item with no `id` gets no id: the input points to the highlighted item with `ariaActiveDescendantElement`, and the browser shows `aria-activedescendant=""`. The highlight stays on the same item through the morph of another event. When the morph replaces the item, the highlight stays only on an item with the same `id`, so give each item a stable `id` in a list that changes. A move of the pointer on an item highlights it. An item that comes under a pointer that does not move, for example when the list changes, does not get the highlight. When the pointer goes out of the items, the highlight goes. A highlight of the keyboard stays, also on an item that the pointer highlighted before: for example, with `multiple` and `openOnInputClick`, an input that the user empties gives the highlight to the first chosen item, and it stays when the list changes under the pointer. With `both` and `inline`, the input gets the text of the user again. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight when the user types a text (not an empty text) and when an arrow key opens the popup. When the pointer goes out of the items, this highlight goes too, as in Base UI: the first item does not get it again until the user types, and the next ArrowDown goes to the first item. A closed popup keeps the `data-highlighted` of its item until its close animation ends, and then the item loses it. The popup and the list get `data-empty` when there is no visible item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
 
 ### Choose more than one value
 
@@ -1117,7 +1117,7 @@ final class TagField
 }
 ```
 
-The server gives the chosen items `aria-selected="true"`, and the controller does not change it: the highlight is `data-highlighted` and `aria-activedescendant`. A choice keeps the popup open and the highlight, so the user can choose more items. A choice while the input has a text closes the popup, as in Base UI. Then the text goes, with its `input` event: the event of the click goes to the server first, so its item is still in the list. The input has no free text: when the popup closes, the text goes, with an `input` event, and the chips stay. Give each chip the `data-value` of its item, and the browser keeps the chosen items in the list: a server render that does not have a chosen item keeps it at the end of the list, until its chip goes. This also works when the morph of an answer changes only the chips, for example when the chips are in a component of their own and the list did not change. The [`status` parts](#select-one-item-of-a-list-of-the-server) also work here. A popup that opens before the user types has the highlight on the first chosen item. When the user deletes all the text, the popup stays open, and the first chosen item gets the highlight too, as in Base UI. Enter with no highlight closes the popup, and the form submits. When the user chose **bug** and highlights **docs**, the browser shows:
+The server gives the chosen items `aria-selected="true"`, and the controller does not change it: the highlight is `data-highlighted` and `aria-activedescendant`. A choice keeps the popup open and the highlight, so the user can choose more items. A choice while the input has a text closes the popup, as in Base UI. Then the text goes, with its `input` event: the event of the click goes to the server first, so its item is still in the list. The input has no free text: when the popup closes, the text goes, with an `input` event, and the chips stay. Give each chip the `data-value` of its item, and the browser keeps the chosen items in the list: a server render that does not have a chosen item keeps it at the end of the list, until its chip goes. This also works when the morph of an answer changes only the chips, for example when the chips are in a component of their own and the list did not change. The [`status` parts](#select-one-item-of-a-list-of-the-server) also work here. A popup that opens before the user types has the highlight on the first chosen item. When the user deletes all the text, the popup closes, as in Base UI. With `data-phem-combobox-open-on-input-click-value="true"`, the popup stays open, and the first chosen item gets the highlight. Enter with no highlight closes the popup, and the form submits. When the user chose **bug** and highlights **docs**, the browser shows:
 
 ```html
 <span data-phem-combobox-target="chip" tabindex="-1">bug <button data-phem-combobox-target="chipRemove" tabindex="-1" aria-label="Remove bug">×</button></span>
@@ -1240,8 +1240,10 @@ The parts of the `status` part (the elements with `data-phem-combobox-status`) s
 | `error` | When the last event of the input failed, for example when the handler throws. The items get `hidden`, and phem shows no error message for the event (it cancels `phem:error`, see [An event fails and the page doesn’t change](failed-events.md#an-event-fails-and-the-page-doesnt-change)). The next event that the server takes hides it |
 | `idle` | When the list has no item and the input has no text to search |
 | `empty` | When no item matches the text. The items that the browser keeps (the selected item) do not count |
+| `results` | When items show, for example "3 results found". The server renders the text |
+| `more` | With `results`, when the `limit` value hides matches of the [filter of the browser](#filter-a-list-in-the-browser) |
 
-From the input of the user until the event of the input runs, the parts keep the state of a text, so they do not show a result of the old text. With no text to search, the state does not wait for the server. The content of the status with no `data-phem-combobox-status` always shows. While the `pending`, `error` or `idle` part shows, the `empty` parts have no content. With the text "zzz" and no selection, the browser shows:
+From the input of the user until the event of the input runs, the parts keep the state of a text, so they do not show a result of the old text. With no text to search, or with the filter of the browser, the state does not wait for the server. While the `pending` part shows, the `results` and `more` parts are hidden. The content of the status with no `data-phem-combobox-status` always shows. While the `pending`, `error` or `idle` part shows, the `empty` parts have no content. With the text "zzz" and no selection, the browser shows:
 
 ```html
 <div data-phem-combobox-target="status" role="status">
@@ -1440,7 +1442,7 @@ After the connect, with a closed popup, the browser shows:
 ```html
 <div data-phem-combobox-target="inputGroup" role="group">
     <input data-phem-combobox-target="input" aria-label="Color" role="combobox" aria-autocomplete="list"
-           autocomplete="off" aria-haspopup="listbox" aria-controls="colors" aria-expanded="false">
+           autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="none" aria-haspopup="listbox" aria-expanded="false">
     <button type="button" data-phem-combobox-target="clear" aria-label="Clear" hidden>×</button>
     <button type="button" data-phem-combobox-target="trigger" aria-label="Show the colors"
             aria-haspopup="listbox" aria-expanded="false">▾</button>
@@ -1457,18 +1459,18 @@ After ArrowDown in the input, the popup opens, and no item has the highlight:
 </div>
 <div data-phem-combobox-target="popup" data-open data-side="bottom" data-align="start" style="...">
     <ul id="colors" data-phem-combobox-target="list" role="listbox">
-        <li id="color-blue" role="option" aria-selected="false">Blue</li>
-        <li id="color-green" role="option" aria-selected="false">Green</li>
-        <li id="color-red" role="option" aria-selected="false">Red</li>
+        <li id="color-blue" role="option">Blue</li>
+        <li id="color-green" role="option">Green</li>
+        <li id="color-red" role="option">Red</li>
     </ul>
 </div>
 ```
 
-A second ArrowDown gives the input `aria-activedescendant="color-blue"`, and Blue gets `aria-selected="true"` and `data-highlighted`. Enter then chooses Blue. With no highlight (for example after the user types "re" and moves the pointer out of the items), Enter closes the popup: the input and the trigger get `aria-expanded="false"`, the trigger loses `aria-controls` and `data-popup-open`, and the form submits. With the text "zz", the input gets `data-list-empty`.
+A second ArrowDown gives the input `aria-activedescendant="color-blue"`, and Blue gets `data-highlighted`. Enter then chooses Blue. With no highlight (for example after the user types "re" and moves the pointer out of the items), Enter closes the popup: the input and the trigger get `aria-expanded="false"`, they lose `aria-controls` and `data-popup-open`, and the form submits. With the text "zz", the input gets `data-list-empty`.
 
 ### Filter a list in the browser
 
-A short list that does not change, such as the fruits of a form, does not need a round trip for each letter. The server renders all the items one time, and the browser filters them. Set `data-phem-combobox-filter-value` to `contains` or `starts-with`:
+A short list that does not change, such as the fruits of a form, does not need a round trip for each letter. The server renders all the items one time, and the browser filters them. Set `data-phem-combobox-filter-value` to `contains`, `starts-with` or `fuzzy`:
 
 ```php
 #[Component]
@@ -1497,18 +1499,54 @@ final class FruitField
 }
 ```
 
-An item that does not match the text of the input gets `hidden`. The match ignores the case and the accents: "ecl" finds "Éclair". It uses `Intl.Collator` with the language of the page, or with `data-phem-combobox-locale-value`. The label of an item is its text, or its `data-label` attribute. Put the items in `group` parts, with a heading in a `groupLabel` part: the group gets `role="group"` and the name of its label, and a group with no visible item gets `hidden` too. `data-phem-combobox-limit-value="10"` shows only the first 10 matches. When the user types "ecl", the browser shows:
+An item that does not match the text of the input gets `hidden`. The match ignores the case and the accents: "ecl" finds "Éclair". It uses `Intl.Collator` with the language of the page, or with `data-phem-combobox-locale-value`. The label of an item is its text, or its `data-label` attribute. Put the items in `group` parts, with a heading in a `groupLabel` part: the group gets `role="group"` and the name of its label, and a group with no visible item gets `hidden` too. The `groupLabel` part gets `aria-hidden="true"`, so a screen reader reads the name of the group one time. `data-phem-combobox-limit-value="10"` shows only the first 10 matches. When the user types "ecl", the browser shows:
 
 ```html
 <input data-phem-combobox-target="input" role="combobox" aria-autocomplete="list" aria-expanded="true" ... value="ecl">
 <ul data-phem-combobox-target="list" role="listbox">
-    <li id="fruit-1" role="option" aria-selected="false" hidden>Apple</li>
-    <li id="fruit-2" role="option" aria-selected="false" hidden>Banana</li>
-    <li id="fruit-3" role="option" aria-selected="false" hidden>Cherry</li>
-    <li id="fruit-4" role="option" aria-selected="false">Éclair</li>
-    <li id="fruit-5" role="option" aria-selected="false" hidden>Lemon</li>
+    <li id="fruit-1" role="option" hidden>Apple</li>
+    <li id="fruit-2" role="option" hidden>Banana</li>
+    <li id="fruit-3" role="option" hidden>Cherry</li>
+    <li id="fruit-4" role="option">Éclair</li>
+    <li id="fruit-5" role="option" hidden>Lemon</li>
 </ul>
 ```
+
+With `fuzzy`, the characters of the text must be in the label in the same order, with other characters between them, as the `MATCHES` rank of match-sorter. The space is a character too. "nwy" finds "New York", and "ywn" does not. The items keep their order.
+
+The `data-keywords` attribute of an item gives more keys to the filter, one on each line. Each key matches alone, in all the modes: the label and the keywords are not joined. A choice still writes the label in the input. A `highlight` target in an item shows the parts of its text that are the text of the user in `mark` elements, as the `highlightText` of the Base UI demos. Its `data-phem-combobox-mark-class` attribute gives the class of the `mark` elements. The match ignores the case and the accents, and uses the first 100 characters of the trimmed text. The `highlight` target also works with a list of the server, and the morph of an event keeps the marks:
+
+```twig
+<li id="fruit-lemon" data-phem-combobox-target="item" data-keywords="citrus
+sour"><span data-phem-combobox-target="highlight" data-phem-combobox-mark-class="font-bold">Lemon</span></li>
+```
+
+When the user types "sour", Lemon shows: the keyword matches. When the user types "em", the browser shows:
+
+```html
+<li id="fruit-lemon" data-phem-combobox-target="item" role="option" data-keywords="citrus
+sour"><span data-phem-combobox-target="highlight" data-phem-combobox-mark-class="font-bold">L<mark class="font-bold">em</mark>on</span></li>
+```
+
+An element with a `data-phem-combobox-text` attribute is a text template: the browser gives it the text of the template at each render. `{count}` is the number of matches that the `limit` value hides, and `{query}` is the text of the input. The morph of an event keeps the text of the browser. Put a template in the `more` part of a [`status` part](#select-one-item-of-a-list-of-the-server), and in an `empty` part:
+
+```twig
+<div data-phem-combobox-target="status">
+    <span data-phem-combobox-status="more" hidden><span data-phem-combobox-text="Hiding {count} results (type a more specific query to narrow results)"></span></span>
+</div>
+<p data-phem-combobox-target="empty"><span data-phem-combobox-text='No results found for "{query}"'></span></p>
+```
+
+With `data-phem-combobox-limit-value="10"`, 25 fruits and no text, ArrowDown opens the popup, and the browser shows:
+
+```html
+<div data-phem-combobox-target="status" role="status">
+    <span data-phem-combobox-status="more"><span data-phem-combobox-text="Hiding {count} results (type a more specific query to narrow results)">Hiding 15 results (type a more specific query to narrow results)</span></span>
+</div>
+<p data-phem-combobox-target="empty" role="status" aria-live="polite" aria-atomic="true"></p>
+```
+
+When the user types "zzz", the `more` part gets `hidden`, and the `empty` part shows `No results found for "zzz"`.
 
 The list belongs to the client. A choice writes the label of the item in the input, and sends its `input` and `change` events, so a `phem:bind` or an `onChange` handler gets the value. The text of an input with no `phem:bind` stays through the morph of another event. An item can still have an `onClick` handler.
 
@@ -1533,12 +1571,12 @@ These values change the highlight, as the props of the Autocomplete of Base UI:
 
 | Value | Effect |
 |---|---|
-| `data-phem-combobox-auto-highlight-value="true"` | The first item gets the highlight when the user types or opens the popup |
+| `data-phem-combobox-auto-highlight-value="true"` | The first item gets the highlight when the user types a text, and when an arrow key opens the popup. The pointer that goes out of the items removes it |
 | `data-phem-combobox-auto-highlight-value="always"` | An open list always has a highlight: the first item at first |
 | `data-phem-combobox-keep-highlight-value="true"` | The highlight stays when the pointer goes out of the items |
 | `data-phem-combobox-highlight-item-on-hover-value="false"` | The pointer does not move the highlight |
 
-With no `popup` part, the list is inline: it is always open, and the input has `aria-expanded="true"`. Use it for a command palette in a dialog. Give an item `data-phem-dialog-target="close"`, and a choice (a click, or Enter) closes the dialog:
+With no `popup` part, the list is inline: it is always open, and the input has `aria-expanded="true"`. When the focus leaves the input, the list keeps its text, its filter and its highlight, as in Base UI. Use it for a command palette in a dialog. Give an item `data-phem-dialog-target="close"`, and a choice (a click, or Enter) closes the dialog:
 
 ```phem
 <div data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-auto-highlight-value="always" data-phem-combobox-keep-highlight-value="true">
@@ -1555,12 +1593,64 @@ After the connect, the first item has the highlight:
 ```html
 <input data-phem-combobox-target="input" role="combobox" aria-expanded="true" aria-activedescendant="..." ...>
 <div data-phem-combobox-target="list" role="listbox">
-    <div data-phem-combobox-target="item" role="option" aria-selected="true" data-highlighted>New Window</div>
-    <div data-phem-combobox-target="item" role="option" aria-selected="false">New Tab</div>
+    <div data-phem-combobox-target="item" role="option" data-highlighted>New Window</div>
+    <div data-phem-combobox-target="item" role="option">New Tab</div>
+</div>
+```
+
+An inline list in a `<dialog>` starts again when the dialog closes, as Base UI unmounts the popup. The controller waits for the `close` event of the `<dialog>`. The `phem-dialog` controller calls `close()` at the end of its close animation, so the text, the filter and the highlight do not change while the dialog fades out, also when a close button takes the focus. Then the input gets its default value (its `value` attribute, or the label of the selection with a `selectionMode`), and it sends its `input` and `change` events when its text changes. The filter shows the items of that text, the highlight goes, and the list scrolls to its top. With `autoHighlight="always"`, the first item gets the highlight again. A dialog that opens again before its `close` event keeps the state. For a `phem:bind` input, the server render gives the `value` attribute: reset the bound state in the server when the dialog closes. After the user types `tab`, Escape and a new open, the palette above shows:
+
+```html
+<input data-phem-combobox-target="input" role="combobox" aria-expanded="true" aria-activedescendant="..." ...>
+<div data-phem-combobox-target="list" role="listbox">
+    <div data-phem-combobox-target="item" role="option" data-highlighted>New Window</div>
+    <div data-phem-combobox-target="item" role="option">New Tab</div>
 </div>
 ```
 
 With `data-phem-combobox-grid-value="true"`, the list is a grid, for example an emoji picker. Put the items in `row` parts. The list gets `role="grid"`, the input and the trigger `aria-haspopup="grid"`, the rows `role="row"` and their items `role="gridcell"`. With a highlight, ArrowLeft and ArrowRight move it to the item before or after it, and ArrowUp and ArrowDown to the item in the same column of the row above or below (the last item of a shorter row). ArrowUp on the first row gives the highlight back to the input. With no highlight, ArrowLeft and ArrowRight move the caret of the input.
+
+With a filter of the browser (`data-phem-combobox-filter-value`), the visible items fill the rows again after each filter, as in Base UI: the visible items of each `group` part (or of the list) go into its rows in their order. Each row gets as many items as the first row of its group has in the server render. A row with no visible item gets `hidden`, so the grid has no empty row. An empty text puts each item back in its first row, and so does a morph, before it compares the rows with the server render. Before Turbo caches the page (`turbo:before-cache`), the items also go back, so the page from the cache has the rows of the server render. Put the items directly in the `row` parts.
+
+#### Insert a choice into a text field
+
+With `data-phem-combobox-insert-into-value`, a choice (a click, or Enter) inserts the `data-value` of the item into the text field (an `input` or a `textarea`) with this id. The value goes in at the caret of the field, in place of the selected text. The field gets its `input` and `change` events, the popup closes, and the search input gets no text. The field gets the focus, with the caret after the inserted text. The choice selects no item, and the controller still dispatches `phem-combobox:select`. Use it for an emoji picker, as the grid demo of Base UI:
+
+```phem
+<input id="message" aria-label="Message" />
+<div data-controller="phem-combobox" data-phem-combobox-grid-value="true" data-phem-combobox-filter-value="contains" data-phem-combobox-insert-into-value="message">
+    <button type="button" data-phem-combobox-target="trigger" aria-label="Choose emoji">😀</button>
+    <div data-phem-combobox-target="popup" hidden>
+        <input data-phem-combobox-target="input" aria-label="Search emojis" />
+        <div data-phem-combobox-target="list">
+            <div data-phem-combobox-target="row">
+                <span data-phem-combobox-target="item" data-value="😀" data-label="grinning face">😀</span>
+                <span data-phem-combobox-target="item" data-value="😎" data-label="smiling face with sunglasses">😎</span>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+The user puts the caret after `Hi ` in `Hi !`, searches `sun`, and presses ArrowDown and Enter. The message gets the emoji, and the caret is after it:
+
+```html
+<input id="message" aria-label="Message" value="Hi 😎!">
+```
+
+In phem/ui-base, the `insertInto` prop of Combobox and Autocomplete gives the value:
+
+```phem
+<Autocomplete id="emoji" grid filter="contains" insertInto="message">
+    <ComboboxTrigger aria-label="Choose emoji">😀</ComboboxTrigger>
+    <ComboboxPopup>
+        <ComboboxInput aria-label="Search emojis" />
+        <ComboboxList>
+            <ComboboxRow><ComboboxItem value="😀" label="grinning face">😀</ComboboxItem></ComboboxRow>
+        </ComboboxList>
+    </ComboboxPopup>
+</Autocomplete>
+```
 
 ## Sort a list with drag and drop
 
