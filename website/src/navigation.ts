@@ -42,6 +42,7 @@ export const navigation: NavGroup[] = [
             { slug: 'packages', label: 'Packages' },
             { slug: 'package-authoring', label: 'Package Authoring' },
             { slug: 'ai-agents', label: 'Coding Agents' },
+            { slug: 'mcp-server', label: 'MCP Server' },
             { slug: 'deployment', label: 'Deployment' },
         ],
     },

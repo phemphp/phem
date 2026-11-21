@@ -478,7 +478,10 @@ mod tests {
         use clap::Parser;
 
         let cli = crate::Cli::try_parse_from(["phemc", "mcp", "--src", "app/src"]).unwrap();
-        assert!(matches!(cli.cmd, crate::Cmd::Mcp { src } if src == Path::new("app/src")));
+        assert!(matches!(cli.cmd, crate::Cmd::Mcp { project, src } if project == Path::new(".") && src == Path::new("app/src")));
+
+        let cli = crate::Cli::try_parse_from(["phemc", "mcp", "--project", "/work/app"]).unwrap();
+        assert!(matches!(cli.cmd, crate::Cmd::Mcp { project, src } if project == Path::new("/work/app") && src == Path::new("src")));
     }
 
     #[test]

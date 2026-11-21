@@ -48,7 +48,10 @@ enum Cmd {
     /// Run the Model Context Protocol server on stdin and stdout: the docs, the components, the
     /// examples, the search and the check, as tools for the coding agents.
     Mcp {
-        /// The source directory of the app.
+        /// The project root (the directory of `composer.json`).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The source directory of the app, from the project root.
         #[arg(long, default_value = "src")]
         src: PathBuf,
     },
@@ -164,7 +167,7 @@ fn main() -> ExitCode {
         Cmd::Check(args) => check(&args),
         Cmd::Watch { build, exec } => watch(&build, exec.as_deref()).map(|_| true),
         Cmd::Lsp => phemc_lsp::run().map(|_| true).map_err(Into::into),
-        Cmd::Mcp { src } => mcp::run(Path::new("."), &src).map(|_| true).map_err(Into::into),
+        Cmd::Mcp { project, src } => mcp::run(&project, &src).map(|_| true).map_err(Into::into),
         Cmd::Docs { key, toc, project } => knowledge::docs(key.as_deref(), toc, &project),
         Cmd::Components { name, package, project } => knowledge::components(name.as_deref(), package.as_deref(), &project),
         Cmd::Examples { name, package, project } => knowledge::examples(name.as_deref(), package.as_deref(), &project),

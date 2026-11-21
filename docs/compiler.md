@@ -268,7 +268,7 @@ phemc: retrieval eval: 2 quer(ies), 3/3 key(s) in the top 20 (recall@20 100.0 %)
 
 ### `phemc mcp`
 
-`phemc mcp` runs a Model Context Protocol (MCP) server on stdin and stdout, for the coding agents (see [Use Phem with coding agents](ai-agents.md)). Run it from the project root. It takes one option, `--src <dir>` (default `src`), the source root of the application.
+`phemc mcp` runs a Model Context Protocol (MCP) server on stdin and stdout, for the coding agents (see [Use Phem with coding agents](ai-agents.md)). It takes two options: `--project <dir>` (default `.`), the project root, and `--src <dir>` (default `src`), the source root of the application, from the project root. To add the server to an agent, see [Connect a coding agent to the MCP server](mcp-server.md).
 
 Each tool gives the same text as its command:
 

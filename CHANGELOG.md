@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phemc mcp` has the `--project <dir>` option: the project root, for an agent that starts the
+  server in another directory (for example Cursor and VS Code, with `${workspaceFolder}`). The new
+  doc "Connect a coding agent to the MCP server" (`docs/mcp-server.md`) shows the setup for Claude
+  Code, Cursor, VS Code, Codex and a container.
 - The website has `/llms-full.txt`: all the docs in one file, in the order of the navigation,
   without the changelog. `/llms.txt` links to it.
 - The check hook of the Claude Code plugin checks only the files of the project of the session:
