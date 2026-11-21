@@ -1,4 +1,4 @@
-.PHONY: test test-js test-e2e test-claude-code eval-agents ui-test ui-test-e2e ui-check ui-demo ui-demo-watch bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
+.PHONY: test test-js test-e2e test-claude-code eval-agents bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
 
 # The build context of the dev image is the repository.
 COMPOSE = docker compose -f docker/compose.yaml
@@ -19,21 +19,6 @@ test-js: ## Run the tests of the phem Stimulus controller (Vitest, jsdom)
 
 test-e2e: ## Run the e2e tests in Chromium (e2e/, Playwright PHP). Pass PHPUnit options with ARGS="--filter Smoke"
 	$(COMPOSE) run --rm --build e2e /app/e2e/bin/test $(ARGS)
-
-ui-test: ## Run the PHPUnit tests of phem/ui-base (ui/base/), with the phem of this repository
-	$(MAKE) -C ui/base test ARGS="$(ARGS)"
-
-ui-test-e2e: ## Run the browser tests of the phem/ui-base demo. Pass PHPUnit options with ARGS="--filter Dialog"
-	$(MAKE) -C ui/base test-e2e ARGS="$(ARGS)"
-
-ui-check: ## Check the phem/ui-base components with the phemc of this repository
-	$(MAKE) -C ui/base check
-
-ui-demo: ## Build the phem/ui-base demo image and serve it with FrankenPHP on http://localhost:8100, with the phem of this repository
-	$(MAKE) -C ui/base demo
-
-ui-demo-watch: ## Serve the phem/ui-base demo of this repository on http://localhost:8100, and restart FrankenPHP after each change
-	$(MAKE) -C ui/base demo-watch
 
 bench:  ## Run the benchmark of the client/server flow (bench/run.php): server time, bytes, requests
 	$(COMPOSE) run --rm --build dev php bench/run.php

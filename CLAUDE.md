@@ -19,21 +19,17 @@ dist.
 
 ### phem/ui-base
 
-`ui/base/` is the `phem/ui-base` package (the Base UI components, styled with Tailwind CSS) and
-its demo. It stays here until its components are stable, then it moves to its own repository
-again (`git subtree split --prefix=ui/base`). Its own Composer package requires `phem/phem` from
-the root of this repository (a path repository).
+The `phem/ui-base` package (the Base UI components, styled with Tailwind CSS) and its demo live in
+their own repository: https://github.com/phemphp/ui-base (local checkout: `../ui/base`). It
+requires the `phem/phem` release from Packagist.
 
 - The components use only the public API of phem. `src/`, `config/`, `templates/`, `assets/`,
-  `compiler/` and `editors/` never use a class, a file or a selector of `ui/base/`. The tests of
+  `compiler/` and `editors/` never use a class, a file or a selector of phem/ui-base. The tests of
   `compiler/` use their own fixture packages.
-- A missing behavior goes into phem (a controller, a component), not into `ui/base/`.
-- A change in phem that changes a component updates `ui/base/` in the same change: its
-  components, its examples (`ui/base/examples/`, the demos of the gallery), its tests and its
-  demo. `ui/base/` has no changelog: the changelog of phem has the
-  change of the controller.
-- Run `make ui-test` and `make ui-test-e2e` after a change in `ui/base/`, and after a change in a
-  controller that a component uses. They do not run in `make test`.
+- A missing behavior goes into phem (a controller, a component), not into phem/ui-base.
+- A change in phem that changes or breaks a component needs a change in phem/ui-base after the
+  phem release. Tell the user which components it changes. The changelog of phem/ui-base has the
+  change of the components.
 
 ## Docs
 

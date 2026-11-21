@@ -94,6 +94,9 @@ on the tasks of `evals/tasks.php`, in three conditions:
 - **baseline**: phem/ui-base of the working tree, and no plugin
 - **plugin**: phem/ui-base of the working tree, and this plugin
 
+phem/ui-base comes from a checkout of https://github.com/phemphp/ui-base: `../ui/base` next to
+the phem repository, or the path of `--ui-base=<path>`.
+
 Each run gets a new app in `var/agent-evals/<time>/`. A run passes when `phemc check` gives no
 error and the file has the tags and the patterns of its task. The eval prints a table and writes
 `summary.md` and `results.json`. It uses your Claude account: each run costs about $0.20 to $0.50.

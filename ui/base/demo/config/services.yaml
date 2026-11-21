@@ -1,9 +1,0 @@
-services:
-    _defaults:
-        autowire: true
-        autoconfigure: true
-
-    # The repositories of the Async search examples of phem/ui-base: the components get them in their
-    # constructor.
-    Phem\Ui\Base\Examples\PersonRepository: ~
-    Phem\Ui\Base\Examples\MovieRepository: ~

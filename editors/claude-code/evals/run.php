@@ -7,6 +7,7 @@
  *
  *   php editors/claude-code/evals/run.php [--conditions=before,baseline,plugin] [--tasks=a,b]
  *       [--repeat=1] [--jobs=4] [--model=sonnet] [--docker | --phemc=/path/to/phemc] [--dry-run]
+ *       [--ui-base=../ui/base] [--before=<ref>]
  *
  * `--dry-run` builds the apps and scores them with no session (no cost): a test of the eval.
  * `--rescore=<dir>` scores the runs of an earlier eval again, for example after a change of the
@@ -14,9 +15,13 @@
  *
  * The conditions:
  * - before: phem/ui-base before the work for the agents (no examples, no aliases, fewer
- *   docblocks: the `--before` ref), and no plugin;
- * - baseline: phem/ui-base of the working tree, and no plugin;
- * - plugin: phem/ui-base of the working tree, and the Claude Code plugin of editors/claude-code.
+ *   docblocks: the `--before` ref of the phem/ui-base checkout), and no plugin;
+ * - baseline: phem/ui-base of the working tree of the checkout, and no plugin;
+ * - plugin: phem/ui-base of the working tree of the checkout, and the Claude Code plugin of
+ *   editors/claude-code.
+ *
+ * `--ui-base` is the checkout of https://github.com/phemphp/ui-base (default: ../ui/base, next to
+ * the phem repository).
  *
  * Each run gets a new app in var/agent-evals/<time>/<condition>/<task>-<n>/, with phem/phem and
  * phem/ui-base in vendor/, as Composer installs them. Its vendor/bin/phemc runs `--phemc`, or with
@@ -28,14 +33,15 @@
 declare(strict_types=1);
 
 $repo = dirname(__DIR__, 3);
-$options = getopt('', ['conditions:', 'tasks:', 'repeat:', 'jobs:', 'model:', 'docker', 'phemc:', 'before:', 'timeout:', 'dry-run', 'rescore:']);
+$options = getopt('', ['conditions:', 'tasks:', 'repeat:', 'jobs:', 'model:', 'docker', 'phemc:', 'before:', 'ui-base:', 'timeout:', 'dry-run', 'rescore:']);
 $allTasks = require __DIR__.'/tasks.php';
 $conditions = explode(',', $options['conditions'] ?? 'before,baseline,plugin');
 $taskIds = isset($options['tasks']) ? explode(',', $options['tasks']) : array_keys($allTasks);
 $repeat = (int) ($options['repeat'] ?? 1);
 $jobs = max(1, (int) ($options['jobs'] ?? 4));
 $model = $options['model'] ?? 'sonnet';
-$before = $options['before'] ?? '88aff9e2';
+$before = $options['before'] ?? 'a32ff46';
+$uiBase = rtrim($options['ui-base'] ?? dirname($repo).'/ui/base', '/');
 $timeout = (int) ($options['timeout'] ?? 600);
 
 // A rescore runs the vendor/bin/phemc of each app.
@@ -50,6 +56,11 @@ if (isset($options['rescore'])) {
 
 if (!isset($options['docker']) && !isset($options['phemc'])) {
     fwrite(STDERR, "Give --phemc=<path of a phemc binary> or --docker.\n");
+    exit(1);
+}
+
+if (!is_file("$uiBase/composer.json")) {
+    fwrite(STDERR, "No phem/ui-base checkout in $uiBase. Give --ui-base=<path>.\n");
     exit(1);
 }
 
@@ -116,32 +127,32 @@ echo "\n".summary($results);
 /** A new app for a run: phem/phem and phem/ui-base in vendor/, and the shim of phemc. */
 function make_app(string $dir, string $condition): void
 {
-    global $repo, $before;
+    global $repo, $before, $uiBase;
 
     @mkdir("$dir/src/Ui", 0777, true);
     @mkdir("$dir/vendor/composer", 0777, true);
     @mkdir("$dir/vendor/bin", 0777, true);
-    file_put_contents("$dir/composer.json", json_encode(['name' => 'acme/app', 'require' => ['phem/phem' => '^0.6', 'phem/ui-base' => '^0.1']], \JSON_PRETTY_PRINT)."\n");
+    file_put_contents("$dir/composer.json", json_encode(['name' => 'acme/app', 'require' => ['phem/phem' => '^0.7', 'phem/ui-base' => '^0.1']], \JSON_PRETTY_PRINT)."\n");
 
     // phem/phem, as its Composer dist: the PHP code, with no docs.
     copy_tree("$repo/src", "$dir/vendor/phem/phem/src");
     copy("$repo/composer.json", "$dir/vendor/phem/phem/composer.json");
     copy("$repo/README.md", "$dir/vendor/phem/phem/README.md");
 
-    // phem/ui-base: of the working tree, or of the `before` ref.
+    // phem/ui-base: of the working tree of the checkout, or of its `before` ref.
     $ui = "$dir/vendor/phem/ui-base";
     if ('before' === $condition) {
-        foreach (explode("\n", trim((string) shell_exec('cd '.escapeshellarg($repo).' && git ls-tree -r --name-only '.escapeshellarg($before).' -- ui/base/src ui/base/assets ui/base/README.md ui/base/composer.json'))) as $file) {
-            @mkdir(dirname("$ui/".substr($file, 8)), 0777, true);
-            file_put_contents("$ui/".substr($file, 8), (string) shell_exec('cd '.escapeshellarg($repo).' && git show '.escapeshellarg("$before:$file")));
+        foreach (explode("\n", trim((string) shell_exec('cd '.escapeshellarg($uiBase).' && git ls-tree -r --name-only '.escapeshellarg($before).' -- src assets README.md composer.json'))) as $file) {
+            @mkdir(dirname("$ui/$file"), 0777, true);
+            file_put_contents("$ui/$file", (string) shell_exec('cd '.escapeshellarg($uiBase).' && git show '.escapeshellarg("$before:$file")));
         }
     } else {
         foreach (['src', 'examples', 'assets'] as $sub) {
-            copy_tree("$repo/ui/base/$sub", "$ui/$sub");
+            copy_tree("$uiBase/$sub", "$ui/$sub");
         }
 
-        copy("$repo/ui/base/README.md", "$ui/README.md");
-        copy("$repo/ui/base/composer.json", "$ui/composer.json");
+        copy("$uiBase/README.md", "$ui/README.md");
+        copy("$uiBase/composer.json", "$ui/composer.json");
     }
 
     $extra = json_decode((string) file_get_contents("$ui/composer.json"), true)['extra']['phem'];
