@@ -78,11 +78,7 @@ Add classes where you use a component, for example `<Button className="w-full" /
    }
    ```
 
-4. Optional: turn on the Tailwind class merger, so that a class that you give in `className` replaces the class of the same group of the component. Set `css` to the input CSS that imports the theme, so that the merger also knows the names of the theme (`rounded-control`, `rounded-popup`, `shadow-popup`). See [Turn on the Tailwind class merger](styling.md#merge-tailwind-classes):
-
-   ```sh
-   composer require tales-from-a-dev/tailwind-merge-php
-   ```
+4. Turn on the Tailwind class merger, so that a class that you give in `className` replaces the class of the same group of the component. The package requires `tales-from-a-dev/tailwind-merge-php`, so Composer installs the merger with it. Set `css` to the input CSS that imports the theme, so that the merger also knows the names of the theme (`rounded-control`, `rounded-popup`, `shadow-popup`). See [Merge Tailwind classes](styling.md#merge-tailwind-classes):
 
    ```yaml
    # config/packages/phem.yaml
