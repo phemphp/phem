@@ -47,7 +47,7 @@ The namespace of each file follows its directory, as PSR-4 does. A component in 
 
 The package doesn’t need to be a Symfony bundle. `phemc` finds the components through `extra.phem.source`, and `PhemBundle` in the app renders them. Keep `"type": "library"` when the package has only components and PHP classes. A package that must change the app’s configuration, for example to add its styles to AssetMapper, must be a bundle (see [Add a bundle to a package](#add-a-bundle-to-a-package)).
 
-Once an app runs `composer require acme/ui` and `phemc build`, its pages use the components as their own:
+Once an app runs `composer require acme/ui`, `phemc watch` compiles the package, and the app’s pages use the components as their own:
 
 ```php
 use function Acme\Ui\Badge;

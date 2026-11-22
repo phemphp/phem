@@ -4,11 +4,10 @@ Install a Composer package of `.phem` components and use its components like you
 
 ## Install a package
 
-Require the package, then build. `phemc` compiles the package’s `.phem` files with your app:
+Require the package. `phemc watch` (the worker of `symfony serve`) sees the change of `vendor/composer/installed.json` and compiles the package’s `.phem` files with your app:
 
 ```sh
 composer require acme/ui
-vendor/bin/phemc build src
 ```
 
 Import a component of the package and use it as a tag:
@@ -93,11 +92,7 @@ Add classes where you use a component, for example `<Button className="w-full" /
                css: '%kernel.project_dir%/assets/styles/app.css'
    ```
 
-5. Build, then use the components. Each Base UI part is a tag: the `X.Root` of Base UI is `X`, and each other part is `X<Part>`:
-
-   ```sh
-   vendor/bin/phemc build src
-   ```
+5. Use the components. Each Base UI part is a tag: the `X.Root` of Base UI is `X`, and each other part is `X<Part>`:
 
    ```php
    use Phem\Ui\Base\{Accordion, AccordionItem};
@@ -131,7 +126,7 @@ acme_ui:
     prefix: /ui
 ```
 
-The routes come from the build. Right after `composer require`, the import has no routes until the next `phemc build`, which rebuilds your app’s routes. Naming a package that isn’t installed is an error, and the message lists the packages that have pages.
+The routes come from the build. After `composer require`, `phemc watch` builds again and rebuilds your app’s routes. Without the watcher, the import has no routes until the next `phemc build`. Naming a package that isn’t installed is an error, and the message lists the packages that have pages.
 
 ### Render package pages in your document
 
