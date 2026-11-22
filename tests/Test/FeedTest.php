@@ -191,15 +191,6 @@ final class FeedTest extends KernelTestCase
         self::assertSame(['Three', 'Four', 'Five'], self::texts($other));
     }
 
-    public function testAnAsyncHandlerInAnItemGetsTheItemInTheWorker(): void
-    {
-        $page = $this->visit('/chat/async');
-
-        $page->click('[data-phem-feed] > li:nth-child(1) .shout')->settle()->receive();
-
-        self::assertSame(['THREE', 'Four', 'Five'], self::texts($page));
-    }
-
     public function testAFeedElementThatDoesNotRenderThrows(): void
     {
         $this->expectExceptionMessage('The component "App\Ui\Feed\ChatHiddenPage" renders no element for its feed "messages".');

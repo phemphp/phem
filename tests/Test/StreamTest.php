@@ -354,23 +354,6 @@ final class StreamTest extends KernelTestCase
         $page->receive()->assertSee('1 likes in lobby');
     }
 
-    public function testAWorkerRefreshesTheComponentAfterTheWorkOfAnAsyncHandler(): void
-    {
-        $other = $this->visit('/likes');
-        $page = $this->visit('/likes')->click('#later-lobby');
-
-        // The request queues no refresh: the work did not run.
-        $updates = $this->updates();
-        self::assertSame([], $updates);
-
-        $page->settle();
-        [$update] = $this->updates();
-
-        // A worker answers no browser: its refresh has no token.
-        self::assertStringNotContainsString('data-phem-sender', $update['data']);
-        $other->receive()->assertSee('1 likes in lobby');
-    }
-
     public function testAnotherActionKeepsAnEmptyTarget(): void
     {
         $streams = static::getContainer()->get('phem.streams');

@@ -26,7 +26,7 @@ namespace Phem;
  *     $this->announcements->announce('3 results');
  *
  * The messages follow the rules of the browser events: a handler that fails or that returns a
- * redirect announces none, and a message of the work of an #[Async] handler logs a warning.
+ * redirect announces none.
  */
 final class Announcements
 {

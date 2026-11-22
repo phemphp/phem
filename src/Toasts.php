@@ -27,8 +27,7 @@ namespace Phem;
  *
  * The toasts follow the rules of the browser events: a handler that fails or that returns a
  * redirect shows none. A toast shows only with the response of an event: a toast of a page
- * load does not show, and a toast of the work of an #[Async] handler logs a warning (the worker
- * has no response: use Phem\Stream\Streams there).
+ * load does not show.
  */
 final class Toasts
 {

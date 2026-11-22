@@ -20,9 +20,6 @@ use Phem\Argument\MapFormValueResolver;
 use Phem\Argument\PathValueResolver;
 use Phem\Argument\RequestAttributeValueResolver;
 use Phem\Argument\ServiceValueResolver;
-use Phem\Async\AsyncDispatcher;
-use Phem\Async\AsyncMiddleware;
-use Phem\Async\AsyncUser;
 use Phem\Binding\PropBinder;
 use Phem\BrowserEventDispatcher;
 use Phem\Command\RenderCommand;
@@ -288,11 +285,6 @@ return static function (ContainerConfigurator $container): void {
         ->args([service('phem.transaction_runner')->nullOnInvalid()])
         ->tag('phem.handler_middleware', ['priority' => -100]);
 
-    // Inside the transaction: a check or a dispatch that fails rolls back the handler.
-    $services->set('phem.handler_middleware.async', AsyncMiddleware::class)
-        ->args([service('phem.async.dispatcher'), service('request_stack')])
-        ->tag('phem.handler_middleware', ['priority' => -200]);
-
     // The last one before the handler: a middleware that stops the event refreshes nothing. A
     // commit that fails drops the refresh (see the streams middleware).
     $services->set('phem.handler_middleware.broadcast', BroadcastMiddleware::class)
@@ -303,19 +295,6 @@ return static function (ContainerConfigurator $container): void {
             service('phem.metadata'),
         ])
         ->tag('phem.handler_middleware', ['priority' => -1000]);
-
-    $services->set('phem.async.user', AsyncUser::class)
-        ->args([
-            service('security.token_storage')->nullOnInvalid(),
-            service('security.user_providers')->nullOnInvalid(),
-        ]);
-
-    $services->set('phem.async.dispatcher', AsyncDispatcher::class)
-        ->args([
-            service('messenger.default_bus')->nullOnInvalid(),
-            abstract_arg('secret, set by PhemBundle'),
-            service('phem.async.user'),
-        ]);
 
     /*
      * Browser events, toasts and announcements

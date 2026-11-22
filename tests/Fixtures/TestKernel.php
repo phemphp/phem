@@ -51,8 +51,6 @@ final class TestKernel extends PhemTestKernel
         parent::configureContainer($container);
 
         $container->extension('framework', [
-            // For the #[Async] handlers of async.phem: their work goes to a MemoryBus (see TestAsyncPass).
-            'messenger' => ['enabled' => true],
             // For the #[RateLimit] page of access.phem. The storage is in memory, so each test starts with no hits.
             'rate_limiter' => ['phem_events' => ['policy' => 'fixed_window', 'limit' => 2, 'interval' => '1 minute', 'lock_factory' => null, 'storage_service' => InMemoryStorage::class]],
             // For the live validation of validation.phem. FrameworkBundle does not enable it when symfony/validator is a dev package of the root.

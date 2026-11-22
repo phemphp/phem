@@ -383,7 +383,7 @@ Always give the hub a `name`. Caddy creates one server for each port of the site
 
 ## Use a standalone Mercure hub
 
-With another server, such as PHP-FPM or the `symfony serve` server of development, or when the hub runs apart from the app, Phem publishes through the hub’s HTTP API. Commands and Messenger workers, with the workers of `#[Async]` handlers, always publish this way, also when the app runs in FrankenPHP. Without the publisher key, they don’t publish, and a page on another server gets no updates.
+With another server, such as PHP-FPM or the `symfony serve` server of development, or when the hub runs apart from the app, Phem publishes through the hub’s HTTP API. Commands and Messenger workers always publish this way, also when the app runs in FrankenPHP. Without the publisher key, they don’t publish, and a page on another server gets no updates.
 
 Install the Symfony HttpClient:
 

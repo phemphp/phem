@@ -100,7 +100,7 @@ final class TodoList
 | `new Expression('args["todo"].list')` | The value of the expression. It has `args` (the arguments of the call), `request` and `this` (the component) |
 | A closure | The value of `fn (array $args, Request $request, object $component)` |
 
-The check needs `symfony/security-bundle`. `#[IsGranted]` runs first, before `#[RateLimit]`, so a denied event uses no rate limit. An `#[Async]` handler doesn't check the attribute again in the worker: the check of the event request covers it.
+The check needs `symfony/security-bundle`. `#[IsGranted]` runs first, before `#[RateLimit]`, so a denied event uses no rate limit.
 
 ## Keep security decisions out of the state
 

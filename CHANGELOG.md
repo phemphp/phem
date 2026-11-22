@@ -8,6 +8,11 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** The `#[Async]` event handlers are removed: `Phem\Attribute\Async`, the
+  `Phem\Async\*` classes (`Promise`, `AsyncHandlerMessage` and the others), the Messenger handler
+  of the worker and `ComponentTester::settle()`. phemc does not report E054 and E055 any more.
+  `symfony/messenger` is no longer a suggested package. Run the slow work in your own Messenger
+  message handler, and push its result with `Streams`.
 - An inline `phem-combobox` list (no `popup` part) in a `<dialog>` starts again when the dialog
   closes (its `close` event, after the close animation of `phem-dialog`), as Base UI unmounts the
   popup: the input gets its default value, the filter shows the items of that text, the highlight

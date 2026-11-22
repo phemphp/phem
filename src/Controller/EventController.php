@@ -18,7 +18,6 @@ use Phem\Dom\UrlScheme;
 use Phem\Event;
 use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
-use Phem\Http\EventReplay;
 use Phem\Http\EventRequest;
 use Phem\Http\FeedStreams;
 use Phem\Http\FileTree;
@@ -68,9 +67,7 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * that can change (see EventRenderer), and answers with Turbo Streams that morph the components
  * that changed, the entries of the state that changed and the new signature (see StateJson),
  * the query of the #[Url] properties (see UrlQuery), and the
- * browser events of the handler (see BrowserEventDispatcher). The request has the EventReplay of
- * the event: an #[Async] handler sends it to a worker (see Phem\Async\AsyncMiddleware). The browser
- * also sends the components whose element a push changed: they render again (see EventRenderer).
+ * browser events of the handler (see BrowserEventDispatcher). The browser also sends the components whose element a push changed: they render again (see EventRenderer).
  * When the handler, or the `mount()` of the page, returns a Phem\RedirectTo or a
  * RedirectResponse, the server answers with its URL, its headers and its cookies, and the browser
  * visits the URL. When the render of a refresh (an event with no handler, after a push) throws a
@@ -200,10 +197,6 @@ final class EventController
         }
 
         $tree = new Tree($page, $state->fibers, $props, $state->values, shape: $state->shape, feedItems: $payload->feedItems());
-        if (1 === \count($payload->handlers)) {
-            // Only an event with one handler: a load event of many boundaries is not #[Async].
-            $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handlers[0], $payload->event, $payload->item));
-        }
 
         // After the checks of the state: a reload keeps the chunked uploads for the next try.
         $uploads = $multipart && null !== $this->resolver ? $this->resolver->resolve($request) : new ResolvedUploads($request->files->all());

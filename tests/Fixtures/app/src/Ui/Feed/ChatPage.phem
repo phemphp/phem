@@ -2,8 +2,7 @@
 
 namespace App\Ui\Feed;
 
-use Phem\Async\Promise;
-use Phem\Attribute\{Async, Broadcast, BroadcastKey, Component, Page, Path, Prop, State};
+use Phem\Attribute\{Broadcast, BroadcastKey, Component, Page, Path, Prop, State};
 use Phem\Feed;
 use Phem\Node;
 use Phem\Stream\Streams;
@@ -71,16 +70,6 @@ final class ChatRoom
         $this->push()->delete($message);
     }
 
-    // The work runs in a worker: the worker gets the item of the event again.
-    #[Async]
-    public function shout(ChatMessage $message): Promise
-    {
-        return new Promise(function () use ($message): void {
-            $message->text = strtoupper($message->text);
-            $this->push()->update($message);
-        });
-    }
-
     public function older(): void
     {
         $older = null !== $this->oldest ? $this->chat->before($this->room, $this->oldest, 2) : [];
@@ -100,7 +89,7 @@ final class ChatRoom
             <section>
                 <ul phem:feed={{ messages }}>
                     {% for message in messages %}
-                        <li><span>{{ message.text }}</span> <button className="edit" onClick={{ edit(message) }}>Edit</button> <button className="shout" onClick={{ shout(message) }}>Shout</button> <button className="delete" onClick={{ remove(message) }}>Delete</button></li>
+                        <li><span>{{ message.text }}</span> <button className="edit" onClick={{ edit(message) }}>Edit</button> <button className="delete" onClick={{ remove(message) }}>Delete</button></li>
                     {% endfor %}
                 </ul>
                 {% if oldest %}<button id="older" onClick={{ older }}>Older</button>{% endif %}

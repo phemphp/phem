@@ -1,6 +1,6 @@
 # Handle slow and failing work on the server
 
-This guide shows you how to control what happens on the server around your handlers and your slow components. You’ll save handler changes in a database transaction, stream slow content after the page, show a fallback when part of the page fails, and move slow work after the response. To push changes to other browsers, see [Push updates to other browsers](real-time.md).
+This guide shows you how to control what happens on the server around your handlers and your slow components. You’ll save handler changes in a database transaction, stream slow content after the page, and show a fallback when part of the page fails. To push changes to other browsers, see [Push updates to other browsers](real-time.md).
 
 ## Save handler changes in a transaction
 
@@ -100,73 +100,3 @@ use Phem\ErrorBoundary;
 ```
 
 Phem logs the exception, and each render tries the content again. The boundary catches errors in the render and in `mount()`, but not in a handler. When the whole request fails with a 404 or a 500, the browser gets the app’s [error page](error-pages.md).
-
-## Run slow work after the response
-
-A slow handler, such as an export, a payment or an API call, blocks the event. Add `#[Async]` to the handler and return the slow work in a `Phem\Async\Promise`. The event answers right away, and a Symfony Messenger worker runs the work after the response:
-
-```php
-use Phem\Async\Promise;
-use Phem\Attribute\{Async, Component, State, Transactional};
-use Phem\Stream\Streams;
-
-#[Component]
-final class BuildReport
-{
-    // The id of the next report.
-    #[State] public string $ticket = '';
-
-    public function __construct(
-        private readonly Streams $streams,
-        private readonly ReportBuilder $reports,
-    ) {
-    }
-
-    public function mount(): void
-    {
-        $this->ticket = bin2hex(random_bytes(4));
-    }
-
-    #[Async, Transactional]
-    public function build(): Promise
-    {
-        // This report takes the ticket, and the next click gets a new one.
-        $ticket = $this->ticket;
-        $this->ticket = bin2hex(random_bytes(4));
-        $this->streams->toPage(ReportsPage::class)
-            ->prepend('reports', <li id="report-{{ ticket }}">Building a report…</li>);
-
-        return new Promise(function () use ($ticket): void {
-            $report = $this->reports->build($ticket);   // slow
-            $this->streams->toPage(ReportsPage::class)
-                ->replace('report-'.$ticket, <ReportRow report={{ report }} />);
-        });
-    }
-}
-```
-
-`ReportsPage` is a page with `#[Broadcast]` that lists the reports in a `<ul id="reports">`, and `ReportRow` renders one finished report. `ReportBuilder` is a service of your app.
-
-In the request, the method runs as a regular handler and the event renders. The worker then rebuilds the page from the event’s state, calls the method again and runs the closure of the `Promise`. **The method body runs twice**, so keep it fast. The worker drops the pushes of the method body, because they went out with the request, but another side effect, such as a database write or an email, happens twice. Put it in the closure. Pass the values the work needs to the closure, as `use ($ticket)` does: the worker gets the ticket of the event, not the new one.
-
-The worker has no response, so the closure shows its result with `Streams` (see [Push updates to other browsers](real-time.md)). A toast, another browser event, a `$reply->refresh()` or a `$reply->clearFiles()` of the closure doesn't reach the browser, and the worker logs a warning. The worker has the user of the request, but no session, no cookies and no files. An `#[Async]` handler in an event with files throws a `LogicException`, so move the files in a regular handler. Messenger can retry the closure, so make it safe to run again.
-
-### Run the Messenger worker
-
-Install Messenger, route the message to a transport and start a worker:
-
-```yaml
-# config/packages/messenger.yaml
-framework:
-    messenger:
-        transports:
-            async: '%env(MESSENGER_TRANSPORT_DSN)%'
-        routing:
-            Phem\Async\AsyncHandlerMessage: async
-```
-
-```sh
-php bin/console messenger:consume async
-```
-
-The worker can’t use `mercure_publish()`, so give Phem the publisher key, as for [a standalone hub](real-time.md#use-a-standalone-mercure-hub). Tests run the work with `settle()` (see [Testing](testing.md#simulate-user-actions)). phemc reports E054 for `#[Async]` on a function, and E055 for an `#[Async]` method that doesn’t return `Promise`.

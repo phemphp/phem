@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Phem\Handler;
 
-use Phem\Async\Promise;
 use Phem\Event;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Renderer;
@@ -36,7 +35,7 @@ use Phem\Stream\Streams;
  *   and a page has no instances on other pages: they do not refresh.
  * - It is the last middleware before the handler: a middleware that stops the event refreshes
  *   nothing. A handler that throws refreshes nothing, and a commit that fails drops the refresh
- *   (see StreamsMiddleware). An #[Async] handler refreshes after its work, in the worker.
+ *   (see StreamsMiddleware).
  * - The refresh of an event has its SenderToken (see Streams): the browser that sent the event
  *   does not render the component of the handler again, the event rendered it already. Its
  *   other instances render again.
@@ -54,11 +53,6 @@ final class BroadcastMiddleware implements HandlerMiddleware
     public function handle(\Closure $handler, Event $event, Reply $reply, \Closure $next): mixed
     {
         $result = $next();
-
-        // The worker runs the work, and refreshes after it.
-        if ($result instanceof Promise) {
-            return $result;
-        }
 
         $function = new \ReflectionFunction($handler);
         $component = $function->getClosureThis();

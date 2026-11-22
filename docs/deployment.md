@@ -38,7 +38,7 @@ Each step has one job:
 - **`cache:warmup`**: builds the container (with the component services), the routes, the Twig cache of the `phemc` templates, the route values of the page links (`path(ProductPage, {product: product})`), and the OPcache preload file of the components
 - **`asset-map:compile`**: writes the assets to `public/assets/`
 
-Set a random `APP_SECRET`, for example in `.env.local`. The `phem.secret` option defaults to `%kernel.secret%`. It signs the component state in the browser, the Mercure topics, the broadcast keys, the feed items and the `#[Async]` messages. Keep the same secret from one deploy to the next, and give all the servers of the app the same secret. A new secret makes the open pages reload on their next event, and the waiting `#[Async]` messages fail.
+Set a random `APP_SECRET`, for example in `.env.local`. The `phem.secret` option defaults to `%kernel.secret%`. It signs the component state in the browser, the Mercure topics, the broadcast keys and the feed items. Keep the same secret from one deploy to the next, and give all the servers of the app the same secret. A new secret makes the open pages reload on their next event.
 
 ### Turn on the OPcache preload
 

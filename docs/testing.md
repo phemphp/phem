@@ -86,7 +86,6 @@ Each action finds an element with a CSS selector and sends the event the way the
 | `load($selector)` | The load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
 | `visit($uri, $cookies)` | None: opens a page in the same browser, with its cookies plus the ones you pass | `$customer->visit('/bag', ['currency' => 'EUR'])` |
 | `receive()` | Pushes from other requests (a page with `#[Broadcast]`) | `$other->receive()->assertSee('Hi')` |
-| `settle()` | None: runs the work of `#[Async]` handlers, as a worker does | `->settle()->receive()->assertSee('Ready')` |
 
 ### Fill fields and submit forms
 
@@ -190,20 +189,6 @@ self::assertSame(['coupon' => 'SPRING', 'currency' => 'USD'], $page->cookies());
 
 A mounted component has no browser, so `cookies()` and `visit()` fail on it. A cookie value that isn’t a string, or a cookie with no name, throws an `InvalidArgumentException`.
 
-## Test async handlers
-
-An `#[Async]` handler doesn’t run its work during the event. In a page from `visit()`, its message goes to memory instead of a Messenger transport. Other tests (a `WebTestCase`, Panther) use the app’s Messenger configuration.
-
-`settle()` runs the waiting work of every page in the test, in order, as a worker does. The work pushes its result, so read it with `receive()`. Test `#[Async]` handlers with `visit()`, because a mounted component has no page for the worker:
-
-```php
-$this->visit('/reports')
-    ->click('button')
-    ->receive()->assertSee('Building a report')
-    ->settle()
-    ->receive()->assertSee('4 scientists');
-```
-
 ## Actions that fail the test
 
 An action fails when it couldn’t work in a browser either. That happens when:
@@ -214,7 +199,6 @@ An action fails when it couldn’t work in a browser either. That happens when:
 - The form has no field with that name, or the select has no option with that value
 - `load()` finds no boundary that shows its fallback
 - `receive()` runs on a page with no `#[Broadcast]` and no component with `#[Broadcast]`
-- `settle()` finds no waiting work
 - `upload()` gets an element that isn’t a file input, more than one path for an input without `multiple`, or a file that doesn’t exist
 
 ## Check the HTML and state

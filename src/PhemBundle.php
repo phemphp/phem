@@ -18,7 +18,6 @@ use Phem\DependencyInjection\ComponentPass;
 use Phem\DependencyInjection\DirectUploaderPass;
 use Phem\DependencyInjection\EntityBroadcastPass;
 use Phem\DependencyInjection\TailwindTheme;
-use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Dom\TailwindClassMerger;
 use Phem\Handler\HandlerMiddleware;
@@ -47,7 +46,6 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
 use Symfony\Component\Form\FormTypeExtensionInterface;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use TalesFromADev\TailwindMerge\TailwindMerge;
@@ -213,13 +211,6 @@ final class PhemBundle extends AbstractBundle
                     ->arg(5, false);
         }
 
-        $container->services()->get('phem.async.dispatcher')->arg(1, $config['secret']);
-        if (interface_exists(MessageBusInterface::class)) {
-            // The #[Async] handlers: their work runs in a Messenger worker.
-            $container->import('../config/messenger.php');
-            $container->services()->get('phem.async.handler')->arg(4, $config['secret']);
-        }
-
         if ($builder->getParameter('kernel.debug')) {
             // As React StrictMode: render the full page after each event, and warn when a kept
             // component changed (a render() that is not pure).
@@ -315,7 +306,6 @@ final class PhemBundle extends AbstractBundle
         $container->addCompilerPass(new ComponentPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 200);
         $container->addCompilerPass(new EntityBroadcastPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 199);
         $container->addCompilerPass(new TestPublisherPass());
-        $container->addCompilerPass(new TestAsyncPass());
         $container->addCompilerPass(new DirectUploaderPass());
     }
 

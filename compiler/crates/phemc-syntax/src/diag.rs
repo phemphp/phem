@@ -106,8 +106,6 @@ pub mod codes {
     pub const EXPORT_DEFAULT: &str = "E050";
     pub const ROUTE_NOT_COMPONENT: &str = "E052";
     pub const BROADCAST_NOT_COMPONENT: &str = "E053";
-    pub const ASYNC_NOT_METHOD: &str = "E054";
-    pub const ASYNC_WITHOUT_PROMISE: &str = "E055";
     pub const PAGE_AS_TAG: &str = "E056";
     pub const INVALID_BROADCAST_KEY: &str = "E057";
     pub const INVALID_VALIDATED: &str = "E058";

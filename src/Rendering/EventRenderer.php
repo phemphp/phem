@@ -157,23 +157,6 @@ final class EventRenderer
     }
 
     /**
-     * The handler of an event, after the first pass and the bound values, as run() gets it: an
-     * #[Async] handler in a worker (see Phem\Async\AsyncHandler). Null when the page does not
-     * have the handler any more.
-     *
-     * @param array<array-key, mixed> $bound the bound values: "<fiber>.<property>" => value (see BoundValues)
-     */
-    public function handlerOf(Tree $tree, string $handler, array $bound): ?\Closure
-    {
-        $this->firstPass($tree, [$handler], $bound, []);
-        $closure = $tree->handler($handler);
-        // No live validation: the event had it, and the worker sends no state.
-        $this->bound->apply($tree, $bound);
-
-        return $closure;
-    }
-
-    /**
      * Sets the bound values, and touches them in the components with a Validation property (see
      * StateValidator).
      *

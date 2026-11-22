@@ -158,16 +158,4 @@ final class Reply
     {
         return $this->clearFiles;
     }
-
-    /**
-     * Removes the refresh and the files that the handler asked for: the method body of an
-     * #[Async] handler runs again in the worker, before its work (see Phem\Async\AsyncHandler).
-     *
-     * @internal
-     */
-    public function reset(): void
-    {
-        $this->refresh = false;
-        $this->clearFiles = false;
-    }
 }

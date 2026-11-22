@@ -2,8 +2,7 @@
 
 namespace App\Ui\Push;
 
-use Phem\Attribute\{Async, Component, Page, Path, Prop, State, Broadcast, BroadcastKey};
-use Phem\Async\Promise;
+use Phem\Attribute\{Component, Page, Path, Prop, State, Broadcast, BroadcastKey};
 use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
@@ -284,15 +283,6 @@ final class GuestbookLikes
         $this->guestbook->add($this->room, 'Like');
     }
 
-    // The refresh goes after the work, from the worker.
-    #[Async, Broadcast]
-    public function later(): Promise
-    {
-        return new Promise(function (): void {
-            $this->guestbook->add($this->room, 'Like');
-        });
-    }
-
     public function toggle(): void
     {
         $this->open = !$this->open;
@@ -308,7 +298,6 @@ final class GuestbookLikes
             <p id="likes-{{ room }}">
                 {{ count }} likes in {{ room }}{% if open %}, open{% endif %}
                 <button id="like-{{ room }}" type="button" onClick={{ like }}>Like</button>
-                <button id="later-{{ room }}" type="button" onClick={{ later }}>Later</button>
                 <button id="cheer-{{ room }}" type="button" onClick={{ cheer }}>Cheer</button>
                 <button id="open-{{ room }}" type="button" onClick={{ toggle }}>Open</button>
             </p>

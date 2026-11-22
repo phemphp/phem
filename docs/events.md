@@ -839,7 +839,6 @@ The tag priority sets the order, and a higher priority runs first, around the ot
 | -50 | `#[Validated]` |
 | -60 | `#[MapForm]` |
 | -100 | `#[Transactional]` |
-| -200 | `#[Async]` |
 | -1000 | `#[Broadcast]` |
 
-The default priority is 0, outside the transaction. To run inside the transaction, set a priority between -100 and -200 with `#[AsTaggedItem(priority: -150)]`.
+The default priority is 0, outside the transaction. To run inside the transaction, set a priority between -100 and -1000 with `#[AsTaggedItem(priority: -150)]`.

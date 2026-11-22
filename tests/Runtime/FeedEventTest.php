@@ -43,7 +43,7 @@ final class FeedEventTest extends TestCase
         $data = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
         // The component did not change: no morph, only the item.
-        self::assertSame('<turbo-stream action="replace" method="morph" target="'.$id.'"><template><li id="'.$id.'" data-phem-item="'.$token.'"><span>Three!</span> <button class="edit" data-phem-on-click="'.$handler.'">Edit</button> <button class="shout" data-phem-on-click="'.self::handlerOf($html, 'shout').'">Shout</button> <button class="delete" data-phem-on-click="'.self::handlerOf($html, 'delete').'">Delete</button></li></template></turbo-stream>', $data['streams']);
+        self::assertSame('<turbo-stream action="replace" method="morph" target="'.$id.'"><template><li id="'.$id.'" data-phem-item="'.$token.'"><span>Three!</span> <button class="edit" data-phem-on-click="'.$handler.'">Edit</button> <button class="delete" data-phem-on-click="'.self::handlerOf($html, 'delete').'">Delete</button></li></template></turbo-stream>', $data['streams']);
     }
 
     public function testAnEventThatAppendsAnItemAnswersWithOneStream(): void

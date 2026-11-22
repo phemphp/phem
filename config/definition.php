@@ -161,7 +161,7 @@ return static function (DefinitionConfigurator $definition): void {
                         ->defaultValue('__Secure-mercure_access_token')
                     ->end()
                     ->scalarNode('publisher_key')
-                        ->info('The publisher key of the hub (`issuer … { publisher { jwt <key> } }` in the Caddyfile). With a key, a process with no FrankenPHP request (a request of PHP-FPM with a standalone hub, a Messenger worker of an #[Async] handler, a command) publishes with the HTTP API of the hub at publish_url. With null, only a FrankenPHP request publishes (mercure_publish()).')
+                        ->info('The publisher key of the hub (`issuer … { publisher { jwt <key> } }` in the Caddyfile). With a key, a process with no FrankenPHP request (a request of PHP-FPM with a standalone hub, a Messenger worker, a command) publishes with the HTTP API of the hub at publish_url. With null, only a FrankenPHP request publishes (mercure_publish()).')
                         ->defaultNull()
                     ->end()
                     ->scalarNode('publish_url')

@@ -9,11 +9,3 @@ namespace App\Ui\Redirect {
         public static bool $on = false;
     }
 }
-
-namespace App\Ui\Async {
-    final class AsyncRedirectSwitch
-    {
-        public static bool $on = false;
-        public static bool $ran = false;
-    }
-}

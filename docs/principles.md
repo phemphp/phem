@@ -244,7 +244,6 @@ Every event goes to the server, and its cost grows with the size of the componen
 - **Pagination**: show long lists in pages, because a click on one row runs the `render()` of the whole list
 - **Suspense**: put a slow part in a `<Suspense>` boundary, so the page doesn’t wait for it
 - **Error boundaries**: put a part that can fail in an `<ErrorBoundary>`, so one broken widget doesn’t break the page
-- **Async handlers**: use `#[Async]` to run slow work after the response
 
 This chart loads after the page and shows a fallback message if it fails:
 

@@ -498,4 +498,3 @@ The Phem PHP attributes live in the `Phem\Attribute` namespace:
 | `#[MapForm]` | a handler parameter | Gives the handler the submitted form as an object. See [Map a form to an object](forms.md#map-a-form-to-an-object) |
 | `#[Transactional]` | a class or a handler | Runs the handler in a transaction. See [Transactions](resilience.md#save-handler-changes-in-a-transaction) |
 | `#[Broadcast]`, `#[BroadcastKey]` | a page, a component, a handler, a prop or a property | Sends real-time updates. `on:` refreshes after a change of an entity. See [Real-time updates](real-time.md) |
-| `#[Async]` | a handler | Runs slow work after the response. See [Slow work after the response](resilience.md#run-slow-work-after-the-response) |

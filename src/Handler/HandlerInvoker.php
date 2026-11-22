@@ -39,19 +39,14 @@ final class HandlerInvoker
     }
 
     /**
-     * @param Reply                                       $reply   the reply of this handler call (see Phem\Reply)
-     * @param Request|null                                $request the request of the event (see Phem\Http\EventRequest)
-     * @param \Closure(\Closure, list<mixed>): mixed|null $call    runs the handler with its arguments at the end of
-     *                                                             the chain, in place of `$handler(...$arguments)`
-     *                                                             (the work of an #[Async] handler, see
-     *                                                             Phem\Async\AsyncHandler)
+     * @param Reply        $reply   the reply of this handler call (see Phem\Reply)
+     * @param Request|null $request the request of the event (see Phem\Http\EventRequest)
      */
-    public function invoke(\Closure $handler, Event $event, Reply $reply, ?Request $request = null, ?\Closure $call = null): mixed
+    public function invoke(\Closure $handler, Event $event, Reply $reply, ?Request $request = null): mixed
     {
         [$handler, $bound] = HandlerCall::unwrap($handler);
-        $call ??= static fn (\Closure $handler, array $arguments): mixed => $handler(...$arguments);
         // After the middlewares: a handler that a middleware stops resolves no arguments.
-        $next = fn (): mixed => $call($handler, $this->arguments->of($handler, $request, $event, $reply, bound: $bound));
+        $next = fn (): mixed => $handler(...$this->arguments->of($handler, $request, $event, $reply, bound: $bound));
         $middlewares = $this->middlewares instanceof \Traversable ? iterator_to_array($this->middlewares, false) : $this->middlewares;
 
         // The arguments of the call in the markup, for the middlewares that need them.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- The language server does not report E054 and E055 any more: the `#[Async]` event handlers
+  are removed from phem. W004 does not check the `use` import of `#[Async]` any more.
+
 ## 0.4.1
 
 - The language server reads the docblocks with the same code as the component catalog of

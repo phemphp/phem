@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_ASYNC, ATTR_BROADCAST, ATTR_BROADCAST_KEY, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_ERROR_PAGE, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_VALIDATED};
+use crate::{Kind, ATTR_BROADCAST, ATTR_BROADCAST_KEY, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_ERROR_PAGE, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_VALIDATED};
 use phemc_syntax::php::{Lexed, TokKind, Token};
 use phemc_syntax::Span;
 use std::collections::HashMap;
@@ -142,10 +142,6 @@ pub struct Func {
     pub template_markup: Option<usize>,
     /// A `private` method: a child class cannot call it, but a class that uses its trait can.
     pub is_private: bool,
-    /// The declared return type, as written (`Promise`, `?Node`), or empty.
-    pub return_type: String,
-    /// The span of an `#[Async]` attribute on the function or the method.
-    pub async_attr: Option<Span>,
     /// The span of a `#[Broadcast]` attribute on the function or the method.
     pub broadcast_attr: Option<Span>,
     /// `#[Broadcast(handlers: false)]` on the function or the method: only a class component
@@ -444,7 +440,6 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             info.broadcasts.push((f.fqn.clone(), span));
                         }
 
-                        f.async_attr = async_attr(&info, &attrs);
                         f.validated_attr = validated_attr(&info, &attrs);
                         f.replaces = replaces.take();
                         info.functions.push(f);
@@ -938,12 +933,6 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         j += 1;
     }
 
-    let return_type = if toks.is_op(params_end + 1, ":") && params_end + 2 < j {
-        toks.src[toks.t[params_end + 2].span.start..toks.t[j - 1].span.end].trim().to_string()
-    } else {
-        String::new()
-    };
-
     let (body, end) = if toks.is_op(j, "{") {
         let close = toks.matching(j);
         (Span::new(span(j).end, span(close).start), close)
@@ -961,8 +950,6 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         component_kind: None,
         template_markup: None,
         is_private: false,
-        return_type,
-        async_attr: None,
         broadcast_attr: None,
         receive_only: false,
         validated_attr: None,
@@ -1072,11 +1059,6 @@ fn is_receive_only(info: &FileInfo, names: &[String]) -> bool {
     names.iter().any(|a| info.resolve_class(a) == ATTR_BROADCAST)
 }
 
-/// The span of an `#[Async]` of a function or a method.
-fn async_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
-    attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ASYNC).map(|(_, s)| *s)
-}
-
 /// The span of a `#[Validated]` of a function or a method.
 fn validated_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
     attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_VALIDATED).map(|(_, s)| *s)
@@ -1099,7 +1081,6 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "Provide" => ATTR_PROVIDE,
             "Broadcast" => ATTR_BROADCAST,
             "BroadcastKey" => ATTR_BROADCAST_KEY,
-            "Async" => ATTR_ASYNC,
             "Validated" => ATTR_VALIDATED,
             _ => continue,
         };
@@ -1258,11 +1239,10 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             }
 
             check_attrs(info, &member_attrs);
-            let async_attr = async_attr(info, &member_attrs);
             let broadcast_attr = broadcast_attr(info, &member_attrs);
             let receive_only = is_receive_only(info, &member_receive_only);
             let validated_attr = validated_attr(info, &member_attrs);
-            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, broadcast_attr, receive_only, validated_attr, ..m });
+            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), broadcast_attr, receive_only, validated_attr, ..m });
 
             member_attrs.clear();
             member_rest.clear();

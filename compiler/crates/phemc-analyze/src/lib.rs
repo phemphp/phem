@@ -56,11 +56,6 @@ pub const ATTR_BROADCAST: &str = "Phem\\Attribute\\Broadcast";
 /// A prop that identifies an instance of a component that broadcasts: the refresh goes only to
 /// the instances with the same values (see `Phem\Attribute\BroadcastKey`).
 pub const ATTR_BROADCAST_KEY: &str = "Phem\\Attribute\\BroadcastKey";
-/// An event handler whose slow work runs in a Messenger worker: a method of a class component
-/// that returns a `Promise` (see `Phem\Attribute\Async`).
-pub const ATTR_ASYNC: &str = "Phem\\Attribute\\Async";
-/// The return type of an `#[Async]` handler: its work in a closure.
-pub const PROMISE: &str = "Phem\\Async\\Promise";
 /// A handler method that validates its component first (see `Phem\Attribute\Validated`).
 pub const ATTR_VALIDATED: &str = "Phem\\Attribute\\Validated";
 /// The type of the `#[State]` property that turns on the live validation of a class component.
@@ -425,37 +420,6 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
     }
 }
 
-/// `#[Async]` marks a method that declares `Promise` as its return type. The compiler does not
-/// know which methods are handlers (an abstract base class can have one, and a private helper can
-/// return the `Promise` of a handler): the runtime checks the handler that an event calls.
-fn check_async(file: &FileInfo) -> Vec<Diagnostic> {
-    let mut diags = Vec::new();
-    for f in &file.functions {
-        if let Some(span) = f.async_attr {
-            diags.push(
-                Diagnostic::error(codes::ASYNC_NOT_METHOD, format!("`#[Async]` must mark a method of a class component, and `{}` is a function", f.fqn), span)
-                    .with_help("the worker renders the page to the handler again: move the handler into a class component"),
-            );
-        }
-    }
-
-    for c in &file.classes {
-        for m in &c.methods {
-            let Some(span) = m.async_attr else { continue };
-
-            if m.return_type.is_empty() || file.resolve_class(&m.return_type) != PROMISE {
-                diags.push(
-                    Diagnostic::error(codes::ASYNC_WITHOUT_PROMISE, format!("the `#[Async]` handler `{}()` must declare `Promise` as its return type", m.fqn), span)
-                        .with_label("no `: Promise`")
-                        .with_help("return the slow work in a closure: `return new Promise(function (): void { … });`, with `use Phem\\Async\\Promise;`"),
-                );
-            }
-        }
-    }
-
-    diags
-}
-
 /// `#[Broadcast]` on a handler method, `#[Broadcast(handlers: false)]` and `#[BroadcastKey]`: a
 /// handler refreshes its class component, only a class component takes `handlers: false` (and
 /// then no handler has `#[Broadcast]`), and a key is a prop of a component that broadcasts (with
@@ -654,7 +618,6 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
         );
     }
 
-    diags.extend(check_async(file));
     diags.extend(check_broadcast(file));
     diags.extend(check_validated(file));
 

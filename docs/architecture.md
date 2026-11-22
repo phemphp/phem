@@ -90,8 +90,6 @@ Events update the browser that sent them; real-time updates reach every other op
 
 A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`. A push is either plain markup (`prepend`, `update`, `remove`, and so on) or a `refresh()`, which makes each browser render a component again through a normal event. A component with `#[Broadcast]` refreshes itself in the other browsers after its handlers run, unless you set `handlers: false`. The next event on a page renders again the components that a push changed (see [Real-time updates](real-time.md)). With no hub, `data-phem-sync-tabs-value` on the `<Root>` element refreshes the other tabs of the same page in one browser after an event (see [Sync the tabs of one browser](real-time.md#sync-the-tabs-of-one-browser-without-a-hub)).
 
-The same channel delivers slow work. An `#[Async]` handler returns its slow work in a `Promise`, so the event answers at once, and a Messenger worker runs the work later and pushes the result (see [Slow work after the response](resilience.md#run-slow-work-after-the-response)).
-
 ## FrankenPHP keeps the kernel in memory
 
 In production, [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode (see the Caddyfile in [Deployment](deployment.md)). Each worker boots the Symfony kernel once and keeps it in memory across requests, which saves the boot cost on every event.

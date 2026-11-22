@@ -57,8 +57,6 @@
   expect: [real-time#push-changes-from-a-handler]
 - query: load slow content after the page
   expect: [resilience#load-slow-content-after-the-page]
-- query: run slow work in a Messenger worker
-  expect: [resilience#run-slow-work-after-the-response]
 - query: protect a handler with IsGranted
   expect: [security#protect-one-handler-with-isgranted]
 - query: rate limit events
