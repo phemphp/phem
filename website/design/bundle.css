@@ -277,6 +277,7 @@
 .ph-prose :not(pre) > code { padding: 0.125em 0.3em; border-radius: 0.35em; background: var(--surface-sunken); color: var(--ink); font: 400 0.85em/1 var(--font-mono); font-variant-ligatures: none; }
 .ph-prose :where(ul, ol) { padding-left: var(--space-6); }
 .ph-prose li + li { margin-top: var(--space-2); }
+.ph-prose li > * + * { margin-top: var(--space-4); }
 .ph-prose li::marker { color: var(--ink-subtle); }
 .ph-prose ol > li::marker { font-weight: 600; }
 .ph-prose blockquote { padding-left: var(--space-5); border-left: 0; color: var(--ink-muted); }
