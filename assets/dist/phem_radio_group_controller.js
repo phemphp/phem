@@ -125,7 +125,7 @@ export default class PhemRadioGroupController extends Controller {
   }
 
   inputTargetConnected(input) {
-    linkInput(input, this.element, () => this.#stop?.focus())
+    linkInput(input, this.element, { focus: () => this.#stop?.focus() })
     if (this.rendered === undefined) return
 
     this.#render({ animate: false })

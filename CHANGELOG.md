@@ -8,6 +8,11 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A required `phem-toggle` with an `<input type="hidden">` (a native `<button>`, or an
+  `unchecked-value`) stops the submit of a `phem-form` while it is not checked. The browser does
+  not validate a hidden input, so the toggle gives `phem-form` and `phem-field` a `valueMissing`
+  error with the message of the browser for a required checkbox.
+
 - **Breaking** `phem-tabs` no longer supports a tab that is a link (`<a href>`). A bar of links to
   pages is not a tab list: use a `<nav>` with `aria-current="page"`, or `phem-navigation-menu`.
 - **Breaking** `phem-sortable` no longer moves the item while the pointer moves. The list of the

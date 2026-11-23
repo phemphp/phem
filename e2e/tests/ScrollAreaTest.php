@@ -48,9 +48,18 @@ final class ScrollAreaTest extends E2eTestCase
         $page->locator('#viewport')->hover();
         expect($page->locator('#vbar'))->toHaveAttribute('data-hovering', '');
 
-        // A smooth scroll takes some frames: the area has the mark of the scroll during them.
-        $page->evaluate("document.getElementById('viewport').scrollTo({ top: 200, behavior: 'smooth' })");
-        expect($page->locator('#area'))->toHaveAttribute('data-scrolling', '');
+        // A smooth scroll takes some frames: the area has the mark of the scroll during them. The page
+        // records the mark, because a slow test can read the area after the end of the scroll.
+        $page->evaluate(<<<'JS'
+            () => {
+                const area = document.getElementById('area')
+                window.marked = false
+                new MutationObserver(() => (window.marked ||= area.hasAttribute('data-scrolling'))).observe(area, { attributes: true })
+                document.getElementById('viewport').scrollTo({ top: 200, behavior: 'smooth' })
+            }
+            JS);
+        $page->waitForFunction("() => document.getElementById('viewport').scrollTop === 200");
+        $page->waitForFunction('() => window.marked');
 
         // The mark of the scroll goes at the scrollend event.
         expect($page->locator('#area'))->not()->toHaveAttribute('data-scrolling', '');

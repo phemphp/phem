@@ -2553,6 +2553,18 @@ After a submit with the switch off, the switch has the focus, and the browser sh
 <p data-phem-field-target="error" data-match="valueMissing" data-invalid="" data-open="" ...>Accept the terms.</p>
 ```
 
+A switch that is a native `<button>` (a button cannot hold a checkbox), or a switch with an `unchecked-value`, keeps its value in an `<input type="hidden">`. The browser does not validate this input. So `phem-toggle` gives `phem-form` and `phem-field` the validity of the input: a required switch that is not checked has the `valueMissing` error, with the message of the browser for a required checkbox. A disabled switch is valid. `phem-form` and `phem-field` then stop the submit and show the error as for a checkbox input. A form with no `phem-form` sends the form, because the browser does not check the hidden input:
+
+```html
+<form onSubmit={{ save }} data-controller="phem-form">
+    <button type="button" role="switch" data-controller="phem-toggle" data-phem-toggle-required-value="true"
+            data-phem-toggle-name-value="newsletter" data-phem-toggle-unchecked-value-value="no" aria-label="Newsletter">
+        <input type="hidden" data-phem-toggle-target="input" />
+    </button>
+    <button type="submit">Save</button>
+</form>
+```
+
 ### Group the fields
 
 A Base UI Fieldset needs no controller. Use a `<fieldset>` with a `<legend>`. A `disabled` fieldset disables its controls, and the fields in it get `data-disabled`:

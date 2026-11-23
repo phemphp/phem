@@ -7,19 +7,22 @@ export const VALIDITY_KEYS = ["badInput", "customError", "patternMismatch", "ran
 
 // The validity of `controls`: `valid`, the `keys` that are true, the `message` of the first invalid
 // control and this `control`. A control that the browser does not validate (a disabled control, a
-// control with no constraint validation) is valid.
+// control with no constraint validation) is valid, unless its custom control gives its validity
+// (see linkInput()).
 export function validityOf(controls) {
   const keys = new Set()
   let message = ""
   let control = null
 
   for (const el of controls) {
-    if (!el.validity || el.willValidate === false || el.validity.valid) continue
+    if (!isInvalid(el)) continue
 
+    const custom = customValidityOf(el)
+    const validity = custom ?? el.validity
     control ??= el
-    message ||= el.validationMessage ?? ""
+    message ||= (custom ? custom.message : el.validationMessage) ?? ""
     for (const key of VALIDITY_KEYS) {
-      if (el.validity[key]) keys.add(key)
+      if (validity[key]) keys.add(key)
     }
   }
 
@@ -64,18 +67,49 @@ export function firstInDocument(elements) {
   return elements.filter(Boolean).sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0] ?? null
 }
 
-// input => the element that the user sees for it, and the function that focuses this element. A
-// custom control (the element of `phem-toggle`, a `phem-radio-group`) keeps its value for a form
-// in an input that the user does not see: the browser validates the input, but cannot focus it or
-// show its message.
+// input => the element that the user sees for it, the function that focuses this element, and the
+// function that gives the validity of the input. A custom control (the element of `phem-toggle`,
+// a `phem-radio-group`) keeps its value for a form in an input that the user does not see: the
+// browser validates the input, but cannot focus it or show its message. The browser does not
+// validate an `<input type="hidden">` or a disabled input: the custom control gives its validity.
 const customControls = new WeakMap()
 
 // Links an input of a form to the custom control that the user sees. `focus` gives the focus to
-// the custom control (by default, its `focus()`). The input dispatches `phem:link`, so a
-// `phem-field` that connected before the custom control renders it.
-export function linkInput(input, control, focus = () => control.focus()) {
-  customControls.set(input, { control, focus })
+// the custom control (by default, its `focus()`). `validity` gives the validity of an input that
+// the browser does not validate: null, or `{ valueMissing: true, ... }` with the keys of a
+// `ValidityState` that are true and a `message` (see requiredMessage()). The input dispatches
+// `phem:link`, so a `phem-field` that connected before the custom control renders it.
+export function linkInput(input, control, { focus = () => control.focus(), validity = null } = {}) {
+  customControls.set(input, { control, focus, validity })
   input.dispatchEvent(new Event("phem:link", { bubbles: true }))
+}
+
+// Whether the control is invalid: for the browser, or for its custom control.
+export function isInvalid(el) {
+  const custom = customValidityOf(el)
+  if (custom) return true
+
+  return Boolean(el.validity) && el.willValidate !== false && !el.validity.valid
+}
+
+// The validity that the custom control of an input gives, or null when the input is valid or has
+// no such function.
+export function customValidityOf(input) {
+  return customControls.get(input)?.validity?.() ?? null
+}
+
+// The message of the browser for a required checkbox that is not checked, in the language of the
+// browser.
+let required = null
+export function requiredMessage() {
+  if (required === null) {
+    const checkbox = document.createElement("input")
+    checkbox.type = "checkbox"
+    checkbox.required = true
+    required = checkbox.validationMessage || "Check this box."
+  }
+
+  return required
 }
 
 export function unlinkInput(input, control) {

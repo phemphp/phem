@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { link } from "./phem_aria.js"
 import { hide, render, show } from "./phem_transition.js"
-import { linkInput, unlinkInput } from "./phem_validation.js"
+import { linkInput, requiredMessage, unlinkInput } from "./phem_validation.js"
 
 // The attributes of the pressed or checked state.
 const STATE_ATTRIBUTES = new Set(["aria-pressed", "aria-checked", "data-pressed", "data-checked", "data-unchecked", "data-indeterminate"])
@@ -58,7 +58,9 @@ const STATE_ATTRIBUTES = new Set(["aria-pressed", "aria-checked", "data-pressed"
 // default) when it is checked, and the `uncheckedValue` value when it is not checked; with no
 // `uncheckedValue`, it is disabled, so a form does not send it. The `name`, `value`, `form`,
 // `required` and `disabled` values go on the input. A required checkbox input that is not checked
-// stops the submit of its form (an `<input type="hidden">` has no validation). The input is linked
+// stops the submit of its form. The browser does not validate an `<input type="hidden">`: for it,
+// the controller gives `phem-form` and `phem-field` a `valueMissing` error while the toggle is
+// required and not checked, so they stop the submit (a form with no `phem-form` sends it). The input is linked
 // to the element (see linkInput() in phem_validation.js): `phem-form` and `phem-field` give the
 // focus to the element, not to the hidden input. When the user changes the state, the input
 // dispatches `input` and `change`, so `phem:bind` and the other controllers see the change. An
@@ -355,7 +357,7 @@ export default class PhemToggleController extends Controller {
     const input = this.#input
     if (input !== this.linked) {
       if (this.linked) unlinkInput(this.linked, this.element)
-      if (input) linkInput(input, this.element)
+      if (input) linkInput(input, this.element, { validity: () => this.#hiddenValidity(input) })
       this.linked = input
     }
 
@@ -419,6 +421,14 @@ export default class PhemToggleController extends Controller {
 
   get #required() {
     return this.requiredValue || this.#input?.required === true
+  }
+
+  // The browser does not validate an `<input type="hidden">`: a required toggle that is not checked
+  // gives the `valueMissing` validity of its input itself. A disabled toggle is valid.
+  #hiddenValidity(input) {
+    if (input.type !== "hidden" || !this.#required || this.checked || this.disabled) return null
+
+    return { valueMissing: true, message: requiredMessage() }
   }
 
   get #input() {

@@ -662,6 +662,51 @@ describe("phem-form with a custom control", () => {
     expect(el("switch-input").validity.valid).toBe(true)
   })
 
+  it("stops the submit of a required switch with an <input type=hidden>, which the browser does not validate", async () => {
+    // A native button cannot hold a checkbox input: its state goes in a hidden input.
+    const hidden = SWITCH.replace('type="checkbox" name="terms" hidden', 'type="hidden" name="terms"')
+    await mount(form(hidden))
+
+    expect(el("switch-input").willValidate).toBe(false)
+    submit()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(el("switch"))
+
+    respond(form(hidden))
+    el("switch").click()
+    expect(el("switch-input").value).toBe("on")
+    const done = nextDone()
+    submit()
+    await done
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows the valueMissing error of a required switch with an <input type=hidden> in its field", async () => {
+    await mount(form(`<div id="field" data-controller="phem-field">
+        ${SWITCH.replace('type="checkbox" name="terms" hidden data-phem-toggle-target="input"', 'type="hidden" name="terms" data-phem-toggle-target="input" data-phem-field-target="control"')}
+        <p id="missing" data-phem-field-target="error" data-match="valueMissing" hidden>Accept the terms.</p>
+      </div>`))
+
+    submit()
+    expect(el("missing").hidden).toBe(false)
+    expect(el("switch").getAttribute("aria-invalid")).toBe("true")
+    expect(document.activeElement).toBe(el("switch"))
+
+    el("switch").click()
+    expect(el("field").hasAttribute("data-valid")).toBe(true)
+  })
+
+  it("does not stop the submit of a disabled required switch with an <input type=hidden>", async () => {
+    const hidden = SWITCH.replace('type="checkbox" name="terms" hidden', 'type="hidden" name="terms"').replace('data-phem-toggle-required-value="true"', 'data-phem-toggle-required-value="true" data-phem-toggle-disabled-value="true"')
+    await mount(form(hidden))
+
+    respond(form(hidden))
+    const done = nextDone()
+    submit()
+    await done
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
   it("stops the submit of a required radio group with no checked radio, and focuses the first radio", async () => {
     await mount(form(RADIO_GROUP))
 

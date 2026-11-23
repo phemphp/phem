@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
 import { isTabbable } from "./phem_focus.js"
-import { customControlOf, firstInDocument, focusControl } from "./phem_validation.js"
+import { customControlOf, firstInDocument, focusControl, isInvalid } from "./phem_validation.js"
 
 // The `phem-form` controller: validates the `phem-field` controllers of a form before its submit.
 //
@@ -149,7 +149,7 @@ export default class PhemFormController extends Controller {
 
     for (const el of this.element.elements) {
       if (fields.some((field) => field.contains(el))) continue
-      if (!el.willValidate || el.validity.valid) continue
+      if (!isInvalid(el)) continue
 
       invalid.push({ field: null, control: el })
     }
