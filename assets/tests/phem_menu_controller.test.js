@@ -1366,6 +1366,23 @@ describe("phem-menu: a filter", () => {
     expect($("popup").hidden).toBe(true)
   })
 
+  it("does not click the item with the keys of an IME composition in the input", async () => {
+    await mount(markup())
+    open()
+    type("save")
+    press("ArrowDown")
+    const clicked = vi.fn()
+    $("save").addEventListener("click", clicked)
+
+    press("ArrowDown", { isComposing: true })
+    expect($("save").hasAttribute("data-highlighted")).toBe(true)
+
+    press("Enter", { isComposing: true })
+    press("Enter", { keyCode: 229 })
+    expect(clicked).not.toHaveBeenCalled()
+    expect($("popup").hidden).toBe(false)
+  })
+
   it("highlights the first match with autoHighlight, and resets the query after the close", async () => {
     await mount(markup('data-phem-menu-auto-highlight-value="input"'))
     open()

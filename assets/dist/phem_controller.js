@@ -2540,6 +2540,10 @@ export default class PhemController extends Controller {
       transition = document.startViewTransition(update)
     }
 
+    // A transition that the browser skips (a hidden tab, a new transition) rejects `ready`. The
+    // update still runs, so the morph is not an error.
+    transition.ready.catch(() => {})
+
     return transition.updateCallbackDone
   }
 

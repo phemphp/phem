@@ -4,6 +4,7 @@ import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { hide, render, show } from "./phem_transition.js"
 import { isDirty, isDisabledControl, isFilled, isNative, validityOf } from "./phem_validation.js"
+import { isComposing } from "./phem_keys.js"
 
 // The `phem-field` controller: a label, a description and the errors of a form control, with the
 // constraint validation of the browser. The state of the field stays after the morph of an event.
@@ -246,7 +247,7 @@ export default class PhemFieldController extends Controller {
   // Enter in an `<input>` control validates the field, in all the modes: the user ends the value.
   // In a `phem-form`, Enter submits the form, and the submit validates the field.
   onKeydown = (event) => {
-    if (event.key !== "Enter" || event.defaultPrevented || event.isComposing) return
+    if (event.key !== "Enter" || event.defaultPrevented || isComposing(event)) return
     if (event.target.tagName !== "INPUT" || !this.controlTargets.includes(event.target)) return
 
     this.touched = true

@@ -40,8 +40,8 @@ function field(cities = [], attributes = "") {
 
 const $ = (id) => document.getElementById(id)
 
-function press(key) {
-  const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })
+function press(key, init = {}) {
+  const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...init })
   $("input").dispatchEvent(event)
 
   return event
@@ -267,6 +267,20 @@ describe("phem-combobox", () => {
     press("ArrowDown")
 
     expect($("popup").style.getPropertyValue("--anchor-width")).toBe("300px")
+  })
+
+  it("does not choose the highlighted item with the Enter of an IME composition", async () => {
+    await mountField(field())
+    await type("pa", ["Paris", "Parma"])
+    const selected = vi.fn()
+    $("combobox").addEventListener("phem-combobox:select", selected)
+    press("ArrowDown")
+
+    // Safari sends the Enter that ends the composition with isComposing false and keyCode 229.
+    expect(press("Enter", { isComposing: true }).defaultPrevented).toBe(false)
+    expect(press("Enter", { keyCode: 229 }).defaultPrevented).toBe(false)
+    expect(selected).not.toHaveBeenCalled()
+    expect($("popup").hidden).toBe(false)
   })
 
   it("chooses the highlighted item with Enter: its handler runs, and the popup closes", async () => {

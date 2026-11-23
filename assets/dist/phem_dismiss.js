@@ -19,10 +19,12 @@
 //
 // The reason is "escape" or "outside".
 
+import { isComposing } from "./phem_keys.js"
+
 const layers = []
 
 document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return
+  if (event.key !== "Escape" || event.defaultPrevented || isComposing(event)) return
 
   for (const layer of [...layers].reverse()) {
     if (layer.dismiss("escape", event) === false) continue

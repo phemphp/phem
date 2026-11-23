@@ -88,6 +88,33 @@ describe("hide()", () => {
     expect(onEnd).toHaveBeenCalledOnce()
   })
 
+  it("does not wait for an infinite animation in the part", async () => {
+    let finish
+    const finished = new Promise((resolve) => (finish = resolve))
+    const spinner = { finished: new Promise(() => {}), effect: { getTiming: () => ({ iterations: Infinity }) } }
+    part.getAnimations = () => [{ finished }, spinner]
+    const onEnd = vi.fn()
+
+    const hidden = hide(part, { instant: "click", onEnd })
+    expect(part.hidden).toBe(false)
+
+    finish()
+    await hidden
+
+    expect(part.hidden).toBe(true)
+    expect(onEnd).toHaveBeenCalledOnce()
+  })
+
+  it("closes at once when the only animation is infinite", () => {
+    part.getAnimations = () => [{ finished: new Promise(() => {}), effect: { getTiming: () => ({ iterations: Infinity }) } }]
+    const onEnd = vi.fn()
+
+    hide(part, { instant: "click", onEnd })
+
+    expect(part.hidden).toBe(true)
+    expect(onEnd).toHaveBeenCalledOnce()
+  })
+
   it("closes at once with instant: true, with no data-ending-style", () => {
     animate(part)
     const setAttribute = vi.spyOn(part, "setAttribute")

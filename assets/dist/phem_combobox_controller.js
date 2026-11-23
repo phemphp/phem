@@ -8,6 +8,7 @@ import { isDisabled, leaveList, nextItem } from "./phem_roving.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
 import { textValue } from "./phem_fields.js"
 import { PendingChoices } from "./phem_pending_choices.js"
+import { isComposing } from "./phem_keys.js"
 
 // The `phem-combobox` controller: a text field with a list of suggestions that the server gives,
 // for a search, a city or a user. The list stays open after the morph of an event.
@@ -465,7 +466,7 @@ export default class PhemComboboxController extends Controller {
   }
 
   onKeydown = (event) => {
-    if (event.defaultPrevented || event.isComposing) return
+    if (event.defaultPrevented || isComposing(event)) return
 
     const chip = this.#chipOf(event.target)
     if (chip) {

@@ -13,6 +13,13 @@ const MODIFIERS = ["ctrl", "shift", "alt", "meta"]
 // does not change, so the module reads it once.
 const MOD = /mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform || navigator.platform || "") ? "meta" : "ctrl"
 
+// Whether the key event is part of an IME composition (a Japanese or a Chinese word that the user
+// confirms with Enter). Safari sends the last key of a composition with `isComposing` false, but
+// with the `keyCode` 229.
+export function isComposing(event) {
+  return event.isComposing || event.keyCode === 229
+}
+
 // Whether a key event matches one of the keys.
 export function matchesKey(keys, event) {
   const pressed = (event.key ?? "").toLowerCase()

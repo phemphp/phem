@@ -211,21 +211,26 @@ function isHidden(part) {
   return part.hasAttribute("hidden")
 }
 
-// The animations of the part and of its content. The browser starts a transition when it reads
-// the new styles.
 // The animations of `panel` itself that end.
 function sizeAnimationsOf(panel) {
   if (typeof panel.getAnimations !== "function") return []
 
   getComputedStyle(panel).getPropertyValue("height")
 
-  return panel.getAnimations().filter((animation) => animation.effect?.getTiming?.().iterations !== Infinity)
+  return panel.getAnimations().filter(ends)
 }
 
+// The animations of the part and of its content that end. The browser starts a transition when it
+// reads the new styles. An infinite animation (a spinner in the part) never ends, so the close
+// does not wait for it.
 function animationsOf(part) {
   if (typeof part.getAnimations !== "function") return []
 
   getComputedStyle(part).getPropertyValue("opacity")
 
-  return part.getAnimations({ subtree: true })
+  return part.getAnimations({ subtree: true }).filter(ends)
+}
+
+function ends(animation) {
+  return animation.effect?.getTiming?.().iterations !== Infinity
 }

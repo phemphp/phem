@@ -3,6 +3,7 @@ import { ClientState } from "./phem_client_state.js"
 import { link } from "./phem_aria.js"
 import { MINUS_SIGNS, PLUS_SIGNS, clamp, clean, flag, isDigit, nextStep, numberFormat, sendEvents, toAsciiDigits } from "./phem_number.js"
 import { isGecko, isIOS, isWebKit } from "./phem_platform.js"
+import { isComposing } from "./phem_keys.js"
 
 // The `phem-number-field` controller: a text input for a number, with increment and decrement
 // buttons, the keyboard, the mouse wheel, a scrub area and the format of the locale. The value
@@ -191,7 +192,7 @@ export default class PhemNumberFieldController extends Controller {
   onKeydown = (event) => {
     if (!this.#isInput(event.target) || event.defaultPrevented || event.ctrlKey || event.metaKey) return
 
-    if (event.key === "Enter" && !event.isComposing) {
+    if (event.key === "Enter" && !isComposing(event)) {
       this.#commitEnter()
 
       return

@@ -11,6 +11,7 @@ import { isDisabled, movesFocus, nextItem, Typeahead } from "./phem_roving.js"
 import { textMatcher } from "./phem_match.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
 import { Triggers, activationDirection } from "./phem_triggers.js"
+import { isComposing } from "./phem_keys.js"
 
 // The controllers of a menu: a submenu is a menu in the popup of one of them.
 const IDENTIFIERS = ["phem-menu", "phem-context-menu"]
@@ -836,6 +837,9 @@ export default class PhemMenuController extends Controller {
   // The keys in the input of the filter: the arrow keys move the highlight, and Enter clicks the
   // item with the highlight. The other keys write the query.
   #inputKeydown(event) {
+    // The keys of an IME composition choose a word, not an item.
+    if (isComposing(event)) return
+
     const items = this.#items.filter((el) => !el.hidden)
     const current = items.find((el) => el.hasAttribute("data-highlighted")) ?? null
     if (this.#inputSubmenuKeydown(event, current)) return

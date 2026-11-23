@@ -23,7 +23,7 @@
 //
 // phem_controller.js imports this module, so it listens on each page.
 
-import { matchesKey } from "./phem_keys.js"
+import { isComposing, matchesKey } from "./phem_keys.js"
 import { takesText } from "./phem_fields.js"
 
 const SHORTCUT = "data-phem-shortcut"
@@ -42,7 +42,7 @@ dialogs.observe(document.documentElement, { attributes: true, attributeFilter: [
 // The listener of the bubble phase of the window: an element with the focus, and the listeners of
 // the document (the Escape of a popup), can take the key first.
 window.addEventListener("keydown", (event) => {
-  if (event.defaultPrevented || event.isComposing || event.repeat) return
+  if (event.defaultPrevented || isComposing(event) || event.repeat) return
   if (usesKey(event.target, event)) return
 
   const el = shortcutElement(event)

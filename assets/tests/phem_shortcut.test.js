@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import "../dist/phem_shortcut.js"
-import { matchesKey } from "../dist/phem_keys.js"
+import { isComposing, matchesKey } from "../dist/phem_keys.js"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -230,5 +230,13 @@ describe("matchesKey", () => {
     expect(matchesKey("?", key("?", { shiftKey: true }))).toBe(true)
     expect(matchesKey("ctrl++", key("+", { ctrlKey: true }))).toBe(true)
     expect(matchesKey("Space", key(" "))).toBe(true)
+  })
+})
+
+describe("isComposing", () => {
+  it("is true for a key of an IME composition, also for the last key in Safari", () => {
+    expect(isComposing({ isComposing: true, keyCode: 13 })).toBe(true)
+    expect(isComposing({ isComposing: false, keyCode: 229 })).toBe(true)
+    expect(isComposing({ isComposing: false, keyCode: 13 })).toBe(false)
   })
 })

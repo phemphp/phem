@@ -2105,7 +2105,7 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
   it("dispatches phem:done with ok false when the render of the answer fails", async () => {
     await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`, "data-phem-transition")
     vi.stubGlobal("matchMedia", () => ({ matches: false }))
-    document.startViewTransition = ({ update }) => ({ updateCallbackDone: Promise.resolve().then(update) })
+    document.startViewTransition = ({ update }) => ({ updateCallbackDone: Promise.resolve().then(update), ready: Promise.resolve() })
     vi.spyOn(console, "error").mockImplementation(() => {})
     const fail = (e) => (e.detail.render = () => Promise.reject(new Error("render")))
     document.addEventListener("turbo:before-stream-render", fail, { once: true })
@@ -2115,6 +2115,23 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
 
     try {
       expect((await done).detail).toEqual({ handler: "c1.star", ids: [1], ok: false, status: 200 })
+    } finally {
+      delete document.startViewTransition
+    }
+  })
+
+  it("morphs the page when the browser skips the view transition", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`, "data-phem-transition")
+    vi.stubGlobal("matchMedia", () => ({ matches: false }))
+    // Vitest fails the test on an unhandled rejection of `ready`.
+    document.startViewTransition = ({ update }) => ({ updateCallbackDone: Promise.resolve().then(update), ready: Promise.reject(new DOMException("Skipped", "AbortError")) })
+    respond(`<button id="star" data-phem-on-click="c1.star">Unstar</button>`)
+    const done = nextDone()
+    click("#star")
+
+    try {
+      expect((await done).detail).toEqual({ handler: "c1.star", ids: [1], ok: true, status: 200 })
+      expect(document.getElementById("star").textContent).toBe("Unstar")
     } finally {
       delete document.startViewTransition
     }

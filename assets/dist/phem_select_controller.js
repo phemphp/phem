@@ -6,6 +6,7 @@ import { position, positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, leaveList, movesFocus, nextItem, Typeahead } from "./phem_roving.js"
 import { hide, render, show } from "./phem_transition.js"
 import { link } from "./phem_aria.js"
+import { isComposing } from "./phem_keys.js"
 
 // A release of the pointer on an item selects it after a drag from the trigger: a move of this
 // distance (px), or a press of this time (ms).
@@ -338,7 +339,7 @@ export default class PhemSelectController extends Controller {
   }
 
   onKeydown = (event) => {
-    if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return
+    if (event.defaultPrevented || isComposing(event) || event.ctrlKey || event.metaKey || event.altKey) return
 
     if (this.#triggerOf(event.target)) {
       this.#triggerKeydown(event)

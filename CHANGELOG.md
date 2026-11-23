@@ -8,6 +8,17 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A part with an animation that runs forever (a spinner in a toast, a dialog or a popup) closes
+  when its other animations end. Before, its close waited forever: a `loading` toast stayed on the
+  page, and a dialog with a spinner did not close.
+- The keys of an IME composition (a Japanese or a Chinese word that the user confirms with Enter)
+  go to the IME in Safari too. Before, the Enter that ends the composition chose the highlighted
+  item of `phem-combobox`. In the filter input of `phem-menu`, Enter clicked the highlighted item
+  and the arrow keys moved the highlight during a composition in all browsers. `phem-select`,
+  `phem-field`, `phem-number-field`, Escape and `phem:shortcut` use the same check.
+- A view transition (`data-phem-transition`) that the browser skips, for example in a hidden tab,
+  no longer logs an unhandled promise rejection.
+
 - **Breaking** The defaults of the state options are safer: `phem.state_bind_session` is `true`
   (it was `false`), and `phem.state_max_age` is `3600` seconds, one hour (it was `86400`). A state
   that leaks (a log, a shared HAR file) is valid only in the session of its user, and only for one
