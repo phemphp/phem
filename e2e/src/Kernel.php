@@ -52,6 +52,11 @@ final class Kernel extends TestKernel implements CompilerPassInterface
                 ->args(['%kernel.project_dir%/var/e2e.sqlite'])
             ->set(Guestbook::class)
                 ->args([service(Database::class)])
+            // The #[Transactional] handlers of TransactionalPage run in a transaction of the
+            // Database: the e2e app has no Doctrine ORM.
+            ->set(PdoTransactionRunner::class)
+                ->args([service(Database::class)])
+            ->alias('phem.transaction_runner', PdoTransactionRunner::class)
             // The feed of ChatRoom loads its messages again with their identifier (see Phem\Feed).
             ->set(Chat::class)
                 ->args([service(Database::class)])

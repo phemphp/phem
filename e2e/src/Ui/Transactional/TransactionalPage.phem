@@ -1,0 +1,96 @@
+<?phem
+
+namespace App\Ui\Transactional;
+
+use App\Guestbook;
+use Phem\Attribute\{Broadcast, Component, Page, Path, Prop, State, Transactional};
+use Phem\Node;
+use Phem\Stream\Streams;
+
+use function App\Ui\Layout\Document;
+
+// The saved notes: each render reads them again from the database.
+#[Component]
+final class SavedNotes
+{
+    #[Prop] public string $room;
+    public array $notes = [];
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->notes = $this->guestbook->entries($this->room);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <ul id="notes">
+                {% for note in notes %}<li key={{ note.id }} id="note-{{ note.id }}">{{ note.text }}</li>{% endfor %}
+            </ul>
+        );
+    }
+}
+
+// save() runs in a transaction (see App\PdoTransactionRunner). It saves the note and pushes it to
+// the other browsers, then it fails for the text "fail": the transaction rolls back, and Phem
+// drops the push.
+#[Component, Transactional]
+final class NoteForm
+{
+    #[Prop] public string $room;
+    #[State] public string $text = '';
+    #[State] public int $saves = 0;
+
+    public function __construct(
+        private readonly Guestbook $guestbook,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    public function save(): void
+    {
+        $note = $this->guestbook->add($this->room, $this->text);
+        ++$this->saves;
+
+        $this->streams->toPage(TransactionalPage::class, ['room' => $this->room])
+            ->prepend('notes', <li id="note-{{ note.id }}">{{ note.text }}</li>);
+
+        if ('fail' === $this->text) {
+            throw new \RuntimeException('The note is not saved.');
+        }
+
+        $this->text = '';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ save }}>
+                <input name="text" aria-label="Note" phem:bind={{ text }} />
+                <button id="save" type="submit">Save</button>
+                <output id="saves">{{ saves }}</output>
+            </form>
+        );
+    }
+}
+
+#[Page('/transactional/{room}'), Broadcast]
+final class TransactionalPage
+{
+    #[Path] public string $room;
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Notes {{ room }}">
+                <h1>Notes {{ room }}</h1>
+                <NoteForm room={{ room }} />
+                <SavedNotes room={{ room }} />
+            </Document>
+        );
+    }
+}

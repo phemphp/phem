@@ -30,7 +30,7 @@ final class Database
     /** The connection, with the table of a store (`CREATE TABLE IF NOT EXISTS ...`). */
     public function connect(string $table): \PDO
     {
-        $pdo = $this->pdo ??= $this->open();
+        $pdo = $this->connection();
 
         if (!isset($this->tables[$table])) {
             $pdo->exec($table);
@@ -38,6 +38,12 @@ final class Database
         }
 
         return $pdo;
+    }
+
+    /** The connection, with no table: for a transaction around the stores. */
+    public function connection(): \PDO
+    {
+        return $this->pdo ??= $this->open();
     }
 
     private function open(): \PDO

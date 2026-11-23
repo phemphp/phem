@@ -35,7 +35,7 @@ The e2e app is a Symfony project in `e2e/`, with its own `composer.json`. It req
 
 ```text
 e2e/src/Kernel.php       the kernel: a Phem\Test\TestKernel, with the services of the pages
-e2e/src/Ui/              the .phem pages: /counter, /guestbook/{room}, /chat/{room}, /chat-switch/{prefix}
+e2e/src/Ui/              the .phem pages: /counter, /guestbook/{room}, /transactional/{room}, /chat/{room}, /chat-switch/{prefix}
 e2e/config/              phem.yaml (the hub), playwright.yaml (the hosts of the kernel), framework.yaml
 e2e/assets/              app.js, controllers.json (the importmap of importmap.php)
 e2e/tests/               the specs: SmokeTest.php, FeedTest.php, and E2eTestCase.php (the base class)
