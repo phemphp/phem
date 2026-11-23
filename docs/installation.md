@@ -63,7 +63,8 @@ The CSS file has these rules:
 - `.phem-error`: the default message of a failed event (see [Failed events and limits](failed-events.md))
 - `[data-phem-loading][hidden]` and `[data-phem-progress][hidden]`: a `phem:loading` or `phem:progress` element stays hidden while no handler runs, also with a `display` of its own. The rule is `!important`, so you can’t override it
 - `[data-phem-toast]`, `[data-type]`, `[data-limited]`, `[data-phem-toast-content]`, `[data-phem-toast-description]`, `[data-phem-toast-close]` and the `phem-toast` container: the default look of the toasts, for a part with no `class` attribute
-- `touch-action: none` on the handles of `phem-sortable` (or on its items with no handle), and no text selection during a drag (`[data-phem-sorting]`)
+- `overscroll-behavior: contain` on a modal `phem-dialog` and on its `::backdrop`: a scroll on the dialog does not scroll the page
+- `touch-action: none` on the handles of `phem-sortable`, no text selection during a drag (`[data-phem-sorting]`), and the drop marker (`[data-drop]::after`, in `:where()`)
 
 The toast rules are in `:where()`, so any rule of the application overrides them. A toast part with a `class` attribute gets none of them, so a utility class in a cascade layer (Tailwind) styles it. To change the `phem-c`, `phem-suspense` and `.phem-error` rules, write a rule with a higher specificity, or load your CSS after `phem.css`.
 

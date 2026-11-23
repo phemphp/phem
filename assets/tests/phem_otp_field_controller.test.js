@@ -546,3 +546,202 @@ describe("phem-otp-field: the composition, the attributes and the complete event
   })
 })
 
+// One input for a code of four characters, with four decorative slots.
+function single(attributes = "", value = "", slotCount = 4) {
+  const boxes = Array.from({ length: slotCount }, (_, i) => `<span id="box-${i}" data-phem-otp-field-target="slot"></span>`).join("")
+
+  return `<form id="form">
+      <label for="one">Code</label>
+      <div id="otp" data-controller="phem-otp-field" data-phem-otp-field-value-value="${value}" ${attributes}>
+        <input id="one" name="code" data-phem-otp-field-target="codeInput" />
+        ${boxes}
+      </div>
+    </form>
+    <button id="save" data-phem-on-click="c1.save">Save</button>`
+}
+
+const boxes = () => [...document.querySelectorAll("[data-phem-otp-field-target='slot']")]
+const shown = () => boxes().map((b) => b.textContent).join("|")
+
+// The browser puts `text` in the input, with the caret at `caret` (the end by default).
+function edit(text, caret = text.length) {
+  const input = el("one")
+  input.value = text
+  input.setSelectionRange(caret, caret)
+  input.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }))
+}
+
+describe("phem-otp-field: one input for the whole code", () => {
+  it("sets the attributes of the input and of the slots", async () => {
+    await mount(single())
+    const input = el("one")
+
+    expect(input.autocomplete).toBe("one-time-code")
+    expect(input.inputMode).toBe("numeric")
+    expect(input.type).toBe("text")
+    expect(input.getAttribute("maxlength")).toBe("4")
+    expect(input.getAttribute("pattern")).toBe("[0-9]{4}")
+    expect(input.getAttribute("enterkeyhint")).toBe("done")
+    expect(input.getAttribute("autocorrect")).toBe("off")
+    expect(input.spellcheck).toBe(false)
+    expect(input.hasAttribute("aria-label")).toBe(false)
+    expect(el("otp").hasAttribute("role")).toBe(false)
+    expect(boxes().every((b) => b.getAttribute("aria-hidden") === "true")).toBe(true)
+  })
+
+  it("takes the length of the length value, else of the slots, else 6", async () => {
+    await mount(single('data-phem-otp-field-length-value="5"'))
+    expect(el("one").getAttribute("maxlength")).toBe("5")
+
+    await mount(single("", "", 3))
+    expect(el("one").getAttribute("maxlength")).toBe("3")
+
+    await mount(single("", "", 0))
+    expect(el("one").getAttribute("maxlength")).toBe("6")
+  })
+
+  it("keeps the accepted characters of the text, shows them in the slots, and completes", async () => {
+    await mount(single())
+    const changes = vi.fn()
+    const complete = vi.fn()
+    const invalid = vi.fn()
+    el("otp").addEventListener("phem-otp-field:change", (e) => changes(e.detail))
+    el("otp").addEventListener("phem-otp-field:complete", (e) => complete(e.detail))
+    el("otp").addEventListener("phem-otp-field:invalid", (e) => invalid(e.detail))
+    el("one").focus()
+
+    edit("1a2")
+    expect(el("one").value).toBe("12")
+    expect(el("one").selectionStart).toBe(2)
+    expect(invalid).toHaveBeenCalledWith({ value: "1a2" })
+    expect(shown()).toBe("1|2||")
+    expect(boxes().map((b) => b.hasAttribute("data-filled"))).toEqual([true, true, false, false])
+    expect(boxes().map((b) => b.hasAttribute("data-active"))).toEqual([false, false, true, false])
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("12")
+    expect(changes).toHaveBeenLastCalledWith({ value: "12", reason: "input-change" })
+    expect(complete).not.toHaveBeenCalled()
+
+    edit("1234")
+    expect(complete).toHaveBeenCalledWith({ value: "1234" })
+    expect(el("otp").hasAttribute("data-complete")).toBe(true)
+    expect(el("one").hasAttribute("data-complete")).toBe(true)
+
+    edit("")
+    expect(changes).toHaveBeenLastCalledWith({ value: "", reason: "input-clear" })
+    expect(shown()).toBe("|||")
+  })
+
+  it("keeps the caret after the same characters when the user types in the middle", async () => {
+    await mount(single("", "124"))
+    el("one").focus()
+
+    edit("12x4", 3)
+    expect(el("one").value).toBe("124")
+    expect(el("one").selectionStart).toBe(2)
+
+    edit("1234", 3)
+    expect(el("one").value).toBe("1234")
+    expect(el("one").selectionStart).toBe(3)
+  })
+
+  it("removes the spaces and the dashes of a paste, and a full code replaces the value", async () => {
+    await mount(single("", "9"))
+    const complete = vi.fn()
+    const invalid = vi.fn()
+    el("otp").addEventListener("phem-otp-field:complete", (e) => complete(e.detail))
+    el("otp").addEventListener("phem-otp-field:invalid", invalid)
+    el("one").focus()
+    el("one").setSelectionRange(1, 1)
+
+    paste(" 12-34 ")
+    expect(el("one").value).toBe("1234")
+    expect(complete).toHaveBeenCalledWith({ value: "1234" })
+    expect(invalid).not.toHaveBeenCalled()
+
+    // A part of a code goes in the place of the selection.
+    el("one").setSelectionRange(1, 3)
+    paste("7")
+    expect(el("one").value).toBe("174")
+    expect(el("one").selectionStart).toBe(2)
+  })
+
+  it("submits the form when complete with autoSubmit", async () => {
+    await mount(single('data-phem-otp-field-auto-submit-value="true"'))
+    const submit = vi.spyOn(el("form"), "requestSubmit").mockImplementation(() => {})
+    el("one").focus()
+
+    edit("1234")
+
+    expect(submit).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the IME text up to the end of the composition", async () => {
+    await mount(single())
+    const input = el("one")
+    input.focus()
+
+    input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }))
+    edit("12")
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("")
+
+    input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "12" }))
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("12")
+
+    // WebKit sends the last input event after the end: the controller does not read it.
+    const changes = vi.fn()
+    el("otp").addEventListener("phem-otp-field:change", changes)
+    edit("12")
+    expect(changes).not.toHaveBeenCalled()
+  })
+
+  it("masks the slots and follows disabled, readOnly and required", async () => {
+    await mount(single('data-phem-otp-field-mask-value="true" data-phem-otp-field-read-only-value="true" data-phem-otp-field-required-value="true"', "12"))
+    const input = el("one")
+
+    expect(input.type).toBe("password")
+    expect(input.readOnly).toBe(true)
+    expect(input.required).toBe(true)
+    expect(shown()).toBe("•|•||")
+
+    input.focus()
+    edit("129")
+    expect(input.value).toBe("12")
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("12")
+  })
+
+  it("puts the caret on the character of a pressed slot", async () => {
+    await mount(single("", "123"))
+
+    boxes()[1].dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }))
+    expect(document.activeElement).toBe(el("one"))
+    expect([el("one").selectionStart, el("one").selectionEnd]).toEqual([1, 2])
+    expect(boxes()[1].hasAttribute("data-active")).toBe(true)
+    expect(el("otp").hasAttribute("data-focused")).toBe(true)
+
+    // A slot after the code puts the caret at the end.
+    boxes()[3].dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }))
+    expect([el("one").selectionStart, el("one").selectionEnd]).toEqual([3, 3])
+
+    el("save").focus()
+    expect(boxes().some((b) => b.hasAttribute("data-active"))).toBe(false)
+    expect(el("otp").hasAttribute("data-focused")).toBe(false)
+  })
+
+  it("keeps the value after the morph", async () => {
+    await mount(single())
+    el("one").focus()
+    edit("12")
+
+    respond(single())
+    const done = nextDone()
+    el("save").click()
+    await done
+    await settle()
+
+    expect(el("one").value).toBe("12")
+    expect(shown()).toBe("1|2||")
+    expect(boxes().every((b) => b.getAttribute("aria-hidden") === "true")).toBe(true)
+    expect(el("otp").getAttribute("data-phem-otp-field-value-value")).toBe("12")
+  })
+})
+

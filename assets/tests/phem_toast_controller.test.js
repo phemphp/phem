@@ -1182,4 +1182,66 @@ describe("phem-toast: the options of a toast", () => {
     expect(messages()).toEqual(["Loading data…"])
     expect(toasts()[0].getAttribute("data-type")).toBe("loading")
   })
+
+  describe("with a modal dialog", () => {
+    // jsdom has no showModal() and no `:modal`: `modal` marks a dialog in the top layer.
+    function openModal(markup = '<dialog id="modal"></dialog>') {
+      document.body.insertAdjacentHTML("beforeend", markup)
+      const dialog = document.getElementById("modal")
+      dialog.setAttribute("open", "")
+      dialog.matches = (selector) => selector === ":modal" ? dialog.hasAttribute("open") : Element.prototype.matches.call(dialog, selector)
+      dialog.dispatchEvent(new Event("toggle"))
+
+      return dialog
+    }
+
+    function closeModal(dialog) {
+      dialog.removeAttribute("open")
+      dialog.dispatchEvent(new Event("close"))
+    }
+
+    it("shows a toast at once under a modal dialog, and starts its time after the close", async () => {
+      await mount(page(`data-phem-toast-duration-value="1000"`))
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] })
+      const dialog = openModal()
+      toast("Failed")
+
+      expect(messages()).toEqual(["Failed"])
+      vi.advanceTimersByTime(5000)
+      expect(toasts()[0].hasAttribute("data-ending-style")).toBe(false)
+
+      closeModal(dialog)
+      vi.advanceTimersByTime(999)
+      expect(toasts()[0].hasAttribute("data-ending-style")).toBe(false)
+      vi.advanceTimersByTime(1)
+      expect(toasts().every((el) => el.hasAttribute("data-ending-style") || !el.isConnected)).toBe(true)
+    })
+
+    it("shows a toast at once in a modal dialog around the element", async () => {
+      await mount(`<dialog id="modal">${page()}</dialog>`)
+      const dialog = document.getElementById("modal")
+      dialog.setAttribute("open", "")
+      dialog.matches = (selector) => selector === ":modal" || Element.prototype.matches.call(dialog, selector)
+      toast("Saved")
+
+      expect(messages()).toEqual(["Saved"])
+    })
+
+    it("stops the time of the toasts while a modal dialog is open", async () => {
+      await mount(page(`data-phem-toast-duration-value="1000"`))
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] })
+      toast("Saved")
+      vi.advanceTimersByTime(600)
+      const dialog = openModal()
+      vi.advanceTimersByTime(5000)
+
+      expect(messages()).toEqual(["Saved"])
+
+      closeModal(dialog)
+      vi.advanceTimersByTime(399)
+      expect(toasts()[0].hasAttribute("data-ending-style")).toBe(false)
+      vi.advanceTimersByTime(1)
+      expect(toasts().every((el) => el.hasAttribute("data-ending-style") || !el.isConnected)).toBe(true)
+    })
+  })
 })

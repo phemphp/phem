@@ -216,6 +216,28 @@ describe("phem-radio-group", () => {
     expect(document.getElementById("gala").tabIndex).toBe(0)
   })
 
+  it("makes the input of a required group invalid with no checked radio, also after the morph", async () => {
+    const markup = () => group('data-phem-radio-group-required-value="true"').replace('type="hidden" name="apple"', 'name="apple" hidden')
+    await mount(markup())
+
+    const input = () => document.getElementById("input")
+    expect(input().required).toBe(true)
+    expect(input().validity.valueMissing).toBe(true)
+
+    respond(markup())
+    const done = nextDone()
+    click("#save")
+    await done
+    await Promise.resolve()
+
+    expect(input().required).toBe(true)
+    expect(input().checkValidity()).toBe(false)
+
+    click("#gala")
+    expect(input().value).toBe("gala")
+    expect(input().checkValidity()).toBe(true)
+  })
+
   it("checks the radio of a new value in the server render", async () => {
     await mount(group('data-phem-radio-group-value-value="fuji"'))
     click("#gala")

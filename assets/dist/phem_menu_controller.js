@@ -169,7 +169,7 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 // `phem-context-menu` (phem_context_menu_controller.js) extends this class: it changes the
 // methods of the trigger (`anchor`, `triggerPressed()`, `triggerClicked()`, `triggerKeydown()`,
 // `renderTrigger()` and `restoreFocus()`), the position (`placementOptions()`) and the Tab key
-// (`tabCloses`).
+// (`tabLeavesAll`).
 export default class PhemMenuController extends Controller {
   static targets = ["trigger", "popup", "arrow", "item", "group", "groupLabel", "separator", "viewport", "input", "list", "empty", "clear"]
   static values = {
@@ -354,9 +354,10 @@ export default class PhemMenuController extends Controller {
     return this.#trigger
   }
 
-  // Whether Tab closes the menu. A submenu reads the value of its root menu.
-  get tabCloses() {
-    return true
+  // Whether Tab and Shift+Tab close all the menus and keep their default (`phem-context-menu`). A
+  // submenu reads the value of its root menu.
+  get tabLeavesAll() {
+    return false
   }
 
   // A press of the primary mouse button on a trigger opens and closes the menu, as in Base UI. The
@@ -975,12 +976,13 @@ export default class PhemMenuController extends Controller {
     })
   }
 
-  // Tab closes the menu, unless the root menu keeps it (`phem-context-menu`: Tab does nothing).
-  // Shift+Tab gives the focus to the trigger: a menu of a menubar stays open, another menu (also a
-  // submenu) closes.
+  // Tab closes the menu. Shift+Tab gives the focus to the trigger: a menu of a menubar stays open,
+  // another menu (also a submenu) closes. When the root menu leaves on Tab (`phem-context-menu`),
+  // Tab and Shift+Tab close all the menus: the focus goes back to the element of restoreFocus(),
+  // and the Tab moves on from it.
   #tab(event) {
-    if (!this.#root.tabCloses) {
-      event.preventDefault()
+    if (this.#root.tabLeavesAll) {
+      this.#root.#close({ focus: false })
 
       return
     }

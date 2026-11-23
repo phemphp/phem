@@ -250,8 +250,8 @@ final class MenuTest extends E2eTestCase
         expect($page->locator('#trigger'))->toBeFocused();
     }
 
-    // UTab in an open context menu does nothing.
-    public function testTabKeepsTheContextMenuOpen(): void
+    // Tab in an open context menu closes it: the menu does not trap the focus.
+    public function testTabClosesTheContextMenu(): void
     {
         $page = $this->visit('/menu');
         self::assertResponseIsSuccessful();
@@ -261,7 +261,8 @@ final class MenuTest extends E2eTestCase
         expect($page->locator('#context-popup'))->toBeFocused();
 
         $page->keyboard()->press('Tab');
-        expect($page->locator('#context-popup'))->toBeVisible();
+        expect($page->locator('#context-popup'))->toBeHidden();
+        self::assertFalse($page->evaluate("document.getElementById('context-popup').contains(document.activeElement)"));
     }
 
     // On macOS, a release of the right button on an item of a context menu, away from

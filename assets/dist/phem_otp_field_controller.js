@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
 import { link } from "./phem_aria.js"
 import { isAndroid } from "./phem_platform.js"
+import { OtpCodeInput } from "./phem_otp_code_input.js"
 
 // The `phem-otp-field` controller: a one-time code with one input for each character (a slot). The
 // value stays after the morph of an event.
@@ -71,8 +72,25 @@ import { isAndroid } from "./phem_platform.js"
 // the slots have a value) and `data-focused` (a slot has the focus). The controller element gets
 // `data-filled` when the value is not empty, and a slot when it has a character. A `separator`
 // target gets `role="separator"` and `data-orientation="horizontal"`.
+//
+// One input for the whole code: a `codeInput` target in place of the `input` targets.
+//
+//     <label for="code">Verification code</label>
+//     <div data-controller="phem-otp-field" data-phem-otp-field-length-value="6">
+//         <input id="code" name="code" data-phem-otp-field-target="codeInput" />
+//     </div>
+//
+// The browser edits its text, and the controller keeps the characters that the validation type
+// accepts (phem_otp_code_input.js). The input gets `autocomplete="one-time-code"`, `inputmode`,
+// `maxlength` (the `length` value), and a `pattern` of the full code (`[0-9]{6}`). The `length`
+// value is by default the number of `slot` targets, else 6. The `slot` targets are decorative
+// (`aria-hidden="true"`): each one shows one character (`•` with `mask`), and gets `data-filled`
+// and `data-active` (the slot of the caret or of the selection when the input has the focus). A
+// press on a slot puts the caret before its character. The values, the events, the
+// `hiddenInput` target and the auto submit are the same. The controller element does not get
+// `role="group"`: the input has the label of the field.
 export default class PhemOtpFieldController extends Controller {
-  static targets = ["input", "hiddenInput", "separator"]
+  static targets = ["input", "codeInput", "slot", "hiddenInput", "separator"]
   static values = {
     value: String,
     length: Number,
@@ -90,7 +108,7 @@ export default class PhemOtpFieldController extends Controller {
   connect() {
     // A slot with the focus at connect (autofocus, or a slot that a morph keeps) is the tab stop.
     const focusedIndex = this.#slots.indexOf(document.activeElement)
-    this.focused = focusedIndex >= 0
+    this.focused = focusedIndex >= 0 || (this.hasCodeInputTarget && document.activeElement === this.codeInputTarget)
     this.focusedIndex = this.focused ? focusedIndex : undefined
     this.state = new ClientState(this, {
       value: "value",
@@ -116,6 +134,8 @@ export default class PhemOtpFieldController extends Controller {
   disconnect() {
     this.state.disconnect()
     this.listening.abort()
+    this.code?.disconnect()
+    this.code = undefined
     this.rendered = undefined
   }
 
@@ -130,6 +150,14 @@ export default class PhemOtpFieldController extends Controller {
   }
 
   inputTargetConnected() {
+    if (this.rendered !== undefined) this.#render()
+  }
+
+  codeInputTargetConnected() {
+    if (this.rendered !== undefined) this.#render()
+  }
+
+  slotTargetConnected() {
     if (this.rendered !== undefined) this.#render()
   }
 
@@ -345,11 +373,17 @@ export default class PhemOtpFieldController extends Controller {
   // (`uppercase` or `lowercase`), and then filtered by the validation type again. A character that
   // it refuses sends `phem-otp-field:invalid`. The spaces go.
   #accept(text) {
-    const chars = [...text.replace(/\s+/g, "")]
-    const accepted = [...this.#normalized(chars.filter((c) => this.#accepts(c)).join(""))].filter((c) => this.#accepts(c))
-    if (accepted.length < chars.length) this.dispatch("invalid", { detail: { value: text } })
+    const accepted = this.#filter(text)
+    if ([...accepted].length < [...text.replace(/\s+/g, "")].length) this.dispatch("invalid", { detail: { value: text } })
 
-    return accepted.join("")
+    return accepted
+  }
+
+  // The accepted characters of `text`, with no event.
+  #filter(text) {
+    const chars = [...text.replace(/\s+/g, "")].filter((c) => this.#accepts(c))
+
+    return [...this.#normalized(chars.join(""))].filter((c) => this.#accepts(c)).join("")
   }
 
   #normalized(text) {
@@ -425,14 +459,39 @@ export default class PhemOtpFieldController extends Controller {
     }
 
     this.element.toggleAttribute("data-filled", value !== "")
+
+    const pattern = PATTERNS[this.validationTypeValue]
+    const inputMode = this.inputModeValue || (this.validationTypeValue === "numeric" ? "numeric" : "text")
+
+    // One input for the whole code.
+    const code = this.#code
+    if (code) {
+      code.render({
+        value,
+        length: this.#length,
+        pattern,
+        inputMode,
+        autocomplete: this.autocompleteValue,
+        mask: this.maskValue,
+        disabled: this.disabledValue,
+        readOnly: this.readOnlyValue,
+        required: this.requiredValue,
+        focused: this.focused,
+        state,
+      })
+      this.#renderValue(value)
+
+      // The separators are decorative, as the slots.
+      for (const el of this.separatorTargets) el.setAttribute("aria-hidden", "true")
+
+      return
+    }
+
     if (!this.element.hasAttribute("role")) this.element.setAttribute("role", "group")
 
     // The label of the first slot names the group.
     const label = slots[0]?.labels?.[0]
     if (label && !this.element.hasAttribute("aria-label")) link(this.element, "aria-labelledby", "ariaLabelledByElements", label)
-
-    const pattern = PATTERNS[this.validationTypeValue]
-    const inputMode = this.inputModeValue || (this.validationTypeValue === "numeric" ? "numeric" : "text")
 
     slots.forEach((slot, i) => {
       const char = chars[i] ?? ""
@@ -455,15 +514,47 @@ export default class PhemOtpFieldController extends Controller {
       if (i > 0 && !slot.hasAttribute("aria-label") && !slot.hasAttribute("aria-labelledby")) slot.setAttribute("aria-label", `Character ${i + 1} of ${slots.length}`)
     })
 
+    this.#renderValue(value)
+
+    for (const el of this.separatorTargets) {
+      if (!el.hasAttribute("role")) el.setAttribute("role", "separator")
+      if (!el.hasAttribute("data-orientation")) el.setAttribute("data-orientation", "horizontal")
+    }
+  }
+
+  #renderValue(value) {
     for (const el of this.hiddenInputTargets) {
       el.value = value
       el.setAttribute("value", value)
       el.disabled = this.disabledValue
     }
+  }
 
-    for (const el of this.separatorTargets) {
-      if (!el.hasAttribute("role")) el.setAttribute("role", "separator")
-      if (!el.hasAttribute("data-orientation")) el.setAttribute("data-orientation", "horizontal")
+  // The one input of the code, with a `codeInput` target.
+  get #code() {
+    const input = this.hasCodeInputTarget ? this.codeInputTarget : null
+    if (this.code?.input === input) return this.code
+
+    this.code?.disconnect()
+    this.code = input ? new OtpCodeInput(input, this.element, this.#codeHost) : undefined
+
+    return this.code
+  }
+
+  get #codeHost() {
+    return {
+      slots: () => this.slotTargets,
+      value: () => this.#value,
+      length: () => this.#length,
+      locked: () => this.#locked,
+      filter: (text) => this.#filter(text),
+      accept: (text) => this.#accept(text),
+      accepts: (char) => this.#accepts(char),
+      change: (value, reason) => this.#change(value, reason),
+      focus: (focused) => {
+        this.focused = focused
+        this.#render()
+      },
     }
   }
 
@@ -479,6 +570,8 @@ export default class PhemOtpFieldController extends Controller {
   }
 
   get #length() {
+    if (this.hasCodeInputTarget) return this.lengthValue > 0 ? this.lengthValue : this.slotTargets.length || 6
+
     return this.lengthValue > 0 ? Math.min(this.lengthValue, this.inputTargets.length) : this.inputTargets.length
   }
 
@@ -499,6 +592,8 @@ export default class PhemOtpFieldController extends Controller {
   #owns(el, name) {
     if (el === this.element) return STATE_ATTRIBUTES.has(name) || name === "data-filled"
     if (this.inputTargets.includes(el)) return STATE_ATTRIBUTES.has(name) || ["data-filled", "value", "tabindex"].includes(name)
+    if (this.codeInputTargets.includes(el)) return STATE_ATTRIBUTES.has(name) || ["data-filled", "value"].includes(name)
+    if (this.slotTargets.includes(el)) return STATE_ATTRIBUTES.has(name) || ["data-filled", "data-active"].includes(name)
     if (this.hiddenInputTargets.includes(el)) return name === "value"
 
     return false

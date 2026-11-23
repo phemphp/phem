@@ -8,6 +8,53 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** `phem-tabs` no longer supports a tab that is a link (`<a href>`). A bar of links to
+  pages is not a tab list: use a `<nav>` with `aria-current="page"`, or `phem-navigation-menu`.
+- **Breaking** `phem-sortable` no longer moves the item while the pointer moves. The list of the
+  drop place gets `data-drop`, `phem.css` draws a drop marker (`--sortable-drop-color`,
+  `--sortable-drop-thickness`), and the item moves one time on release, with `moveBefore()` when
+  the browser has it. Escape removes the marker.
+- **Breaking** `phem.css` sets `touch-action: none` only on the `phem-sortable` handles. A touch on
+  an item with no handle scrolls the page, and a hold of 250 ms starts its drag.
+- **Breaking** A required `phem-radio-group` gives `required` to its inputs and stops the submit
+  with no checked radio. Use `<input hidden>` for its input: the browser does not validate an
+  `<input type="hidden">`. The focus goes to the radio of the tab stop.
+- **Breaking** A modal `phem-dialog` keeps the page scroll with `overscroll-behavior: contain` in
+  `phem.css`, not with `overflow: hidden` on `<html>`. Only a browser with no `closedby` (Safari)
+  still gets the `<html>` lock. Load `phem.css`, or add the rules yourself.
+- Add a mode with one input for the whole code to `phem-otp-field`: a `codeInput` target in place
+  of the `input` targets gets `autocomplete="one-time-code"`, `inputmode`, `maxlength` and a
+  `pattern` of the full code. Optional `slot` targets (`aria-hidden`) show each character, with
+  `data-filled` and `data-active` at the caret. A paste removes the spaces and the dashes.
+- `phem-tabs` has the `hiddenUntilFound` value and `data-phem-tabs-hidden-until-found`: the search
+  of the browser finds the text of a hidden panel and selects its tab.
+- `phem-tabs` gives `tabindex="0"` only to a panel with no focusable element.
+- Tab and Shift+Tab close a `phem-context-menu`. The focus goes back to the element that had it
+  before the open, and the Tab moves on from it. The menu does not trap the focus.
+- A modal `phem-dialog` gets `closedby` (`closerequest`, or `none` when `dismiss` is false). The
+  controller still closes it on a tap on the backdrop, one time. A second Escape that the browser does not let the page cancel
+  closes the dialog and sets the state.
+- The pointer can cross the gap between a `phem-tooltip` trigger and its tooltip.
+- A `phem-tooltip` whose text is not the name of its trigger gets `role="tooltip"`, and the trigger
+  gets `aria-describedby`.
+- The time of the `phem-toast` toasts stops while a modal dialog makes them inert. After the
+  close, each toast stays for the rest of its time, and the user can get to it.
+- The controls of `phem-field` get `aria-invalid="false"` until the field is invalid. Before, the
+  attribute was not set.
+- In the `onBlur` mode, `phem-field` validates on blur only after a change by the user, after a
+  submit, or when the field is invalid. A Tab through an empty required field shows no error now.
+- `phem-field` announces an error that shows on a blur, a change or Enter in the polite live region
+  of the page, 500 milliseconds later. A submit announces nothing.
+- `phem-form` and `phem-field` give the focus to the switch or the checkbox of `phem-toggle`, not
+  to its hidden input. In a `phem-field`, the element gets `aria-invalid` and `aria-describedby`.
+- `phem-sortable` sets `aria-pressed="true"` on the handle during a keyboard drag, announces the
+  drop and the cancel of a pointer drag, and sends each announcement 500 ms after its step.
+- `phem-scroll-area` renders a scroll once per frame, and removes `data-scrolling` at `scrollend`
+  (500 ms after the last scroll in a browser with no `scrollend`).
+- `phem-scrollspy` uses an IntersectionObserver, and sets `aria-current` when the scroll stops.
+- The stand-in field of `data-phem-autofocus-keyboard` has no `aria-hidden`. It gets the name of
+  the element of the tap and `aria-busy="true"`.
+
 - A part with an animation that runs forever (a spinner in a toast, a dialog or a popup) closes
   when its other animations end. Before, its close waited forever: a `loading` toast stayed on the
   page, and a dialog with a spinner did not close.

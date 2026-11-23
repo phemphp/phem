@@ -3,6 +3,8 @@ import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemFieldController from "../dist/phem_field_controller.js"
 import PhemFormController from "../dist/phem_form_controller.js"
+import PhemRadioGroupController from "../dist/phem_radio_group_controller.js"
+import PhemToggleController from "../dist/phem_toggle_controller.js"
 import { mount, nextDone, respond, settle } from "./support.js"
 
 // A redirect is a Turbo visit: jsdom cannot load a page.
@@ -15,6 +17,8 @@ beforeAll(() => {
   application.register("phem", PhemController)
   application.register("phem-field", PhemFieldController)
   application.register("phem-form", PhemFormController)
+  application.register("phem-toggle", PhemToggleController)
+  application.register("phem-radio-group", PhemRadioGroupController)
 })
 
 beforeEach(() => {
@@ -66,7 +70,7 @@ describe("phem-field", () => {
 
     expect(el("label").htmlFor).toBe("name")
     expect(el("name").getAttribute("aria-describedby")).toBe("help")
-    expect(el("name").hasAttribute("aria-invalid")).toBe(false)
+    expect(el("name").getAttribute("aria-invalid")).toBe("false")
     expect(el("missing").hidden).toBe(true)
     expect(el("field").hasAttribute("data-valid")).toBe(false)
     expect(el("field").hasAttribute("data-invalid")).toBe(false)
@@ -91,6 +95,8 @@ describe("phem-field", () => {
     await mount(field('data-phem-field-validation-mode-value="onBlur"'))
 
     el("name").focus()
+    type("name", "A")
+    type("name", "")
     el("name").blur()
 
     expect(el("field").hasAttribute("data-invalid")).toBe(true)
@@ -104,8 +110,66 @@ describe("phem-field", () => {
     // An invalid field validates again on each change.
     type("name", "Ada")
     expect(el("field").hasAttribute("data-valid")).toBe(true)
-    expect(el("name").hasAttribute("aria-invalid")).toBe(false)
+    expect(el("name").getAttribute("aria-invalid")).toBe("false")
     expect(el("name").getAttribute("aria-describedby")).toBe("help")
+  })
+
+  it("does not validate on blur when the user did not change the value", async () => {
+    await mount(field('data-phem-field-validation-mode-value="onBlur"'))
+
+    el("name").focus()
+    el("name").blur()
+
+    expect(el("field").hasAttribute("data-touched")).toBe(true)
+    expect(el("field").hasAttribute("data-invalid")).toBe(false)
+    expect(el("missing").hidden).toBe(true)
+    expect(el("name").getAttribute("aria-invalid")).toBe("false")
+  })
+
+  it("announces an error that shows on blur, a moment later", async () => {
+    await mount(field('data-phem-field-validation-mode-value="onBlur"'))
+    const announced = vi.fn()
+    window.addEventListener("phem:announce", announced)
+    vi.useFakeTimers()
+    try {
+      el("name").focus()
+      type("name", "A")
+      type("name", "")
+      el("name").blur()
+      expect(el("missing").hidden).toBe(false)
+      expect(announced).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(500)
+      expect(announced).toHaveBeenCalledTimes(1)
+      expect(announced.mock.calls[0][0].detail).toBe(`Enter your name. ${el("name").validationMessage}`)
+
+      // An error that stays does not announce again.
+      el("name").focus()
+      el("name").blur()
+      vi.advanceTimersByTime(500)
+      expect(announced).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+      window.removeEventListener("phem:announce", announced)
+    }
+  })
+
+  it("does not announce an error that hides before the announcement", async () => {
+    await mount(field('data-phem-field-validation-mode-value="onChange"'))
+    const announced = vi.fn()
+    window.addEventListener("phem:announce", announced)
+    vi.useFakeTimers()
+    try {
+      type("name", "A")
+      type("name", "")
+      type("name", "Ada")
+      vi.advanceTimersByTime(500)
+
+      expect(announced).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+      window.removeEventListener("phem:announce", announced)
+    }
   })
 
   it("validates on Enter in the input, in the onSubmit mode", async () => {
@@ -188,7 +252,7 @@ describe("phem-field", () => {
 
     type("name", "Boots")
     expect(el("field").hasAttribute("data-invalid")).toBe(false)
-    expect(el("name").hasAttribute("aria-invalid")).toBe(false)
+    expect(el("name").getAttribute("aria-invalid")).toBe("false")
     expect(el("name-error").hidden).toBe(true)
     expect(el("name").hasAttribute("aria-describedby")).toBe(false)
     expect(el("name").validity.valid).toBe(true)
@@ -198,6 +262,8 @@ describe("phem-field", () => {
     await mount(`${field('data-phem-field-validation-mode-value="onBlur"')}<button id="save" data-phem-on-click="c1.save">Save</button>`)
 
     el("name").focus()
+    type("name", "A")
+    type("name", "")
     el("name").blur()
     expect(el("missing").hidden).toBe(false)
 
@@ -281,6 +347,8 @@ describe("phem-form", () => {
     await mount(form(field(), 'data-phem-form-validation-mode-value="onBlur"'))
 
     el("name").focus()
+    type("name", "A")
+    type("name", "")
     el("name").blur()
     expect(el("field").hasAttribute("data-invalid")).toBe(true)
   })
@@ -563,5 +631,100 @@ describe("phem-form", () => {
     await send(null)
     expect(el("url-error").hidden).toBe(false)
     expect(el("url-error").textContent).toBe("The example domain is not allowed")
+  })
+})
+
+// A switch with its hidden checkbox, and a radio group with an `<input hidden>`.
+const SWITCH = `<label>
+    <span id="switch" role="switch" data-controller="phem-toggle" data-phem-toggle-required-value="true">
+      <input id="switch-input" type="checkbox" name="terms" hidden data-phem-toggle-target="input" />
+    </span>
+    Terms
+  </label>`
+
+const RADIO_GROUP = `<div id="group" data-controller="phem-radio-group" data-phem-radio-group-required-value="true" aria-label="Apple">
+    <span id="fuji" data-phem-radio-group-target="radio" data-value="fuji"></span>
+    <span id="gala" data-phem-radio-group-target="radio" data-value="gala"></span>
+    <input id="apple" name="apple" hidden data-phem-radio-group-target="input" />
+  </div>`
+
+describe("phem-form with a custom control", () => {
+  it("stops the submit of a required switch that is not checked, and focuses the switch", async () => {
+    await mount(form(SWITCH))
+    const report = vi.spyOn(el("switch-input"), "reportValidity")
+
+    const event = submit()
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(el("switch"))
+    expect(report).not.toHaveBeenCalled()
+
+    el("switch").click()
+    expect(el("switch-input").validity.valid).toBe(true)
+  })
+
+  it("stops the submit of a required radio group with no checked radio, and focuses the first radio", async () => {
+    await mount(form(RADIO_GROUP))
+
+    expect(el("apple").required).toBe(true)
+    const event = submit()
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(el("fuji"))
+
+    el("gala").click()
+    expect(el("apple").value).toBe("gala")
+    expect(el("apple").validity.valid).toBe(true)
+  })
+
+  it("does not validate the hidden input of a radio group", async () => {
+    await mount(form(RADIO_GROUP.replace('name="apple" hidden', 'type="hidden" name="apple"')))
+
+    respond(form(RADIO_GROUP))
+    const done = nextDone()
+    submit()
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows the error of a switch in a field on the switch", async () => {
+    await mount(form(`<div id="field" data-controller="phem-field" data-phem-field-validation-mode-value="onBlur">
+        ${SWITCH.replace('data-phem-toggle-target="input"', 'data-phem-toggle-target="input" data-phem-field-target="control"')}
+        <p id="missing" data-phem-field-target="error" data-match="valueMissing" hidden>Accept the terms.</p>
+      </div>`))
+
+    expect(el("switch").getAttribute("aria-invalid")).toBe("false")
+    submit()
+
+    expect(document.activeElement).toBe(el("switch"))
+    expect(el("field").hasAttribute("data-focused")).toBe(true)
+    expect(el("missing").hidden).toBe(false)
+    expect(el("switch").getAttribute("aria-invalid")).toBe("true")
+    expect(el("switch").getAttribute("aria-describedby")).toBe("missing")
+
+    // The focus of the switch is the focus of the field.
+    el("switch").blur()
+    expect(el("field").hasAttribute("data-focused")).toBe(false)
+    expect(el("field").hasAttribute("data-touched")).toBe(true)
+
+    el("switch").click()
+    expect(el("field").hasAttribute("data-valid")).toBe(true)
+    expect(el("switch").getAttribute("aria-invalid")).toBe("false")
+  })
+
+  it("does not announce the errors of a submit", async () => {
+    await mount(form(field()))
+    const announced = vi.fn()
+    window.addEventListener("phem:announce", announced)
+    vi.useFakeTimers()
+    try {
+      submit()
+      expect(el("missing").hidden).toBe(false)
+
+      vi.advanceTimersByTime(500)
+      expect(announced).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+      window.removeEventListener("phem:announce", announced)
+    }
   })
 })

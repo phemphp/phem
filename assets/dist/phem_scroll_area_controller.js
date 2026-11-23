@@ -1,7 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
 
-// The time (ms) after the last scroll before `data-scrolling` goes.
+// The time (ms) after the last scroll before `data-scrolling` goes, in a browser with no
+// `scrollend` event.
 const SCROLL_TIMEOUT = 500
 
 // The smallest size (px) of a thumb.
@@ -48,8 +49,9 @@ const OVERFLOW_ATTRIBUTES = ["data-has-overflow-x", "data-has-overflow-y", "data
 // `data-has-overflow-y` when the content is wider or taller than the viewport, and
 // `data-overflow-x-start`, `data-overflow-x-end`, `data-overflow-y-start` and
 // `data-overflow-y-end` when the content continues past that edge. They get `data-scrolling`
-// while the user scrolls (a scrollbar and its thumb only for a scroll on their axis). The end of a
-// drag of a thumb removes it at once. The scrollbars get `data-hovering` while the pointer is over
+// while the user scrolls (a scrollbar and its thumb only for a scroll on their axis). The
+// `scrollend` event of the viewport removes it. A browser with no `scrollend` removes it 500 ms
+// after the last scroll. The end of a drag of a thumb removes it at once. The scrollbars get `data-hovering` while the pointer is over
 // the root. The thumbs get `data-orientation`. The CSS variables are:
 //
 // - on the root: `--scroll-area-corner-width` and `--scroll-area-corner-height`;
@@ -58,6 +60,11 @@ const OVERFLOW_ATTRIBUTES = ["data-has-overflow-x", "data-has-overflow-y", "data
 //   edge);
 // - on a scrollbar: `--scroll-area-thumb-height` (vertical) or `--scroll-area-thumb-width`
 //   (horizontal). The size and the offset of a thumb keep the fractions of a pixel.
+//
+// A scroll renders the state once in the next frame, with all the scroll events of the frame. The
+// render reads all the sizes first, then writes the attributes and the styles: it forces no layout
+// between two writes. A change of a size that the render causes (a scrollbar that shows, the size
+// of the corner) comes back with the ResizeObserver.
 //
 // As in Base UI, the parts get their layout styles: the root `position: relative`, a scrollbar
 // `position: absolute` on its edge, a thumb its size and its `transform`, the corner its size.
@@ -74,6 +81,7 @@ export default class PhemScrollAreaController extends Controller {
     this.hovering = false
     this.position = null
     this.drag = null
+    this.frame = null
 
     this.state = new ClientState(this, {
       owns: (el, name) => this.#owns(el, name),
@@ -84,6 +92,7 @@ export default class PhemScrollAreaController extends Controller {
     this.listening = new AbortController()
     const options = { signal: this.listening.signal }
     this.element.addEventListener("scroll", this.onScroll, { ...options, capture: true, passive: true })
+    if ("onscrollend" in window) this.element.addEventListener("scrollend", this.onScrollEnd, { ...options, capture: true, passive: true })
     this.element.addEventListener("pointerenter", this.onPointerEnter, options)
     this.element.addEventListener("pointerleave", this.onPointerLeave, options)
     this.element.addEventListener("pointerdown", this.onPointerDown, options)
@@ -106,6 +115,8 @@ export default class PhemScrollAreaController extends Controller {
     this.state.disconnect()
     this.listening.abort()
     this.listening = null
+    cancelAnimationFrame(this.frame)
+    this.frame = null
     clearTimeout(this.timers.x)
     clearTimeout(this.timers.y)
   }
@@ -135,25 +146,32 @@ export default class PhemScrollAreaController extends Controller {
     if (this.listening) this.update()
   }
 
+  // The axes that scroll get the mark. The render waits for the next frame.
   onScroll = (event) => {
     const viewport = this.#viewport
     if (event.target !== viewport) return
 
     const position = { x: viewport.scrollLeft, y: viewport.scrollTop }
     const last = this.position ?? position
+    this.position = position
 
     for (const axis of ["x", "y"]) {
       if (position[axis] === last[axis]) continue
 
       this.scrolling[axis] = true
-      clearTimeout(this.timers[axis])
-      this.timers[axis] = setTimeout(() => {
-        this.scrolling[axis] = false
-        if (this.listening) this.update()
-      }, SCROLL_TIMEOUT)
+      if (!("onscrollend" in window)) this.#endLater(axis)
     }
 
-    this.update()
+    this.#schedule()
+  }
+
+  // The scroll stopped. A drag of a thumb keeps the mark until its end.
+  onScrollEnd = (event) => {
+    if (event.target !== this.#viewport || this.drag) return
+
+    this.scrolling.x = false
+    this.scrolling.y = false
+    this.#schedule()
   }
 
   onPointerEnter = (event) => {
@@ -235,12 +253,20 @@ export default class PhemScrollAreaController extends Controller {
     const viewport = this.#viewport
     if (!viewport) return
 
+    cancelAnimationFrame(this.frame)
+    this.frame = null
+
+    // All the reads come before the first write.
+    const size = measure(viewport)
+    const bars = this.scrollbarTargets.map((bar) => this.#measureBar(bar, size))
+    const rtl = this.#rtl
+
     const threshold = this.#threshold
-    const left = Math.abs(viewport.scrollLeft)
-    const top = viewport.scrollTop
-    const maxX = Math.max(0, viewport.scrollWidth - viewport.clientWidth)
-    const maxY = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
-    this.position = { x: viewport.scrollLeft, y: top }
+    const left = Math.abs(size.scrollLeft)
+    const top = size.scrollTop
+    const maxX = size.maxX
+    const maxY = size.maxY
+    this.position = { x: size.scrollLeft, y: top }
 
     const distances = {
       xStart: Math.round(Math.min(left, maxX)),
@@ -277,15 +303,24 @@ export default class PhemScrollAreaController extends Controller {
     setStyle(viewport, "--scroll-area-overflow-y-end", `${distances.yEnd}px`)
     for (const el of this.contentTargets) setStyle(el, "min-width", "fit-content")
 
-    this.#renderScrollbars(state, hasX, hasY)
-    this.#renderCorner(hasX, hasY)
-    this.#renderThumbs(viewport)
+    this.#renderScrollbars(bars, state, hasX, hasY)
+    this.#renderCorner(bars, hasX, hasY)
+    this.#renderThumbs(bars, size, rtl)
   }
 
-  #renderScrollbars(state, hasX, hasY) {
-    for (const bar of this.scrollbarTargets) {
-      const orientation = orientationOf(bar)
-      const vertical = orientation === "vertical"
+  // The sizes of a scrollbar, read before the render: its orientation, its track, its thumb, and
+  // its size when it shows.
+  #measureBar(bar, size) {
+    const orientation = orientationOf(bar)
+    const vertical = orientation === "vertical"
+    const track = trackOf(bar, vertical)
+    const thumb = thumbSize(size, track, vertical)
+
+    return { bar, orientation, vertical, track, thumb, width: bar.hidden ? 0 : bar.offsetWidth, height: bar.hidden ? 0 : bar.offsetHeight }
+  }
+
+  #renderScrollbars(bars, state, hasX, hasY) {
+    for (const { bar, orientation, vertical } of bars) {
       const axis = vertical ? "y" : "x"
       const hidden = !(vertical ? hasY : hasX) && !bar.hasAttribute("data-keep-mounted")
       if (bar.hidden !== hidden) bar.hidden = hidden
@@ -312,12 +347,12 @@ export default class PhemScrollAreaController extends Controller {
 
   // The corner shows when the two axes overflow. Its size is the width of the vertical scrollbar
   // and the height of the horizontal scrollbar.
-  #renderCorner(hasX, hasY) {
+  #renderCorner(bars, hasX, hasY) {
     const both = hasX && hasY
-    const vertical = this.scrollbarTargets.find((el) => orientationOf(el) === "vertical" && !el.hidden)
-    const horizontal = this.scrollbarTargets.find((el) => orientationOf(el) === "horizontal" && !el.hidden)
-    const width = both && vertical ? vertical.offsetWidth : 0
-    const height = both && horizontal ? horizontal.offsetHeight : 0
+    const vertical = bars.find((it) => it.vertical && !it.bar.hidden)
+    const horizontal = bars.find((it) => !it.vertical && !it.bar.hidden)
+    const width = both && vertical ? vertical.width : 0
+    const height = both && horizontal ? horizontal.height : 0
 
     setStyle(this.element, "--scroll-area-corner-width", `${width}px`)
     setStyle(this.element, "--scroll-area-corner-height", `${height}px`)
@@ -333,15 +368,10 @@ export default class PhemScrollAreaController extends Controller {
   }
 
   // The size of a thumb is the part of the content in view. Its place is the scroll position.
-  #renderThumbs(viewport) {
-    const rtl = this.#rtl
-
-    for (const bar of this.scrollbarTargets) {
-      const vertical = orientationOf(bar) === "vertical"
-      const track = trackOf(bar, vertical)
-      const size = thumbSize(viewport, track, vertical)
-      const max = vertical ? viewport.scrollHeight - viewport.clientHeight : viewport.scrollWidth - viewport.clientWidth
-      const scroll = vertical ? viewport.scrollTop : Math.abs(viewport.scrollLeft)
+  #renderThumbs(bars, { scrollLeft, scrollTop, maxX, maxY }, rtl) {
+    for (const { bar, vertical, track, thumb: size } of bars) {
+      const max = vertical ? maxY : maxX
+      const scroll = vertical ? scrollTop : Math.abs(scrollLeft)
       let offset = max > 0 ? clamp(scroll / max, 0, 1) * Math.max(0, track.length - size) : 0
       if (!vertical && rtl) offset = -offset
 
@@ -357,6 +387,26 @@ export default class PhemScrollAreaController extends Controller {
       setStyle(thumb, vertical ? "height" : "width", `var(${variable})`)
       setStyle(thumb, "transform", vertical ? `translate3d(0px, ${offset}px, 0px)` : `translate3d(${offset}px, 0px, 0px)`)
     }
+  }
+
+  // One render in the next frame, for all the scroll events of the frame.
+  #schedule() {
+    if (this.frame !== null) return
+
+    this.frame = requestAnimationFrame(() => {
+      this.frame = null
+      if (this.listening) this.update()
+    })
+  }
+
+  // With no `scrollend` event, the mark of an axis goes 500 ms after its last scroll.
+  #endLater(axis) {
+    clearTimeout(this.timers[axis])
+    this.timers[axis] = setTimeout(() => {
+      this.timers[axis] = null
+      this.scrolling[axis] = false
+      if (this.listening) this.#schedule()
+    }, SCROLL_TIMEOUT)
   }
 
   #observe(el) {
@@ -405,6 +455,22 @@ export default class PhemScrollAreaController extends Controller {
   }
 }
 
+// The sizes and the scroll position of the viewport.
+function measure(viewport) {
+  const { scrollLeft, scrollTop, scrollWidth, scrollHeight, clientWidth, clientHeight } = viewport
+
+  return {
+    scrollLeft,
+    scrollTop,
+    scrollWidth,
+    scrollHeight,
+    clientWidth,
+    clientHeight,
+    maxX: Math.max(0, scrollWidth - clientWidth),
+    maxY: Math.max(0, scrollHeight - clientHeight),
+  }
+}
+
 function orientationOf(bar) {
   return bar.getAttribute("data-orientation") === "horizontal" ? "horizontal" : "vertical"
 }
@@ -419,6 +485,7 @@ function trackOf(bar, vertical) {
   return { start, end, length: Math.max(0, length) }
 }
 
+// `viewport` is the viewport, or its sizes (measure()).
 function thumbSize(viewport, track, vertical) {
   const visible = vertical ? viewport.clientHeight : viewport.clientWidth
   const total = vertical ? viewport.scrollHeight : viewport.scrollWidth

@@ -44,9 +44,13 @@ final class DialogTest extends E2eTestCase
         $overflow = 'getComputedStyle(document.documentElement).overflowY';
         self::assertNotSame('hidden', $page->evaluate($overflow));
 
+        // Chromium has `closedby`: phem.css keeps the scroll in the dialog and its backdrop, and
+        // the page keeps its overflow.
         $page->locator('#alert-open')->click();
         expect($page->locator('#alert-dialog'))->toBeVisible();
-        self::assertSame('hidden', $page->evaluate($overflow));
+        self::assertSame('contain', $page->evaluate("getComputedStyle(document.getElementById('alert-dialog')).overscrollBehaviorY"));
+        self::assertSame('hidden', $page->evaluate("getComputedStyle(document.getElementById('alert-dialog'), '::backdrop').overflowY"));
+        self::assertNotSame('hidden', $page->evaluate($overflow));
 
         $page->keyboard()->press('Escape');
         expect($page->locator('#alert-dialog'))->toBeHidden();

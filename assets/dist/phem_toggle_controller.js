@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { link } from "./phem_aria.js"
 import { hide, render, show } from "./phem_transition.js"
+import { linkInput, unlinkInput } from "./phem_validation.js"
 
 // The attributes of the pressed or checked state.
 const STATE_ATTRIBUTES = new Set(["aria-pressed", "aria-checked", "data-pressed", "data-checked", "data-unchecked", "data-indeterminate"])
@@ -56,7 +57,10 @@ const STATE_ATTRIBUTES = new Set(["aria-pressed", "aria-checked", "data-pressed"
 // input gets the state in `checked`. An `<input type="hidden">` gets the `value` value (`on` by
 // default) when it is checked, and the `uncheckedValue` value when it is not checked; with no
 // `uncheckedValue`, it is disabled, so a form does not send it. The `name`, `value`, `form`,
-// `required` and `disabled` values go on the input. When the user changes the state, the input
+// `required` and `disabled` values go on the input. A required checkbox input that is not checked
+// stops the submit of its form (an `<input type="hidden">` has no validation). The input is linked
+// to the element (see linkInput() in phem_validation.js): `phem-form` and `phem-field` give the
+// focus to the element, not to the hidden input. When the user changes the state, the input
 // dispatches `input` and `change`, so `phem:bind` and the other controllers see the change. An
 // input with `phem:bind` belongs to phem: after the morph of an event, its value (the `checked`
 // of a checkbox, or the `value` of a hidden input) gives the state.
@@ -111,6 +115,8 @@ export default class PhemToggleController extends Controller {
     this.indeterminateState.disconnect()
     this.listening.abort()
     this.rendered = undefined
+    if (this.linked) unlinkInput(this.linked, this.element)
+    this.linked = null
   }
 
   // Whether the element is checked or pressed.
@@ -347,6 +353,12 @@ export default class PhemToggleController extends Controller {
 
   #renderInput(checked, indeterminate, disabled) {
     const input = this.#input
+    if (input !== this.linked) {
+      if (this.linked) unlinkInput(this.linked, this.element)
+      if (input) linkInput(input, this.element)
+      this.linked = input
+    }
+
     if (!input) return
 
     if (this.hasNameValue) input.name = this.nameValue

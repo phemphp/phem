@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { nextItem } from "./phem_roving.js"
 import { hide, render, show } from "./phem_transition.js"
+import { linkInput, unlinkInput } from "./phem_validation.js"
 
 // The attributes of the checked state of a radio and of its indicator.
 const CHECKED_ATTRIBUTES = new Set(["aria-checked", "tabindex", "data-checked", "data-unchecked"])
@@ -37,7 +38,7 @@ const CHECKED_ATTRIBUTES = new Set(["aria-checked", "tabindex", "data-checked", 
 //
 // With the `disabled` value, or on a radio with `disabled` or `aria-disabled="true"`, a click does
 // nothing. With the `readOnly` value, the arrow keys move the focus but do not check a radio. The
-// `required` value gives the group `aria-required`.
+// `required` value gives the group `aria-required`, and `required` to the inputs.
 //
 // The group gets `role="radiogroup"`, and `aria-disabled`, `aria-readonly`, `aria-required`,
 // `data-disabled`, `data-readonly` and `data-required` for these values. A radio gets
@@ -50,6 +51,12 @@ const CHECKED_ATTRIBUTES = new Set(["aria-checked", "tabindex", "data-checked", 
 // radio, and a native radio input is checked when its `value` is the value of the checked radio.
 // When the user checks a radio, the input that changes sends `input` and `change` events, and the
 // controller dispatches `phem-radio-group:change` with the `value` in its detail.
+//
+// The browser does not validate an `<input type="hidden">`. For a required group, use an input that
+// the browser validates and the user does not see, such as `<input hidden>`: with no checked
+// radio, its value is empty, so it stops the submit of its form. The inputs are linked to the
+// group (see linkInput() in phem_validation.js): `phem-form` and `phem-field` give the focus to the
+// radio of the tab stop, not to the hidden input.
 export default class PhemRadioGroupController extends Controller {
   static targets = ["radio", "indicator", "input"]
   static values = {
@@ -85,6 +92,7 @@ export default class PhemRadioGroupController extends Controller {
     this.state.disconnect()
     this.listening.abort()
     this.rendered = undefined
+    for (const input of this.inputTargets) unlinkInput(input, this.element)
   }
 
   // A server render with a new `value` value, or a change of the value by a script.
@@ -116,8 +124,16 @@ export default class PhemRadioGroupController extends Controller {
     if (this.rendered !== undefined) this.#render({ animate: false })
   }
 
-  inputTargetConnected() {
-    if (this.rendered !== undefined) this.#sync()
+  inputTargetConnected(input) {
+    linkInput(input, this.element, () => this.#stop?.focus())
+    if (this.rendered === undefined) return
+
+    this.#render({ animate: false })
+    this.#sync()
+  }
+
+  inputTargetDisconnected(input) {
+    unlinkInput(input, this.element)
   }
 
   onClick = (event) => {
@@ -184,9 +200,7 @@ export default class PhemRadioGroupController extends Controller {
     flag(this.element, "aria-required", this.requiredValue)
     this.#common(this.element, this.disabledValue)
 
-    // The tab stop: the checked radio, else the first radio that is not disabled.
-    const enabled = radios.filter((radio) => !this.#disabled(radio))
-    const stop = enabled.includes(radios[checked]) ? radios[checked] : enabled[0]
+    const stop = this.#stop
 
     radios.forEach((radio, i) => {
       const disabled = this.#disabled(radio)
@@ -200,6 +214,12 @@ export default class PhemRadioGroupController extends Controller {
       this.#name(radio)
     })
 
+    // A native radio input validates `required` in its group, and another input (not a hidden
+    // input) validates its value.
+    for (const input of this.inputTargets) {
+      if (this.hasRequiredValue) input.required = this.requiredValue
+    }
+
     for (const indicator of this.indicatorTargets) {
       const radio = radios.find((el) => el.contains(indicator))
       const open = radio !== undefined && radios.indexOf(radio) === checked
@@ -210,6 +230,15 @@ export default class PhemRadioGroupController extends Controller {
       else if (open) show(indicator)
       else if (!indicator.hidden) hide(indicator)
     }
+  }
+
+  // The tab stop: the checked radio, else the first radio that is not disabled.
+  get #stop() {
+    const radios = this.radioTargets
+    const checked = radios[this.#checked]
+    const enabled = radios.filter((radio) => !this.#disabled(radio))
+
+    return enabled.includes(checked) ? checked : enabled[0]
   }
 
   // A `<label>` names the radio in it: a label names only a native control. The controller links

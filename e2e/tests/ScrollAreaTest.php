@@ -48,14 +48,15 @@ final class ScrollAreaTest extends E2eTestCase
         $page->locator('#viewport')->hover();
         expect($page->locator('#vbar'))->toHaveAttribute('data-hovering', '');
 
-        $page->evaluate("document.getElementById('viewport').scrollTop = 200");
+        // A smooth scroll takes some frames: the area has the mark of the scroll during them.
+        $page->evaluate("document.getElementById('viewport').scrollTo({ top: 200, behavior: 'smooth' })");
         expect($page->locator('#area'))->toHaveAttribute('data-scrolling', '');
+
+        // The mark of the scroll goes at the scrollend event.
+        expect($page->locator('#area'))->not()->toHaveAttribute('data-scrolling', '');
         expect($page->locator('#area'))->toHaveAttribute('data-overflow-y-start', '');
         self::assertSame('200px', $page->evaluate("document.getElementById('viewport').style.getPropertyValue('--scroll-area-overflow-y-start')"));
         expect($page->locator('#vthumb'))->toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 40)');
-
-        // The mark of the scroll goes after 500 ms.
-        expect($page->locator('#area'))->not()->toHaveAttribute('data-scrolling', '');
     }
 
     public function testADragOfTheThumbScrollsTheViewport(): void
@@ -119,7 +120,7 @@ final class ScrollAreaTest extends E2eTestCase
         $page->evaluate('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         expect($page->locator('#area'))->toHaveAttribute('data-scrolling', '');
 
-        // Read the marks at once: `expect` waits longer than the timer of a scroll.
+        // Read the marks at once: `expect` waits longer than the end of a scroll.
         $mouse->up();
         $marks = $page->evaluate("['area', 'vthumb'].map((id) => document.getElementById(id).hasAttribute('data-scrolling'))");
         self::assertSame([false, false], $marks);

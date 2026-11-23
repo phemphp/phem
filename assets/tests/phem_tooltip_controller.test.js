@@ -51,7 +51,7 @@ function tabTo(el) {
 }
 
 describe("phem-tooltip", () => {
-  it("is only visual: no role on the popup and no aria-describedby on the trigger", async () => {
+  it("adds no ARIA to a tooltip with the accessible name of its trigger", async () => {
     await mount(toolbar())
 
     expect($("tip").hasAttribute("role")).toBe(false)
@@ -86,6 +86,83 @@ describe("phem-tooltip", () => {
     out($("archive"))
     expect($("tip").hidden).toBe(true)
     expect($("archive").hasAttribute("data-popup-open")).toBe(false)
+  })
+
+  it("describes a trigger with a tooltip that is not its accessible name", async () => {
+    await mount(`<button id="archive" data-controller="phem-tooltip" aria-label="Archive">
+        A<span id="tip" data-phem-tooltip-target="popup" hidden>Moves the message out of the inbox</span>
+      </button>
+      <button id="save" data-controller="phem-tooltip"><img alt="Save"> <span id="save-tip" data-phem-tooltip-target="popup" hidden>save</span></button>
+      <button id="named" data-controller="phem-tooltip" aria-describedby="help"><span id="named-tip" data-phem-tooltip-target="popup" role="note" hidden>More</span>Named</button>`)
+
+    expect($("tip").getAttribute("role")).toBe("tooltip")
+    expect($("archive").getAttribute("aria-describedby")).toBe("tip")
+    // The text of the content (with the alt of an image) is the name: no description.
+    expect($("save-tip").hasAttribute("role")).toBe(false)
+    expect($("save").hasAttribute("aria-describedby")).toBe(false)
+    // The ARIA of the server render stays.
+    expect($("named-tip").getAttribute("role")).toBe("note")
+    expect($("named").getAttribute("aria-describedby")).toBe("help")
+  })
+
+  it("keeps the description of a trigger after the morph", async () => {
+    const markup = `<button id="archive" data-controller="phem-tooltip" aria-label="Archive" data-phem-on-click="c1.archive">
+        A<span id="tip" data-phem-tooltip-target="popup" hidden>Moves the message out of the inbox</span>
+      </button>`
+    await mount(markup)
+    respond(markup)
+    const done = nextDone()
+    $("archive").click()
+    await done
+
+    expect($("tip").getAttribute("role")).toBe("tooltip")
+    expect($("archive").getAttribute("aria-describedby")).toBe("tip")
+  })
+
+  it("lets the pointer cross the gap between the trigger and the popup", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+
+    // The popup is 10 px above the trigger.
+    const box = (left, top, right, bottom) => () => ({ left, top, right, bottom, width: right - left, height: bottom - top, x: left, y: top })
+    $("archive").getBoundingClientRect = box(0, 100, 100, 130)
+    $("tip").getBoundingClientRect = box(0, 50, 100, 90)
+    const pointer = (type, el, x, y, init = {}) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse", clientX: x, clientY: y, ...init }))
+
+    // The pointer leaves the top of the trigger, and moves in the gap: the popup stays.
+    pointer("pointerout", $("archive"), 50, 100, { relatedTarget: $("outside") })
+    pointer("pointermove", $("outside"), 50, 95)
+    vi.advanceTimersByTime(10)
+    expect($("tip").hidden).toBe(false)
+
+    // The pointer on the popup.
+    pointer("pointerover", $("tip"), 50, 89)
+    pointer("pointermove", $("tip"), 50, 80)
+    expect($("tip").hidden).toBe(false)
+
+    // The pointer goes out of the top of the popup: away from the trigger.
+    pointer("pointerout", $("tip"), 50, 49, { relatedTarget: $("outside") })
+    expect($("tip").hidden).toBe(true)
+  })
+
+  it("closes the popup when the pointer leaves the gap", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+
+    const box = (left, top, right, bottom) => () => ({ left, top, right, bottom, width: right - left, height: bottom - top, x: left, y: top })
+    $("archive").getBoundingClientRect = box(0, 100, 100, 130)
+    $("tip").getBoundingClientRect = box(0, 50, 100, 90)
+    const pointer = (type, el, x, y, init = {}) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse", clientX: x, clientY: y, ...init }))
+
+    pointer("pointerout", $("archive"), 50, 100, { relatedTarget: $("outside") })
+    pointer("pointermove", $("outside"), 200, 95)
+    vi.advanceTimersByTime(0)
+
+    expect($("tip").hidden).toBe(true)
   })
 
   it("stays open while the pointer is on the popup", async () => {
@@ -342,6 +419,23 @@ function detached(attributes = "") {
 }
 
 describe("phem-tooltip with several triggers", () => {
+  it("describes only the active trigger of an open popup with a viewport", async () => {
+    await mount(detached().replace('aria-label="Set a timer"', 'aria-label="Timer"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+
+    expect($("t2").hasAttribute("aria-describedby")).toBe(false)
+
+    over($("t2"))
+    vi.advanceTimersByTime(0)
+    expect($("t2").getAttribute("aria-describedby")).toBe("shared-tip")
+    expect($("shared-tip").getAttribute("role")).toBe("tooltip")
+    expect($("t1").hasAttribute("aria-describedby")).toBe(false)
+
+    out($("t2"), $("outside"))
+    expect($("t2").hasAttribute("aria-describedby")).toBe(false)
+    expect($("shared-tip").hasAttribute("role")).toBe(false)
+  })
+
   it("opens next to a detached trigger, with its payload in the viewport", async () => {
     await mount(detached())
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })

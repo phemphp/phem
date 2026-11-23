@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
 import { isTabbable } from "./phem_focus.js"
-import { firstInDocument } from "./phem_validation.js"
+import { customControlOf, firstInDocument, focusControl } from "./phem_validation.js"
 
 // The `phem-form` controller: validates the `phem-field` controllers of a form before its submit.
 //
@@ -21,6 +21,11 @@ import { firstInDocument } from "./phem_validation.js"
 // sends its event (an `onSubmit` handler) or the browser sends the form, focuses the first invalid
 // control and selects its text, and sends `phem-form:invalid` with the invalid elements in
 // `detail.fields`. A submit button with `formnovalidate` submits with no validation.
+//
+// The hidden input of a custom control (the checkbox of a `phem-toggle` switch, the input of a
+// `phem-radio-group`, see linkInput() in phem_validation.js) gives the focus to the custom control.
+// The browser cannot show the message of a hidden input: put the custom control in a `phem-field`
+// to show its error.
 //
 // A server error (a control that the server renders with `aria-invalid="true"`, see
 // docs/forms.md) keeps the form from a submit until the user changes the value of the control.
@@ -76,7 +81,7 @@ export default class PhemFormController extends Controller {
     const first = firstInDocument(invalid.map(({ control }) => control))
     const loose = invalid.find(({ field, control }) => !field && control === first)
     this.#focus(first)
-    if (loose) first.reportValidity()
+    if (loose && !customControlOf(first)) first.reportValidity()
 
     this.dispatch("invalid", { detail: { fields: invalid.map(({ field, control }) => field ?? control) } })
   }
@@ -102,7 +107,7 @@ export default class PhemFormController extends Controller {
     const active = document.activeElement
     if (active && active !== document.body && !this.element.contains(active)) return
 
-    this.#focus(firstInDocument(this.#serverErrors().filter(isTabbable)))
+    this.#focus(firstInDocument(this.#serverErrors().filter((el) => isTabbable(el) || customControlOf(el))))
   }
 
   #isSubmit(event) {
@@ -121,9 +126,11 @@ export default class PhemFormController extends Controller {
     return [...controls, ...loose].filter(Boolean)
   }
 
-  // Focuses a control and selects its text.
+  // Focuses a control (or its custom control) and selects its text.
   #focus(control) {
-    control?.focus()
+    focusControl(control)
+    if (customControlOf(control)) return
+
     if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) control.select()
   }
 

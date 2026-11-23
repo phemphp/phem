@@ -177,7 +177,8 @@ final class PopoverTest extends E2eTestCase
         $tip = $page->locator('#tip');
         $page->locator('#archive')->hover();
         expect($tip)->toBeVisible();
-        // A tooltip is only visual: no role, and no description of the trigger.
+        // The text of the tooltip is the name of the trigger (`aria-label`): no role, and no
+        // description of the trigger, so a screen reader reads the name one time.
         expect($tip)->not()->toHaveAttribute('role', 'tooltip');
         self::assertNull($page->evaluate("document.getElementById('archive').getAttribute('aria-describedby')"));
         expect($tip)->toHaveAttribute('data-side', 'top');
@@ -190,7 +191,7 @@ final class PopoverTest extends E2eTestCase
         expect($tip)->toBeHidden();
     }
 
-    public function testATooltipStaysAfterAnEventAndGetsNoIdAndNoDescription(): void
+    public function testATooltipStaysAfterAnEventAndDescribesItsTriggerWithNoId(): void
     {
         $page = $this->visit('/popover');
         self::assertResponseIsSuccessful();
@@ -199,10 +200,12 @@ final class PopoverTest extends E2eTestCase
         $pin->hover();
         expect($page->locator('.pin-tip'))->toBeVisible();
 
-        // The morph of the event keeps the open popup, with no id and no description.
+        // The text of the tooltip is not the name of the trigger: the tooltip describes it, with an
+        // element reference and no id. The morph of the event keeps the open popup and the link.
         $page->locator('#pin')->dispatchEvent('click');
         expect($page->locator('#likes'))->toHaveText('1');
+        expect($page->locator('.pin-tip'))->toHaveAttribute('role', 'tooltip');
         self::assertSame(0, $page->evaluate("document.querySelectorAll('.pin-tip[id]').length"));
-        self::assertNull($page->evaluate("document.getElementById('pin').getAttribute('aria-describedby')"));
+        self::assertTrue($page->evaluate("document.getElementById('pin').ariaDescribedByElements?.[0] === document.querySelector('.pin-tip')"));
     }
 }

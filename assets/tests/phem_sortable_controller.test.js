@@ -77,8 +77,8 @@ function layout() {
   }
 }
 
-function pointer(type, el, x, y) {
-  el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, isPrimary: true, button: 0, pointerId: 1, clientX: x, clientY: y }))
+function pointer(type, el, x, y, pointerType = "mouse") {
+  el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, isPrimary: true, button: 0, pointerId: 1, clientX: x, clientY: y, pointerType }))
 }
 
 // A drag of `el` from (x1, y1) to (x2, y2).
@@ -122,6 +122,7 @@ describe("phem-sortable", () => {
     expect(document.documentElement.hasAttribute("data-phem-sorting")).toBe(true)
 
     pointer("pointerup", document, 50, 70)
+    expect(order("todo")).toBe("b,a,c")
     expect($("a").hasAttribute("data-dragging")).toBe(false)
     expect($("todo").hasAttribute("data-sorting")).toBe(false)
     expect(document.documentElement.hasAttribute("data-phem-sorting")).toBe(false)
@@ -170,13 +171,86 @@ describe("phem-sortable", () => {
     expect(clicked).toHaveBeenCalledTimes(1)
   })
 
-  it("cancels the drag on Escape: the item goes back", () => {
+  it("keeps the item at its place during the drag, and marks the drop place", () => {
+    const root = document.documentElement.style
+    drag($("a"), [50, 20], [50, 70], { drop: false })
+
+    // The gap between "b" (40 to 80) and "c" (80 to 120).
+    expect(order("todo")).toBe("a,b,c")
+    expect($("todo").hasAttribute("data-drop")).toBe(true)
+    expect(root.getPropertyValue("--sortable-drop-x")).toBe("50px")
+    expect(root.getPropertyValue("--sortable-drop-y")).toBe("80px")
+    expect(root.getPropertyValue("--sortable-drop-width")).toBe("100px")
+    expect(root.getPropertyValue("--sortable-drop-height")).toBe("0px")
+
+    // After the last item of the other list.
+    pointer("pointermove", document, 250, 30)
+    expect($("todo").hasAttribute("data-drop")).toBe(false)
+    expect($("done").hasAttribute("data-drop")).toBe(true)
+    expect(root.getPropertyValue("--sortable-drop-x")).toBe("250px")
+    expect(root.getPropertyValue("--sortable-drop-y")).toBe("40px")
+
+    pointer("pointerup", document, 250, 30)
+    expect(order("done")).toBe("d,a")
+    expect($("done").hasAttribute("data-drop")).toBe(false)
+    expect(root.getPropertyValue("--sortable-drop-y")).toBe("")
+  })
+
+  it("marks the start of an empty list", () => {
+    $("d").remove()
+    drag($("a"), [50, 20], [250, 30], { drop: false })
+
+    expect($("done").hasAttribute("data-drop")).toBe(true)
+    expect(document.documentElement.style.getPropertyValue("--sortable-drop-y")).toBe("0px")
+
+    pointer("pointerup", document, 250, 30)
+    expect(order("done")).toBe("a")
+  })
+
+  it("has no marker at the place of the item", () => {
+    drag($("b"), [50, 60], [50, 50], { drop: false })
+
+    expect($("todo").hasAttribute("data-drop")).toBe(false)
+    expect(document.documentElement.style.getPropertyValue("--sortable-drop-y")).toBe("")
+    pointer("pointerup", document, 50, 50)
+  })
+
+  it("moves the item with moveBefore() when the browser has it", () => {
+    // A move that keeps the focus, as the browser does.
+    const moveBefore = vi.fn(function (node, child) {
+      const focused = document.activeElement
+      this.insertBefore(node, child)
+      focused.focus()
+    })
+    Element.prototype.moveBefore = moveBefore
+
+    try {
+      drag($("a"), [50, 20], [50, 100], { drop: false })
+      expect(moveBefore).not.toHaveBeenCalled()
+
+      pointer("pointerup", document, 50, 100)
+      expect(moveBefore).toHaveBeenCalledTimes(1)
+      expect(order("todo")).toBe("b,c,a")
+
+      $("a").focus()
+      press(" ")
+      press("ArrowUp")
+      expect(moveBefore).toHaveBeenCalledTimes(2)
+      expect(order("todo")).toBe("b,a,c")
+      press("Escape")
+    } finally {
+      delete Element.prototype.moveBefore
+    }
+  })
+
+  it("cancels the drag on Escape: the item stays, and the marker goes", () => {
     drag($("a"), [50, 20], [250, 5], { drop: false })
-    expect(order("done")).toBe("a,d")
+    expect($("done").hasAttribute("data-drop")).toBe(true)
 
     press("Escape", document)
     expect(order("todo")).toBe("a,b,c")
     expect(order("done")).toBe("d")
+    expect($("done").hasAttribute("data-drop")).toBe(false)
 
     pointer("pointerup", document, 250, 5)
     expect(calls).toEqual([])
@@ -189,6 +263,77 @@ describe("phem-sortable", () => {
 
     drag($("grip"), [50, 20], [50, 100])
     expect(order("todo")).toBe("b,c,a")
+  })
+
+  describe("a touch on an item with no handle", () => {
+    beforeEach(() => vi.useFakeTimers())
+
+    afterEach(() => vi.useRealTimers())
+
+    it("starts a drag after a hold, and stops the scroll", () => {
+      pointer("pointerdown", $("a"), 50, 20, "touch")
+      expect($("a").hasAttribute("data-dragging")).toBe(false)
+
+      vi.advanceTimersByTime(250)
+      expect($("a").hasAttribute("data-dragging")).toBe(true)
+
+      const scroll = new Event("touchmove", { bubbles: true, cancelable: true })
+      document.dispatchEvent(scroll)
+      expect(scroll.defaultPrevented).toBe(true)
+
+      pointer("pointermove", document, 50, 100, "touch")
+      pointer("pointerup", document, 50, 100, "touch")
+      expect(order("todo")).toBe("b,c,a")
+    })
+
+    it("finds the drop place at the point of the press for a scroll before the first move", () => {
+      pointer("pointerdown", $("a"), 50, 20, "touch")
+      vi.advanceTimersByTime(250)
+      const at = vi.spyOn(document, "elementFromPoint")
+
+      document.dispatchEvent(new Event("scroll"))
+
+      expect(at).toHaveBeenCalledWith(50, 20)
+      pointer("pointerup", document, 50, 20, "touch")
+    })
+
+    it("scrolls the page on a move before the end of the hold", () => {
+      pointer("pointerdown", $("a"), 50, 20, "touch")
+      pointer("pointermove", document, 50, 60, "touch")
+      vi.advanceTimersByTime(250)
+
+      const scroll = new Event("touchmove", { bubbles: true, cancelable: true })
+      document.dispatchEvent(scroll)
+      expect(scroll.defaultPrevented).toBe(false)
+      expect($("a").hasAttribute("data-dragging")).toBe(false)
+
+      pointer("pointermove", document, 50, 100, "touch")
+      pointer("pointerup", document, 50, 100, "touch")
+      expect(order("todo")).toBe("a,b,c")
+      expect(calls).toEqual([])
+    })
+
+    it("does not wait on a handle", () => {
+      $("a").innerHTML = `<span id="grip" data-phem-sortable-target="handle">⠿</span> a`
+      pointer("pointerdown", $("grip"), 50, 20, "touch")
+      pointer("pointermove", document, 50, 30, "touch")
+
+      expect($("a").hasAttribute("data-dragging")).toBe(true)
+      pointer("pointerup", document, 50, 30, "touch")
+    })
+  })
+
+  it("presses the handle during a drag with the keyboard", () => {
+    $("a").innerHTML = `<button id="grip" data-phem-sortable-target="handle" aria-label="Move a">⠿</button> a`
+    $("grip").focus()
+    press(" ")
+    expect($("grip").getAttribute("aria-pressed")).toBe("true")
+    expect($("a").hasAttribute("aria-pressed")).toBe(false)
+
+    press("ArrowDown")
+    press(" ")
+    expect($("grip").hasAttribute("aria-pressed")).toBe(false)
+    expect(order("todo")).toBe("b,a,c")
   })
 
   it("moves an item with the keyboard, in its list and to the next list", () => {
@@ -253,19 +398,30 @@ describe("phem-sortable", () => {
 
     const listen = (event) => said.push(event.detail)
 
+    // A step, and the delay of its live text.
+    const step = (key) => {
+      press(key)
+      vi.advanceTimersByTime(500)
+    }
+
     beforeEach(() => {
       said = []
       window.addEventListener("phem:announce", listen)
+      vi.useFakeTimers()
     })
 
-    afterEach(() => window.removeEventListener("phem:announce", listen))
+    afterEach(() => {
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
+      window.removeEventListener("phem:announce", listen)
+    })
 
     it("tells each step of a move", () => {
       $("a").focus()
-      press(" ")
-      press("ArrowDown")
-      press("ArrowRight")
-      press("Enter")
+      step(" ")
+      step("ArrowDown")
+      step("ArrowRight")
+      step("Enter")
 
       expect(said).toEqual([
         "Picked up a. Position 1 of 3 in todo.",
@@ -277,9 +433,9 @@ describe("phem-sortable", () => {
 
     it("tells a cancel, and no move at the end of the list", () => {
       $("c").focus()
-      press("Enter")
-      press("ArrowDown")
-      press("Escape")
+      step("Enter")
+      step("ArrowDown")
+      step("Escape")
 
       expect(said).toEqual(["Picked up c. Position 3 of 3 in todo.", "Cancelled. c is back at position 3 of 3 in todo."])
     })
@@ -289,7 +445,7 @@ describe("phem-sortable", () => {
       $("todo").setAttribute("data-phem-sortable-picked-up-message-value", "{item} ({position}/{count}, {list})")
       $("b").setAttribute("aria-label", "Card B")
       $("b").focus()
-      press(" ")
+      step(" ")
 
       expect(said).toEqual(["Card B (2/3, To do)"])
       press("Escape")
@@ -298,16 +454,36 @@ describe("phem-sortable", () => {
     it("has no list in the text of a list with no name", () => {
       $("todo").removeAttribute("data-phem-sortable-list-value")
       $("a").focus()
-      press(" ")
+      step(" ")
 
       expect(said).toEqual(["Picked up a. Position 1 of 3."])
       press("Escape")
     })
 
-    it("tells nothing for a drag with the pointer", () => {
-      drag($("a"), [50, 20], [50, 100])
-
+    it("waits before it tells a step, and tells only the last step of the delay", () => {
+      $("a").focus()
+      press(" ")
+      press("ArrowDown")
       expect(said).toEqual([])
+
+      vi.advanceTimersByTime(500)
+      expect(said).toEqual(["a: position 2 of 3 in todo."])
+      step("Escape")
+    })
+
+    it("tells the drop and the cancel of a drag with the pointer, not a drop at the same place", () => {
+      drag($("a"), [50, 20], [50, 10])
+      vi.advanceTimersByTime(500)
+      expect(said).toEqual([])
+
+      drag($("a"), [50, 20], [50, 100])
+      vi.advanceTimersByTime(500)
+      expect(said).toEqual(["Dropped a at position 3 of 3 in todo."])
+
+      drag($("b"), [50, 20], [250, 5], { drop: false })
+      press("Escape", document)
+      vi.advanceTimersByTime(500)
+      expect(said.at(-1)).toBe("Cancelled. b is back at position 1 of 3 in todo.")
     })
   })
 })

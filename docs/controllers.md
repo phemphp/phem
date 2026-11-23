@@ -418,7 +418,7 @@ A preview card can have several links, as a popover with [several triggers](#ope
 </button>
 ```
 
-The trigger is the controller element, or a `trigger` part in it. The pointer on the trigger opens the tooltip after the `delay` value (600 ms), and the pointer out closes it after the `close-delay` value (0 ms). The pointer can go on the tooltip, unless `data-phem-tooltip-hoverable-value="false"`. The focus of the keyboard (`:focus-visible`) opens it at once. Escape, the blur and a press on the trigger close it: the tooltip closes at the press of the pointer (`pointerdown`), before the click, and at the click of Enter or Space, as in Base UI. Set `data-phem-tooltip-close-on-click-value="false"` to keep it open on a press.
+The trigger is the controller element, or a `trigger` part in it. The pointer on the trigger opens the tooltip after the `delay` value (600 ms), and the pointer out closes it after the `close-delay` value (0 ms). The pointer can go on the tooltip, unless `data-phem-tooltip-hoverable-value="false"`: it can cross the gap between the trigger and the tooltip (the `side-offset` value), as for a popover with `open-on-hover`. A pointer that goes away from the tooltip closes it. The focus of the keyboard (`:focus-visible`) opens it at once. Escape, the blur and a press on the trigger close it: the tooltip closes at the press of the pointer (`pointerdown`), before the click, and at the click of Enter or Space, as in Base UI. Set `data-phem-tooltip-close-on-click-value="false"` to keep it open on a press.
 
 A tooltip that opens less than 400 ms after another tooltip closed opens with no delay, and gets `data-instant="delay"`, so a `[data-instant]` rule can stop its animation, as in a toolbar. The tooltip that closed also gets `data-instant="delay"` while its close animation runs, so with the `[data-instant]` rule the page shows one tooltip at a time. A focus that moves from one trigger to the next with Tab also ends the close of the other tooltip at once:
 
@@ -434,13 +434,23 @@ While the tooltip is open, the browser shows:
 </button>
 ```
 
-A tooltip is only visual, as the Tooltip of Base UI: the popup gets no `role="tooltip"`, and the trigger gets no `aria-describedby`. The label of the trigger is its name for a screen reader. For a text that a screen reader must also read as a description, write the link in your markup. The controller keeps the attributes of the server render:
+When the text of the tooltip is the accessible name of the trigger, as above, the tooltip gets no ARIA: a screen reader reads the name one time. The name is the text of the `aria-labelledby` elements, else `aria-label`, else the text of the trigger (with the `alt` of an image), else `title`. A tooltip with another text describes the trigger: the popup gets `role="tooltip"`, and the trigger gets `aria-describedby`. The link stays while the tooltip is closed, so a screen reader reads the description before the user hovers or focuses the trigger:
+
+```html
+<button data-controller="phem-tooltip" aria-label="Archive">
+    <span id="archive-tip" data-phem-tooltip-target="popup" hidden>Moves the message out of the inbox</span>
+</button>
+```
+
+The browser shows:
 
 ```html
 <button data-controller="phem-tooltip" aria-label="Archive" aria-describedby="archive-tip">
-    <span id="archive-tip" role="tooltip" data-phem-tooltip-target="popup" hidden>Moves the message out of the inbox</span>
+    <span id="archive-tip" data-phem-tooltip-target="popup" hidden role="tooltip">Moves the message out of the inbox</span>
 </button>
 ```
+
+A popup with no `id` gets the link with an element reference (`ariaDescribedByElements`). A `role` on the popup and an `aria-describedby` on the trigger that your markup gives stay. With a `viewport` part, the text changes with the trigger, so only the trigger of the open tooltip gets `aria-describedby`.
 
 A tooltip helps only the users of a pointer and of a keyboard. A touch shows no tooltip. Give the trigger its own label (here `aria-label`) for a touch screen and for a screen reader. Do not put important information only in a tooltip: use a popover with `open-on-hover`.
 
@@ -972,7 +982,7 @@ A right click on the trigger opens the menu with its top left corner at the poin
 
 The popup gets `data-instant="click"` at the open, as in Base UI: a `[data-instant]` rule opens it with no animation. Near an edge of the viewport, the popup keeps its side, moves on the two axes to stay in the viewport, and flips its align. A submenu of the context menu goes next to its trigger, as in `phem-menu`.
 
-The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, no item gets the focus until the pointer moves. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. Tab does nothing: the menu stays open. On macOS, a press of the right button, a move to an item and a release of the button click the item, when the release is more than 1 px from the point of the open, as in Base UI. The other systems send `contextmenu` after the release, so the release does not click an item there. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
+The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, no item gets the focus until the pointer moves. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. Tab and Shift+Tab close the menu and its submenus. The focus goes back to the element that had it before the menu opened, and the Tab moves on from that element to the next (or the previous) element. When no element had the focus, the Tab moves on from the place of the popup. The menu does not trap the focus. On macOS, a press of the right button, a move to an item and a release of the button click the item, when the release is more than 1 px from the point of the open, as in Base UI. The other systems send `contextmenu` after the release, so the release does not click an item there. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
 
 ## Suggest values while the user types
 
@@ -1697,24 +1707,43 @@ final class Board
 }
 ```
 
-A press on an item and a move of 5 px start a drag. The item moves in the list while the pointer moves, and into another list of the same group. With `handle` parts in an item, only a press on a handle starts a drag. When the user drops card `b` at the top of the `done` column, the browser dispatches a `phem:call` event on that list, and the handler gets this detail:
+A press on an item and a move of 5 px start a drag. With `handle` parts in an item, only a press on a handle starts a drag. The item stays at its place while the pointer moves. A drop marker (a line) shows the drop place, in the list or in another list of the same group. On the release, the item moves one time to the drop place. When the user drops card `b` at the top of the `done` column, the browser dispatches a `phem:call` event on that list, and the handler gets this detail:
 
 ```json
 {"id": "b", "index": 0, "list": "done"}
 ```
 
-`id` is the `data-phem-sortable-id` of the item, `index` is its new position in the list (from 0), and `list` is the `list` value of the list. There is no event when the item is at its first place. The click after a drop does not run the handler of the item. Escape cancels the drag, and the item goes back. During a press, the browser starts no native drag of an image or of a text in the item.
+`id` is the `data-phem-sortable-id` of the item, `index` is its new position in the list (from 0), and `list` is the `list` value of the list. There is no marker and no event when the drop place is the place of the item. The click after a drop does not run the handler of the item. Escape cancels the drag: the marker goes, and the item stays at its place. During a press, the browser starts no native drag of an image or of a text in the item.
 
-With the keyboard, Space or Enter on an item (or on its handle) takes it. The arrow keys of the `orientation` value (`vertical` by default) move it in its list, and the other arrow keys move it to the list before or after in the group. Space or Enter drops it, and Escape or the blur cancels it. The controller gives `tabindex="0"` to an item (or to its handle) that cannot get the focus. A `tabindex` of your markup stays, also after the morph: give `tabindex="-1"` to an item that the keyboard must skip.
+A touch on a handle starts a drag at once, and does not scroll the page. A touch on an item with no handle scrolls the page, as on a list with no drag. To drag that item, the user holds the touch for 250 ms, then moves it. Give a handle to the items when the user must scroll and drag a list often on a phone.
 
-The new order shows at once. The morph after the event shows the order of the server render, so an item that the handler did not move goes back. A morph of a list during a drag cancels the drag. During a drag, the item gets `data-dragging`, and the lists of the group get `data-sorting`:
+With the keyboard, Space or Enter on an item (or on its handle) takes it. A handle gets `aria-pressed="true"` while the keyboard holds its item. The arrow keys of the `orientation` value (`vertical` by default) move it in its list, and the other arrow keys move it to the list before or after in the group. Space or Enter drops it, and Escape or the blur cancels it: the item goes back. The controller gives `tabindex="0"` to an item (or to its handle) that cannot get the focus. A `tabindex` of your markup stays, also after the morph: give `tabindex="-1"` to an item that the keyboard must skip.
+
+The moves use `moveBefore()` when the browser has it, so the item keeps its state (for example the focus and the values of its fields). The other browsers use `insertBefore()`, and the controller gives the focus back to the item. The new order shows at once. The morph after the event shows the order of the server render, so an item that the handler did not move goes back. A morph of a list during a drag cancels the drag.
+
+During a drag, the item gets `data-dragging`, and the lists of the group get `data-sorting`. The list of the drop place gets `data-drop`. When the user drags card `a` between cards `b` and `c`, the browser shows:
+
+```html
+<html data-phem-sorting="" style="--sortable-drop-x: 60px; --sortable-drop-y: 80px; --sortable-drop-width: 120px; --sortable-drop-height: 0px;">
+    …
+    <ul data-controller="phem-sortable" data-sorting="" data-drop="">
+        <li data-phem-sortable-target="item" data-dragging="">a</li>
+        <li data-phem-sortable-target="item">b</li>
+        <li data-phem-sortable-target="item">c</li>
+    </ul>
+```
+
+`phem.css` draws the marker with the `::after` of the `data-drop` list: a line with `position: fixed`. The `--sortable-drop-*` properties on the root give the center of the line in the viewport, and its length across the list (the other size is `0px`). Change the color and the thickness of the line with custom properties, and style the dragged item and the lists:
 
 ```css
+:root { --sortable-drop-color: #16a34a; --sortable-drop-thickness: 3px; }
 [data-dragging] { opacity: 0.6; }
 [data-sorting] { outline: 2px dashed #94a3b8; }
 ```
 
-`phem.css` stops the text selection during a drag, and sets `touch-action: none` on the handles (or on the items with no handle), so a touch drag does not scroll the page.
+The rule of `phem.css` is in `:where()`, so a rule of your CSS on `[data-drop]::after` replaces it. In the forced colors mode, the line has the `Highlight` color. A `position: fixed` element uses an ancestor with a `transform`, a `filter` or a `contain` as its box: do not put these properties on a list or on its ancestors, or draw your own marker.
+
+`phem.css` stops the text selection during a drag, and sets `touch-action: none` on the handles, so a touch drag on a handle does not scroll the page.
 
 During a drag with the keyboard, a screen reader reads each step in the live region of the page. When the user takes card `b`, moves it to the `done` list and drops it, it reads:
 
@@ -1723,6 +1752,8 @@ Picked up b. Position 2 of 3 in todo.
 b: position 1 of 2 in done.
 Dropped b at position 1 of 2 in done.
 ```
+
+The text of a step goes to the live region 500 ms after the step, so the screen reader reads the focus of the moved item first. A new step in this time replaces the text. For a drag with the pointer, the screen reader reads the drop (only when the place changed) and the cancel.
 
 The name of the item is its `aria-label`, the `aria-label` of its handle, or its text. The name of the list is its `aria-label`, or its `list` value, so give a list a label that a user knows, such as `aria-label="To do"`. A list with no name has no ` in {list}` part in the texts: "Picked up b. Position 2 of 3." Change the texts with the values of the list where the drag starts: `picked-up-message`, `moved-message`, `dropped-message` and `cancelled-message`. In a text, `{item}`, `{position}`, `{count}` and `{list}` get their values:
 
@@ -1747,11 +1778,11 @@ The name of the item is its `aria-label`, the `aria-label` of its handle, or its
 </div>
 ```
 
-A click on a trigger opens the dialog, and a click on a `close` part closes it. The browser gives the focus to the first element of the dialog that can have it. After an open with a touch, the focus goes to the popup, which gets `tabindex="-1"`, so the keyboard of the device does not show for a first field. A drawer always gives the focus to its popup, as in Base UI, so no button of the drawer shows a focus ring. Put `autofocus` on an element of the drawer to give the focus to it. In a modal dialog (`modal` is `true` or `trap-focus`), Tab goes from the last element of the dialog to the first one, and Shift+Tab goes back: the focus does not go out of the dialog to the page or to the browser. This is also true from the checked radio of a last radio group, and from an element with `tabindex="-1"`, such as a menu item. In a dialog with no element for Tab, Tab does nothing. While a modal dialog is open, the page does not scroll. The width of the scroll bar stays, so the page does not move. Add `phem:shortcut="mod+k"` to a trigger to open the dialog with a key (see [Add keyboard shortcuts](events.md#add-keyboard-shortcuts)). The `open` and `close` actions do the same from another element. The dialog gets `aria-labelledby` (the `title` part) and `aria-describedby` (a `description` part), and `data-open` or `data-closed`. A close waits for the animations of `[data-ending-style]`, then calls `close()`. The trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`, and `aria-controls` while the dialog is open. An `aria-controls` of the server render stays.
+A click on a trigger opens the dialog, and a click on a `close` part closes it. The browser gives the focus to the first element of the dialog that can have it. After an open with a touch, the focus goes to the popup, which gets `tabindex="-1"`, so the keyboard of the device does not show for a first field. A drawer always gives the focus to its popup, as in Base UI, so no button of the drawer shows a focus ring. Put `autofocus` on an element of the drawer to give the focus to it. In a modal dialog (`modal` is `true` or `trap-focus`), Tab goes from the last element of the dialog to the first one, and Shift+Tab goes back: the focus does not go out of the dialog to the page or to the browser. This is also true from the checked radio of a last radio group, and from an element with `tabindex="-1"`, such as a menu item. In a dialog with no element for Tab, Tab does nothing. While a modal dialog is open, the page does not scroll: `phem.css` gives the dialog and its `::backdrop` `overscroll-behavior: contain`, so a scroll on them does not go to the page. The page keeps its scroll bar. Safari does not apply this rule to a dialog with no overflow, so in a browser with no `closedby` (Safari), the controller also sets `overflow: hidden` on `<html>`, with the width of the scroll bar as a padding, so the page does not move. Chrome 134 to 143 and Firefox 141 to 149 have `closedby` but do not apply the rule to a dialog with no overflow: in these old versions, the page can scroll under a modal dialog. Add `phem:shortcut="mod+k"` to a trigger to open the dialog with a key (see [Add keyboard shortcuts](events.md#add-keyboard-shortcuts)). The `open` and `close` actions do the same from another element. The dialog gets `aria-labelledby` (the `title` part) and `aria-describedby` (a `description` part), and `data-open` or `data-closed`. A close waits for the animations of `[data-ending-style]`, then calls `close()`. The trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`, and `aria-controls` while the dialog is open. An `aria-controls` of the server render stays.
 
-Escape and a tap on the backdrop close the dialog. Set `data-phem-dialog-dismiss-value="false"` to keep it open on Escape and on a tap on the backdrop. For an alert dialog, set `data-phem-dialog-disable-pointer-dismissal-value="true"`: only Escape and the `close` parts close it. The server can open it with `data-phem-dialog-open-value={{ editing }}`. A dialog that closes in another way, such as a `<form method="dialog">`, also sets the state.
+Escape and a tap on the backdrop close the dialog. Set `data-phem-dialog-dismiss-value="false"` to keep it open on Escape and on a tap on the backdrop. For an alert dialog, set `data-phem-dialog-disable-pointer-dismissal-value="true"`: only Escape and the `close` parts close it. A modal dialog gets the `closedby` attribute from the `dismiss` value: `closerequest`, or `none` with `dismiss` false. With `none`, the browser ignores Escape and the back gesture of Android. A dialog that is not a modal gets `none`. In a browser with no `closedby` (Safari), the controller cancels the `cancel` event of Escape. A browser does not let a page cancel a second Escape with no user action between them (a click or a key): the dialog closes at once, with no close animation, and the state is `false`. The server can open it with `data-phem-dialog-open-value={{ editing }}`. A dialog that closes in another way, such as a `<form method="dialog">`, also sets the state.
 
-A tap on the backdrop is a press and a click on the dialog itself, at a point outside the box of the dialog. The press does not move the focus, so the trigger gets the focus back after the close, with its focus ring after an open with the keyboard. A click on the padding of the dialog is inside the box, so the dialog stays open. A text selection that starts in the dialog and ends on the backdrop also keeps the dialog open. Phem does not use `closedby="any"`, because Safari does not support it.
+A tap on the backdrop is a press and a click on the dialog itself, at a point outside the box of the dialog. The press does not move the focus, so the trigger gets the focus back after the close, with its focus ring after an open with the keyboard. A click on the padding of the dialog is inside the box, so the dialog stays open. A text selection that starts in the dialog and ends on the backdrop also keeps the dialog open. The controller listens for the tap itself, in all the browsers: Safari does not support `closedby="any"`, and with `any` the browser and the controller would both close the dialog (a `confirmClose` dialog would open two times). So a modal never gets `closedby="any"`.
 
 A dialog in an open dialog gets `data-nested`. Each dialog around it gets `data-nested-dialog-open` and the `--nested-dialogs` CSS variable (the number of open dialogs in it, at all levels), for a stack of dialogs. With three open dialogs, the first one gets `2` and the second one gets `1`. The count changes when the close of a dialog starts, so the dialogs behind change with its close animation. The dialog in it gets its own `--nested-dialogs` (`0` when no dialog is open in it), so it does not inherit the value of the dialog around it:
 
@@ -1969,7 +2000,18 @@ When a drawer opens, the browser gives the first focus to an element of the draw
 </div>
 ```
 
-The value of a tab and of a panel is its `data-value` attribute, its key (`key={{ ... }}`), or its position. Each tab shows the panel with the same value. The `active` value is the state: the value of the selected tab. Set it to select a tab on load, and a handler can set it in a new render. With no `active` value, or a value that no tab has, the first tab that is not disabled is selected. A click selects a tab, and the `active` value gets its value. The arrow keys move the focus between the tabs, and Enter or Space selects the tab with the focus, also on a tab that is not a `<button>`. A tab can be a link (`<a href>`): a click, Enter and Space select it and open its link. With `data-phem-tabs-activate-on-focus-value="true"`, the focus selects the tab at once. Home and End go to the first and to the last tab, and the arrow keys skip a disabled tab. From the last tab, the arrow key goes to the first tab, unless `data-phem-tabs-loop-focus-value="false"`. With `data-phem-tabs-orientation-value="vertical"`, the Up and Down keys move between the tabs in place of Left and Right. An arrow key with Shift does not move the focus. One tab is in the Tab order: the tab with the last focus, or the selected tab. It stays after the morph of an event.
+The value of a tab and of a panel is its `data-value` attribute, its key (`key={{ ... }}`), or its position. Each tab shows the panel with the same value. The `active` value is the state: the value of the selected tab. Set it to select a tab on load, and a handler can set it in a new render. With no `active` value, or a value that no tab has, the first tab that is not disabled is selected. A click selects a tab, and the `active` value gets its value. The arrow keys move the focus between the tabs, and Enter or Space selects the tab with the focus, also on a tab that is not a `<button>`. With `data-phem-tabs-activate-on-focus-value="true"`, the focus selects the tab at once. Home and End go to the first and to the last tab, and the arrow keys skip a disabled tab. From the last tab, the arrow key goes to the first tab, unless `data-phem-tabs-loop-focus-value="false"`. With `data-phem-tabs-orientation-value="vertical"`, the Up and Down keys move between the tabs in place of Left and Right. An arrow key with Shift does not move the focus. One tab is in the Tab order: the tab with the last focus, or the selected tab. It stays after the morph of an event.
+
+A tab is not a link. Tabs show panels on the same page. For a bar of links to other pages, do not use `phem-tabs` or the tab roles: use a `<nav>` with links, and give the link of the current page `aria-current="page"`. This needs no controller. For a bar of links with menus, use [`phem-navigation-menu`](#build-a-navigation-menu):
+
+```html
+<nav aria-label="Settings">
+    <a href="/settings/profile" aria-current="page">Profile</a>
+    <a href="/settings/security">Security</a>
+</nav>
+```
+
+Style the current link with `[aria-current="page"]`.
 
 The controller sets the ARIA roles and attributes. A tab and its panel need no `id`: the controller links them with the element references of ARIA (`ariaControlsElements` and `ariaLabelledByElements`), so a screen reader names the panel with its tab. It gives them no `id`, because the morph must match each element to the server render. When the tab and the panel have an `id`, they get `aria-controls` and `aria-labelledby`. After a click on **Security**, the browser shows:
 
@@ -1983,6 +2025,14 @@ The controller sets the ARIA roles and attributes. A tab and its panel need no `
     <div data-value="profile" role="tabpanel" data-index="0" data-hidden hidden tabindex="0" ...>...</div>
     <div data-value="security" role="tabpanel" data-index="1" tabindex="0" ...>...</div>
 </div>
+```
+
+A panel with no element that gets the focus (a link, a button, a field) gets `tabindex="0"`, so Tab goes from the tab list to the text of the panel. A panel with such an element gets no `tabindex`: Tab goes to the first element in it. The controller checks the panels again after the morph of an event. A `tabindex` of the markup stays.
+
+With `data-phem-tabs-hidden-until-found-value="true"`, a hidden panel has `hidden="until-found"`: the search of the browser (Ctrl+F) finds its text and selects its tab (the `beforematch` event). The found panel shows with no animation and gets `data-instant`, because the browser scrolls to the text. To do this for one panel only, add `data-phem-tabs-hidden-until-found` to the panel. A browser with no support for `hidden="until-found"` hides the panel as `hidden` does, and the search does not find its text:
+
+```html
+<div data-value="security" role="tabpanel" data-index="1" data-hidden hidden="until-found" ...>...</div>
 ```
 
 All the parts get `data-orientation` and `data-activation-direction` (the direction of the last change: `left`, `right`, `up`, `down` or `none`). The selected tab gets `data-active`, and a hidden panel gets `data-hidden`. A panel also gets `data-index`, and the animations of the [conventions](#animations).
@@ -2050,7 +2100,7 @@ The `checked` value is the state (a pressed toggle button is checked). The serve
 | `indeterminate` | `false` | A checkbox in a mixed state: `aria-checked="mixed"`, `data-indeterminate`. A click checks it |
 | `disabled` | `false` | Stops the changes by the user. Gives `data-disabled` and `aria-disabled="true"`. The `disabled` attribute of a `<button>` also gives `data-disabled` |
 | `read-only` | `false` | Stops the changes by the user. Gives `data-readonly` and `aria-readonly="true"` |
-| `required` | `false` | Gives `data-required`, `aria-required="true"`, and `required` on the input |
+| `required` | `false` | Gives `data-required`, `aria-required="true"`, and `required` on the input. A required checkbox input that is not checked stops the submit of its form |
 | `name`, `form` | | The `name` and the `form` of the input |
 | `value` | `on` | The value that the input sends when it is checked |
 | `unchecked-value` | | The value that an `<input type="hidden">` sends when it is not checked |
@@ -2070,6 +2120,8 @@ The `input` target (or the first checkbox in the element) is the field of a form
 - A checkbox input gets the state in `checked`. Hide it with `hidden` or a visually hidden class.
 - An `<input type="hidden">` gets the `value` value when it is checked, and the `unchecked-value` value when it is not checked. With no `unchecked-value`, it is disabled when it is not checked, so a form does not send it, as a native checkbox.
 - The input gets `tabindex="-1"` and `aria-hidden="true"` when it has none.
+- A checkbox input with `required` that is not checked is invalid, so it stops the submit of its form. The browser does not validate an `<input type="hidden">`: use a checkbox input for a required switch or checkbox.
+- `phem-form` and `phem-field` give the focus to the element, not to the hidden input. See [Validate a switch, a checkbox or a radio group](#validate-a-switch-a-checkbox-or-a-radio-group).
 - When the user changes the state, the input dispatches `input` and `change`, so `phem:bind`, `phem:live` and the other controllers see the change.
 - An input with `phem:bind` belongs to phem: after the morph of an event, its value (the `checked` of a checkbox, the `value` of a hidden input) gives the state.
 
@@ -2235,7 +2287,7 @@ The value of a radio is its `data-value` attribute, its key (`key={{ ... }}`), o
 | `value` | none | The value of the checked radio. |
 | `disabled` | `false` | Disables all the radios. |
 | `readOnly` | `false` | The arrow keys move the focus, but the user cannot check a radio. |
-| `required` | `false` | Gives the group `aria-required`. |
+| `required` | `false` | Gives the group `aria-required`, and `required` to the inputs. |
 
 | Key | Action |
 |---|---|
@@ -2246,6 +2298,15 @@ The value of a radio is its `data-value` attribute, its key (`key={{ ... }}`), o
 A click on a radio, or on a `<label>` around it, checks it. The label also names the radio: the controller links them with `ariaLabelledByElements`, and gives them no `id`. The arrow keys skip a disabled radio: a radio with `disabled` or `aria-disabled="true"`. Only one radio is in the tab order: the checked radio, else the first radio that is not disabled.
 
 The `input` part keeps the value for a form. A hidden input gets the value of the checked radio. A native radio input (`type="radio"`) is checked when its `value` is the value of the checked radio. When the user checks a radio, the input that changes sends `input` and `change`, so `phem:bind` and `phem:live` see the change. The controller also dispatches `phem-radio-group:change`, with the `value` in its detail.
+
+The browser does not validate an `<input type="hidden">`. For a required group, use an input that the browser validates and that the user does not see, such as `<input hidden>`. With no checked radio, its value is empty, so it stops the submit of its form. `phem-form` and `phem-field` give the focus to the radio of the tab stop, not to the input:
+
+```html
+<div data-controller="phem-radio-group" data-phem-radio-group-required-value="true" aria-label="Apple">
+    ...
+    <input name="apple" hidden data-phem-radio-group-target="input" />
+</div>
+```
 
 The group gets `role="radiogroup"`, and `aria-disabled`, `aria-readonly` and `aria-required` for the values. A radio gets `role="radio"`, `aria-checked` and `tabindex`. The group, the radios and the indicators get `data-disabled`, `data-readonly` and `data-required`. A radio and its indicator get `data-checked` or `data-unchecked`. The indicator shows only when its radio is checked, with the animations of the [conventions](#animations).
 
@@ -2365,11 +2426,13 @@ The values of `phem-field`:
 
 | Value | Default | Description |
 |---|---|---|
-| `data-phem-field-validation-mode-value` | the mode of the form, else `onSubmit` | `onSubmit`: the field validates on the submit of the form, then on each change. `onBlur`: the field validates when the control loses the focus. `onChange`: the field validates on each change |
+| `data-phem-field-validation-mode-value` | the mode of the form, else `onSubmit` | `onSubmit`: the field validates on the submit of the form, then on each change. `onBlur`: the field validates when the control loses the focus after a change by the user. `onChange`: the field validates on each change |
 | `data-phem-field-validation-debounce-time-value` | `0` | The time in milliseconds after the last change before the validation, in the `onChange` mode |
 | `data-phem-field-disabled-value` | `false` | Disables the controls |
 
 In all the modes, an invalid field validates again on each change, so its error goes when the user corrects the value. Enter in an `<input>` control also validates the field in all the modes. In a `phem-form`, Enter submits the form, and the submit validates the field.
+
+In the `onBlur` mode, a blur with no change does not validate: the user can go through an empty required field with Tab, and no error shows. An invalid field, and a field after a submit of its form, also validate on a blur with no change.
 
 The values of `phem-form`:
 
@@ -2391,9 +2454,11 @@ An `error` part with `data-match` shows for one key of the `ValidityState` of th
 
 Give the errors `hidden` in the markup, so they do not show before the controller starts. An error shows and hides with the animations of the [conventions](#animations) (`data-open`, `data-closed`, `data-starting-style`, `data-ending-style`).
 
+An error that shows on a blur, on a change or on Enter goes to the polite live region of the page (the region of [`$reply->announce()`](events.md#announce-a-change-to-screen-readers)), 500 milliseconds later. Thus a screen reader first reads the control that gets the focus, and then the error. An error that hides before this time is not announced, and an error that stays shown is not announced again. A submit announces nothing: it focuses the first invalid control, and the screen reader reads its error from `aria-describedby`.
+
 ### Submit the form
 
-The form gets `novalidate`: the fields show their errors in place of the messages of the browser. On a submit, each field validates. When a field is invalid, `phem-form` stops the submit before the `onSubmit` handler sends its event, and before the browser sends the form. It focuses the first invalid control, selects its text, and sends `phem-form:invalid`, with the invalid fields in `detail.fields`. A control of the form that is not in a field shows the message of the browser (`reportValidity()`). A submit button with `formnovalidate` submits with no validation.
+The form gets `novalidate`: the fields show their errors in place of the messages of the browser. On a submit, each field validates. When a field is invalid, `phem-form` stops the submit before the `onSubmit` handler sends its event, and before the browser sends the form. It focuses the first invalid control, selects its text, and sends `phem-form:invalid`, with the invalid fields in `detail.fields`. A control of the form that is not in a field shows the message of the browser (`reportValidity()`). The hidden input of a switch, a checkbox or a radio group gives the focus to the element that the user sees (see [Validate a switch, a checkbox or a radio group](#validate-a-switch-a-checkbox-or-a-radio-group)). A submit button with `formnovalidate` submits with no validation.
 
 After a submit with an empty name, the browser shows:
 
@@ -2452,9 +2517,41 @@ All the parts (the field, the labels, the controls, the descriptions and the err
 | `data-focused` | The control has the focus |
 | `data-disabled` | The field is disabled: the `disabled` value, or disabled controls (also in a disabled `<fieldset>`) |
 
-Before the first validation, a field has no `data-valid` and no `data-invalid`. The label links to the control: a `<label>` gets `for` when the control has an `id`, else the control gets `aria-labelledby` (an element reference when the label has no id). A bound control with no `id` gets `aria-labelledby`, also after the morph of an event: the temporary id that the morph gives it is not an id to link to. A click on a label that is not a native label of the control focuses the control. The control gets `aria-invalid="true"` when the field is invalid.
+Before the first validation, a field has no `data-valid` and no `data-invalid`. The label links to the control: a `<label>` gets `for` when the control has an `id`, else the control gets `aria-labelledby` (an element reference when the label has no id). A bound control with no `id` gets `aria-labelledby`, also after the morph of an event: the temporary id that the morph gives it is not an id to link to. A click on a label that is not a native label of the control focuses the control. The control gets `aria-invalid="true"` when the field is invalid, else `aria-invalid="false"`.
 
 The state stays after the morph of an event: the visible errors, `aria-invalid`, `novalidate` and the data attributes.
+
+### Validate a switch, a checkbox or a radio group
+
+A [switch or a checkbox](#toggle-a-button-a-switch-or-a-checkbox) and a [radio group](#choose-one-option-in-a-radio-group) keep their value in an input that the user does not see. The browser validates this input, but it cannot focus a hidden input or show its message. The input is linked to the element that the user sees (the custom control):
+
+- When the input is the first invalid control of a submit, `phem-form` focuses the custom control: the switch, the checkbox, or the radio of the tab stop (the checked radio, else the first radio). The browser shows no message for a control that is not in a field.
+- Make the input the `control` part of a `phem-field` to show an error. The field reads the validity of the input. The custom control gets `aria-invalid` and `aria-describedby`, and its focus is the focus of the field.
+
+```html
+<form onSubmit={{ save }} data-controller="phem-form">
+    <div data-controller="phem-field">
+        <label>
+            <span role="switch" data-controller="phem-toggle" data-phem-toggle-required-value="true">
+                <input type="checkbox" name="terms" hidden data-phem-toggle-target="input" data-phem-field-target="control" />
+            </span>
+            I accept the terms
+        </label>
+        <p data-phem-field-target="error" data-match="valueMissing" hidden>Accept the terms.</p>
+    </div>
+    <button type="submit">Save</button>
+</form>
+```
+
+After a submit with the switch off, the switch has the focus, and the browser shows:
+
+```html
+<span role="switch" data-controller="phem-toggle" data-phem-toggle-required-value="true" tabindex="0" aria-checked="false" aria-required="true" aria-invalid="true" aria-describedby="" ...>
+    <input type="checkbox" name="terms" hidden="" required="" tabindex="-1" aria-hidden="true" aria-invalid="true" aria-describedby="" data-invalid="" data-focused="" ...>
+</span>
+...
+<p data-phem-field-target="error" data-match="valueMissing" data-invalid="" data-open="" ...>Accept the terms.</p>
+```
 
 ### Group the fields
 
@@ -2546,7 +2643,7 @@ After Shift+ArrowUp and an event, the browser shows:
 
 ## Enter a one-time code
 
-`phem-otp-field` shows a code with one input for each character (a slot):
+`phem-otp-field` shows a code with one input for each character (a slot), or [one input for the whole code](#one-input-for-the-whole-code):
 
 ```html
 <label id="otp-label" for="otp-1">Verification code</label>
@@ -2618,6 +2715,54 @@ After the user types `123`, the browser shows:
 The controller element and the slots get `data-disabled`, `data-readonly`, `data-required`, `data-complete` (all the slots have a value) and `data-focused` (a slot has the focus). The controller element gets `data-filled` when the value is not empty, and a slot gets it when it has a character. The value stays after the morph of an event.
 
 To validate the code and show its errors, give the slots the `control` target of a [`phem-field`](#validate-a-field-in-the-browser) around it, with `data-phem-otp-field-required-value="true"`.
+
+### One input for the whole code
+
+Some browsers do not fill a code from a message into a set of inputs, and a screen reader reads each slot as a different field. For the best autofill and accessibility, use one input for the whole code: a `codeInput` part in place of the `input` parts. The `slot` parts are optional. They only show the characters, so a design with boxes keeps working:
+
+```html
+<label for="otp">Verification code</label>
+<div data-controller="phem-otp-field" data-phem-otp-field-auto-submit-value="true">
+    <input id="otp" name="code" data-phem-otp-field-target="codeInput" />
+    <span data-phem-otp-field-target="slot"></span>
+    <span data-phem-otp-field-target="slot"></span>
+    <span data-phem-otp-field-target="slot"></span>
+    <span data-phem-otp-field-target="separator">-</span>
+    <span data-phem-otp-field-target="slot"></span>
+    <span data-phem-otp-field-target="slot"></span>
+    <span data-phem-otp-field-target="slot"></span>
+</div>
+```
+
+The browser edits the text of the input. The controller keeps the characters that the validation type accepts, and the caret stays after the same characters. The values, the events, the auto submit and the `hiddenInput` part are the same as with the slots. The input can have the `name` itself, because its text is the value. Some differences:
+
+- The `length` value is by default the number of `slot` parts, or 6 when there is no `slot` part.
+- The input gets `autocomplete="one-time-code"` (the `autocomplete` value), `inputmode`, `maxlength` (the length), a `pattern` of the full code (`[0-9]{6}` for `numeric`), `spellcheck="false"`, `autocorrect="off"` and `enterkeyhint="done"`. It is `type="text"`, or `type="password"` with `mask`.
+- A paste removes the spaces, and the dashes when the validation type refuses them: `123-456` gives `123456` and does not send `phem-otp-field:invalid`. A pasted full code replaces the value. A shorter text goes in the place of the selection.
+- The keys of a text input stay: the controller does not change Backspace, Delete and the arrows.
+- During an IME composition, the input keeps the text of the IME. The end of the composition puts the text in the value one time.
+- The controller element does not get `role="group"`: the input uses the label of the field.
+- Each `slot` part gets `aria-hidden="true"` and shows one character (`•` with `mask`). It gets `data-filled` when it has a character, and `data-active` when the input has the focus and the caret or the selection is on it (the caret after the last character is on the last slot). A press of the mouse on a slot puts the caret before its character, and selects it. A `separator` part gets `aria-hidden="true"`.
+- The input and the slots get `data-disabled`, `data-readonly`, `data-required`, `data-complete` and `data-focused`.
+
+Put the input over the slots with CSS (for example `position: absolute`, a transparent text color and `caret-color: transparent`), so a press goes to the input and the slots show the characters. Or show only the input, with a monospace font and `letter-spacing`.
+
+After the user types `123`, the browser shows:
+
+```html
+<div data-controller="phem-otp-field" data-phem-otp-field-auto-submit-value="true" data-focused="" data-phem-otp-field-value-value="123" data-filled="">
+    <input id="otp" name="code" data-phem-otp-field-target="codeInput" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" type="text" autocorrect="off" enterkeyhint="done" maxlength="6" pattern="[0-9]{6}" data-focused="" data-filled="">
+    <span data-phem-otp-field-target="slot" aria-hidden="true" data-focused="" data-filled="">1</span>
+    <span data-phem-otp-field-target="slot" aria-hidden="true" data-focused="" data-filled="">2</span>
+    <span data-phem-otp-field-target="slot" aria-hidden="true" data-focused="" data-filled="">3</span>
+    <span data-phem-otp-field-target="separator" aria-hidden="true">-</span>
+    <span data-phem-otp-field-target="slot" aria-hidden="true" data-focused="" data-active=""></span>
+    <span data-phem-otp-field-target="slot" aria-hidden="true" data-focused=""></span>
+    <span data-phem-otp-field-target="slot" aria-hidden="true" data-focused=""></span>
+</div>
+```
+
+To validate the code with a [`phem-field`](#validate-a-field-in-the-browser), give the `control` target to the input.
 
 ## Select a value on a slider
 
@@ -2733,10 +2878,10 @@ The root, the viewport, the content and the scrollbars get these attributes:
 | `data-has-overflow-x`, `data-has-overflow-y` | The content is wider or taller than the viewport. |
 | `data-overflow-x-start`, `data-overflow-x-end` | The content continues past the start or the end edge on the horizontal axis. |
 | `data-overflow-y-start`, `data-overflow-y-end` | The content continues past the top or the bottom edge. |
-| `data-scrolling` | The user scrolls. It goes 500 ms after the last scroll. A scrollbar and its thumb get it only for a scroll on their axis. The end of a drag of a thumb removes it at once. |
+| `data-scrolling` | The user scrolls. It goes at the `scrollend` event of the viewport. A browser with no `scrollend` event removes it 500 ms after the last scroll. A scrollbar and its thumb get it only for a scroll on their axis. The end of a drag of a thumb removes it at once. |
 | `data-hovering` | On the scrollbars only: the pointer is over the scroll area. |
 
-The thumbs get `data-orientation` and `data-scrolling`. The CSS variables are:
+The thumbs get `data-orientation` and `data-scrolling`. A scroll changes the attributes and the CSS variables once per frame, in the next animation frame, for all the scroll events of that frame. The controller reads all the sizes before it writes, so a scroll does not force a layout between two writes. The CSS variables are:
 
 | Variable | Part | Description |
 | :-- | :-- | :-- |
@@ -2959,7 +3104,9 @@ h2, h3 {
 }
 ```
 
-While "Configure" is the current section, the browser shows:
+The controller uses an `IntersectionObserver` to see when the top of a section goes past the line, so a scroll reads no layout. During a scroll, the current link gets `data-active` at once. It gets `aria-current="true"` when the scroll stops (the `scrollend` event, or 100 ms after the last scroll in a browser with no `scrollend` event), so a screen reader does not read each section that the scroll passes. The CSS `scroll-target-group` property does not replace the controller: it gives no `aria-current`, no event and no rule for the end of the scroll, and only Chromium has it.
+
+When the scroll stops on "Configure", the browser shows:
 
 ```html
 <a href="#configure" data-phem-scrollspy-target="link" aria-current="true" data-active>Configure</a>
@@ -3145,6 +3292,8 @@ $this->toasts->success('Saved', 8000);
 An empty message throws an `InvalidArgumentException`. So does a duration below 0 or above `Toasts::MAX_DURATION` (2147483647 ms, the longest timer of a browser).
 
 A toast shows only with the response of an event. A handler that fails or redirects shows no toast. A toast of a page load doesn't show.
+
+While a modal `<dialog>` is open, the page under it is inert: the user cannot get to the toasts. A new toast still shows at once, so the user sees the result of an action in the dialog, for example the error of its form. The time of the toasts stops while the modal dialog is open, in a browser that sends the `toggle` event of a `<dialog>`: after the close, each toast stays for the rest of its time, and the user can get to it. A `phem-toast` element in the modal dialog is not inert, and its time runs.
 
 A toast is a `phem:toast` [browser event](events.md#send-events-to-your-javascript) with the detail `{"message": "Saved", "type": "success"}`.
 
@@ -3617,7 +3766,7 @@ iOS opens the keyboard only for a focus inside a tap. After a server round trip,
 <button onClick={{ edit }} data-phem-autofocus-keyboard>Edit</button>
 ```
 
-During the tap, a hidden field takes the focus and the keyboard opens. The keyboard stays open when the `phem-autofocus` field takes the focus, also inside an open `<dialog>`. These edge cases apply:
+During the tap, a hidden field takes the focus and the keyboard opens. The hidden field has the name of the link or the button (its `aria-label`, its `aria-labelledby` or its text) and `aria-busy="true"`, so a screen reader reads a field that loads, for example "Search, busy". The keyboard stays open when the `phem-autofocus` field takes the focus, also inside an open `<dialog>`. These edge cases apply:
 
 - **No field takes the focus**: the keyboard closes, and the element that had the focus before the tap gets it back
 - **The visit is cancelled or fails**: when a listener cancels the visit or its fetch fails, the keyboard closes right away; a visit that takes more than 30s closes it too

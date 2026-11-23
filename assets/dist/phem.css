@@ -18,9 +18,15 @@ phem-suspense{display:block}
 :where([data-phem-toast-content]:not([class])){flex:1;display:flex;flex-direction:column;gap:.125rem}
 :where([data-phem-toast-description]:not([class])){flex:1}
 :where([data-phem-toast-close]:not([class])){padding:0 .25rem;border:0;background:none;color:inherit;font:inherit;line-height:1;cursor:pointer}
-/* The phem-sortable controller: a touch on a handle (or on an item with no handle) drags, and does not scroll. No text selection during a drag. */
-[data-controller~="phem-sortable"] [data-phem-sortable-target~="handle"],[data-controller~="phem-sortable"] [data-phem-sortable-target~="item"]:not(:has([data-phem-sortable-target~="handle"])){touch-action:none}
-[data-phem-sorting],[data-phem-sorting] *{-webkit-user-select:none;user-select:none}
+/* The phem-sortable controller: a touch on a handle drags, and does not scroll. An item with no handle keeps the scroll: a hold starts its drag. No text selection and no touch callout during a drag. */
+[data-controller~="phem-sortable"] [data-phem-sortable-target~="handle"]{touch-action:none}
+[data-phem-sorting],[data-phem-sorting] *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* The drop marker of phem-sortable: a line in the gap of the drop place, on the list with data-drop. The controller sets its center and its length (--sortable-drop-x, -y, -width, -height on the root). The app changes --sortable-drop-color and --sortable-drop-thickness, or the whole rule: :where() lets it. */
+:where([data-controller~="phem-sortable"][data-drop])::after{content:"";position:fixed;z-index:2147483646;left:var(--sortable-drop-x);top:var(--sortable-drop-y);width:max(var(--sortable-drop-width),var(--sortable-drop-thickness,2px));height:max(var(--sortable-drop-height),var(--sortable-drop-thickness,2px));translate:-50% -50%;border-radius:1px;background:var(--sortable-drop-color,#2563eb);pointer-events:none}
+@media (forced-colors:active){:where([data-controller~="phem-sortable"][data-drop])::after{background:Highlight}}
+/* A modal phem-dialog: a scroll on the dialog or on its backdrop does not scroll the page. The backdrop needs an overflow to be a scroll container. */
+:where(dialog[data-phem-dialog-target]:modal){overscroll-behavior:contain}
+:where(dialog[data-phem-dialog-target])::backdrop{overflow:hidden;overscroll-behavior:contain}
 /* The swipe of a drawer (phem-dialog with a swipe direction): no text selection. */
 [data-phem-dialog-target~="popup"][data-swiping]{-webkit-user-select:none;user-select:none}
 /* The scrub area of a phem-number-field: a touch scrubs and does not scroll, and no text selection. */

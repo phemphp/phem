@@ -232,6 +232,16 @@ describe("phem-autofocus", () => {
       expect(standIn()).toBeNull()
     })
 
+    it("gives the stand-in the name of the link and aria-busy, with no aria-hidden", async () => {
+      await mount(page(link))
+      tapLink()
+
+      expect(standIn().getAttribute("aria-label")).toBe("Search")
+      expect(standIn().getAttribute("aria-busy")).toBe("true")
+      expect(standIn().hasAttribute("aria-hidden")).toBe(false)
+      release()
+    })
+
     it("removes the stand-in when the visit shows no autofocus field", async () => {
       await mount(page(link))
       tapLink()

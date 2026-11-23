@@ -27,10 +27,13 @@ const MOVE = 10
 // The parts, the keys of the items, the submenus and the values are the ones of `phem-menu`. A
 // click on the trigger does not open the menu, and the trigger gets no ARIA attribute: it is not a
 // button. It gets `data-popup-open` while the menu is open. Escape gives the focus back to the
-// element that had it before the menu opened. Tab does nothing: the menu stays open. The popup goes
-// at the bottom right of the point (`side` `bottom`, `align` `start`). Near an edge of the
-// viewport, it keeps its side, moves on the two axes and flips its align (the `context`
-// collision of phem_position.js), as in Base UI. A menu that opens with no point (the `open`
+// element that had it before the menu opened. Tab and Shift+Tab close the menu and its submenus:
+// the focus goes back to the element that had it before the menu opened, and the Tab moves on from
+// it to the next (or the previous) element. With no such element, the Tab moves on from the place
+// of the popup. Tab does not trap the focus in the menu. The popup goes at the bottom right of the
+// point (`side` `bottom`, `align` `start`). Near an edge of the viewport, it keeps its side, moves
+// on the two axes and flips its align (the `context` collision of phem_position.js), as in Base
+// UI. A menu that opens with no point (the `open`
 // action, or the `open` value of the server) goes below the trigger, as a `phem-menu`.
 //
 // On macOS, a release of the right button on an item more than 1 px from the point of the open
@@ -99,9 +102,9 @@ export default class PhemContextMenuController extends PhemMenuController {
     return this.isSubmenu ? options : { ...options, collision: "context" }
   }
 
-  // Tab does nothing in an open context menu, as in Base UI.
-  get tabCloses() {
-    return false
+  // Tab leaves the menu: no focus trap (Base UI keeps the menu open).
+  get tabLeavesAll() {
+    return true
   }
 
   triggerPressed() {}

@@ -7,12 +7,13 @@
 //     <a href="/search" data-phem-autofocus-keyboard>Search</a>
 //     <button onClick={{ edit }} data-phem-autofocus-keyboard>Edit</button>
 //
-// In the tap, a hidden stand-in field gets the focus, and the keyboard opens. When the focus moves
-// to the real field, iOS keeps the keyboard open, and the stand-in goes. The stand-in is a child of
-// `<html>`, outside `<body>`: the body swap of a Turbo visit does not remove it. In an open
-// `<dialog>`, it is a child of the dialog: a modal dialog makes the rest of the page inert. When no
-// field gets the focus, the stand-in goes, the keyboard closes, and the element that had the focus
-// before the tap gets it again.
+// In the tap, a hidden stand-in field gets the focus, and the keyboard opens. The stand-in has the
+// name of the element of the tap and `aria-busy="true"`: a screen reader reads a field that loads,
+// not a field with no name. When the focus moves to the real field, iOS keeps the keyboard open,
+// and the stand-in goes. The stand-in is a child of `<html>`, outside `<body>`: the body swap of a
+// Turbo visit does not remove it. In an open `<dialog>`, it is a child of the dialog: a modal
+// dialog makes the rest of the page inert. When no field gets the focus, the stand-in goes, the
+// keyboard closes, and the element that had the focus before the tap gets it again.
 //
 // phem_controller.js imports this module, so it listens on each page.
 
@@ -101,7 +102,11 @@ function open(el) {
   previous = active === document.body ? null : active
   const parent = el.closest("dialog[open]") ?? document.documentElement
   standIn = document.createElement("input")
-  standIn.setAttribute("aria-hidden", "true")
+  // A field with the focus stays in the accessibility tree (no aria-hidden). It has the name of the
+  // element of the tap, and it tells that the page loads: a screen reader reads "Search, busy".
+  const label = nameOf(el.closest(TRIGGER))
+  if (label) standIn.setAttribute("aria-label", label)
+  standIn.setAttribute("aria-busy", "true")
   standIn.tabIndex = -1
   // 16px: iOS zooms in on a smaller field. Fixed in the view: the page does not scroll.
   standIn.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0;caret-color:transparent;pointer-events:none"
@@ -144,6 +149,19 @@ export function release() {
   el.remove()
 
   restore?.focus({ preventScroll: true })
+}
+
+// The name of the element of the tap: its `aria-label`, the elements of its `aria-labelledby`, or
+// its text.
+function nameOf(el) {
+  const label = el.getAttribute("aria-label")?.trim()
+  if (label) return label
+
+  const ids = el.getAttribute("aria-labelledby")?.split(/\s+/).filter(Boolean) ?? []
+  const labelledBy = ids.map((id) => document.getElementById(id)?.textContent.trim() ?? "").filter(Boolean).join(" ")
+  if (labelledBy) return labelledBy
+
+  return el.textContent.replace(/\s+/g, " ").trim()
 }
 
 function opensKeyboard(el) {

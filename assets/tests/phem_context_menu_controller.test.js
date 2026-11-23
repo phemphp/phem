@@ -197,13 +197,42 @@ describe("phem-context-menu: the behavior of Base UI", () => {
     expect($("popup").style.top).toBe("595px")
   })
 
-  it("does nothing on Tab: the menu stays open", async () => {
+  it("closes on Tab and gives the focus back, so the Tab moves on from the element of before", async () => {
     await mount(area())
-    contextMenu($("area"))
+    $("inner").focus()
+    contextMenu($("inner"))
     const event = press("Tab")
 
-    expect(event.defaultPrevented).toBe(true)
-    expect(isOpen()).toBe(true)
+    expect(event.defaultPrevented).toBe(false)
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).toBe("inner")
+  })
+
+  it("closes on Shift+Tab with its default", async () => {
+    await mount(area())
+    $("inner").focus()
+    contextMenu($("inner"))
+    const event = new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true })
+    document.activeElement.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).toBe("inner")
+  })
+
+  it("closes the submenus and the menu on Tab in a submenu", async () => {
+    await mount(area())
+    $("inner").focus()
+    contextMenu($("inner"))
+    $("share").focus()
+    press("ArrowRight")
+    expect($("share-popup").hidden).toBe(false)
+    const event = press("Tab")
+
+    expect(event.defaultPrevented).toBe(false)
+    expect($("share-popup").hidden).toBe(true)
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).toBe("inner")
   })
 
   it("clicks an item at a release of the right button on macOS, more than 1 px from the open point", async () => {

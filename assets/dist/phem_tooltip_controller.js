@@ -1,5 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
+import { linkWhile } from "./phem_aria.js"
 import { ClientState } from "./phem_client_state.js"
+import { Hover } from "./phem_hover.js"
 import { Popup } from "./phem_popup.js"
 import { PopupSize } from "./phem_popup_size.js"
 import { PopupViewport } from "./phem_popup_viewport.js"
@@ -9,6 +11,9 @@ import { Triggers, activationDirection } from "./phem_triggers.js"
 // The time (ms) after the close of a tooltip in which another tooltip opens at once, as in a
 // toolbar: the pointer moves from one button to the next.
 const GROUP_TIMEOUT = 400
+
+// The popups that got `role="tooltip"` from the controller, not from the server render.
+const roles = new WeakSet()
 
 // The time of the last close of a tooltip of the page.
 let lastClose = -Infinity
@@ -27,7 +32,8 @@ let closing = null
 // The trigger is a `trigger` target, a detached trigger (phem_triggers.js), or the controller
 // element. The pointer on the trigger opens the popup after the `delay` value (600 ms), and the
 // pointer out of the trigger closes it after the `closeDelay` value (0 ms). The pointer can go on
-// the popup (with the `hoverable` value, the default). A focus of the keyboard (`:focus-visible`)
+// the popup (with the `hoverable` value, the default): it can cross the gap between the trigger
+// and the popup, as for a popover that opens on hover (phem_hover.js). A focus of the keyboard (`:focus-visible`)
 // opens it at once, and the blur closes it. Escape and a press on the trigger close it
 // (`closeOnClick`): the `pointerdown` of the pointer, or the `click` of Enter and Space. A touch
 // shows no tooltip.
@@ -49,12 +55,14 @@ let closing = null
 // `data-instant="delay"`, so a `[data-instant]` rule shows one tooltip at a time. A focus that
 // moves from one trigger to the next (Tab) also ends the close of the other tooltip.
 //
-// The active trigger gets `data-popup-open`. The tooltip is only visual, as the Tooltip of Base UI:
-// the popup gets no `role="tooltip"`, and the trigger gets no `aria-describedby`. A tooltip only
-// helps the users of a pointer and of a keyboard: the trigger needs its own label (`aria-label`),
-// for a touch screen and for a screen reader. For a text that a screen reader must also read as a
-// description, give the popup an `id` and `role="tooltip"`, and give the trigger
-// `aria-describedby` in the markup.
+// The active trigger gets `data-popup-open`. A tooltip with a text that is not the accessible name
+// of its trigger is a description: the popup gets `role="tooltip"`, and the trigger gets
+// `aria-describedby`, also while the popup is closed (a hidden description is valid). A tooltip
+// with the name of its trigger (an icon button with `aria-label`) gets nothing: a screen reader
+// reads the name one time. With a `viewport` part, the text changes with the trigger: only the
+// active trigger of the open popup gets `aria-describedby`. A `role` and an `aria-describedby` of
+// the server render stay. A tooltip only helps the users of a pointer and of a keyboard: the
+// trigger needs its own label (`aria-label`), for a touch screen and for a screen reader.
 export default class PhemTooltipController extends Controller {
   static targets = ["trigger", "popup", "arrow", "viewport"]
   static values = {
@@ -77,6 +85,19 @@ export default class PhemTooltipController extends Controller {
       inside: () => this.triggers.all,
       dismiss: () => this.#close({ instant: "dismiss" }),
       outside: () => false,
+    })
+    // The pointer can go from the trigger to a hoverable popup (phem_hover.js). The controller opens
+    // the popup itself: the hover only follows the pointer to the popup, and closes the popup when
+    // the pointer leaves the space between them.
+    this.hover = new Hover({
+      enabled: () => this.hoverableValue && this.popup.open,
+      triggers: () => (this.triggers.active ? [this.triggers.active] : []),
+      popups: () => this.popupTargets,
+      isOpen: () => this.popup.open,
+      open: () => {},
+      close: () => this.#close({ instant: false }),
+      delay: () => 0,
+      closeDelay: () => this.closeDelayValue,
     })
     // Only a popup with a viewport changes its size between triggers.
     this.size = new PopupSize({ popup: () => (this.hasPopupTarget && this.hasViewportTarget ? this.popupTarget : null) })
@@ -122,6 +143,7 @@ export default class PhemTooltipController extends Controller {
     this.state.disconnect()
     this.listening.abort()
     clearTimeout(this.timer)
+    this.hover.cancel()
     if (this.popup.open) lastClose = performance.now()
     if (closing === this.popup) closing = null
     this.popup.destroy()
@@ -159,6 +181,7 @@ export default class PhemTooltipController extends Controller {
     if (event.pointerType === "touch" || !this.#over(event.target)) return
 
     clearTimeout(this.timer)
+    this.hover.cancel()
     const trigger = this.triggers.of(event.target)
     if (this.popup.open) {
       if (trigger && !this.#inPopup(event.target)) this.#switch(trigger)
@@ -184,6 +207,14 @@ export default class PhemTooltipController extends Controller {
 
     clearTimeout(this.timer)
     if (!this.popup.open) return
+
+    // The pointer that goes toward a hoverable popup can cross the gap to it (phem_hover.js). A
+    // pointer that goes away closes it at once, so the next tooltip of a group opens at once.
+    if (this.hoverableValue && to instanceof Node && this.hover.toward(event)) {
+      this.hover.out(event)
+
+      return
+    }
 
     if (this.closeDelayValue > 0) this.timer = setTimeout(() => this.#close({ instant: false }), this.closeDelayValue)
     else this.#close({ instant: false })
@@ -247,6 +278,7 @@ export default class PhemTooltipController extends Controller {
 
   #close({ instant }) {
     clearTimeout(this.timer)
+    this.hover.cancel()
     if (!this.popup.open) return
 
     lastClose = performance.now()
@@ -317,6 +349,39 @@ export default class PhemTooltipController extends Controller {
   #renderTriggers() {
     const active = this.popup.open ? this.triggers.active : null
     for (const trigger of this.triggers.all) trigger.toggleAttribute("data-popup-open", trigger === active)
+    this.#renderAria()
+  }
+
+  // A tooltip that is not the name of its trigger describes it (see the class comment).
+  #renderAria() {
+    const popup = this.hasPopupTarget ? this.popupTarget : null
+    if (!popup) return
+
+    let describes = false
+
+    for (const trigger of this.triggers.all) {
+      const hint = this.#hintOf(trigger, popup)
+      const on = hint !== "" && hint !== normalize(accessibleName(trigger, popup))
+      linkWhile(trigger, "aria-describedby", "ariaDescribedByElements", popup, on)
+      describes ||= on
+    }
+
+    if (describes && !popup.hasAttribute("role")) {
+      popup.setAttribute("role", "tooltip")
+      roles.add(popup)
+    } else if (!describes && roles.has(popup)) {
+      popup.removeAttribute("role")
+      roles.delete(popup)
+    }
+  }
+
+  // The text of the popup for a trigger. With a viewport, only the active trigger of the open
+  // popup has one: the content of a closed popup is the content of the last trigger.
+  #hintOf(trigger, popup) {
+    if (!this.hasViewportTarget) return normalize(popup.textContent)
+    if (!this.popup.open || trigger !== this.triggers.active) return ""
+
+    return normalize(trigger.getAttribute("data-phem-tooltip-payload") ?? this.viewportTargets[0].textContent)
   }
 
   // The attributes that belong to the client: the open state of the popup, `data-popup-open` of
@@ -327,6 +392,36 @@ export default class PhemTooltipController extends Controller {
 
     return name === "data-activation-direction" && this.viewportTargets.includes(el)
   }
+}
+
+// The accessible name of a trigger, as the guidance of tooltips: the text of the
+// `aria-labelledby` elements, else `aria-label`, else the text of its content (with the `alt` of
+// an image, not the popup), else `title`.
+function accessibleName(el, popup) {
+  const ids = el.getAttribute("aria-labelledby")?.trim()
+  if (ids) return ids.split(/\s+/).map((id) => document.getElementById(id)?.textContent ?? "").join(" ")
+
+  const label = el.getAttribute("aria-label")?.trim()
+  if (label) return label
+
+  const content = normalize(contentText(el, popup))
+
+  return content || (el.getAttribute("title") ?? "")
+}
+
+function contentText(node, popup) {
+  if (node === popup) return ""
+  if (node.nodeType === Node.TEXT_NODE) return node.data
+  if (!(node instanceof Element)) return ""
+  if (node.getAttribute("aria-hidden") === "true") return ""
+  if (node instanceof HTMLImageElement) return ` ${node.alt} `
+
+  return [...node.childNodes].map((child) => contentText(child, popup)).join(" ")
+}
+
+// The text with one space between the words, and no case.
+function normalize(text) {
+  return String(text ?? "").replace(/\s+/g, " ").trim().toLowerCase()
 }
 
 // jsdom does not know `:focus-visible`.

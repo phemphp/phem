@@ -27,14 +27,19 @@ import { link } from "./phem_aria.js"
 // disabled tab; Home and End go to the first and to the last tab. An arrow key with Shift does
 // nothing. With the `loopFocus` value (the default), the last tab goes to the first one. Enter or
 // Space selects the tab with the focus, or the focus selects it at once with the `activateOnFocus`
-// value. A tab can be a link (`<a href>`): Enter and Space click it, so it opens its page. One tab is in the tab order: the tab with the last focus, else the selected tab. It stays
-// after the morph of an event.
+// value. One tab is in the tab order: the tab with the last focus, else the selected tab. It
+// stays after the morph of an event.
+//
+// A tab is not a link: a bar of links to pages is a `<nav>` with `aria-current="page"` on the link
+// of the page (or `phem-navigation-menu`), not a tab list.
 //
 // The `list` target gets `role="tablist"`, the tabs get `role="tab"`, `aria-selected`, `tabindex`
-// and `aria-controls`, and the panels get `role="tabpanel"`, `hidden`, `tabindex` and
-// `aria-labelledby`. With no id, the controller links the tab and its panel with the element
-// references of ARIA (`ariaControlsElements`, `ariaLabelledByElements`): it gives them no id, so
-// the morph matches them to the server render. For the styles, all the parts get `data-orientation` and
+// and `aria-controls`, and the panels get `role="tabpanel"`, `hidden` and `aria-labelledby`. A
+// panel with no element that gets the focus gets `tabindex="0"`, so Tab goes to its text. A panel
+// with a focusable element gets no `tabindex`: Tab goes to that element. With no id, the
+// controller links the tab and its panel with the element references of ARIA
+// (`ariaControlsElements`, `ariaLabelledByElements`): it gives them no id, so the morph matches
+// them to the server render. For the styles, all the parts get `data-orientation` and
 // `data-activation-direction` (the direction of the last change: `left`, `right`, `up`, `down` or
 // `none`). The selected tab gets `data-active`, a disabled tab `data-disabled`, and a panel
 // `data-index` and `data-hidden` when it is hidden; see phem_transition.js for the animations of
@@ -42,6 +47,11 @@ import { link } from "./phem_aria.js"
 // list: `--active-tab-left`, `--active-tab-top`, `--active-tab-right`, `--active-tab-bottom`,
 // `--active-tab-width` and `--active-tab-height`. The values keep the fractions of a pixel. They
 // do not count the border of the list (`clientLeft` and `clientTop`, whole pixels).
+//
+// With the `hiddenUntilFound` value, a hidden panel has `hidden="until-found"`: the search of the
+// browser (Ctrl+F) finds its text, and selects its tab (the `beforematch` event). The found panel
+// shows with no animation. A panel with `data-phem-tabs-hidden-until-found` does the same, for
+// this panel only.
 export default class PhemTabsController extends Controller {
   static targets = ["list", "tab", "panel", "indicator"]
   static values = {
@@ -49,14 +59,21 @@ export default class PhemTabsController extends Controller {
     orientation: { type: String, default: "horizontal" },
     activateOnFocus: Boolean,
     loopFocus: { type: Boolean, default: true },
+    hiddenUntilFound: Boolean,
   }
 
   connect() {
     this.direction = "none"
+    // The panels that got their `tabindex` from the controller.
+    this.ownTabIndex = new WeakSet()
     this.state = new ClientState(this, {
       value: "active",
       owns: (el, name) => this.#owns(el, name),
-      morphed: () => this.#render({ animate: false }),
+      morphed: () => {
+        // The morph keeps a `tabindex` of the server render only.
+        this.ownTabIndex = new WeakSet()
+        this.#render({ animate: false })
+      },
     })
     this.state.connect()
 
@@ -65,6 +82,7 @@ export default class PhemTabsController extends Controller {
     this.element.addEventListener("click", this.onClick, options)
     this.element.addEventListener("keydown", this.onKeydown, options)
     this.element.addEventListener("focusin", this.onFocusin, options)
+    this.element.addEventListener("beforematch", this.onBeforeMatch, options)
 
     if (typeof ResizeObserver === "function") {
       this.resizing = new ResizeObserver(() => this.#renderIndicator())
@@ -131,16 +149,6 @@ export default class PhemTabsController extends Controller {
     const tab = this.#tabOf(event.target)
     if (!tab || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
 
-    // A link selects and opens on its click: Enter clicks it, and Space clicks it too, as a button.
-    if (tab.matches("a[href]")) {
-      if (event.key === " ") {
-        event.preventDefault()
-        tab.click()
-      }
-
-      if (event.key === "Enter" || event.key === " ") return
-    }
-
     // A button selects on its click. Another element selects on Enter and Space.
     if ((event.key === "Enter" || event.key === " ") && !tab.matches("button")) {
       event.preventDefault()
@@ -162,14 +170,21 @@ export default class PhemTabsController extends Controller {
     if (this.activateOnFocusValue) this.#select(next)
   }
 
-  #select(tab) {
+  // The search of the browser found text in a hidden panel: its tab is selected.
+  onBeforeMatch = (event) => {
+    const index = this.tabTargets.findIndex((tab, i) => this.#panelOf(tab, i) === event.target)
+    if (index >= 0 && !isDisabled(this.tabTargets[index])) this.#select(this.tabTargets[index], { found: event.target })
+  }
+
+  // The `found` panel shows with no animation: the browser scrolls to the text in it.
+  #select(tab, { found = null } = {}) {
     const index = this.tabTargets.indexOf(tab)
     this.highlighted = tab
     if (index === this.#selected && this.rendered === index) return
 
     this.#direction(this.#selected, index)
     this.activeValue = valueOf(tab, index)
-    this.#render({ animate: true })
+    this.#render({ animate: true, found })
   }
 
   // The direction of the change, from the boxes of the two tabs.
@@ -200,7 +215,7 @@ export default class PhemTabsController extends Controller {
 
   // The attributes that are not the state (`aria-controls`, `aria-labelledby` and the `tabindex` of
   // a panel) stay when the server render gives them.
-  #render({ animate }) {
+  #render({ animate, found = null }) {
     const tabs = this.tabTargets
     const panels = this.panelTargets
     const selected = this.#selected
@@ -237,11 +252,12 @@ export default class PhemTabsController extends Controller {
       panel.setAttribute("role", "tabpanel")
       panel.setAttribute("data-index", String(i))
       panel.toggleAttribute("data-hidden", !open)
-      if (!panel.hasAttribute("tabindex")) panel.tabIndex = 0
+      this.#renderPanelTabIndex(panel)
 
-      if (!animate) render(panel, open)
-      else if (open) show(panel)
-      else if (!panel.hidden) hide(panel)
+      const hidden = this.#hiddenOf(panel)
+      if (!animate) render(panel, open, { hidden })
+      else if (open) show(panel, { instant: panel === found })
+      else if (!panel.hidden) hide(panel, { hidden })
     })
 
     this.#renderIndicator()
@@ -258,6 +274,26 @@ export default class PhemTabsController extends Controller {
 
   #renderTabIndex() {
     setTabStop(this.tabTargets, this.#tabStop)
+  }
+
+  // Tab goes to a panel with no focusable element, so the user can read it. A `tabindex` of the
+  // markup stays.
+  #renderPanelTabIndex(panel) {
+    if (panel.hasAttribute("tabindex") && !this.ownTabIndex.has(panel)) return
+
+    if (hasFocusable(panel)) {
+      panel.removeAttribute("tabindex")
+      this.ownTabIndex.delete(panel)
+    } else {
+      if (panel.getAttribute("tabindex") !== "0") panel.tabIndex = 0
+      this.ownTabIndex.add(panel)
+    }
+  }
+
+  // The `hidden` value of a hidden panel: `until-found` with the value of the root, or with the
+  // attribute of the panel.
+  #hiddenOf(panel) {
+    return this.hiddenUntilFoundValue || panel.hasAttribute("data-phem-tabs-hidden-until-found") ? "until-found" : true
   }
 
   #common(el) {
@@ -309,6 +345,24 @@ export default class PhemTabsController extends Controller {
   get #rtl() {
     return getComputedStyle(this.element).direction === "rtl"
   }
+}
+
+// The elements that can get the focus with Tab.
+const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex], [contenteditable]"
+
+// Whether Tab goes to an element in the panel: an element that is not disabled, has no negative
+// `tabindex`, and is not in a hidden or inert part of the panel (a closed collapsible). The panel
+// itself can be hidden: it is the tab panel that is not selected.
+function hasFocusable(panel) {
+  return [...panel.querySelectorAll(FOCUSABLE)].some((el) => !el.disabled && el.tabIndex >= 0 && el.getAttribute("type") !== "hidden" && !hiddenIn(el, panel))
+}
+
+function hiddenIn(el, panel) {
+  for (let node = el; node && node !== panel; node = node.parentElement) {
+    if (node.hidden || node.inert) return true
+  }
+
+  return false
 }
 
 // The value of a tab or of a panel: its `data-value`, its key, or its index.

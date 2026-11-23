@@ -17,9 +17,60 @@ let tops
 let scrolled = 0
 const rect = Element.prototype.getBoundingClientRect
 
+// A fake IntersectionObserver: jsdom has none. It computes the intersection with the band of the
+// `rootMargin` from the fake layout, after observe() and at intersect().
+class FakeIntersectionObserver {
+  static all = new Set()
+
+  constructor(callback, { root = null, rootMargin = "0px" } = {}) {
+    this.callback = callback
+    this.root = root
+    this.margins = rootMargin.split(" ").map((value) => parseFloat(value))
+    this.targets = new Map()
+    FakeIntersectionObserver.all.add(this)
+  }
+
+  observe(el) {
+    this.targets.set(el, null)
+    queueMicrotask(() => this.check())
+  }
+
+  unobserve(el) {
+    this.targets.delete(el)
+  }
+
+  disconnect() {
+    this.targets.clear()
+    FakeIntersectionObserver.all.delete(this)
+  }
+
+  check() {
+    const box = this.root ? this.root.getBoundingClientRect() : { top: 0, bottom: document.documentElement.clientHeight }
+    const rootBounds = { top: box.top - this.margins[0], bottom: box.bottom + this.margins[2] }
+    const entries = []
+    for (const [target, last] of this.targets) {
+      const boundingClientRect = target.getBoundingClientRect()
+      const isIntersecting = boundingClientRect.top <= rootBounds.bottom && boundingClientRect.bottom >= rootBounds.top
+      if (isIntersecting === last) continue
+
+      this.targets.set(target, isIntersecting)
+      entries.push({ target, isIntersecting, boundingClientRect, rootBounds })
+    }
+
+    if (entries.length > 0) this.callback(entries, this)
+  }
+}
+
+function intersect() {
+  for (const observer of FakeIntersectionObserver.all) observer.check()
+}
+
+// A scroll of the page: the sections cross the line, then the scroll stops.
 function scrollTo(y) {
   scrolled = y
   document.dispatchEvent(new Event("scroll"))
+  intersect()
+  document.dispatchEvent(new Event("scrollend"))
 
   return frame()
 }
@@ -38,6 +89,8 @@ function pageEnd(end) {
 
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn())
+  vi.stubGlobal("IntersectionObserver", FakeIntersectionObserver)
+  Object.defineProperty(document.documentElement, "clientHeight", { configurable: true, value: 800 })
   scrolled = 0
   tops = { install: 0, configure: 500, deploy: 1000, "50%-off": 1500 }
   Element.prototype.getBoundingClientRect = function () {
@@ -49,6 +102,7 @@ beforeEach(() => {
 
 afterEach(() => {
   Element.prototype.getBoundingClientRect = rect
+  FakeIntersectionObserver.all.clear()
   for (const name of ["scrollHeight", "clientHeight", "scrollTop"]) delete document.documentElement[name]
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -143,10 +197,84 @@ describe("phem-scrollspy", () => {
     scrolled = 420
     const list = document.createElement("ul")
     document.body.append(list)
-    list.dispatchEvent(new Event("scroll"))
+    list.dispatchEvent(new Event("scroll", { bubbles: false }))
+    list.dispatchEvent(new Event("scrollend", { bubbles: false }))
     await frame()
 
     expect(current()).toEqual(["to-install"])
+  })
+
+  it("marks the right section after a jump that moves the sections past the line in one frame", async () => {
+    await mount(page())
+    await scrollTo(1000)
+    expect(current()).toEqual(["to-deploy"])
+
+    // Home: the tops of "Configure" and "Deploy" go from above the line to far below it.
+    await scrollTo(0)
+    expect(current()).toEqual(["to-install"])
+
+    // End: the tops go from far below the line to far above it.
+    await scrollTo(1500)
+    expect(current()).toEqual(["to-deploy"])
+  })
+
+  it("observes a band from far above the view down to the scroll margin, in the root of the page", async () => {
+    await mount(page())
+    // The phem controller has an observer of its own, with no target here.
+    const [observer, ...others] = [...FakeIntersectionObserver.all].filter((o) => o.targets.size > 0)
+
+    expect(others).toEqual([])
+    expect(observer.root).toBeNull()
+    expect(observer.margins).toEqual([1000000, 0, -719, 0])
+    expect([...observer.targets.keys()].map((el) => el.id)).toEqual(["install", "configure", "deploy"])
+  })
+
+  it("reads no layout on a scroll", async () => {
+    await mount(page())
+    const read = vi.spyOn(Element.prototype, "getBoundingClientRect")
+    document.dispatchEvent(new Event("scroll"))
+    await frame()
+
+    expect(read).not.toHaveBeenCalled()
+  })
+
+  it("marks data-active during the scroll, and aria-current when the scroll stops", async () => {
+    await mount(page())
+    scrolled = 420
+    document.dispatchEvent(new Event("scroll"))
+    intersect()
+
+    expect(document.getElementById("to-configure").hasAttribute("data-active")).toBe(true)
+    expect(current()).toEqual(["to-install"])
+
+    document.dispatchEvent(new Event("scrollend"))
+
+    expect(current()).toEqual(["to-configure"])
+  })
+
+  it("marks aria-current 100 ms after the last scroll in a browser with no scrollend event", async () => {
+    let owner = window
+    while (owner && !Object.hasOwn(owner, "onscrollend")) owner = Object.getPrototypeOf(owner)
+    const descriptor = Object.getOwnPropertyDescriptor(owner, "onscrollend")
+    delete owner.onscrollend
+
+    try {
+      await mount(page())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      scrolled = 420
+      document.dispatchEvent(new Event("scroll"))
+      intersect()
+      vi.advanceTimersByTime(99)
+
+      expect(current()).toEqual(["to-install"])
+
+      vi.advanceTimersByTime(1)
+
+      expect(current()).toEqual(["to-configure"])
+    } finally {
+      vi.useRealTimers()
+      Object.defineProperty(owner, "onscrollend", descriptor)
+    }
   })
 
   it("dispatches a change event when the current section changes", async () => {

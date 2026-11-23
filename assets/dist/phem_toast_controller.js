@@ -121,6 +121,12 @@ const OWNED = "data-phem-toast-owned"
 // shows its toast at once, before the server answers the event of the same click: for example a
 // `loading` toast that the toast of the handler with the same `id` updates.
 //
+// While a modal `<dialog>` that is not around the element is open, the page under it is inert: the
+// user cannot reach the toasts. A toast still shows at once, so the user sees the result of an
+// action in the dialog (an error of its form). The time of the toasts stops while the dialog is
+// open, in a browser with the `toggle` event of a `<dialog>`: after the close, the toasts stay for
+// their full time, and the user can reach them.
+//
 // The toasts and their durations are in the DOM, so a toast that the controller gets again (after a
 // move of the element, or in a page from the Turbo cache) has its time and its close button.
 export default class PhemToastController extends Controller {
@@ -206,6 +212,9 @@ export default class PhemToastController extends Controller {
     window.addEventListener("blur", this.onWindowBlur, options)
     window.addEventListener("focus", this.onWindowFocus, options)
     document.addEventListener("click", this.onShowClick, options)
+    // The `toggle` and `close` events of a dialog do not bubble.
+    document.addEventListener("toggle", this.onDialogToggle, { ...options, capture: true })
+    document.addEventListener("close", this.onDialogToggle, { ...options, capture: true })
 
     window.addEventListener("phem:toast", this.show)
     window.addEventListener("phem:error", this.onError)
@@ -375,6 +384,14 @@ export default class PhemToastController extends Controller {
     event.preventDefault()
     this.returnFocus.focus()
     this.returnFocus = null
+  }
+
+  // A modal dialog opens or closes: the time of the toasts stops while it is open.
+  onDialogToggle = (event) => {
+    if (!(event.target instanceof HTMLDialogElement)) return
+
+    if (this.#blocked) this.#pause()
+    else this.#resume()
   }
 
   // A swipe: the toast follows the pointer, in the directions of the `swipeDirection` value.
@@ -699,9 +716,15 @@ export default class PhemToastController extends Controller {
     el.removeAttribute("data-swipe-direction")
   }
 
-  // The time runs while the stack is not expanded and the window has the focus.
+  // The time runs while the stack is not expanded, the window has the focus, and no modal dialog
+  // makes the element inert.
   get #running() {
-    return !this.expanded && this.windowFocused
+    return !this.expanded && this.windowFocused && !this.#blocked
+  }
+
+  // An open modal dialog that is not around the element makes it inert.
+  get #blocked() {
+    return [...document.querySelectorAll("dialog[open]")].some((dialog) => !dialog.contains(this.element) && isModal(dialog))
   }
 
   // A new timer with the full time of the toast. It runs only while the time runs.
@@ -787,6 +810,14 @@ export default class PhemToastController extends Controller {
   }
 }
 
+// jsdom does not know `:modal`.
+function isModal(dialog) {
+  try {
+    return dialog.matches(":modal")
+  } catch {
+    return false
+  }
+}
 
 // A text of a detail: a string or a number that is not empty, or else "".
 function text(value) {

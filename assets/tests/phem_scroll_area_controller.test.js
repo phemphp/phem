@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest"
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemScrollAreaController from "../dist/phem_scroll_area_controller.js"
@@ -65,12 +65,28 @@ async function mountArea(attributes = "", sizes = {}) {
   controller().update()
 }
 
-function scrollTo(top, left = 0) {
+// The render of a scroll waits for the next frame.
+const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+
+async function scrollTo(top, left = 0) {
   const viewport = document.getElementById("viewport")
   viewport.scrollTop = top
   viewport.scrollLeft = left
   viewport.dispatchEvent(new Event("scroll"))
+  await frame()
 }
+
+// A browser with no `scrollend` event: jsdom has one.
+function withoutScrollEnd() {
+  let owner = window
+  while (owner && !Object.hasOwn(owner, "onscrollend")) owner = Object.getPrototypeOf(owner)
+  const descriptor = Object.getOwnPropertyDescriptor(owner, "onscrollend")
+  delete owner.onscrollend
+  onTestFinished(() => Object.defineProperty(owner, "onscrollend", descriptor))
+}
+
+// The fake timers keep the frames of jsdom.
+const fakeTimers = () => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
 
 function pointer(type, el, init = {}) {
   el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init }))
@@ -131,15 +147,16 @@ describe("phem-scroll-area", () => {
     expect(el("vthumb").getAttribute("data-orientation")).toBe("vertical")
     expect(el("vthumb").style.transform).toBe("translate3d(0px, 0px, 0px)")
 
-    scrollTo(300)
+    await scrollTo(300)
 
     expect(el("vthumb").style.transform).toBe("translate3d(0px, 75px, 0px)")
   })
 
-  it("marks the scroll, and removes the mark after the scroll", async () => {
+  it("marks the scroll, and removes the mark 500 ms after the scroll with no scrollend event", async () => {
+    withoutScrollEnd()
     await mountArea()
-    vi.useFakeTimers()
-    scrollTo(100)
+    fakeTimers()
+    await scrollTo(100)
 
     expect(el("area").hasAttribute("data-scrolling")).toBe(true)
     expect(el("vbar").hasAttribute("data-scrolling")).toBe(true)
@@ -149,25 +166,45 @@ describe("phem-scroll-area", () => {
     expect(el("viewport").style.getPropertyValue("--scroll-area-overflow-y-start")).toBe("100px")
 
     vi.advanceTimersByTime(500)
+    await frame()
 
     expect(el("area").hasAttribute("data-scrolling")).toBe(false)
     expect(el("vthumb").hasAttribute("data-scrolling")).toBe(false)
   })
 
+  it("renders all the scroll events of a frame once, in the frame", async () => {
+    await mountArea()
+    const update = vi.spyOn(controller(), "update")
+    const viewport = el("viewport")
+    for (const top of [10, 20, 30]) {
+      viewport.scrollTop = top
+      viewport.dispatchEvent(new Event("scroll"))
+    }
+
+    expect(update).not.toHaveBeenCalled()
+    expect(el("area").hasAttribute("data-scrolling")).toBe(false)
+
+    await frame()
+
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(el("area").hasAttribute("data-scrolling")).toBe(true)
+    expect(el("viewport").style.getPropertyValue("--scroll-area-overflow-y-start")).toBe("30px")
+  })
+
   it("applies the overflowEdgeThreshold value", async () => {
     await mountArea('data-phem-scroll-area-overflow-edge-threshold-value="20"')
-    scrollTo(10)
+    await scrollTo(10)
 
     expect(el("area").hasAttribute("data-overflow-y-start")).toBe(false)
 
-    scrollTo(30)
+    await scrollTo(30)
 
     expect(el("area").hasAttribute("data-overflow-y-start")).toBe(true)
   })
 
   it("reads the thresholds of the edges from a JSON object", async () => {
     await mountArea(`data-phem-scroll-area-overflow-edge-threshold-value='{"yEnd": 50}'`)
-    scrollTo(260)
+    await scrollTo(260)
 
     expect(el("area").hasAttribute("data-overflow-y-start")).toBe(true)
     expect(el("area").hasAttribute("data-overflow-y-end")).toBe(false)
@@ -208,7 +245,7 @@ describe("phem-scroll-area", () => {
 
   it("keeps the state and the scroll position after the morph", async () => {
     await mountArea()
-    scrollTo(100)
+    await scrollTo(100)
 
     respond(area())
     const done = nextDone()
@@ -221,6 +258,38 @@ describe("phem-scroll-area", () => {
     expect(el("vthumb").style.transform).toBe("translate3d(0px, 25px, 0px)")
     expect(el("hbar").hidden).toBe(true)
     expect(el("viewport").style.overflow).toBe("scroll")
+  })
+})
+
+describe("phem-scroll-area: the scrollend event", () => {
+  it("removes the scroll mark at the scrollend event, with no timer", async () => {
+    await mountArea()
+    fakeTimers()
+    await scrollTo(100)
+
+    expect(el("area").hasAttribute("data-scrolling")).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
+
+    el("viewport").dispatchEvent(new Event("scrollend"))
+    await frame()
+
+    expect(el("area").hasAttribute("data-scrolling")).toBe(false)
+    expect(el("vthumb").hasAttribute("data-scrolling")).toBe(false)
+  })
+
+  it("keeps the scroll mark at the scrollend event of a drag of the thumb", async () => {
+    await mountArea()
+    pointer("pointerdown", el("vthumb"), { clientY: 10 })
+    pointer("pointermove", el("vbar"), { clientY: 35 })
+    el("viewport").dispatchEvent(new Event("scroll"))
+    el("viewport").dispatchEvent(new Event("scrollend"))
+    await frame()
+
+    expect(el("area").hasAttribute("data-scrolling")).toBe(true)
+
+    pointer("pointerup", el("vbar"), { clientY: 35 })
+
+    expect(el("area").hasAttribute("data-scrolling")).toBe(false)
   })
 })
 
@@ -238,10 +307,11 @@ describe("phem-scroll-area: the Tab order of the viewport", () => {
 describe("phem-scroll-area: the end of a drag", () => {
   it("removes the scroll mark at once when the drag of the thumb ends", async () => {
     await mountArea()
-    vi.useFakeTimers()
+    fakeTimers()
     pointer("pointerdown", el("vthumb"), { clientY: 10 })
     pointer("pointermove", el("vbar"), { clientY: 35 })
     el("viewport").dispatchEvent(new Event("scroll"))
+    await frame()
 
     expect(el("area").hasAttribute("data-scrolling")).toBe(true)
     expect(el("vthumb").hasAttribute("data-scrolling")).toBe(true)
@@ -256,10 +326,11 @@ describe("phem-scroll-area: the end of a drag", () => {
 
   it("removes the scroll mark of the horizontal axis when the pointer capture goes", async () => {
     await mountArea("", { scrollWidth: 400 })
-    vi.useFakeTimers()
+    fakeTimers()
     pointer("pointerdown", el("hthumb"), { clientX: 10 })
     pointer("pointermove", el("hbar"), { clientX: 35 })
     el("viewport").dispatchEvent(new Event("scroll"))
+    await frame()
 
     expect(el("hbar").hasAttribute("data-scrolling")).toBe(true)
     expect(el("hthumb").hasAttribute("data-scrolling")).toBe(true)
@@ -276,7 +347,7 @@ describe("phem-scroll-area: the end of a drag", () => {
 describe("phem-scroll-area: the fractions of a pixel", () => {
   it("keeps the fractions in the size and the offset of the thumb", async () => {
     await mountArea("", { scrollHeight: 300 })
-    scrollTo(100)
+    await scrollTo(100)
 
     // The thumb is 100 / 3 px, and it moves half of the 200 / 3 px that it has.
     expect(parseFloat(el("vbar").style.getPropertyValue("--scroll-area-thumb-height"))).toBeCloseTo(100 / 3, 5)

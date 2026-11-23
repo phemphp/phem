@@ -3,8 +3,9 @@ import { link } from "./phem_aria.js"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { hide, render, show } from "./phem_transition.js"
-import { isDirty, isDisabledControl, isFilled, isNative, validityOf } from "./phem_validation.js"
+import { customControlOf, focusControl, isDirty, isDisabledControl, isFilled, isNative, validityOf } from "./phem_validation.js"
 import { isComposing } from "./phem_keys.js"
+import "./phem_announcer.js"
 
 // The `phem-field` controller: a label, a description and the errors of a form control, with the
 // constraint validation of the browser. The state of the field stays after the morph of an event.
@@ -24,10 +25,17 @@ import { isComposing } from "./phem_keys.js"
 //
 // The `validationMode` value sets when the field validates: `onSubmit` (the default) when the
 // `phem-form` around it submits, and on each change after this submit; `onBlur` when the control
-// loses the focus; `onChange` on each change, after `validationDebounceTime` milliseconds (0 by
-// default). With no `validationMode` value, the field uses the `validationMode` value of the
-// `phem-form` around it. In all the modes, an invalid field validates again on each change, and
-// Enter in an `<input>` control validates the field (in a `phem-form`, the submit does it).
+// loses the focus after a change by the user (an invalid field, and a field after a submit, also
+// validate on blur with no change); `onChange` on each change, after `validationDebounceTime`
+// milliseconds (0 by default). With no `validationMode` value, the field uses the `validationMode`
+// value of the `phem-form` around it. In all the modes, an invalid field validates again on each
+// change, and Enter in an `<input>` control validates the field (in a `phem-form`, the submit does
+// it).
+//
+// An error that shows after a validation that is not a submit (a blur, a change, Enter) goes to
+// the polite live region of the page (phem_announcer.js), a moment later: a screen reader first
+// reads the control that gets the focus. A submit announces nothing: it focuses the first invalid
+// control, and the screen reader reads its error.
 //
 // An `error` target with `data-match="<key>"` (a key of `ValidityState`, such as `valueMissing`,
 // `typeMismatch` or `customError`) shows when the validation finds this error. With
@@ -49,8 +57,12 @@ import { isComposing } from "./phem_keys.js"
 // control gets `aria-labelledby` (an element reference when the label has no id). A click on a
 // label that is not a native label of the control focuses the control. The control gets
 // `aria-describedby` with the descriptions and the visible errors, after the ids of the server
-// render, and `aria-invalid="true"` when the field is invalid. The `disabled` value disables the
-// controls.
+// render, and `aria-invalid` (`true` when the field is invalid, else `false`). The `disabled` value
+// disables the controls.
+//
+// A control can be the hidden input of a custom control (the checkbox of a `phem-toggle` switch,
+// the input of a `phem-radio-group`, see linkInput() in phem_validation.js). The input gives the
+// validity, and the custom control gets the focus, `aria-invalid` and `aria-describedby`.
 //
 // All the parts (the controller element, the labels, the controls, the descriptions and the
 // errors) get `data-disabled`, `data-valid` or `data-invalid` (after a validation), `data-dirty`
@@ -73,7 +85,7 @@ export default class PhemFieldController extends Controller {
     this.message = ""
     this.submitted = false
     this.touched = false
-    this.focused = this.controlTargets.some((el) => el.contains(document.activeElement))
+    this.focused = this.#controlOf(document.activeElement) !== null
     this.edits = 0
     this.sent = []
     this.custom = new Set()
@@ -95,6 +107,7 @@ export default class PhemFieldController extends Controller {
     this.element.addEventListener("keydown", this.onKeydown, options)
     this.element.addEventListener("invalid", this.onInvalid, { ...options, capture: true })
     this.element.addEventListener("turbo:before-morph-element", this.onBeforeMorph, options)
+    this.element.addEventListener("phem:link", this.onLink, options)
 
     for (const el of this.controlTargets) readControl(el)
     for (const el of this.errorTargets) readError(el)
@@ -110,11 +123,13 @@ export default class PhemFieldController extends Controller {
     this.state.disconnect()
     this.listening.abort()
     clearTimeout(this.timer)
+    clearTimeout(this.announceTimer)
     this.rendered = false
   }
 
   // Validates the field and shows its errors. Returns whether it is valid. `submit` is the submit
   // of the form (`phem-form`): in the `onSubmit` mode, the field then validates on each change.
+  // Another validation announces the errors that it shows.
   validate({ submit = false } = {}) {
     clearTimeout(this.timer)
     if (submit) this.submitted = true
@@ -130,7 +145,11 @@ export default class PhemFieldController extends Controller {
     this.valid = server ? result.keys.size === 0 : result.valid
     this.message = result.message
     this.invalidControl = result.control ?? (server ? this.controlTargets.find(hasServerError) : null) ?? null
+
+    const before = this.shown
     this.#render({ animate: true })
+
+    if (!submit) this.#announce(before)
 
     return !server && this.valid
   }
@@ -162,6 +181,11 @@ export default class PhemFieldController extends Controller {
 
   descriptionTargetConnected() {
     if (this.rendered) this.#render({ animate: false })
+  }
+
+  // A custom control that connects after the field gets the attributes of its input.
+  onLink = (event) => {
+    if (this.controlTargets.includes(event.target)) this.#render({ animate: false })
   }
 
   // The server render of a control or of an error, before the morph changes it.
@@ -226,7 +250,10 @@ export default class PhemFieldController extends Controller {
 
     this.focused = false
     this.touched = true
-    if (this.#mode === "onBlur") this.validate()
+
+    // A blur with no change does not validate: the user can go through an empty field.
+    const edited = this.edits > 0 || this.submitted || this.valid === false
+    if (this.#mode === "onBlur" && edited) this.validate()
     else this.#render({ animate: false })
   }
 
@@ -260,8 +287,7 @@ export default class PhemFieldController extends Controller {
   onInvalid = (event) => {
     if (!this.#controlOf(event.target)) return
 
-    this.submitted = true
-    this.validate()
+    this.validate({ submit: true })
   }
 
   onClick = (event) => {
@@ -271,7 +297,25 @@ export default class PhemFieldController extends Controller {
     if (label instanceof HTMLLabelElement && label.control) return
     if (event.target.closest("a, button, input, select, textarea, [contenteditable]")) return
 
-    control.focus()
+    focusControl(control)
+  }
+
+  // Announces the errors that this validation shows, and that did not show `before`, a moment
+  // later. An error that hides before this time is not announced.
+  #announce(before) {
+    const added = [...this.shown].filter((el) => !before.has(el))
+    const pending = [...(this.announcing ?? []), ...added].filter((el) => this.shown.has(el))
+    clearTimeout(this.announceTimer)
+    this.announcing = pending
+    if (pending.length === 0) return
+
+    this.announceTimer = setTimeout(() => {
+      const errors = this.announcing.filter((el) => this.shown.has(el) && el.isConnected)
+      const message = errors.map((el) => el.textContent.trim()).filter(Boolean).join(" ")
+      this.announcing = []
+
+      if (message) window.dispatchEvent(new CustomEvent("phem:announce", { detail: message }))
+    }, ANNOUNCE_DELAY)
   }
 
   #later() {
@@ -360,6 +404,7 @@ export default class PhemFieldController extends Controller {
 
     const serverParts = this.#serverParts
     const shown = new Set(this.errorTargets.filter((el) => this.#shows(el, server, serverParts)))
+    this.shown = shown
     const message = server ? this.#serverMessage(serverParts) : this.message
 
     for (const el of this.errorTargets) {
@@ -371,11 +416,15 @@ export default class PhemFieldController extends Controller {
       else if (!el.hidden) hide(el)
     }
 
+    // `aria-invalid="false"` until the field is invalid. The custom control of a hidden input
+    // gets the attributes: a screen reader does not read the input.
     for (const el of controls) {
-      if (invalid) el.setAttribute("aria-invalid", "true")
-      else el.removeAttribute("aria-invalid")
+      const custom = customControlOf(el)
 
-      this.#describe(el, serverParts, shown)
+      for (const part of custom ? [el, custom] : [el]) {
+        part.setAttribute("aria-invalid", String(invalid))
+        this.#describe(part, serverParts, shown)
+      }
     }
 
     if (controls[0]) {
@@ -476,7 +525,7 @@ export default class PhemFieldController extends Controller {
   #controlOf(el) {
     if (!(el instanceof Node)) return null
 
-    return this.controlTargets.find((control) => control.contains(el)) ?? null
+    return this.controlTargets.find((control) => control.contains(el) || customControlOf(control)?.contains(el)) ?? null
   }
 }
 
@@ -488,6 +537,10 @@ const STATE_ATTRIBUTES = new Set(["data-disabled", "data-valid", "data-invalid",
 const serverOf = new WeakMap()
 const serverTextOf = new WeakMap()
 const serverHtmlOf = new WeakMap()
+
+// The time in milliseconds between an error that shows and its announcement: a screen reader first
+// reads the control that gets the focus.
+const ANNOUNCE_DELAY = 500
 
 // The events that wait for their answer, for each field (see onQueue()).
 const MAX_SENT = 20

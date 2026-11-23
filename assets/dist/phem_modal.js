@@ -15,6 +15,12 @@
 //     const unlock = scrollLock()
 //     unlock() // when the dialog closes
 //
+// dialogScrollLock() is the lock of a modal `<dialog>` (`phem-dialog`). phem.css keeps the scroll
+// in the dialog and its `::backdrop` (`overscroll-behavior: contain`), so the page does not scroll
+// and keeps its scroll bar. A browser applies it to a dialog with no overflow since Chrome 144 and
+// Firefox 150. Safari does not, and no feature detection exists: the browsers with no `closedby`
+// on a `<dialog>` (Safari) get the lock of scrollLock().
+//
 // The page and the body are out of the root of Phem: the morph does not change them. The
 // snapshot of a Turbo visit gets the styles of the page back: a page from the cache is not
 // locked, and a modal popup that it opens locks it again.
@@ -70,6 +76,14 @@ export function scrollLock() {
     done = true
     if (locked === generation && --scrolls === 0) restore()
   }
+}
+
+// Locks the scroll of the page under a modal `<dialog>` only in a browser that does not keep the
+// scroll in the dialog with CSS (see above).
+export function dialogScrollLock() {
+  if ("closedBy" in HTMLDialogElement.prototype) return () => {}
+
+  return scrollLock()
 }
 
 function lock() {

@@ -74,7 +74,7 @@ export class Hover {
     if (this.landed && stayAfterLanding() && within(popups(), event.target)) return
 
     // The pointer went out of the page, or away from the popup.
-    if (!(to instanceof Node) || !this.#toward(event)) {
+    if (!(to instanceof Node) || !this.toward(event)) {
       this.#close()
 
       return
@@ -124,7 +124,7 @@ export class Hover {
 
   // Whether the pointer that leaves goes toward a popup: it is in the smallest convex shape around
   // the boxes of a trigger and a popup. A pointer out of the other sides goes away from it.
-  #toward({ clientX: x, clientY: y }) {
+  toward({ clientX: x, clientY: y }) {
     const { triggers, popups } = this.#options
     const popupBoxes = boxes(popups())
 

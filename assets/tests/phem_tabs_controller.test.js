@@ -108,21 +108,47 @@ describe("phem-tabs", () => {
     expect(selected()).toBe("b")
   })
 
-  it("clicks a link tab on Enter and on Space, so it selects it and opens its link", async () => {
-    await mount(tabs().replace('<button id="tab-b" data-phem-tabs-target="tab">b</button>', '<a id="tab-b" href="#b" data-phem-tabs-target="tab">b</a>'))
-    const link = document.getElementById("tab-b")
-    const clicks = vi.fn((event) => event.preventDefault())
-    link.addEventListener("click", clicks)
+  it("gives a tabindex only to a panel with no element that gets the focus", async () => {
+    await mount(tabs().replace("Panel a</div>", 'Panel a <div hidden><a href="/more">More</a></div></div>').replace("Panel b</div>", 'Panel b <a href="/help">Help</a></div>').replace("Panel c</div>", 'Panel c <button disabled>Off</button></div>'))
 
-    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
-    link.dispatchEvent(enter)
-    expect(enter.defaultPrevented).toBe(false)
+    // A link in a hidden part of the panel does not get the focus.
+    expect(document.getElementById("panel-a").getAttribute("tabindex")).toBe("0")
+    expect(document.getElementById("panel-b").hasAttribute("tabindex")).toBe(false)
+    expect(document.getElementById("panel-c").getAttribute("tabindex")).toBe("0")
 
-    const space = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true })
-    link.dispatchEvent(space)
-    expect(space.defaultPrevented).toBe(true)
-    expect(clicks).toHaveBeenCalledTimes(1)
-    expect(document.getElementById("panel-b").hidden).toBe(false)
+    respond(tabs().replace("Panel a</div>", 'Panel a <input name="q"></div>'))
+    await morphOnSave()
+
+    expect(document.getElementById("panel-a").hasAttribute("tabindex")).toBe(false)
+    expect(document.getElementById("panel-b").getAttribute("tabindex")).toBe("0")
+  })
+
+  it("hides the panels with hidden=until-found, and selects the tab of a panel that the search finds", async () => {
+    await mount(tabs('data-phem-tabs-hidden-until-found-value="true"'))
+    const panel = document.getElementById("panel-c")
+
+    expect(panel.getAttribute("hidden")).toBe("until-found")
+    expect(document.getElementById("panel-a").hasAttribute("hidden")).toBe(false)
+
+    panel.dispatchEvent(new Event("beforematch", { bubbles: true }))
+
+    expect(selected()).toBe("c")
+    expect(panel.hasAttribute("data-instant")).toBe(true)
+    expect(document.getElementById("panel-a").getAttribute("hidden")).toBe("until-found")
+  })
+
+  it("hides one panel with hidden=until-found with the attribute of the panel", async () => {
+    await mount(tabs().replace('id="panel-b"', 'id="panel-b" data-phem-tabs-hidden-until-found'))
+
+    expect(document.getElementById("panel-b").getAttribute("hidden")).toBe("until-found")
+    expect(document.getElementById("panel-c").getAttribute("hidden")).toBe("")
+  })
+
+  it("does not select a disabled tab at the beforematch event", async () => {
+    await mount(tabs('data-phem-tabs-hidden-until-found-value="true"').replace('id="tab-c"', 'id="tab-c" disabled'))
+    document.getElementById("panel-c").dispatchEvent(new Event("beforematch", { bubbles: true }))
+
+    expect(selected()).toBe("a")
   })
 
   it("sets the direction of the change", async () => {

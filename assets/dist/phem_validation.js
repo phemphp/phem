@@ -63,3 +63,33 @@ export function isDisabledControl(el) {
 export function firstInDocument(elements) {
   return elements.filter(Boolean).sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0] ?? null
 }
+
+// input => the element that the user sees for it, and the function that focuses this element. A
+// custom control (the element of `phem-toggle`, a `phem-radio-group`) keeps its value for a form
+// in an input that the user does not see: the browser validates the input, but cannot focus it or
+// show its message.
+const customControls = new WeakMap()
+
+// Links an input of a form to the custom control that the user sees. `focus` gives the focus to
+// the custom control (by default, its `focus()`). The input dispatches `phem:link`, so a
+// `phem-field` that connected before the custom control renders it.
+export function linkInput(input, control, focus = () => control.focus()) {
+  customControls.set(input, { control, focus })
+  input.dispatchEvent(new Event("phem:link", { bubbles: true }))
+}
+
+export function unlinkInput(input, control) {
+  if (customControls.get(input)?.control === control) customControls.delete(input)
+}
+
+// The custom control of an input, or null.
+export function customControlOf(input) {
+  return customControls.get(input)?.control ?? null
+}
+
+// Focuses a control, or the custom control of an input.
+export function focusControl(control) {
+  const custom = customControls.get(control)
+  if (custom) custom.focus()
+  else control?.focus()
+}

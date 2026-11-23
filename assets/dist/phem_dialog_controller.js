@@ -6,7 +6,7 @@ import { SWIPE_ATTRIBUTES, snapPointSize, swipeOpenable, swipeable, unswipe } fr
 import { hide, render, show } from "./phem_transition.js"
 import { controlWhileOpen, link } from "./phem_aria.js"
 import { edgeTabbable, nextTabbable } from "./phem_focus.js"
-import { scrollLock } from "./phem_modal.js"
+import { dialogScrollLock } from "./phem_modal.js"
 import { PopupViewport } from "./phem_popup_viewport.js"
 import { isTouchClick } from "./phem_press.js"
 import { Triggers } from "./phem_triggers.js"
@@ -61,6 +61,13 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // tap on the backdrop (see phem_backdrop.js) close it. With the `disablePointerDismissal` value,
 // only Escape closes it (an alert dialog). A dialog that closes in another way (a
 // `<form method="dialog">`) also sets the state.
+//
+// A modal gets `closedby` from the `dismiss` value: `closerequest`, or `none` when `dismiss` is
+// false. In a browser that supports it, `none` stops the close requests (Escape, the back gesture
+// of Android) before the `cancel` event. The `cancel` listener stays for a browser with no
+// `closedby` (Safari). A tap on the backdrop is not a close request of the browser (no `any`):
+// the controller closes the dialog itself, one time, in all the browsers. The browser does not let a page cancel a second close
+// request with no user activation: the dialog closes at once, and the `close` event sets the state.
 //
 // The `modal` value: `true` (the default) opens the dialog with `showModal()`: the page is inert
 // and does not scroll (phem_modal.js), and the dialog is in the top layer. `false` opens it with `show()`: the page stays active, and
@@ -151,6 +158,7 @@ export default class PhemDialogController extends Controller {
         this.payload.capture()
         if (this.openValue) this.payload.render(this.triggers.active)
         this.#renderAria()
+        this.#renderClosedBy()
         this.#alignKeyboard()
       },
     })
@@ -268,6 +276,14 @@ export default class PhemDialogController extends Controller {
     this.#renderAria()
   }
 
+  dismissValueChanged() {
+    this.#renderClosedBy()
+  }
+
+  modalValueChanged() {
+    this.#renderClosedBy()
+  }
+
   onClick = (event) => {
     if (event.defaultPrevented) return
 
@@ -309,8 +325,12 @@ export default class PhemDialogController extends Controller {
     if (this.openValue && this.snapPointsValue.length > 0) this.#renderDrawer()
   }
 
-  // Escape on a modal: the controller closes the dialog itself, after its animations.
+  // Escape on a modal: the controller closes the dialog itself, after its animations. A `cancel`
+  // that is not cancelable (a second close request with no user activation) closes the dialog at
+  // once: onClose() sets the state.
   onCancel = (event) => {
+    if (!event.cancelable) return
+
     event.preventDefault()
     if (this.dismissValue) this.close()
   }
@@ -405,6 +425,7 @@ export default class PhemDialogController extends Controller {
       backdrop: (event) => event.target === el,
     }
     onBackdropTap(el, () => this.#pointerDismiss(), listening.signal, viewport)
+    this.#renderClosedBy()
 
     swipeable(popup, {
       direction: () => this.swipeDirectionValue,
@@ -651,15 +672,25 @@ export default class PhemDialogController extends Controller {
     return this.modalValue !== "false" && this.modalValue !== "trap-focus"
   }
 
-  // An open modal dialog locks the scroll of the page.
+  // An open modal dialog locks the scroll of the page (see dialogScrollLock()).
   #renderScrollLock() {
     const locked = this.openValue && this.#modal && this.#dialogs.length > 0
 
-    if (locked && !this.unlockScroll) this.unlockScroll = scrollLock()
+    if (locked && !this.unlockScroll) this.unlockScroll = dialogScrollLock()
     else if (!locked && this.unlockScroll) {
       this.unlockScroll()
       this.unlockScroll = null
     }
+  }
+
+  // The close requests that the browser lets close a modal, from the `dismiss` value. A tap on the
+  // backdrop is not one: with `any`, the browser and the backdrop tap of the controller both close
+  // the dialog. A dialog that is not a modal gets `none`: phem_dismiss.js closes it, and a press on
+  // a trigger does not close it.
+  #renderClosedBy() {
+    const value = this.#modal && this.dismissValue ? "closerequest" : "none"
+
+    for (const el of this.#dialogs) if (el.getAttribute("closedby") !== value) el.setAttribute("closedby", value)
   }
 
   // A dialog in a dialog: the dialog around it shows how many dialogs are open in it. The dialog
@@ -845,7 +876,7 @@ export default class PhemDialogController extends Controller {
     // the nesting render again after the morph (see `morphed`), so the style of the server applies.
     if (name === "style") return [...SWIPE_ATTRIBUTES].some((attribute) => el.hasAttribute(attribute)) || this.keyboardInset > 0
 
-    return name === "open" || OPEN_ATTRIBUTES.has(name) || name === "data-nested" || SWIPE_ATTRIBUTES.has(name) || DRAWER_ATTRIBUTES.has(name)
+    return name === "open" || name === "closedby" || OPEN_ATTRIBUTES.has(name) || name === "data-nested" || SWIPE_ATTRIBUTES.has(name) || DRAWER_ATTRIBUTES.has(name)
   }
 }
 

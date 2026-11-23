@@ -33,6 +33,52 @@ final class SortableTest extends E2eTestCase
         expect($page->locator('#todo li')->first())->toHaveExactText('b');
     }
 
+    public function testDragShowsTheDropMarkerAndMovesTheCardOnRelease(): void
+    {
+        $page = $this->visit('/sortable');
+        self::assertResponseIsSuccessful();
+
+        $a = $page->locator('#card-a')->boundingBox();
+        $d = $page->locator('#card-d')->boundingBox();
+
+        $mouse = $page->mouse();
+        $mouse->move($a['x'] + $a['width'] / 2, $a['y'] + $a['height'] / 2);
+        $mouse->down();
+        $mouse->move($d['x'] + $d['width'] / 2, $d['y'] + $d['height'] * 0.75, ['steps' => 10]);
+
+        // The card stays at its place: the marker of the other column shows the drop place.
+        expect($page->locator('#todo li')->first())->toHaveExactText('a');
+        expect($page->locator('#done'))->toHaveAttribute('data-drop', '');
+        expect($page->locator('#todo'))->not()->toHaveAttribute('data-drop', '');
+
+        $mouse->up();
+        expect($page->locator('#order'))->toHaveExactText('b,c|d,a');
+        expect($page->locator('#done'))->not()->toHaveAttribute('data-drop', '');
+    }
+
+    public function testEscapeCancelsADragWithTheMouse(): void
+    {
+        $page = $this->visit('/sortable');
+        self::assertResponseIsSuccessful();
+
+        $a = $page->locator('#card-a')->boundingBox();
+        $c = $page->locator('#card-c')->boundingBox();
+
+        $mouse = $page->mouse();
+        $mouse->move($a['x'] + $a['width'] / 2, $a['y'] + $a['height'] / 2);
+        $mouse->down();
+        $mouse->move($c['x'] + $c['width'] / 2, $c['y'] + $c['height'] * 0.75, ['steps' => 10]);
+        expect($page->locator('#todo'))->toHaveAttribute('data-drop', '');
+
+        $page->keyboard()->press('Escape');
+        expect($page->locator('#todo'))->not()->toHaveAttribute('data-drop', '');
+
+        $mouse->up();
+        expect($page->locator('#todo li'))->toHaveCount(3);
+        expect($page->locator('#todo li')->first())->toHaveExactText('a');
+        expect($page->locator('#order'))->toHaveExactText('a,b,c|d');
+    }
+
     public function testDragMovesACardToTheOtherColumn(): void
     {
         $page = $this->visit('/sortable');

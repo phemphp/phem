@@ -395,6 +395,64 @@ describe("phem-dialog", () => {
     expect(isModal()).toBe(true)
   })
 
+  it("sets closedby from the dismiss value, with no closedby any: the controller closes on a tap on the backdrop", async () => {
+    await mount(edit())
+    expect(dialog().getAttribute("closedby")).toBe("closerequest")
+
+    const el = document.getElementById("edit")
+    el.setAttribute("data-phem-dialog-disable-pointer-dismissal-value", "true")
+    await nextTask()
+    expect(dialog().getAttribute("closedby")).toBe("closerequest")
+
+    el.setAttribute("data-phem-dialog-dismiss-value", "false")
+    await nextTask()
+    expect(dialog().getAttribute("closedby")).toBe("none")
+
+    // A dialog that is not a modal: phem_dismiss.js closes it.
+    el.setAttribute("data-phem-dialog-dismiss-value", "true")
+    el.setAttribute("data-phem-dialog-modal-value", "false")
+    await nextTask()
+    expect(dialog().getAttribute("closedby")).toBe("none")
+  })
+
+  it("keeps closedby after the morph of an event", async () => {
+    await mount(edit())
+    respond(edit())
+    const done = nextDone()
+    click("#save")
+    await done
+
+    expect(dialog().getAttribute("closedby")).toBe("closerequest")
+  })
+
+  it("sets the state when a cancel that is not cancelable closes the dialog", async () => {
+    await mount(edit('data-phem-dialog-dismiss-value="false"'))
+    click("#open")
+
+    // A second Escape with no user activation: the browser closes the dialog at once.
+    const event = new Event("cancel", { cancelable: false })
+    dialog().dispatchEvent(event)
+    dialog().close()
+    await nextTask()
+
+    expect(dialog().open).toBe(false)
+    expect(document.getElementById("edit").getAttribute("data-phem-dialog-open-value")).toBe("false")
+    expect(document.documentElement.style.overflow).toBe("")
+  })
+
+  it("does not lock the scroll of the page in a browser with closedby: phem.css keeps the scroll in the dialog", async () => {
+    Object.defineProperty(HTMLDialogElement.prototype, "closedBy", { configurable: true, value: "" })
+    try {
+      await mount(edit())
+      click("#open")
+
+      expect(isModal()).toBe(true)
+      expect(document.documentElement.style.overflow).toBe("")
+    } finally {
+      delete HTMLDialogElement.prototype.closedBy
+    }
+  })
+
   it("keeps the state of a dialog that is open again before its close event", async () => {
     await mount(edit())
     click("#open")
