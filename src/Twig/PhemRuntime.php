@@ -150,8 +150,15 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
         return new Markup($content?->marker() ?? '', 'UTF-8');
     }
 
-    /** `onClick={{ f }}` → `data-phem-on-click="<handler id>"`. */
-    public function on(string $event, mixed $handler): Markup
+    /**
+     * `onClick={{ f }}` → `data-phem-on-click="<handler id>"`.
+     *
+     * `$off`: the values of the `disabled` attribute of a form control and of the `inert`
+     * attribute of the element (phemc gives them). When one of them renders the attribute, the
+     * browser sends no `click` (see DomEvents::sentToDisabled()), so no event can call the
+     * handler: an event for it runs no handler (see Tree::isOff()).
+     */
+    public function on(string $event, mixed $handler, mixed ...$off): Markup
     {
         if (null === $handler || false === $handler) {
             return new Markup('', 'UTF-8');
@@ -163,9 +170,11 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
             throw new \InvalidArgumentException(\sprintf('The "%s" handler must be a function, "%s" given. Pass the function (`$this->name(...)`, `fn () => ...`), do not call it.', $event, get_debug_type($handler)));
         }
 
-        $id = $this->renderer->addHandler($handler) ?? 'static';
+        $event = DomEvents::name($event);
+        $callable = DomEvents::sentToDisabled($event) || [] === array_filter($off, static fn (mixed $value): bool => null !== $value && false !== $value);
+        $id = $this->renderer->addHandler($handler, $callable) ?? 'static';
 
-        return new Markup(\sprintf('data-phem-on-%s="%s"', DomEvents::name($event), Attributes::e($id)), 'UTF-8');
+        return new Markup(\sprintf('data-phem-on-%s="%s"', $event, Attributes::e($id)), 'UTF-8');
     }
 
     /**
@@ -354,8 +363,25 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
      * A spread can contain data, so its names are not trusted: an invalid name is not rendered,
      * and an `on*` name is never an inline script (`onclick="..."`), as in React. phemc writes
      * the static `onclick="..."` of the markup outside of this call.
+     *
+     * The handlers of an inert element are not callable (see on()).
      */
     public function attrs(mixed ...$groups): Markup
+    {
+        return $this->mergedAttrs($groups, false);
+    }
+
+    /**
+     * phem_attrs() of a form control (`<button>`, `<input>`, `<select>`, `<textarea>`): the
+     * handlers of a disabled control are not callable either (see on()).
+     */
+    public function controlAttrs(mixed ...$groups): Markup
+    {
+        return $this->mergedAttrs($groups, true);
+    }
+
+    /** @param array<mixed> $groups */
+    private function mergedAttrs(array $groups, bool $control): Markup
     {
         $merged = [];
         foreach ($groups as $attrs) {
@@ -370,6 +396,8 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
             }
         }
 
+        $off = [$merged['inert'] ?? null, $control ? $merged['disabled'] ?? null : null];
+
         $out = [];
         foreach ($merged as $name => $value) {
             $out[] = (string) match (true) {
@@ -382,7 +410,7 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
                 'phem:error' === $name => throw new \InvalidArgumentException('"phem:error" cannot come from a spread: write it on the element, with the name of a #[State] property.'),
                 'phem:feed' === $name => throw new \InvalidArgumentException('"phem:feed" cannot come from a spread: write it on the element, with the name of a Feed property.'),
                 null !== ($modifier = Attributes::modifier($name, $value)) => $modifier,
-                1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
+                1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value, ...$off),
                 0 === stripos($name, 'on') => '',
                 default => Attributes::attr($name, $value),
             };

@@ -368,6 +368,14 @@ phem:
 
 With the subscriber key, the updates are private: each page gets a cookie that grants access to its own topics only. Without a key, the updates are public, and the hub needs the `anonymous` directive. The cookie is `Secure`, so it works on HTTPS and on `localhost`. On another plain HTTP host, set `phem.mercure.cookie_name` and the `cookie_name` of the hub to the same name without the `__Secure-` prefix.
 
+The token of the cookie is valid as long as a state: `phem.state_max_age`, one hour by default (one day when it is `0`). Each event of the page gives a new token. When the token of a page with no event expires, the hub closes the connection. The browser then refreshes the page to get a new token, but its state is too old too, so the page loads again (see [The page reloads after an event](failed-events.md#the-page-reloads-after-an-event)). The load drops the values that the user typed and didn’t save. For a page that users leave open, for example a dashboard, raise `phem.state_max_age`:
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    state_max_age: 86400
+```
+
 The browser connects to the hub at `phem.mercure.hub_url` (`/.well-known/mercure` by default). For a hub on another host or port, give its absolute URL:
 
 ```yaml

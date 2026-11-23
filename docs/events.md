@@ -65,6 +65,8 @@ By default, only the component of the handler, the components whose state change
 
 `onChange` on a text field fires as the user types. The browser waits until the user stops typing for 150 ms before it sends the event (see [Control when typing sends an event](#control-when-typing-sends-an-event)).
 
+A disabled control has no handler for the events that the browser doesn’t send to it. With `<button onClick={{ publish }} disabled={{ not ready }}>`, the server doesn’t register `publish` while `ready` is false, so a click that a user sends by hand, or a second click that waited in the queue, doesn’t run it (see [A disabled element has no handler](security.md#a-disabled-element-has-no-handler)).
+
 ## Respond to a drop, a paste or a right-click
 
 These events also go to the server: `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp` and `onScroll`. For the data of a JavaScript library, see [Call a handler from your JavaScript](#call-a-handler-from-your-javascript). For the full list, see [The `.phem` syntax](syntax.md#event-handlers).

@@ -79,12 +79,26 @@ final class StateCodecTest extends TestCase
         self::assertSame([], $codec->decode($json, $signature, 'App\\A', $this->request('s3')));
     }
 
-    public function testStateIsNotBoundToTheSessionByDefault(): void
+    public function testStateCanBeValidInAllSessions(): void
     {
-        $codec = $this->codec();
+        $codec = $this->codec(bindSession: false);
         [$json, $signature] = $codec->encode([], 'App\\A', $this->request('s1'));
 
         self::assertSame([], $codec->decode($json, $signature, 'App\\A', $this->request('s2')));
+    }
+
+    /** A state that leaks (a log, a shared HAR file) is valid for one hour, and only in its session. */
+    public function testStateIsBoundToTheSessionForOneHourByDefault(): void
+    {
+        $codec = new StateCodec('secret', clock: fn (): int => $this->now);
+        [$json, $signature] = $codec->encode([], 'App\\A', $this->request('s1'));
+
+        self::assertNull($codec->decode($json, $signature, 'App\\A', $this->request('s2')), 'another session');
+
+        $this->now += 3600;
+        self::assertSame([], $codec->decode($json, $signature, 'App\\A', $this->request('s1')));
+        ++$this->now;
+        self::assertNull($codec->decode($json, $signature, 'App\\A', $this->request('s1')), 'too old');
     }
 
     /** The time is in the signature: the server knows the age before it has the JSON (see StateCache). */
@@ -101,7 +115,7 @@ final class StateCodecTest extends TestCase
         self::assertFalse($codec->isTooOld('not a signature'), 'decode() rejects it');
     }
 
-    private function codec(int $maxAge = 86400, bool $bindSession = false): StateCodec
+    private function codec(int $maxAge = 3600, bool $bindSession = false): StateCodec
     {
         return new StateCodec('secret', $maxAge, $bindSession, fn (): int => $this->now);
     }

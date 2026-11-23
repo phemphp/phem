@@ -801,7 +801,7 @@ export default class PhemController extends Controller {
     offlineQueue: { type: Boolean, default: false },
     // The seconds that the offline queue keeps the events of a page that does not load again (0
     // for no limit). Older events leave the storage of the browser.
-    offlineQueueMaxAge: { type: Number, default: 86400 },
+    offlineQueueMaxAge: { type: Number, default: 3600 },
     // After an event of the user, the other tabs of the same page refresh (see TabSync).
     syncTabs: { type: Boolean, default: false },
   }

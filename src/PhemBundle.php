@@ -61,8 +61,8 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *     phem:
  *         build_dir: '%kernel.project_dir%/var/phem'
  *         secret: '%kernel.secret%'
- *         state_max_age: 86400       # seconds; 0 for no limit
- *         state_bind_session: false
+ *         state_max_age: 3600        # seconds; 0 for no limit
+ *         state_bind_session: true
  *         state_cache: true          # keep the signed states in the cache.phem.state pool
  *         state_cache_min_size: 4096 # bytes; a smaller state goes with each event, not in the pool
  *         max_event_size: 1048576    # bytes; 0 for no limit

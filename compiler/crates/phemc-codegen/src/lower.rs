@@ -61,11 +61,22 @@ pub struct Lowerer<'a> {
     pub calls_methods: bool,
     /// While the value of a handler lowers (see `handler_expr_code()`).
     in_handler: bool,
+    /// While the attributes of an element lower: the values of its `disabled` (a form control)
+    /// and `inert` attributes, as extra arguments of phem_on() (`, _phem_off_0`). See `handler_off()`.
+    handler_off: String,
+    /// While the attributes of an element lower: the Twig variable of the value of an attribute,
+    /// by its lowercase name (`disabled` => `_phem_off_0`). See `handler_off()`.
+    off_vars: HashMap<String, String>,
+    /// The number of `disabled` and `inert` values in a Twig variable: each one has its own.
+    offs: usize,
+    /// While the attributes of a form control with a spread lower: phem_control_attrs() in place
+    /// of phem_attrs(), so a `disabled` of the spread also turns off its handlers.
+    control_attrs: bool,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry, enums: &'a Enums, replacements: &'a Replacements) -> Self {
-        Self { info, reg, enums, replacements, classes: ClassNames::new(info, reg, enums), owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, skip_owned: None, twig_bound: vec![], loops: 0, in_feed_item: false, feeds: HashSet::new(), calls_methods: false, in_handler: false }
+        Self { info, reg, enums, replacements, classes: ClassNames::new(info, reg, enums), owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, skip_owned: None, twig_bound: vec![], loops: 0, in_feed_item: false, feeds: HashSet::new(), calls_methods: false, in_handler: false, handler_off: String::new(), off_vars: HashMap::new(), offs: 0, control_attrs: false }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -321,9 +332,14 @@ impl<'a> Lowerer<'a> {
         // With a spread, the value comes from the merged attributes, and the last group of
         // phem_attrs() removes it and gives the id of the error: a later value replaces an earlier one.
         let mut described_by = bind.as_ref().and_then(|b| b.described_by.clone());
+        let spread = e.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_)));
+        if !spread {
+            self.handler_off = self.handler_off(&name, &e.attrs, out);
+        }
+
         out.push('<');
         out.push_str(&e.name);
-        if e.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_))) {
+        if spread {
             let mut last = Vec::new();
             if bind.is_some() {
                 last.push(format!("{}: null", php_str(DESCRIBED_BY)));
@@ -333,7 +349,9 @@ impl<'a> Lowerer<'a> {
                 last.push(format!("'id': {}.id", err.var));
             }
 
+            self.control_attrs = is_control(&name);
             let groups = self.merged_attrs(&e.attrs, &last, out);
+            self.control_attrs = false;
             if bind.is_some() {
                 described_by = Some(format!("(phem_props({})[{}] ?? null)", groups.join(", "), php_str(DESCRIBED_BY)));
             }
@@ -346,6 +364,8 @@ impl<'a> Lowerer<'a> {
 
             self.skip_described_by = false;
             self.skip_owned = None;
+            self.handler_off.clear();
+            self.off_vars.clear();
             if let Some(err) = &error {
                 out.push_str(&format!(" id=\"{{{{ {}.id }}}}\"", err.var));
             }
@@ -904,6 +924,44 @@ impl<'a> Lowerer<'a> {
         format!("[{}]", items.join(", "))
     }
 
+    /// The extra arguments of phem_on() for the handlers of an element: the values of its
+    /// `disabled` (only on a form control) and `inert` attributes. The browser sends no click to
+    /// a disabled control or an inert element, so the runtime does not register the handler when
+    /// the attribute renders. An expression goes in a Twig variable before the tag, so it runs
+    /// once for the attribute and all the handlers: `<button onClick={{ publish }} disabled={{ not ready }}>`
+    /// → `{% set _phem_off_0 = (not ready) %}<button {{ phem_on('click', publish, _phem_off_0) }} {{ phem_attr('disabled', _phem_off_0) }}>`
+    /// (see `off_vars`). Empty when the element has no handler.
+    fn handler_off(&mut self, tag: &str, attrs: &[Attr], out: &mut String) -> String {
+        if !attrs.iter().filter_map(plain).any(|(name, _)| event_name(name).is_some()) {
+            return String::new();
+        }
+
+        let control = is_control(tag);
+        let mut off = String::new();
+        for (name, value) in attrs.iter().filter_map(plain) {
+            if !name.eq_ignore_ascii_case("inert") && !(control && name.eq_ignore_ascii_case("disabled")) {
+                continue;
+            }
+
+            let code = match value {
+                AttrValue::Expr(x) => {
+                    let code = self.expr_code(x);
+                    let var = format!("_phem_off_{}", self.offs);
+                    self.offs += 1;
+                    out.push_str(&format!("{{% set {var} = ({code}) %}}"));
+                    self.off_vars.insert(name.to_ascii_lowercase(), var.clone());
+                    var
+                }
+                // `disabled` or `disabled="..."`: the attribute always renders.
+                AttrValue::None | AttrValue::Quoted { .. } => "true".into(),
+            };
+
+            off.push_str(&format!(", {code}"));
+        }
+
+        off
+    }
+
     /// The attributes of an element with a spread, in one call: `<a x="1" {{ ...rest }} y={{ v }}>`
     /// → `phem_attrs({'x': '1'}, rest, {'y': (v)})`. A later value replaces an earlier one, as in React.
     /// `last`: the entries of a last group, after the attributes of the markup. Returns the
@@ -1023,7 +1081,8 @@ impl<'a> Lowerer<'a> {
         }
 
         let ws = attrs.first().map_or(" ", |a| if a.ws_before.is_empty() { " " } else { a.ws_before.as_str() });
-        out.push_str(&format!("{ws}{{{{ phem_attrs({}) }}}}", all.join(", ")));
+        let function = if self.control_attrs { "phem_control_attrs" } else { "phem_attrs" };
+        out.push_str(&format!("{ws}{{{{ {function}({}) }}}}", all.join(", ")));
 
         args
     }
@@ -1701,7 +1760,7 @@ impl<'a> Lowerer<'a> {
                             let c = self.handler_expr_code(x);
                             self.check_handler(name, &c, x.span);
                             let c = handler_code(&c);
-                            out.push_str(&format!("{ws}{{{{ phem_on('{event}', {c}) }}}}"));
+                            out.push_str(&format!("{ws}{{{{ phem_on('{event}', {c}{}) }}}}", self.handler_off));
                         }
                         _ => self.handler_not_function(name, *name_span),
                     }
@@ -1726,7 +1785,11 @@ impl<'a> Lowerer<'a> {
                         out.push_str(&format!("{ws}{html_name}={quote}{raw}{quote}"));
                     }
                     AttrValue::Expr(x) => {
-                        let c = self.expr_code(x);
+                        // A `disabled` or `inert` value that handler_off() put in a variable.
+                        let c = match self.off_vars.get(&name.to_ascii_lowercase()) {
+                            Some(var) => var.clone(),
+                            None => self.expr_code(x),
+                        };
                         if html_name == "style" {
                             out.push_str(&format!("{ws}{{{{ phem_style({c}) }}}}"));
                         } else if html_name == "class" {
@@ -2720,6 +2783,20 @@ fn event_name(attr: &str) -> Option<String> {
         "DoubleClick" => "dblclick".into(),
         r => r.to_ascii_lowercase(),
     })
+}
+
+/// The name and the value of an attribute that is not a spread.
+fn plain(a: &Attr) -> Option<(&str, &AttrValue)> {
+    match &a.kind {
+        AttrKind::Plain { name, value, .. } => Some((name.as_str(), value)),
+        AttrKind::Spread(_) => None,
+    }
+}
+
+/// `<button>`, `<input>`, `<select>`, `<textarea>`: the form controls that `disabled` turns off.
+/// Their handlers get the value of `disabled` (see `handler_off()` and PhemRuntime::controlAttrs()).
+fn is_control(tag: &str) -> bool {
+    matches!(tag.to_ascii_lowercase().as_str(), "button" | "input" | "select" | "textarea")
 }
 
 /// `onclick`, `ONLOAD`: an HTML event attribute with inline script, not a handler (`onClick`).

@@ -8,6 +8,28 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** The defaults of the state options are safer: `phem.state_bind_session` is `true`
+  (it was `false`), and `phem.state_max_age` is `3600` seconds, one hour (it was `86400`). A state
+  that leaks (a log, a shared HAR file) is valid only in the session of its user, and only for one
+  hour. A login, a logout or a new session id reloads the open pages on their next event, and a
+  page that stays open for more than one hour reloads on its next event. The Mercure token of a
+  page lives as long as a state, so a page with real-time updates and no event for one hour
+  reloads when the hub closes its connection. The default of
+  `data-phem-offline-queue-max-age-value` is `3600` too. Set the old values in
+  `config/packages/phem.yaml` to keep the old behavior, for example for a dashboard that users
+  leave open. See "Keep security decisions out of the state" in `docs/security.md`.
+- The server does not register the handler of a disabled form control (`disabled` on a
+  `<button>`, an `<input>`, a `<select>` or a `<textarea>`) or of an inert element (`inert`) for
+  the events that the browser never sends to it: `onClick`, `onKeyDown`, `onKeyUp`, `onFocus` and
+  `onPaste`. The element keeps its handler id, but an event for it runs no handler, and the page
+  stays as it is. Before, a user could send the id of
+  `<button onClick={{ publish }} disabled={{ not ready }}>` by hand and run `publish`, and the
+  second click of a double click on a button that the first click disabled ran its handler again.
+  phemc evaluates `disabled` and `inert` once, in a Twig variable, and gives them to `phem_on()`
+  (`{% set _phem_off_0 = (not ready) %}` and `phem_on('click', publish, _phem_off_0)`). A form
+  control with a spread uses the new `phem_control_attrs()`. A click on a control that the server
+  rendered disabled and that a script enabled does nothing. See "A disabled element has no
+  handler" in `docs/security.md`.
 - New `phem-palette` controller and `palette_script()` Twig function: the user picks a named palette (a set of colors) next to the light and the dark theme. `{{ palette_script(['base', 'contrast']) }}` in the `<head>` gives `<html>` the stored palette before the first paint (`data-palette`), and a `phem-palette#choose` picker stores the choice in `localStorage`. See "Let the user pick a palette" in `docs/controllers.md`. The language server completes `palette_script()`.
 
 - **Breaking** The `#[Async]` event handlers are removed: `Phem\Attribute\Async`, the

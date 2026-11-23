@@ -41,7 +41,7 @@ Phem keeps no session on the server, so the browser has to remember each compone
 
 ### The server signs the state
 
-The signature works like a wax seal: anyone can read the state, but nobody can change it without breaking the seal. Phem computes a hash-based message authentication code (HMAC) of the state, its page component, and the time it signed them. The key is the `phem.secret` option, which defaults to `kernel.secret` (from `APP_SECRET`). When an event arrives, the server rejects a state whose signature doesn’t match, or whose signature is older than the `phem.state_max_age` option (one day by default).
+The signature works like a wax seal: anyone can read the state, but nobody can change it without breaking the seal. Phem computes a hash-based message authentication code (HMAC) of the state, its page component, and the time it signed them. The key is the `phem.secret` option, which defaults to `kernel.secret` (from `APP_SECRET`). When an event arrives, the server rejects a state whose signature doesn’t match, or whose signature is older than the `phem.state_max_age` option (one hour by default).
 
 ### Large state goes through a cache
 

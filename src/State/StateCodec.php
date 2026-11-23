@@ -37,8 +37,8 @@ final class StateCodec
      */
     public function __construct(
         private readonly string $secret,
-        private readonly int $maxAge = 86400,
-        private readonly bool $bindSession = false,
+        private readonly int $maxAge = 3600,
+        private readonly bool $bindSession = true,
         private readonly ?\Closure $clock = null,
     ) {
         if ('' === $secret) {

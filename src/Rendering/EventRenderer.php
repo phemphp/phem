@@ -48,6 +48,10 @@ use Symfony\Component\HttpFoundation\Request;
  * a refresh. When a stale fiber is not in the page any more, its closest ancestor that rendered is
  * stale: the push changed the HTML of that ancestor.
  *
+ * A handler that the last render gave to a disabled or inert element does not run (see
+ * Tree::isOff()): the browser sends no click to such an element, so the event is a click that
+ * waited in the queue of the browser, or a request that a user wrote by hand.
+ *
  * The render from before the handler is the shape that the browser sent (see TreeShape): the
  * tree compares the second pass with it. When the shape does not know a fiber of the paths, or
  * when the handler calls Reply::refresh(), the full page renders, in the two passes.
@@ -104,6 +108,12 @@ final class EventRenderer
 
         $closures = [];
         foreach ($handlers as $handler) {
+            // The element of the handler is disabled or inert now: the event runs no handler,
+            // and the page stays as it is.
+            if ($tree->isOff($handler)) {
+                continue;
+            }
+
             $closure = $tree->handler($handler);
             if (null === $closure) {
                 return EventOutcome::reload();

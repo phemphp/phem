@@ -9,8 +9,8 @@ Phem works with no config file: the defaults match the layout of the Flex recipe
 phem:
     build_dir: '%kernel.project_dir%/var/phem'
     secret: '%kernel.secret%'
-    state_max_age: 86400
-    state_bind_session: false
+    state_max_age: 3600
+    state_bind_session: true
     state_cache: true
     state_cache_min_size: 4096
     max_event_size: 1048576
@@ -44,8 +44,8 @@ phem:
 |---|---|---|
 | `build_dir` | `%kernel.project_dir%/var/phem` | The output directory of `phemc`. It must be the `--out` of `phemc build`. See [Build directory configuration](compiler.md#build-directory-configuration) |
 | `secret` | `%kernel.secret%` | The key that signs the state, the Mercure topics, the broadcast keys and the feed items. See [Build for production](deployment.md#build-for-production) |
-| `state_max_age` | `86400` | The seconds that a signed state is valid. `0` is no limit. An older state reloads the page. See [The page reloads after an event](failed-events.md#the-page-reloads-after-an-event) |
-| `state_bind_session` | `false` | Signs the session id with the state, so the state of a session isn’t valid in another session. See [Keep security decisions out of the state](security.md#keep-security-decisions-out-of-the-state) |
+| `state_max_age` | `3600` | The seconds that a signed state is valid. `0` is no limit. An older state reloads the page. See [The page reloads after an event](failed-events.md#the-page-reloads-after-an-event) |
+| `state_bind_session` | `true` | Signs the session id with the state, so the state of a session isn’t valid in another session. A login or a logout reloads the open pages on their next event. See [Keep security decisions out of the state](security.md#keep-security-decisions-out-of-the-state) |
 | `state_cache` | `true` | Keeps each signed state in the `cache.phem.state` pool, so an event can send only its signature. See [An event makes two requests](failed-events.md#an-event-makes-two-requests) |
 | `state_cache_min_size` | `4096` | The bytes of the smallest state that the pool keeps. `0` keeps all the states |
 

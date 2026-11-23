@@ -110,8 +110,8 @@ document.addEventListener('phem:replay-failed', (event) => {
 
 Keep these limits in mind:
 
-- **Age of the record**: a record that no page takes leaves IndexedDB after one day, with its events. Set `data-phem-offline-queue-max-age-value` on the `<Root>` element to change the seconds (`0` for no limit). Keep it the same as `phem.state_max_age`: the server doesn’t take an older state.
-- **State age**: the signature of the state gets old after `phem.state_max_age` (one day by default). The server answers `409` to an older state (see [The page reloads after an event](#the-page-reloads-after-an-event)), and the browser dispatches `phem:replay-failed`. Raise `phem.state_max_age` if users come back later than that.
+- **Age of the record**: a record that no page takes leaves IndexedDB after one hour, with its events. Set `data-phem-offline-queue-max-age-value` on the `<Root>` element to change the seconds (`0` for no limit). Keep it the same as `phem.state_max_age`: the server doesn’t take an older state.
+- **State age**: the signature of the state gets old after `phem.state_max_age` (one hour by default). The server answers `409` to an older state (see [The page reloads after an event](#the-page-reloads-after-an-event)), and the browser dispatches `phem:replay-failed`. Raise `phem.state_max_age` if users come back later than that.
 - **A page that changed**: a deploy that changes the component tree of the page gives a `409` too.
 - **The events of the user only**: the browser doesn’t keep the loads of `<Suspense>`, the polls, the `onVisible` events and the refreshes, because the next load sends them again.
 - **No offline page**: Phem has no service worker. A reload with no connection shows the error page of the browser. The events go when the page loads again with a connection.
@@ -124,14 +124,14 @@ Keep these limits in mind:
 When the server can’t use the state that the browser sent, it answers `409` and the browser loads the page again. The browser doesn’t dispatch `phem:error` for a `409`, because the reload is the fix. The server answers `409` in these cases:
 
 - **New build or new secret**: you deployed a new build, or changed `phem.secret`, so the signature of the state isn’t valid any more
-- **State too old**: the state is older than `phem.state_max_age` (`86400` seconds, one day, by default)
-- **Other session**: with `phem.state_bind_session: true`, the session changed since the page loaded, for example after a login
+- **State too old**: the state is older than `phem.state_max_age` (`3600` seconds, one hour, by default)
+- **Other session**: the session changed since the page loaded, for example after a login or a logout (`phem.state_bind_session`, on by default)
 - **Other URL**: the state belongs to another URL of the same page, such as `/items/3` and not `/items/4`
 - **Missing entity**: an entity of the page’s route was deleted, so the reload shows the 404 page
 - **Changed page**: the page’s component tree changed since the browser rendered it, for example after a deploy
-- **Missing handler**: the handler isn’t in the page any more, for example a row that another user removed, or a feed item that is gone or has a signature that isn’t valid
+- **Missing handler**: the handler isn’t in the page any more, for example a row that another user removed, or a feed item that is gone or has a signature that isn’t valid.
 
-A reload drops the values that the user typed and didn’t save. If users leave pages open for longer than a day, raise `phem.state_max_age`, or set it to `0` for no limit:
+A reload drops the values that the user typed and didn’t save. If users leave pages open for longer than an hour, raise `phem.state_max_age`, or set it to `0` for no limit:
 
 ```yaml
 # config/packages/phem.yaml
@@ -218,10 +218,10 @@ These are the defaults for events and state. Set the `phem.*` options in `config
 | Files of one event, together | 8 MB (`8388608` bytes) | `phem.max_upload_size` (`0` for no limit) |
 | Smallest state kept in the state cache | 4 KB (`4096` bytes) | `phem.state_cache_min_size` |
 | State cache | On, in the `cache.phem.state` pool | `phem.state_cache` |
-| Age of a state | `86400` seconds (one day) | `phem.state_max_age` (`0` for no limit) |
+| Age of a state | `3600` seconds (one hour) | `phem.state_max_age` (`0` for no limit) |
 | Smallest event body that the browser compresses | 1 KB | Not configurable |
 | Retries after a network error, `502` or `503` | 3 | `data-phem-retries-value` |
 | First wait before a retry, doubled each time | 500 ms | `data-phem-retry-delay-value` |
 | Keep the events that wait for the connection after a reload | Off | `data-phem-offline-queue-value` |
-| Age of a record of the offline queue | `86400` seconds (one day) | `data-phem-offline-queue-max-age-value` (`0` for no limit) |
+| Age of a record of the offline queue | `3600` seconds (one hour) | `data-phem-offline-queue-max-age-value` (`0` for no limit) |
 | Default error message | “Something went wrong. Please try again.” | `data-phem-error-message-value` |

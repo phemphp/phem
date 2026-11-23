@@ -34,6 +34,14 @@ final class DomEvents
      */
     private const CAPTURED = ['scroll', 'phem:call'];
 
+    /**
+     * The DOM events that the browser never sends to a disabled form control or to an inert
+     * element: a user cannot click it, focus it or type in it. A disabled control still gets the
+     * pointer events, a `focusout` when it becomes disabled, and the events of the JS code: the
+     * controllers send `input` and `change` to the fields whose value they set, and `phem:call`.
+     */
+    private const NOT_SENT_TO_DISABLED = ['click', 'keydown', 'keyup', 'focusin', 'paste'];
+
     /** React event names → DOM event names. */
     private const ALIASES = ['doubleclick' => 'dblclick', 'focus' => 'focusin', 'blur' => 'focusout'];
 
@@ -41,6 +49,12 @@ final class DomEvents
     public static function name(string $event): string
     {
         return self::ALIASES[$event] ?? $event;
+    }
+
+    /** Whether the browser can send this DOM event to a disabled form control or an inert element. */
+    public static function sentToDisabled(string $event): bool
+    {
+        return !\in_array($event, self::NOT_SENT_TO_DISABLED, true);
     }
 
     /** The `data-action` value of the page root: `click->phem#dispatch … scroll->phem#dispatch:capture`. */

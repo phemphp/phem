@@ -1,0 +1,13 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<div>
+                {% set _phem_off_0 = (not ready) %}<button {{ phem_on('click', publish, _phem_off_0) }} {{ phem_attr('disabled', _phem_off_0) }}>Publish</button>
+                <button {{ phem_on('click', publish, true) }} disabled>Off</button>
+                {% set _phem_off_1 = (not ready) %}<input {{ phem_on('change', publish, true, _phem_off_1) }} disabled="disabled" {{ phem_attr('inert', _phem_off_1) }}>
+                <div {{ phem_on('click', publish, true) }} disabled inert>Div</div>
+                <button {{ phem_control_attrs(rest, {'onClick': (publish)}) }}>Spread</button>
+                <div {{ phem_attrs(rest, {'onClick': (publish)}) }}>Spread div</div>
+                <button {{ phem_on('click', publish) }}>On</button>
+            </div>

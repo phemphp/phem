@@ -199,12 +199,15 @@ final class Renderer implements ResetInterface
         return $this->renderComponent($this->tree, $fqcn, $props, $key, $slots, $caller);
     }
 
-    /** Registers an event handler of the current fiber. Null outside a page. */
-    public function addHandler(\Closure $handler): ?string
+    /**
+     * Registers an event handler of the current fiber. Null outside a page. With `$callable`
+     * false, the handler gets an id, but no event can call it (see Tree::addHandler()).
+     */
+    public function addHandler(\Closure $handler, bool $callable = true): ?string
     {
         $this->notDetached('an event handler');
 
-        return $this->tree?->addHandler($handler, $this->fingerprints->of($handler));
+        return $this->tree?->addHandler($handler, $this->fingerprints->of($handler), $callable);
     }
 
     /**

@@ -1,0 +1,47 @@
+<?phem
+
+namespace App\Ui\Disabled;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// The handler of a disabled button: the server does not register it, so a click that a user
+// forces (the `disabled` attribute removed in the developer tools) runs no handler. `#once`
+// disables itself: a second click that waits in the queue of the browser runs no handler either.
+#[Page('/disabled')]
+final class DisabledPage
+{
+    #[State] public bool $ready = false;
+    #[State] public int $published = 0;
+    #[State] public int $sent = 0;
+
+    public function prepare(): void
+    {
+        $this->ready = true;
+    }
+
+    public function publish(): void
+    {
+        ++$this->published;
+    }
+
+    public function send(): void
+    {
+        ++$this->sent;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Disabled">
+                <button id="publish" type="button" onClick={{ publish }} disabled={{ not ready }}>Publish</button>
+                <button id="prepare" type="button" onClick={{ prepare }}>Prepare</button>
+                <output id="published">{{ published }}</output>
+                <button id="once" type="button" onClick={{ send }} disabled={{ sent > 0 }}>Send once</button>
+                <output id="sent">{{ sent }}</output>
+            </Document>
+        );
+    }
+}

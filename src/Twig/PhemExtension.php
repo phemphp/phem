@@ -28,7 +28,7 @@ use Twig\TwigFunction;
 /**
  * The `{% component %}` tag and the `phem_*` functions that compiled templates use.
  *
- * The functions that need the current render tree or a service (`phem_on`, `phem_loading`, `phem_progress`, `phem_bind`, `phem_feed`, `phem_class`, `phem_attrs`) are in PhemRuntime.
+ * The functions that need the current render tree or a service (`phem_on`, `phem_loading`, `phem_progress`, `phem_bind`, `phem_feed`, `phem_class`, `phem_attrs`, `phem_control_attrs`) are in PhemRuntime.
  * The attribute functions render with Phem\Dom\Attributes, and the tag of `<Dynamic>` with Phem\Dom\DynamicTag. `classes()` gives a mergeable class list (Phem\ClassList), and `theme_script()` the script that sets the theme before the first paint (ThemeScript).
  * phemc compiles the class names of the markup to `phem_constant()` (a case or a constant, see ConstantFunction), and to `phem_path()` and `phem_url()` (a page link, see PageUrlGenerator).
  */
@@ -79,6 +79,7 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_end_tag', DynamicTag::close(...), $safe),
             new TwigFunction('phem_class', [PhemRuntime::class, 'class'], $safe),
             new TwigFunction('phem_attrs', [PhemRuntime::class, 'attrs'], $safe),
+            new TwigFunction('phem_control_attrs', [PhemRuntime::class, 'controlAttrs'], $safe),
             new TwigFunction('phem_props', SpreadProps::merge(...)),
             new TwigFunction('classes', ClassList::of(...)),
             new TwigFunction('theme_script', ThemeScript::render(...)),

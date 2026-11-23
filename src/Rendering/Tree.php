@@ -39,6 +39,8 @@ final class Tree
     private array $handlers = [];
     /** @var array<string, int> handler id => the number of handlers with this id */
     private array $handlerCounts = [];
+    /** @var array<string, true> the ids of the handlers that no event can call: their element is disabled or inert */
+    private array $offHandlers = [];
     /** @var array<string, array{string, string, list<int|string>}> the bound properties of the pass: key => [fiber id, property, path] */
     private array $binds = [];
     private ?string $rootToken = null;
@@ -161,6 +163,7 @@ final class Tree
         $this->rootFiber = null;
         $this->handlers = [];
         $this->handlerCounts = [];
+        $this->offHandlers = [];
         $this->binds = [];
     }
 
@@ -208,13 +211,22 @@ final class Tree
      * Registers an event handler of the current fiber. Its id is stable between requests: the
      * fiber and the fingerprint of the handler (see HandlerFingerprint), not its position. Only
      * handlers with the same fingerprint (the same method twice) get a number in their order.
+     *
+     * With `$callable` false, the handler gets its id but no event can call it: its element is
+     * disabled or inert, so the browser sends no event for it (see PhemRuntime::on()). An event
+     * for it runs nothing (see isOff()).
      */
-    public function addHandler(\Closure $handler, string $fingerprint): string
+    public function addHandler(\Closure $handler, string $fingerprint, bool $callable = true): string
     {
         $base = ($this->top()->id ?? 'x').'.'.$fingerprint;
         $n = $this->handlerCounts[$base] = ($this->handlerCounts[$base] ?? 0) + 1;
         $id = 1 === $n ? $base : $base.'~'.$n;
-        $this->handlers[$id] = $handler;
+
+        if ($callable) {
+            $this->handlers[$id] = $handler;
+        } else {
+            $this->offHandlers[$id] = true;
+        }
 
         return $id;
     }
@@ -231,6 +243,16 @@ final class Tree
     public function handler(string $id): ?\Closure
     {
         return $this->handlers[$id] ?? null;
+    }
+
+    /**
+     * Whether the last pass gave this handler id to a disabled or inert element: the event is
+     * a click that the browser queued before the morph that disabled the element, or a request
+     * that a user wrote by hand.
+     */
+    public function isOff(string $id): bool
+    {
+        return isset($this->offHandlers[$id]);
     }
 
     /**
@@ -321,6 +343,7 @@ final class Tree
         $prefix = $fiber->id.'.';
         $this->handlers = array_filter($this->handlers, static fn (string $id): bool => !str_starts_with($id, $prefix), \ARRAY_FILTER_USE_KEY);
         $this->handlerCounts = array_filter($this->handlerCounts, static fn (string $base): bool => !str_starts_with($base, $prefix), \ARRAY_FILTER_USE_KEY);
+        $this->offHandlers = array_filter($this->offHandlers, static fn (string $id): bool => !str_starts_with($id, $prefix), \ARRAY_FILTER_USE_KEY);
         $this->binds = array_filter($this->binds, static fn (array $bind): bool => $bind[0] !== $fiber->id);
     }
 

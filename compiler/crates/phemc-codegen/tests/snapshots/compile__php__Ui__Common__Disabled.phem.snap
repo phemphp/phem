@@ -1,0 +1,37 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Disabled.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+#[Component]
+final class Disabled
+{
+    #[State] public bool $ready = false;
+
+    public function publish(): void
+    {
+    }
+
+    public function render(): Node
+    {
+        $rest = ['disabled' => true];
+
+        return (
+            new \Phem\Element('Ui/Common/Disabled.0.twig', ['publish' => $this->publish(...), 'ready' => $this->ready, 'rest' => $rest])
+
+
+
+
+
+
+
+
+        );
+    }
+}

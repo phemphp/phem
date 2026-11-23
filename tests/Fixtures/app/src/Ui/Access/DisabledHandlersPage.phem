@@ -1,0 +1,49 @@
+<?phem
+
+namespace App\Ui\Access;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+use Phem\Tests\Fixtures\HandlerCalls;
+
+use function App\Ui\Layout\Document;
+
+// The browser sends no click to a disabled form control or an inert element: the server does not
+// register their handlers, so a click that a user sends by hand does not run them.
+#[Page('/disabled-handlers')]
+final class DisabledHandlersPage
+{
+    #[State] public bool $ready = false;
+
+    public function render(): Node
+    {
+        $call = static fn (string $name) => static function () use ($name): void {
+            HandlerCalls::$calls[] = $name;
+        };
+        $publish = $call('publish');
+        $off = $call('off');
+        $inert = $call('inert');
+        $spread = $call('spread');
+        $spreadInert = $call('spreadInert');
+        $div = $call('div');
+        $pointer = $call('pointer');
+        $change = $call('change');
+        $rest = ['disabled' => true];
+        $inertRest = ['inert' => true];
+        $open = fn () => $this->ready = true;
+
+        return (
+            <Document>
+                <button id="publish" onClick={{ publish }} disabled={{ not ready }}>Publish</button>
+                <button id="off" onClick={{ off }} disabled>Off</button>
+                <span id="inert" onClick={{ inert }} inert>Inert</span>
+                <button id="spread" {{ ...rest }} onClick={{ spread }}>Spread</button>
+                <span id="spreadInert" {{ ...inertRest }} onClick={{ spreadInert }}>Spread inert</span>
+                <div id="div" onClick={{ div }} disabled>A div is not a form control</div>
+                <button id="pointer" onPointerDown={{ pointer }} disabled>A disabled control gets the pointer events</button>
+                <input id="change" onChange={{ change }} disabled />
+                <button id="ready" onClick={{ open }}>Ready</button>
+            </Document>
+        );
+    }
+}

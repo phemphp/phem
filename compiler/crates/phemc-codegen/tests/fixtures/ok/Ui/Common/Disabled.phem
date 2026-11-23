@@ -1,0 +1,33 @@
+<?phem
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+#[Component]
+final class Disabled
+{
+    #[State] public bool $ready = false;
+
+    public function publish(): void
+    {
+    }
+
+    public function render(): Node
+    {
+        $rest = ['disabled' => true];
+
+        return (
+            <div>
+                <button onClick={{ publish }} disabled={{ not ready }}>Publish</button>
+                <button onClick={{ publish }} disabled>Off</button>
+                <input onChange={{ publish }} disabled="disabled" inert={{ not ready }} />
+                <div onClick={{ publish }} disabled inert>Div</div>
+                <button {{ ...rest }} onClick={{ publish }}>Spread</button>
+                <div {{ ...rest }} onClick={{ publish }}>Spread div</div>
+                <button onClick={{ publish }}>On</button>
+            </div>
+        );
+    }
+}
