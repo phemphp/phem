@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.0
+
+- Completion for the `palette_script()` Twig function of the `phem-palette` controller.
+
 ## 0.11.0
 
 - The language server does not report E054 and E055 any more: the `#[Async]` event handlers

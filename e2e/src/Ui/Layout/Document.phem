@@ -17,6 +17,7 @@ function Document(string $title, Html $children): Node
                 <title>{{ title }}</title>
                 <link rel="icon" href="data:," />
                 {{ theme_script() }}
+                {{ palette_script(['base', 'contrast']) }}
                 {{ importmap('app') }}
             </head>
             <body>

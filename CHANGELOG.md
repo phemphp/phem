@@ -8,6 +8,8 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- New `phem-palette` controller and `palette_script()` Twig function: the user picks a named palette (a set of colors) next to the light and the dark theme. `{{ palette_script(['base', 'contrast']) }}` in the `<head>` gives `<html>` the stored palette before the first paint (`data-palette`), and a `phem-palette#choose` picker stores the choice in `localStorage`. See "Let the user pick a palette" in `docs/controllers.md`. The language server completes `palette_script()`.
+
 - **Breaking** The `#[Async]` event handlers are removed: `Phem\Attribute\Async`, the
   `Phem\Async\*` classes (`Promise`, `AsyncHandlerMessage` and the others), the Messenger handler
   of the worker and `ComponentTester::settle()`. phemc does not report E054 and E055 any more.

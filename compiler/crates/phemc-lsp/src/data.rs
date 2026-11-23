@@ -425,6 +425,7 @@ pub const FUNCTIONS: &[(&str, &str, &str)] = &[
     ("t", "t(message, parameters = [], domain = null)", "A translatable message (Symfony)"),
     ("importmap", "importmap(entryPoint = 'app', attributes = [])", "The importmap and the entry point scripts (AssetMapper)"),
     ("theme_script", "theme_script(default = 'system', nonce = null)", "The inline script that sets the theme of phem-theme before the first paint (Phem)"),
+    ("palette_script", "palette_script(palettes, default = null, nonce = null)", "The inline script that sets the palette of phem-palette before the first paint (Phem)"),
     ("form", "form(view, variables = [])", "The full HTML of a form"),
     ("form_start", "form_start(view, variables = [])", "The start tag of a form"),
     ("form_end", "form_end(view, variables = [])", "The end tag of a form, and the fields not rendered yet"),

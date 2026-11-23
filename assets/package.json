@@ -150,6 +150,12 @@
                 "fetch": "lazy",
                 "enabled": false
             },
+            "palette": {
+                "name": "phem-palette",
+                "main": "dist/phem_palette_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
             "image-input": {
                 "name": "phem-image-input",
                 "main": "dist/phem_image_input_controller.js",

@@ -3064,6 +3064,43 @@ A choice changes the theme in the other tabs of the site, and in the other switc
 
 The marks belong to the client, so they stay after the morph of an event.
 
+## Let the user pick a palette
+
+`phem-palette` keeps the choice of the user between named palettes: sets of colors, next to the light and the dark theme of `phem-theme`. The choice goes in `localStorage`, and `<html>` gets `data-palette`. Put `palette_script()` in the `<head>` of the document, with the names of your palettes. This inline script sets the palette before the first paint. The first name is the default:
+
+```twig
+<head>
+    {{ theme_script() }}
+    {{ palette_script(['base', 'contrast']) }}
+</head>
+```
+
+Then put a picker in the page. The `choose` action stores the `palette` param of a button, or the value of a `<select>` or a radio button:
+
+```html
+<select data-controller="phem-palette" data-action="phem-palette#choose" aria-label="Palette">
+    <option data-phem-palette-target="option" value="base">Base</option>
+    <option data-phem-palette-target="option" value="contrast">Contrast</option>
+</select>
+```
+
+The rendered `<html>` after a choice:
+
+```html
+<html lang="en" data-theme="light" data-palettes="base contrast" data-palette-default="base" data-palette="contrast">
+```
+
+Give each palette its CSS variables. A palette rule needs a higher specificity than the rules of the light and the dark theme, so the two settings combine:
+
+```css
+:root[data-palette="contrast"] { --text: #000; --link: #00e; }
+:root[data-palette="contrast"][data-theme="dark"] { --text: #fff; --link: #9cf; }
+```
+
+Only a name of `palette_script()` is a palette: a choice of another name does nothing. A name has only lowercase letters, digits and dashes. To use another default, give it as the second argument: `{{ palette_script(['base', 'contrast'], 'contrast') }}`. The `nonce` argument works as in `theme_script()`.
+
+The controller element gets `data-palette` (the current palette). An `option` target of the choice gets `aria-pressed="true"` (a button), `checked` (a radio button) or `selected` (an `<option>`). A choice changes the palette in the other tabs and in the other pickers of the page. `<html>` dispatches `phem-palette:change` with the `palette` after each change. The marks belong to the client, so they stay after the morph of an event.
+
 ## Show toast messages
 
 `phem-toast` shows short messages that disappear after a few seconds. Put one element in the layout:

@@ -68,6 +68,10 @@
                 "enabled": true,
                 "fetch": "eager"
             },
+            "palette": {
+                "enabled": true,
+                "fetch": "eager"
+            },
             "image-input": {
                 "enabled": true,
                 "fetch": "eager"

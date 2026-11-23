@@ -82,6 +82,7 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_props', SpreadProps::merge(...)),
             new TwigFunction('classes', ClassList::of(...)),
             new TwigFunction('theme_script', ThemeScript::render(...)),
+            new TwigFunction('palette_script', PaletteScript::render(...)),
             new TwigFunction('phem_method', MemberHandler::of(...)),
             new TwigFunction('phem_call', HandlerCall::bind(...)),
             new TwigFunction('phem_constant', 'constant', ['node_class' => ConstantFunction::class]),

@@ -7,9 +7,9 @@ use Phem\Node;
 
 use function App\Ui\Layout\Document;
 
-// A theme switch with `phem-theme`: three buttons and a toggle. The document has
-// `theme_script()` in its `<head>`. The Save button sends an event, so the test checks the marks
-// after the morph.
+// A theme switch with `phem-theme`: three buttons and a toggle, and a palette picker with
+// `phem-palette`. The document has `theme_script()` and `palette_script()` in its `<head>`. The
+// Save button sends an event, so the test checks the marks after the morph.
 #[Page('/theme')]
 final class ThemePage
 {
@@ -30,6 +30,11 @@ final class ThemePage
                     <button id="system" data-phem-theme-target="option" data-action="phem-theme#choose" data-phem-theme-theme-param="system">System</button>
                 </div>
                 <button id="toggle" data-controller="phem-theme" data-action="phem-theme#toggle">Toggle</button>
+
+                <select id="palette" data-controller="phem-palette" data-action="phem-palette#choose" aria-label="Palette">
+                    <option data-phem-palette-target="option" value="base">Base</option>
+                    <option data-phem-palette-target="option" value="contrast">Contrast</option>
+                </select>
 
                 <button id="save" onClick={{ save }}>Save</button>
                 <output id="saves">{{ saves }}</output>

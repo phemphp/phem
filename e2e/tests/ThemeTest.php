@@ -73,4 +73,40 @@ final class ThemeTest extends E2eTestCase
         expect($page->locator('#light'))->toHaveAttribute('aria-pressed', 'true');
         self::assertSame('light', $page->evaluate("localStorage.getItem('phem-theme')"));
     }
+
+    /** Keeps the palette of `<html>` when the parser adds `<body>`: before the controllers run. */
+    private const FIRST_PAINT_PALETTE = <<<'JS'
+        new MutationObserver((records, observer) => {
+            if (!document.body) return
+            window.firstPaintPalette = document.documentElement.dataset.palette ?? null
+            observer.disconnect()
+        }).observe(document, { childList: true, subtree: true })
+        JS;
+
+    public function testKeepsThePaletteOfTheUserBeforeTheFirstPaint(): void
+    {
+        $page = $this->visitInNewBrowser('/theme');
+        self::assertResponseIsSuccessful();
+        $page->addInitScript(self::FIRST_PAINT_PALETTE);
+        $page->reload();
+
+        // No choice: the first palette of palette_script().
+        $html = $page->locator('html');
+        expect($html)->toHaveAttribute('data-palette', 'base');
+        expect($html)->toHaveAttribute('data-palettes', 'base contrast');
+        self::assertSame('base', $page->evaluate('window.firstPaintPalette'));
+
+        // The user chooses a palette: the select keeps it after an event.
+        $page->locator('#palette')->selectOption('contrast');
+        expect($html)->toHaveAttribute('data-palette', 'contrast');
+        self::assertSame('contrast', $page->evaluate("localStorage.getItem('phem-palette')"));
+        $page->locator('#save')->click();
+        expect($page->locator('#saves'))->toHaveExactText('1');
+        expect($page->locator('#palette'))->toHaveValue('contrast');
+
+        // A reload sets the stored palette before the first paint.
+        $page->reload();
+        expect($html)->toHaveAttribute('data-palette', 'contrast');
+        self::assertSame('contrast', $page->evaluate('window.firstPaintPalette'));
+    }
 }
