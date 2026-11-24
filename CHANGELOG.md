@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- phem requires `twig/twig` 3.31.1 or higher, the security release of Twig. Twig 3.31 also
+  refuses a spread (`...`) outside a sequence, a mapping and the arguments of a call. phemc
+  compiles a spread of attributes to a call, so the templates of phem do not change.
+
 - A required `phem-toggle` with an `<input type="hidden">` (a native `<button>`, or an
   `unchecked-value`) stops the submit of a `phem-form` while it is not checked. The browser does
   not validate a hidden input, so the toggle gives `phem-form` and `phem-field` a `valueMissing`
