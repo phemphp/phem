@@ -90,7 +90,7 @@
             "dist": {
                 "type": "path",
                 "url": "..",
-                "reference": "e6d5125def88759c5c62ad9030afaae6ce7b675d"
+                "reference": "460d4087d88c7da8eb72faf99602fd32933e705e"
             },
             "require": {
                 "php": ">=8.4",
@@ -118,6 +118,7 @@
                 "symfony/http-client": "^7.4|^8.0",
                 "symfony/rate-limiter": "^7.4|^8.0",
                 "symfony/security-core": "^7.4|^8.0",
+                "symfony/security-http": "^7.4|^8.0",
                 "symfony/serializer": "^7.4|^8.0",
                 "symfony/validator": "^7.4|^8.0",
                 "symfony/web-profiler-bundle": "^7.4|^8.0",
@@ -130,6 +131,7 @@
                 "symfony/form": "To validate a Symfony form while the user types: the errors of the touched fields only",
                 "symfony/http-client": "To publish the streams from a Messenger worker or a command, with the HTTP API of the Mercure hub (phem.mercure.publisher_key)",
                 "symfony/rate-limiter": "To limit the events of a page or of one handler with the #[RateLimit] attribute of Symfony 8.1",
+                "symfony/security-bundle": "To protect a page, its events or one event handler with the #[IsGranted] attribute",
                 "symfony/serializer": "To map the form of an event to the object of a #[MapForm] handler parameter, and to keep objects in #[State]",
                 "symfony/validator": "To validate the #[State] properties of a component with a Validation property while the user types, and before a #[Validated] handler",
                 "tales-from-a-dev/tailwind-merge-php": "To merge the conflicting Tailwind CSS classes of a ClassList (phem.class_merger.tailwind)"
@@ -2326,16 +2328,16 @@
         },
         {
             "name": "symfony/polyfill-php85",
-            "version": "v1.43.0",
+            "version": "v1.44.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-php85.git",
-                "reference": "86a42cbcc07adc331481a5ab310a4024bfc227f6"
+                "reference": "94c794cb5ba51784bc259f11e9f128593297d8dc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php85/zipball/86a42cbcc07adc331481a5ab310a4024bfc227f6",
-                "reference": "86a42cbcc07adc331481a5ab310a4024bfc227f6",
+                "url": "https://api.github.com/repos/symfony/polyfill-php85/zipball/94c794cb5ba51784bc259f11e9f128593297d8dc",
+                "reference": "94c794cb5ba51784bc259f11e9f128593297d8dc",
                 "shasum": ""
             },
             "require": {
@@ -2382,7 +2384,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-php85/tree/v1.43.0"
+                "source": "https://github.com/symfony/polyfill-php85/tree/v1.44.0"
             },
             "funding": [
                 {
@@ -2402,8 +2404,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-25T15:46:47+00:00",
-            "published-time": "2026-09-30T10:23:32+00:00"
+            "time": "2026-10-30T15:20:09+00:00",
+            "published-time": "2026-11-15T14:20:22+00:00"
         },
         {
             "name": "symfony/routing",
@@ -2576,16 +2578,16 @@
         },
         {
             "name": "symfony/stimulus-bundle",
-            "version": "v3.7.0",
+            "version": "v3.8.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/stimulus-bundle.git",
-                "reference": "1ec378de88cd2414a57504b77a1c64712d09355c"
+                "reference": "73b7f7dd24fc7d0f103ec1f03e48452f70792772"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/stimulus-bundle/zipball/1ec378de88cd2414a57504b77a1c64712d09355c",
-                "reference": "1ec378de88cd2414a57504b77a1c64712d09355c",
+                "url": "https://api.github.com/repos/symfony/stimulus-bundle/zipball/73b7f7dd24fc7d0f103ec1f03e48452f70792772",
+                "reference": "73b7f7dd24fc7d0f103ec1f03e48452f70792772",
                 "shasum": ""
             },
             "require": {
@@ -2628,7 +2630,7 @@
                 "symfony-ux"
             ],
             "support": {
-                "source": "https://github.com/symfony/stimulus-bundle/tree/v3.7.0"
+                "source": "https://github.com/symfony/stimulus-bundle/tree/v3.8.0"
             },
             "funding": [
                 {
@@ -2648,8 +2650,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-11-04T08:53:23+00:00",
-            "published-time": "2026-11-04T08:54:28+00:00"
+            "time": "2026-11-22T06:49:09+00:00",
+            "published-time": "2026-11-22T06:52:37+00:00"
         },
         {
             "name": "symfony/string",
@@ -3270,16 +3272,16 @@
         },
         {
             "name": "twig/twig",
-            "version": "v3.30.0",
+            "version": "v3.31.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/twigphp/Twig.git",
-                "reference": "8c737079b726af72ff8ef3c595be9f6a810ea1ef"
+                "reference": "6f6ec372231b53d1d564567a78beb8844cafa132"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/twigphp/Twig/zipball/8c737079b726af72ff8ef3c595be9f6a810ea1ef",
-                "reference": "8c737079b726af72ff8ef3c595be9f6a810ea1ef",
+                "url": "https://api.github.com/repos/twigphp/Twig/zipball/6f6ec372231b53d1d564567a78beb8844cafa132",
+                "reference": "6f6ec372231b53d1d564567a78beb8844cafa132",
                 "shasum": ""
             },
             "require": {
@@ -3334,7 +3336,7 @@
             ],
             "support": {
                 "issues": "https://github.com/twigphp/Twig/issues",
-                "source": "https://github.com/twigphp/Twig/tree/v3.30.0"
+                "source": "https://github.com/twigphp/Twig/tree/v3.31.1"
             },
             "funding": [
                 {
@@ -3346,8 +3348,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-25T13:20:01+00:00",
-            "published-time": "2026-09-25T13:20:14+00:00"
+            "time": "2026-11-24T12:48:40+00:00",
+            "published-time": "2026-11-24T12:48:53+00:00"
         }
     ],
     "packages-dev": [
@@ -3979,16 +3981,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "13.4.6",
+            "version": "13.4.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "4821376960d0e1e5a7b7b700955ebcab33ecd71b"
+                "reference": "291e66a76eb39f2fb8f880d38edc30dbd7acd9a2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/4821376960d0e1e5a7b7b700955ebcab33ecd71b",
-                "reference": "4821376960d0e1e5a7b7b700955ebcab33ecd71b",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/291e66a76eb39f2fb8f880d38edc30dbd7acd9a2",
+                "reference": "291e66a76eb39f2fb8f880d38edc30dbd7acd9a2",
                 "shasum": ""
             },
             "require": {
@@ -4002,7 +4004,7 @@
                 "phar-io/manifest": "^2.0.4",
                 "phar-io/version": "^3.2.1",
                 "php": ">=8.4.1",
-                "phpunit/php-code-coverage": "^14.5.0",
+                "phpunit/php-code-coverage": "^14.5.2",
                 "phpunit/php-file-iterator": "^7.0.2",
                 "phpunit/php-invoker": "^7.0.0",
                 "phpunit/php-text-template": "^6.0.1",
@@ -4018,7 +4020,7 @@
                 "sebastian/object-enumerator": "^8.1.0",
                 "sebastian/recursion-context": "^8.0.1",
                 "sebastian/type": "^7.0.2",
-                "sebastian/version": "^7.0.1",
+                "sebastian/version": "^7.1.0",
                 "staabm/side-effects-detector": "^1.0.5"
             },
             "bin": [
@@ -4059,7 +4061,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
-                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.6"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.8"
             },
             "funding": [
                 {
@@ -4067,8 +4069,8 @@
                     "type": "other"
                 }
             ],
-            "time": "2026-11-02T07:12:28+00:00",
-            "published-time": "2026-11-02T07:13:08+00:00"
+            "time": "2026-11-19T12:17:15+00:00",
+            "published-time": "2026-11-19T12:18:28+00:00"
         },
         {
             "name": "playwright-php/playwright",
